@@ -2,14 +2,17 @@
 
 #include "SBody.h"
 
+#include <chrono>
 #include <cmath>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 #include <unistd.h>
 
 #include <gsl/gsl_odeiv2.h>
-#include <indicators/progress_bar.hpp>
+#include <indicators/block_progress_bar.hpp>
+#include <indicators/cursor_control.hpp>
 
 #include "Constant.h"
 #include "IO.h"
@@ -34,11 +37,23 @@ void help() {
 }
 
 int main(int argc, char *argv[]) {
+	using namespace indicators;
+	show_console_cursor(false);
+	indicators::BlockProgressBar bar{
+		option::BarWidth{80},
+		option::Start{"["},
+		option::End{"]"},
+		option::PrefixText{"Calculating..."},
+		option::ForegroundColor{Color::cyan},
+		option::ShowElapsedTime{true},
+		option::ShowRemainingTime{true},
+		option::FontStyles{std::vector<FontStyle>{FontStyle::bold}}};
 	double absAcc = 1e-15, relAcc = 1e-15;
 	double h = 1e-3;
-	double t = 0, tfinal = 1e9;
+	double t = 0, tfinal = 1e10;
 	int NSK = 1;
 	int PL = 0;
+	int loading = 1;
 	const gsl_odeiv2_step_type *ode_type = gsl_odeiv2_step_rk8pd;
 	gsl_odeiv2_step *ode_step;
 	gsl_odeiv2_control *ode_control;
@@ -95,10 +110,12 @@ int main(int argc, char *argv[]) {
 	while (status == 0 && t != tfinal) {
 		status = gsl_odeiv2_evolve_apply(ode_evolve, ode_control, ode_step, &ode_system, &t, tfinal, &h, y);
 		schwarzschild::s2c(y, &temp[0]);
+		bar.set_progress(100 * t / tfinal);
 		temp[ode_system.dimension] = schwarzschild::energy(y);
 		temp[ode_system.dimension + 1] = schwarzschild::angularMomentum(y);
 		rec.push_back(temp);
 	}
+	show_console_cursor(true);
 	IO::NumPySave(rec, "output");
 	return 0;
 }
