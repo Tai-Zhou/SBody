@@ -18,11 +18,11 @@ namespace newton {
 		return ::s2c(r, r + 3, x, x + 3);
 	}
 	double energy(const double x[]) {
-		return dot(x + 5) / 2 - constant::G * constant::M_sun / norm(x + 1);
+		return dot(x + 3) / 2 - constant::G * constant::M_sun / norm(x);
 	}
 	double angularMomentum(const double x[]) {
 		double J[3];
-		cross(x + 1, x + 5, J);
+		cross(x, x + 3, J);
 		return norm(J);
 	}
 	int function(double t, const double y[], double dydt[], void *params) {
