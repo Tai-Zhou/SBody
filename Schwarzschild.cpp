@@ -26,7 +26,7 @@ namespace schwarzschild {
 		dydt[1] = y[5]; //dr/dt
 		dydt[2] = y[6]; //d\theta/dt
 		dydt[3] = y[7]; //d\phi/dt
-		double M = constant::M_sun * constant::G / constant::c2;
+		double M = constant::G * ((source *)params)->mass * constant::M_sun / constant::c2;
 		double dydt4 = 2 * M * y[5] / (y[1] - 2 * M) / y[1];
 		//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 		dydt[4] = dydt4 * y[4];
@@ -41,15 +41,15 @@ namespace schwarzschild {
 	int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 		return GSL_SUCCESS;
 	}
-	double energy(const double r[]) {
-		return (1 - 2 * constant::G * constant::M_sun / constant::c2 / r[1]) / r[4];
+	double energy(const double r[], void *params) {
+		return (1 - 2 * constant::G * ((source *)params)->mass * constant::M_sun / constant::c2 / r[1]) / r[4];
 	}
-	double angularMomentum(const double r[]) {
+	double angularMomentum(const double r[], void *params) {
 		return sqr(r[1]) * r[7] / r[4];
 	}
 	namespace particle {
 		int normalization(double y[], void *params) {
-			double g00 = 1 - 2 * constant::G * constant::M_sun / constant::c2 / y[1];
+			double g00 = 1 - 2 * constant::G * ((source *)params)->mass * constant::M_sun / constant::c2 / y[1];
 			if (g00 <= 0)
 				return 1;
 			y[4] = sqrt(g00 - (sqr(y[5]) / g00 + sqr(y[1] * y[6]) + sqr(y[1] * sin(y[2]) * y[7])) / constant::c2);
@@ -58,7 +58,7 @@ namespace schwarzschild {
 	} // namespace particle
 	namespace light {
 		int normalization(double y[], void *params) {
-			double g00 = 1 - 2 * constant::G * constant::M_sun / constant::c2 / y[1];
+			double g00 = 1 - 2 * constant::G * ((source *)params)->mass * constant::M_sun / constant::c2 / y[1];
 			if (g00 <= 0)
 				return 1;
 			double eff = constant::c * g00 / sqrt(sqr(y[5]) + g00 * (sqr(y[1] * y[6]) + sqr(y[1] * sin(y[2]) * y[7])));

@@ -1,6 +1,12 @@
 #ifndef _UTILITY_H
 #define _UTILITY_H
 
+struct source {
+	double mass;
+	double spin;
+	source(double _m, double _s) : mass(_m), spin(_s) {}
+};
+
 double sqr(const double x);
 double cub(const double x);
 double quad(const double x);
