@@ -1,7 +1,5 @@
 #include "Newton.h"
 
-#include <cmath>
-
 #include <gsl/gsl_errno.h>
 
 #include "Constant.h"

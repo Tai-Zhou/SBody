@@ -5,10 +5,11 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
+#include <string>
 #include <thread>
 #include <vector>
 
-#include <unistd.h>
+#include <getopt.h>
 
 #include <gsl/gsl_odeiv2.h>
 #include <indicators/block_progress_bar.hpp>
@@ -27,11 +28,20 @@ using namespace std;
 void help() {
 	cout << "SBody (" << VERSION << ")" << endl;
 	cout << endl;
-	cout << "Usage:" << endl;
-	cout << "  SBody -h" << endl;
-	cout << endl;
 	cout << "Options:" << endl;
-	cout << "  -h --help: the help information" << endl;
+	cout << "  -m --mass   [f]: mass of the source [" << mass << "] (M_sun)" << endl;
+	cout << "  -s --spin   [f]: spin of the source [" << spin << "]" << endl;
+	cout << "  -t --time   [f]: time limit [" << tFinal << "] (s)" << endl;
+	cout << "  -c --tcal   [f]: time limit of calculation [" << tCal << "] (s)" << endl;
+	cout << "  -n --NPSK   [i]: Newton (0)/PN (1)/Schwarzschild (2)/Kerr (3) [" << NPSK << "]" << endl;
+	cout << "  -p --PN     [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [" << PN << "]" << endl;
+	cout << "  -o --rec    [i]: [" << recRatio << "] integration steps per record" << endl;
+	cout << "  -a --abs    [f]: absolute accuracy [" << absAcc << "]" << endl;
+	cout << "  -r --rel    [f]: relative accuracy [" << relAcc << "]" << endl;
+	cout << "  -f --format [s]: storage format [" << storeFormat << "]" << endl;
+	cout << "  -l --light     : light instead of particle" << endl;
+	cout << "  -b --proBar    : show progress bar" << endl;
+	cout << "  -h --help      : this help information" << endl;
 	cout << endl;
 	cout << "Support:" << endl;
 	cout << "  github.com/Tai-Zhou/SBody" << endl;
@@ -47,19 +57,77 @@ int main(int argc, char *argv[]) {
 		indicators::option::ShowElapsedTime{true},
 		indicators::option::ShowRemainingTime{true},
 		indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
-	double h = 1e-3;
+	h = 1e-3;
+	mass = 1;
+	spin = 0;
+	absAcc = 1e-15;
+	relAcc = 1e-15;
+	tFinal = 1e10;
+	tCal = 3600;
+	NPSK = 2;
+	PN = 1;
+	PL = 1;
+	recRatio = 100;
+	progressBar = 0;
+	storeFormat = "NumPy";
+	output = "output";
 	double t = 0;
-	double mass = 1, spin = 0;
-	double absAcc = 1e-15, relAcc = 1e-15; //Absolute & relative accuracy
-	double tFinal = 1e10;				   //Time limit
-	double tCal;						   //Calculation time limit
-	int NPSK;							   //Newton/PN/Schwarzschild/Kerr
-	int PL;								   //Particle/Light
-	int recRatio;						   //N integration steps per record
-	int progressBar;					   //Switch of the progress bar
-	int storeFormat;					   //The way store the output
-	string output = "output";			   //File name of the output
-	//getopt
+	const char *optShort = "m:s:t:c:n:p:o:a:r:f:lbh";
+	static struct option optLong[] = {
+		{"mass", required_argument, NULL, 'm'},
+		{"spin", required_argument, NULL, 's'},
+		{"time", required_argument, NULL, 't'},
+		{"tcal", required_argument, NULL, 'c'},
+		{"NPSK", required_argument, NULL, 'n'},
+		{"PN", required_argument, NULL, 'p'},
+		{"rec", required_argument, NULL, 'o'},
+		{"abs", required_argument, NULL, 'a'},
+		{"rel", required_argument, NULL, 'r'},
+		{"format", required_argument, NULL, 'f'},
+		{"light", no_argument, NULL, 'l'},
+		{"proBar", no_argument, NULL, 'b'},
+		{"help", no_argument, NULL, 'h'},
+		{NULL, 0, NULL, 0}};
+	int opt;
+	while ((opt = getopt_long(argc, argv, optShort, optLong, NULL)) != -1)
+		switch (opt) {
+		case 'm':
+			mass = atof(optarg);
+			break;
+		case 's':
+			spin = atof(optarg);
+			break;
+		case 't':
+			tFinal = atof(optarg);
+			break;
+		case 'c':
+			tCal = atof(optarg);
+			break;
+		case 'n':
+			NPSK = atoi(optarg);
+			break;
+		case 'o':
+			recRatio = atoi(optarg);
+			break;
+		case 'a':
+			absAcc = atof(optarg);
+			break;
+		case 'r':
+			relAcc = atof(optarg);
+			break;
+		case 'f':
+			storeFormat = atoi(optarg);
+			break;
+		case 'l':
+			PL = 0;
+			break;
+		case 'b':
+			progressBar = 1;
+			break;
+		default:
+			help();
+			return 1;
+		}
 	if (progressBar)
 		indicators::show_console_cursor(false);
 	source params(mass, spin);
@@ -70,8 +138,7 @@ int main(int argc, char *argv[]) {
 	gsl_odeiv2_evolve *ode_evolve;
 	gsl_odeiv2_system ode_system;
 	double x[8], y[8];
-	switch (NPSK) {
-	case 0:
+	if (NPSK == 0) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, newton::dimension);
 		ode_control = gsl_odeiv2_control_y_new(absAcc, relAcc);
 		ode_evolve = gsl_odeiv2_evolve_alloc(newton::dimension);
@@ -79,8 +146,8 @@ int main(int argc, char *argv[]) {
 		ode_system.jacobian = newton::jacobian;
 		ode_system.dimension = newton::dimension;
 		ode_system.params = &params;
-		break;
-	case 1:
+	}
+	else if (NPSK == 1) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, postnewtonian::dimension);
 		ode_control = gsl_odeiv2_control_y_new(absAcc, relAcc);
 		ode_evolve = gsl_odeiv2_evolve_alloc(postnewtonian::dimension);
@@ -88,9 +155,8 @@ int main(int argc, char *argv[]) {
 		ode_system.jacobian = postnewtonian::jacobian;
 		ode_system.dimension = postnewtonian::dimension;
 		ode_system.params = &params;
-		break;
-	default:
-	case 2:
+	}
+	else if (NPSK == 2) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, schwarzschild::dimension);
 		ode_control = gsl_odeiv2_control_y_new(absAcc, relAcc);
 		ode_evolve = gsl_odeiv2_evolve_alloc(schwarzschild::dimension);
@@ -98,23 +164,10 @@ int main(int argc, char *argv[]) {
 		ode_system.jacobian = schwarzschild::jacobian;
 		ode_system.dimension = schwarzschild::dimension;
 		ode_system.params = &params;
-		break;
-	case 3:
-		break;
 	}
-	switch (PL) {
-	case 1:
-		x[0] = 0;
-		x[1] = mass * 442990;
-		x[2] = 0;
-		x[3] = 0;
-		x[5] = 0;
-		x[6] = 1;
-		x[7] = 0;
-		schwarzschild::c2s(x, y);
-		schwarzschild::light::normalization(y, &params);
-		break;
-	default:
+	else {
+	}
+	if (PL) {
 		x[0] = 0;
 		x[1] = constant::AU;
 		x[2] = 0;
@@ -124,19 +177,31 @@ int main(int argc, char *argv[]) {
 		x[7] = 0;
 		schwarzschild::c2s(x, y);
 		schwarzschild::particle::normalization(y, &params);
-		break;
 	}
-	int status = 0;
+	else {
+		x[0] = 0;
+		x[1] = mass * 442990;
+		x[2] = 0;
+		x[3] = 0;
+		x[5] = 0;
+		x[6] = 1;
+		x[7] = 0;
+		schwarzschild::c2s(x, y);
+		schwarzschild::light::normalization(y, &params);
+	}
+	int status = 0, count = 0;
 	vector<vector<double>> rec;
 	vector<double> temp(ode_system.dimension + 2);
 	while (status == 0 && t != tFinal) {
 		status = gsl_odeiv2_evolve_apply(ode_evolve, ode_control, ode_step, &ode_system, &t, tFinal, &h, y);
-		schwarzschild::s2c(y, &temp[0]);
 		if (progressBar)
 			bar.set_progress(100 * t / tFinal);
-		temp[ode_system.dimension] = schwarzschild::energy(y, &params);
-		temp[ode_system.dimension + 1] = schwarzschild::angularMomentum(y, &params);
-		rec.push_back(temp);
+		if (count++ % recRatio == 0) {
+			schwarzschild::s2c(y, &temp[0]);
+			temp[ode_system.dimension] = schwarzschild::energy(y, &params);
+			temp[ode_system.dimension + 1] = schwarzschild::angularMomentum(y, &params);
+			rec.push_back(temp);
+		}
 	}
 	if (progressBar)
 		indicators::show_console_cursor(true);
