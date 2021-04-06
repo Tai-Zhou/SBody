@@ -1,7 +1,5 @@
 #include "PostNewtonian.h"
 
-#include <cmath>
-
 #include <gsl/gsl_errno.h>
 
 #include "Constant.h"
@@ -30,35 +28,19 @@ namespace postnewtonian {
 		dydt[3] = -F * y[0];
 		dydt[4] = -F * y[1];
 		dydt[5] = -F * y[2];
-		double A, B, A1, B1, A2, B2, A25, B25, A3, B3, A35, B35;
+		double A, B, A1 = 0, B1 = 0, A2 = 0, B2 = 0, A25 = 0, B25 = 0, A3 = 0, B3 = 0, A35 = 0, B35 = 0;
 		if (PN & 1) {
 			A1 = (vsqr - 4 * SM / r) / constant::c2;
 			B1 = -4 * rdot / constant::c2;
-		}
-		else {
-			A1 = 0;
-			B1 = 0;
 		}
 		if (PN & 2) {
 			A2 = SM / r * (-2 * sqr(rdot) + 9 * SM / r) / constant::c4;
 			B2 = 2 * SM / r * rdot / constant::c4;
 		}
-		else {
-			A2 = 0;
-			B2 = 0;
-		}
-		A25 = 0;
-		B25 = 0;
 		if (PN & 8) {
 			A3 = -(16 * cub(SM / r) - sqr(rdot * SM / r)) / constant::c6;
 			B3 = -4 * rdot * sqr(SM / r) / constant::c6;
 		}
-		else {
-			A3 = 0;
-			B3 = 0;
-		}
-		A35 = 0;
-		B35 = 0;
 		A = A1 + A2 + A25 + A3 + A35;
 		B = B1 + B2 + B25 + B3 + B35;
 		dydt[3] -= SM * (A * y[0] / r + B * y[3]) / sqr(r);
