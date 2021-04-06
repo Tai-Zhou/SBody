@@ -106,6 +106,9 @@ int main(int argc, char *argv[]) {
 		case 'n':
 			NPSK = atoi(optarg);
 			break;
+		case 'p':
+			PN = atoi(optarg);
+			break;
 		case 'o':
 			recRatio = atoi(optarg);
 			break;
@@ -131,7 +134,7 @@ int main(int argc, char *argv[]) {
 	if (progressBar)
 		indicators::show_console_cursor(false);
 	source params(mass, spin);
-	postnewtonian::PN = 1;
+	postnewtonian::PN = PN;
 	const gsl_odeiv2_step_type *ode_type = gsl_odeiv2_step_rk8pd;
 	gsl_odeiv2_step *ode_step;
 	gsl_odeiv2_control *ode_control;
