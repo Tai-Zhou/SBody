@@ -17,6 +17,7 @@
 
 #include "Constant.h"
 #include "IO.h"
+#include "Kerr.h"
 #include "Newton.h"
 #include "PostNewtonian.h"
 #include "Schwarzschild.h"
@@ -70,7 +71,6 @@ int main(int argc, char *argv[]) {
 	recRatio = 1;
 	progressBar = 1;
 	storeFormat = "NumPy";
-	output = "output";
 	double t = 0;
 	const char *optShort = "m:s:t:c:n:p:o:a:r:f:lbh";
 	static struct option optLong[] = {
@@ -152,6 +152,7 @@ int main(int argc, char *argv[]) {
 		y[3] = -sqrt(mass * constant::G * constant::M_sun / constant::AU) * cos(constant::pi / 200);
 		y[4] = sqrt(mass * constant::G * constant::M_sun / constant::AU) * sin(constant::pi / 200);
 		y[5] = 0;
+		output = "newton";
 	}
 	else if (NPSK == 1) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, postnewtonian::dimension);
@@ -167,6 +168,7 @@ int main(int argc, char *argv[]) {
 		y[3] = -sqrt(mass * constant::G * constant::M_sun / constant::AU) * cos(constant::pi / 200);
 		y[4] = sqrt(mass * constant::G * constant::M_sun / constant::AU) * sin(constant::pi / 200);
 		y[5] = 0;
+		output = "postnewtonian";
 	}
 	else if (NPSK == 2) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, schwarzschild::dimension);
@@ -198,12 +200,43 @@ int main(int argc, char *argv[]) {
 			schwarzschild::c2s(x, y);
 			schwarzschild::light::normalization(y, &params);
 		}
+		output = "schwarzschild";
 	}
 	else {
+		ode_step = gsl_odeiv2_step_alloc(ode_type, kerr::dimension);
+		ode_control = gsl_odeiv2_control_y_new(absAcc, relAcc);
+		ode_evolve = gsl_odeiv2_evolve_alloc(kerr::dimension);
+		ode_system.function = kerr::function;
+		ode_system.jacobian = kerr::jacobian;
+		ode_system.dimension = kerr::dimension;
+		ode_system.params = &params;
+		if (PL) {
+			x[0] = 0;
+			x[1] = constant::AU;
+			x[2] = 0;
+			x[3] = 0;
+			x[5] = -sqrt(mass * constant::G * constant::M_sun / constant::AU) * cos(constant::pi / 200);
+			x[6] = sqrt(mass * constant::G * constant::M_sun / constant::AU) * sin(constant::pi / 200);
+			x[7] = 0;
+			kerr::c2s(x, y);
+			kerr::particle::normalization(y, &params);
+		}
+		else {
+			x[0] = 0;
+			x[1] = mass * 442990;
+			x[2] = 0;
+			x[3] = 0;
+			x[5] = 0;
+			x[6] = 1;
+			x[7] = 0;
+			kerr::c2s(x, y);
+			kerr::light::normalization(y, &params);
+		}
+		output = "kerr";
 	}
 	int status = 0, count = 0;
 	vector<vector<double>> rec;
-	vector<double> temp(ode_system.dimension + 2);
+	vector<double> temp(ode_system.dimension + 3);
 	while (status == 0 && t != tFinal) {
 		status = gsl_odeiv2_evolve_apply(ode_evolve, ode_control, ode_step, &ode_system, &t, tFinal, &h, y);
 		if (progressBar)
@@ -212,19 +245,28 @@ int main(int argc, char *argv[]) {
 			if (NPSK == 0) {
 				for (int i = 0; i < 6; ++i)
 					temp[i] = y[i];
-				temp[6] = newton::energy(y, &params);
-				temp[7] = newton::angularMomentum(y, &params);
+				temp[6] = t;
+				temp[7] = newton::energy(y, &params);
+				temp[8] = newton::angularMomentum(y, &params);
 			}
 			else if (NPSK == 1) {
 				for (int i = 0; i < 6; ++i)
 					temp[i] = y[i];
-				temp[6] = postnewtonian::energy(y, &params);
-				temp[7] = postnewtonian::angularMomentum(y, &params);
+				temp[6] = t;
+				temp[7] = postnewtonian::energy(y, &params);
+				temp[8] = postnewtonian::angularMomentum(y, &params);
 			}
 			else if (NPSK == 2) {
 				schwarzschild::s2c(y, &temp[0]);
-				temp[8] = schwarzschild::energy(y, &params);
-				temp[9] = schwarzschild::angularMomentum(y, &params);
+				temp[8] = t;
+				temp[9] = schwarzschild::energy(y, &params);
+				temp[10] = schwarzschild::angularMomentum(y, &params);
+			}
+			else {
+				kerr::s2c(y, &temp[0]);
+				temp[8] = t;
+				temp[9] = kerr::energy(y, &params);
+				temp[10] = kerr::angularMomentum(y, &params);
 			}
 			rec.push_back(temp);
 		}
