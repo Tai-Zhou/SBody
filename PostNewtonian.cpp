@@ -78,9 +78,9 @@ namespace postnewtonian {
 		if (PN & 1)
 			E += (0.5 * sqr(SM / r) + 0.375 * sqr(vsqr) + 1.5 * vsqr * SM / r) / constant::c2;
 		if (PN & 2)
-			E += (-0.5 * cub(SM / r) + 0.3125 * cub(vsqr) + 1.75 * sqr(SM / r) * vsqr + 0.5 * sqr(SM / r) * sqr(rdot) + 2.625 * SM / r * sqr(vsqr)) / constant::c4;
+			E += (-0.5 * cub(SM / r) + 5 / 16 * cub(vsqr) + 1.75 * sqr(SM / r) * vsqr + 0.5 * sqr(SM / r) * sqr(rdot) + 2.625 * SM / r * sqr(vsqr)) / constant::c4;
 		if (PN & 8)
-			E += (0.375 * quad(SM / r) + 1.25 * cub(SM / r) * vsqr + 1.5 * cub(SM / r) * sqr(rdot) + 35 / 128 * quad(vsqr) + 0.53125 * sqr(SM / r) * vsqr * sqr(rdot) + 3.4375 * SM / r * cub(vsqr)) / constant::c6;
+			E += (0.375 * quad(SM / r) + 1.25 * cub(SM / r) * vsqr + 1.5 * cub(SM / r) * sqr(rdot) + 35 / 128 * quad(vsqr) + 135 / 16 * sqr(SM / r) * sqr(vsqr) + 0.75 * sqr(SM / r) * vsqr * sqr(rdot) + 55 / 16 * SM / r * cub(vsqr)) / constant::c6;
 		return E;
 	}
 	double angularMomentum(const double x[], void *params) {
@@ -95,7 +95,7 @@ namespace postnewtonian {
 		if (PN & 2)
 			eff += (3.5 * sqr(SM / r) + 0.375 * sqr(vsqr) + 3.5 * SM / r * vsqr) / constant::c4;
 		if (PN & 8)
-			eff += (2.5 * cub(SM / r) + 0.3125 * cub(vsqr) + 135 * sqr(SM / r) * vsqr / 12 + 12 * sqr(SM / r) * sqr(rdot) / 24 + 4.125 * SM / r * sqr(vsqr)) / constant::c6;
+			eff += (2.5 * cub(SM / r) + 5 / 16 * cub(vsqr) + 11.25 * sqr(SM / r) * vsqr + 0.5 * sqr(SM / r) * sqr(rdot) + 4.125 * SM / r * sqr(vsqr)) / constant::c6;
 		for (int i = 0; i < 3; ++i)
 			J[i] += J[i] * eff;
 		return norm(J);
