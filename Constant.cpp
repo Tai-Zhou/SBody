@@ -2,7 +2,8 @@
 
 namespace constant {
 	// Math
-	const double pi = 3.1415926;
+	const double pi = 3.141592653589793;
+	const double pi2 = 9.869604401089358;
 	// Physical
 	const double c = 2.99792458e10;
 	const double c2 = 8.9875517873681764e20;

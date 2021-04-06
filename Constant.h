@@ -4,6 +4,7 @@
 namespace constant {
 	// Math
 	extern const double pi;
+	extern const double pi2;
 	// Physical
 	extern const double c;
 	extern const double c2;

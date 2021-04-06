@@ -19,13 +19,51 @@ namespace postnewtonian {
 		return ::s2c(r, r + 3, x, x + 3);
 	}
 	int function(double t, const double y[], double dydt[], void *params) {
+		double r = norm(y);
+		double rdot = dot(y, y + 3) / r;
+		double vsqr = dot(y + 3);
+		double SM = constant::G * ((source *)params)->mass * constant::M_sun;
+		double F = SM / cub(norm(y));
 		dydt[0] = y[3];
 		dydt[1] = y[4];
 		dydt[2] = y[5];
-		double F = constant::G * ((source *)params)->mass * constant::M_sun / cub(norm(y));
 		dydt[3] = -F * y[0];
 		dydt[4] = -F * y[1];
 		dydt[5] = -F * y[2];
+		double A, B, A1, B1, A2, B2, A25, B25, A3, B3, A35, B35;
+		if (PN & 1) {
+			A1 = (vsqr - 4 * SM / r) / constant::c2;
+			B1 = -4 * rdot / constant::c2;
+		}
+		else {
+			A1 = 0;
+			B1 = 0;
+		}
+		if (PN & 2) {
+			A2 = SM / r * (-2 * sqr(rdot) + 9 * SM / r) / constant::c4;
+			B2 = 2 * SM / r * rdot / constant::c4;
+		}
+		else {
+			A2 = 0;
+			B2 = 0;
+		}
+		A25 = 0;
+		B25 = 0;
+		if (PN & 8) {
+			A3 = -(16 * cub(SM / r) - sqr(rdot * SM / r)) / constant::c6;
+			B3 = -4 * rdot * sqr(SM / r) / constant::c6;
+		}
+		else {
+			A3 = 0;
+			B3 = 0;
+		}
+		A35 = 0;
+		B35 = 0;
+		A = A1 + A2 + A25 + A3 + A35;
+		B = B1 + B2 + B25 + B3 + B35;
+		dydt[3] -= SM * (A * y[0] / r + B * y[3]) / sqr(r);
+		dydt[4] -= SM * (A * y[1] / r + B * y[4]) / sqr(r);
+		dydt[5] -= SM * (A * y[2] / r + B * y[5]) / sqr(r);
 		return GSL_SUCCESS;
 	}
 	int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
@@ -35,24 +73,31 @@ namespace postnewtonian {
 		double r = norm(x);
 		double rdot = dot(x, x + 3) / r;
 		double vsqr = dot(x + 3);
-		double E = vsqr / 2 - constant::G * ((source *)params)->mass * constant::M_sun / r;
+		double SM = constant::G * ((source *)params)->mass * constant::M_sun;
+		double E = vsqr / 2 - SM / r;
 		if (PN & 1)
-			;
+			E += (0.5 * sqr(SM / r) + 0.375 * sqr(vsqr) + 1.5 * vsqr * SM / r) / constant::c2;
 		if (PN & 2)
-			;
+			E += (-0.5 * cub(SM / r) + 0.3125 * cub(vsqr) + 1.75 * sqr(SM / r) * vsqr + 0.5 * sqr(SM / r) * sqr(rdot) + 2.625 * SM / r * sqr(vsqr)) / constant::c4;
 		if (PN & 8)
-			;
+			E += (0.375 * quad(SM / r) + 1.25 * cub(SM / r) * vsqr + 1.5 * cub(SM / r) * sqr(rdot) + 35 / 128 * quad(vsqr) + 0.53125 * sqr(SM / r) * vsqr * sqr(rdot) + 3.4375 * SM / r * cub(vsqr)) / constant::c6;
 		return E;
 	}
 	double angularMomentum(const double x[], void *params) {
-		double J[3], JPN[3];
-		cross(x + 1, x + 5, J);
-		if (PN & 1) {
-		}
-		if (PN & 2) {
-		}
-		if (PN & 8) {
-		}
+		double r = norm(x);
+		double rdot = dot(x, x + 3) / r;
+		double vsqr = dot(x + 3);
+		double SM = constant::G * ((source *)params)->mass * constant::M_sun;
+		double J[3], eff = 0;
+		cross(x, x + 3, J);
+		if (PN & 1)
+			eff += (3 * SM / r + 0.5 * vsqr) / constant::c2;
+		if (PN & 2)
+			eff += (3.5 * sqr(SM / r) + 0.375 * sqr(vsqr) + 3.5 * SM / r * vsqr) / constant::c4;
+		if (PN & 8)
+			eff += (2.5 * cub(SM / r) + 0.3125 * cub(vsqr) + 135 * sqr(SM / r) * vsqr / 12 + 12 * sqr(SM / r) * sqr(rdot) / 24 + 4.125 * SM / r * sqr(vsqr)) / constant::c6;
+		for (int i = 0; i < 3; ++i)
+			J[i] += J[i] * eff;
 		return norm(J);
 	}
 } // namespace postnewtonian
