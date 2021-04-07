@@ -33,10 +33,10 @@ void help() {
 	cout << "  -m --mass   [f]: mass of the source [" << mass << "] (M_sun)" << endl;
 	cout << "  -s --spin   [f]: spin of the source [" << spin << "]" << endl;
 	cout << "  -t --time   [f]: time limit [" << tFinal << "] (s)" << endl;
+	cout << "  -o --rec    [f]: record interval [" << tRec << "] (s)" << endl;
 	cout << "  -c --tcal   [f]: time limit of calculation [" << tCal << "] (s)" << endl;
 	cout << "  -n --NPSK   [i]: Newton (0)/PN (1)/Schwarzschild (2)/Kerr (3) [" << NPSK << "]" << endl;
 	cout << "  -p --PN     [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [" << PN << "]" << endl;
-	cout << "  -o --rec    [i]: [" << recRatio << "] integration steps per record" << endl;
 	cout << "  -a --abs    [f]: absolute accuracy [" << absAcc << "]" << endl;
 	cout << "  -r --rel    [f]: relative accuracy [" << relAcc << "]" << endl;
 	cout << "  -f --format [s]: storage format [" << storeFormat << "]" << endl;
@@ -63,24 +63,24 @@ int main(int argc, char *argv[]) {
 	spin = 0;
 	absAcc = 1e-15;
 	relAcc = 1e-15;
-	tFinal = 1e9;
+	tFinal = 1e10;
+	tRec = 1e5;
 	tCal = 3600;
 	NPSK = 1;
 	PN = 1;
 	PL = 1;
-	recRatio = 1;
 	progressBar = 1;
 	storeFormat = "NumPy";
-	double t = 0;
-	const char *optShort = "m:s:t:c:n:p:o:a:r:f:lbh";
+	double t = 0, tStep = 0;
+	const char *optShort = "m:s:t:o:c:n:p:a:r:f:lbh";
 	static struct option optLong[] = {
 		{"mass", required_argument, NULL, 'm'},
 		{"spin", required_argument, NULL, 's'},
 		{"time", required_argument, NULL, 't'},
+		{"rec", required_argument, NULL, 'o'},
 		{"tcal", required_argument, NULL, 'c'},
 		{"NPSK", required_argument, NULL, 'n'},
 		{"PN", required_argument, NULL, 'p'},
-		{"rec", required_argument, NULL, 'o'},
 		{"abs", required_argument, NULL, 'a'},
 		{"rel", required_argument, NULL, 'r'},
 		{"format", required_argument, NULL, 'f'},
@@ -100,6 +100,9 @@ int main(int argc, char *argv[]) {
 		case 't':
 			tFinal = atof(optarg);
 			break;
+		case 'o':
+			tRec = atof(optarg);
+			break;
 		case 'c':
 			tCal = atof(optarg);
 			break;
@@ -108,9 +111,6 @@ int main(int argc, char *argv[]) {
 			break;
 		case 'p':
 			PN = atoi(optarg);
-			break;
-		case 'o':
-			recRatio = atoi(optarg);
 			break;
 		case 'a':
 			absAcc = atof(optarg);
@@ -237,42 +237,43 @@ int main(int argc, char *argv[]) {
 		}
 		output = "kerr";
 	}
-	int status = 0, count = 0;
+	int status = 0;
 	vector<vector<double>> rec;
 	vector<double> temp(ode_system.dimension + 3);
-	while (status == 0 && t != tFinal) {
-		status = gsl_odeiv2_evolve_apply(ode_evolve, ode_control, ode_step, &ode_system, &t, tFinal, &h, y);
-		if (progressBar)
-			bar.set_progress(100 * t / tFinal);
-		if (count++ % recRatio == 0) {
-			if (NPSK == 0) {
-				for (int i = 0; i < 6; ++i)
-					temp[i] = y[i];
-				temp[6] = t;
-				temp[7] = newton::energy(y, &params);
-				temp[8] = newton::angularMomentum(y, &params);
-			}
-			else if (NPSK == 1) {
-				for (int i = 0; i < 6; ++i)
-					temp[i] = y[i];
-				temp[6] = t;
-				temp[7] = postnewtonian::energy(y, &params);
-				temp[8] = postnewtonian::angularMomentum(y, &params);
-			}
-			else if (NPSK == 2) {
-				schwarzschild::s2c(y, &temp[0]);
-				temp[8] = t;
-				temp[9] = schwarzschild::energy(y, &params);
-				temp[10] = schwarzschild::angularMomentum(y, &params);
-			}
-			else {
-				kerr::s2c(y, &temp[0]);
-				temp[8] = t;
-				temp[9] = kerr::energy(y, &params);
-				temp[10] = kerr::angularMomentum(y, &params);
-			}
-			rec.push_back(temp);
+	while (tStep < tFinal) {
+		tStep = min(tStep + tRec, tFinal);
+		while (status == 0 && t != tStep) {
+			status = gsl_odeiv2_evolve_apply(ode_evolve, ode_control, ode_step, &ode_system, &t, tStep, &h, y);
+			if (progressBar)
+				bar.set_progress(100 * t / tFinal);
 		}
+		if (NPSK == 0) {
+			for (int i = 0; i < 6; ++i)
+				temp[i] = y[i];
+			temp[6] = t;
+			temp[7] = newton::energy(y, &params);
+			temp[8] = newton::angularMomentum(y, &params);
+		}
+		else if (NPSK == 1) {
+			for (int i = 0; i < 6; ++i)
+				temp[i] = y[i];
+			temp[6] = t;
+			temp[7] = postnewtonian::energy(y, &params);
+			temp[8] = postnewtonian::angularMomentum(y, &params);
+		}
+		else if (NPSK == 2) {
+			schwarzschild::s2c(y, &temp[0]);
+			temp[8] = t;
+			temp[9] = schwarzschild::energy(y, &params);
+			temp[10] = schwarzschild::angularMomentum(y, &params);
+		}
+		else {
+			kerr::s2c(y, &temp[0]);
+			temp[8] = t;
+			temp[9] = kerr::energy(y, &params);
+			temp[10] = kerr::angularMomentum(y, &params);
+		}
+		rec.push_back(temp);
 	}
 	if (progressBar)
 		indicators::show_console_cursor(true);
