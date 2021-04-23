@@ -275,8 +275,11 @@ int main(int argc, char *argv[]) {
 		}
 		rec.push_back(temp);
 	}
-	if (progressBar)
+	if (progressBar) {
+		bar.set_option(indicators::option::PrefixText{"Complete!"});
+		bar.mark_as_completed();
 		indicators::show_console_cursor(true);
+	}
 	IO::NumPySave(rec, output);
 	return 0;
 }
