@@ -27,15 +27,16 @@ namespace schwarzschild {
 		dydt[2] = y[6]; //d\theta/dt
 		dydt[3] = y[7]; //d\phi/dt
 		double M = constant::G * ((source *)params)->mass * constant::M_sun / constant::c2;
-		double dydt4 = 2 * M * y[5] / (y[1] - 2 * M) / y[1];
+		double r2m = y[1] - 2 * M;
+		double sint = sin(y[2]), cost = cos(y[2]);
 		//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
-		dydt[4] = dydt4 * y[4];
+		dydt[4] = 2 * M * y[5] / r2m / y[1] * y[4];
 		//d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[5] = -M * (1 - 2 * M / y[1]) / sqr(y[1]) * constant::c2 + M / (y[1] - 2 * M) / y[1] * sqr(y[5]) + (y[1] - 2 * M) * (sqr(y[6]) + sqr(sin(y[2]) * y[7])) + y[5] * dydt4;
+		dydt[5] = -M * r2m / cub(y[1]) * constant::c2 + 3 * M / r2m / y[1] * sqr(y[5]) + r2m * (sqr(y[6]) + sqr(sint * y[7]));
 		//d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[6] = -2 / y[1] * y[5] * y[6] + sin(y[2]) * cos(y[2]) * sqr(y[7]) + y[6] * dydt4;
+		dydt[6] = -(2 * y[1] - 6 * M) / r2m / y[1] * y[5] * y[6] + sint * cost * sqr(y[7]);
 		//d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[7] = -2 * y[7] * (y[5] / y[1] + cos(y[2]) / sin(y[2]) * y[6]) + y[7] * dydt4;
+		dydt[7] = -2 * ((y[1] - 6 * M) / r2m / y[1] * y[5] + cost / sint * y[6]) * y[7];
 		return GSL_SUCCESS;
 	}
 	int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
