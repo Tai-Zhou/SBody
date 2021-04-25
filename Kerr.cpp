@@ -83,9 +83,9 @@ namespace kerr {
 			double rho2 = r2 + a2 * cost2;
 			double mrrho2 = 2 * M * r / rho2;
 			double effa = rho2 / Delta * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mrrho2 * a2 * sint4) * sqr(y[7]);
-			double effb = -2 * mrrho2 * a * sint2 * constant::c;
+			double effb = -2 * mrrho2 * a * sint2 * y[7] * constant::c;
 			double effc = (mrrho2 - 1) * constant::c2;
-			double eff = -effb + sqrt(sqr(effb) - 4 * effa * effc) / 2 / effa;
+			double eff = (-effb + sqrt(sqr(effb) - 4 * effa * effc)) / 2 / effa;
 			y[4] = 1; //frequency
 			y[5] *= eff;
 			y[6] *= eff;
