@@ -51,23 +51,33 @@ namespace kerr {
 		return GSL_SUCCESS;
 	}
 	double energy(const double r[], void *params) {
-		return (1 - 2 * constant::G * ((source *)params)->mass * constant::M_sun / constant::c2 / r[1]) / r[4];
+		double M = constant::G * ((source *)params)->mass * constant::M_sun / constant::c2;
+		double a = ((source *)params)->spin * M;
+		double rho2 = sqr(r[1]) + sqr(a) * sqr(cos(r[2]));
+		return (2 * M * r[1] / rho2 * (1 - a * sqr(sin(r[2])) * r[7]) - 1) / r[4];
 	}
 	double angularMomentum(const double r[], void *params) {
-		return sqr(r[1]) * r[7] / r[4];
+		double M = constant::G * ((source *)params)->mass * constant::M_sun / constant::c2;
+		double r2 = sqr(r[1]);
+		double sint = sin(r[2]);
+		double sint2 = sqr(sint);
+		double a = ((source *)params)->spin * M;
+		double a2 = sqr(a);
+		double rho2 = r2 + a2 * sqr(cos(r[2]));
+		double mrrho2 = 2 * M * r[1] / rho2;
+		return (-mrrho2 * a * constant::c + (a2 + r2 + mrrho2 * a2 * sint2) * r[7]) * sint2 / r[4];
 	}
 	namespace particle {
 		int normalization(double y[], void *params) {
 			double M = constant::G * ((source *)params)->mass * constant::M_sun / constant::c2;
 			double r = y[1], r2 = sqr(y[1]);
 			double sint = sin(y[2]);
-			double sint2 = sqr(sint), sint4 = quad(sint), cost2 = sqr(cos(y[2]));
+			double sint2 = sqr(sint), sint4 = quad(sint);
 			double a = ((source *)params)->spin * M;
 			double a2 = sqr(a);
-			double Delta = r2 - 2 * M * r + a2;
-			double rho2 = r2 + a2 * cost2;
+			double rho2 = r2 + a2 * sqr(cos(y[2]));
 			double mrrho2 = 2 * M * r / rho2;
-			y[4] = sqrt(1 - mrrho2 + 2 * mrrho2 * a * sint2 * y[7] / constant::c - (rho2 / Delta * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mrrho2 * a2 * sint4) * sqr(y[7])) / constant::c2);
+			y[4] = sqrt(1 - mrrho2 + 2 * mrrho2 * a * sint2 * y[7] / constant::c - (rho2 / (r2 - 2 * M * r + a2) * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mrrho2 * a2 * sint4) * sqr(y[7])) / constant::c2);
 			return std::isnan(y[4]);
 		}
 	} // namespace particle
@@ -76,13 +86,12 @@ namespace kerr {
 			double M = constant::G * ((source *)params)->mass * constant::M_sun / constant::c2;
 			double r = y[1], r2 = sqr(y[1]);
 			double sint = sin(y[2]);
-			double sint2 = sqr(sint), sint4 = quad(sint), cost2 = sqr(cos(y[2]));
+			double sint2 = sqr(sint), sint4 = quad(sint);
 			double a = ((source *)params)->spin * M;
 			double a2 = sqr(a);
-			double Delta = r2 - 2 * M * r + a2;
-			double rho2 = r2 + a2 * cost2;
+			double rho2 = r2 + a2 * sqr(cos(y[2]));
 			double mrrho2 = 2 * M * r / rho2;
-			double effa = rho2 / Delta * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mrrho2 * a2 * sint4) * sqr(y[7]);
+			double effa = rho2 / (r2 - 2 * M * r + a2) * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mrrho2 * a2 * sint4) * sqr(y[7]);
 			double effb = -2 * mrrho2 * a * sint2 * y[7] * constant::c;
 			double effc = (mrrho2 - 1) * constant::c2;
 			double eff = (-effb + sqrt(sqr(effb) - 4 * effa * effc)) / 2 / effa;

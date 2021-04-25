@@ -43,7 +43,7 @@ namespace schwarzschild {
 		return GSL_SUCCESS;
 	}
 	double energy(const double r[], void *params) {
-		return (1 - 2 * constant::G * ((source *)params)->mass * constant::M_sun / constant::c2 / r[1]) / r[4];
+		return (2 * constant::G * ((source *)params)->mass * constant::M_sun / constant::c2 / r[1] - 1) / r[4];
 	}
 	double angularMomentum(const double r[], void *params) {
 		return sqr(r[1]) * r[7] / r[4];
