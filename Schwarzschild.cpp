@@ -36,7 +36,7 @@ namespace schwarzschild {
 		//d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 		dydt[6] = -(2 * y[1] - 6 * M) / r2m / y[1] * y[5] * y[6] + sint * cost * sqr(y[7]);
 		//d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[7] = -2 * ((y[1] - 6 * M) / r2m / y[1] * y[5] + cost / sint * y[6]) * y[7];
+		dydt[7] = -2 * ((y[1] - 3 * M) / r2m / y[1] * y[5] + cost / sint * y[6]) * y[7];
 		return GSL_SUCCESS;
 	}
 	int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
