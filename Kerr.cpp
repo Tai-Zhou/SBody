@@ -32,7 +32,7 @@ namespace kerr {
 		double sint2 = sqr(sint), sint4 = quad(sint), cost2 = sqr(cost), cost4 = quad(cost);
 		double a = ((source *)params)->spin * M;
 		double a2 = sqr(a), a4 = quad(a);
-		double Delta = r2 - 2 * M * y[1] + a2;
+		double Delta = r2 - 2 * M * r + a2;
 		double rho2 = r2 + a2 * cost2;
 		double rho4 = sqr(rho2), rho6 = cub(rho2);
 		double a2r2 = a2 + r2, r2rho2 = 2 * r2 - rho2;
@@ -58,19 +58,34 @@ namespace kerr {
 	}
 	namespace particle {
 		int normalization(double y[], void *params) {
-			double g00 = 1 - 2 * constant::G * ((source *)params)->mass * constant::M_sun / constant::c2 / y[1];
-			if (g00 <= 0)
-				return 1;
-			y[4] = sqrt(g00 - (sqr(y[5]) / g00 + sqr(y[1] * y[6]) + sqr(y[1] * sin(y[2]) * y[7])) / constant::c2);
+			double M = constant::G * ((source *)params)->mass * constant::M_sun / constant::c2;
+			double r = y[1], r2 = sqr(y[1]);
+			double sint = sin(y[2]);
+			double sint2 = sqr(sint), sint4 = quad(sint), cost2 = sqr(cos(y[2]));
+			double a = ((source *)params)->spin * M;
+			double a2 = sqr(a);
+			double Delta = r2 - 2 * M * r + a2;
+			double rho2 = r2 + a2 * cost2;
+			double mrrho2 = 2 * M * r / rho2;
+			y[4] = sqrt(1 - mrrho2 + 2 * mrrho2 * a * sint2 * y[7] / constant::c - (rho2 / Delta * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mrrho2 * a2 * sint4) * sqr(y[7])) / constant::c2);
 			return std::isnan(y[4]);
 		}
 	} // namespace particle
 	namespace light {
 		int normalization(double y[], void *params) {
-			double g00 = 1 - 2 * constant::G * ((source *)params)->mass * constant::M_sun / constant::c2 / y[1];
-			if (g00 <= 0)
-				return 1;
-			double eff = constant::c * g00 / sqrt(sqr(y[5]) + g00 * (sqr(y[1] * y[6]) + sqr(y[1] * sin(y[2]) * y[7])));
+			double M = constant::G * ((source *)params)->mass * constant::M_sun / constant::c2;
+			double r = y[1], r2 = sqr(y[1]);
+			double sint = sin(y[2]);
+			double sint2 = sqr(sint), sint4 = quad(sint), cost2 = sqr(cos(y[2]));
+			double a = ((source *)params)->spin * M;
+			double a2 = sqr(a);
+			double Delta = r2 - 2 * M * r + a2;
+			double rho2 = r2 + a2 * cost2;
+			double mrrho2 = 2 * M * r / rho2;
+			double effa = rho2 / Delta * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mrrho2 * a2 * sint4) * sqr(y[7]);
+			double effb = -2 * mrrho2 * a * sint2 * constant::c;
+			double effc = (mrrho2 - 1) * constant::c2;
+			double eff = -effb + sqrt(sqr(effb) - 4 * effa * effc) / 2 / effa;
 			y[4] = 1; //frequency
 			y[5] *= eff;
 			y[6] *= eff;
