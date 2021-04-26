@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <csignal>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -25,6 +26,12 @@
 #include "Utility.h"
 
 using namespace std;
+
+void interruptHandler(int signum) {
+	if (progressBar)
+		indicators::show_console_cursor(true);
+	exit(signum);
+}
 
 void help() {
 	cout << "SBody (" << VERSION << ")" << endl;
@@ -58,6 +65,7 @@ int main(int argc, char *argv[]) {
 		indicators::option::ShowElapsedTime{true},
 		indicators::option::ShowRemainingTime{true},
 		indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
+	signal(SIGINT, interruptHandler);
 	h = 1e-3;
 	mass = 1;
 	spin = 0;
