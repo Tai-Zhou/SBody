@@ -4,18 +4,6 @@
 
 #include "Constant.h"
 
-//Square of x
-double sqr(const double x) {
-	return x * x;
-}
-// Cubic of x
-double cub(const double x) {
-	return x * x * x;
-}
-// 4th power of x
-double quad(const double x) {
-	return x * x * x * x;
-}
 // Dot product of vector x·y, or x·x if y == nullptr
 double dot(const double x[], const double y[], int dimension) {
 	if (dimension == 3) {

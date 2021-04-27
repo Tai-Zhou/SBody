@@ -7,9 +7,18 @@ struct source {
 	source(double _m, double _s) : mass(_m), spin(_s) {}
 };
 
-double sqr(const double x);
-double cub(const double x);
-double quad(const double x);
+//Square of x
+inline double sqr(const double x) {
+	return x * x;
+}
+// Cubic of x
+inline double cub(const double x) {
+	return x * x * x;
+}
+// 4th power of x
+inline double quad(const double x) {
+	return x * x * x * x;
+}
 double dot(const double x[], const double y[] = nullptr, int dimension = 3);
 double norm(const double x[], int dimension = 3);
 void cross(const double x[], const double y[], double z[]);
