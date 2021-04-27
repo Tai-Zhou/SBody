@@ -27,15 +27,10 @@ namespace kerr {
 		dydt[2] = y[6]; //d\theta/dt
 		dydt[3] = y[7]; //d\phi/dt
 		double M = constant::G * ((source *)params)->mass * constant::M_sun / constant::c2;
-		double r = y[1], r2 = sqr(y[1]), r4 = quad(y[1]);
-		double sint = sin(y[2]), cost = cos(y[2]);
-		double sint2 = sqr(sint), sint4 = quad(sint), cost2 = sqr(cost), cost4 = quad(cost);
-		double a = ((source *)params)->spin * M;
-		double a2 = sqr(a), a4 = quad(a);
-		double Delta = r2 - 2 * M * r + a2;
-		double rho2 = r2 + a2 * cost2;
-		double rho4 = sqr(rho2), rho6 = cub(rho2);
-		double a2r2 = a2 + r2, r2rho2 = 2 * r2 - rho2;
+		double a = ((source *)params)->spin * M, r = y[1], sint = sin(y[2]), cost = cos(y[2]);
+		double a2 = sqr(a), a4 = quad(a), r2 = sqr(r), r4 = quad(r), sint2 = sqr(sint), sint4 = quad(sint), cost2 = sqr(cost), cost4 = quad(cost);
+		double Delta = r2 - 2 * M * r + a2, rho2 = r2 + a2 * cost2, a2r2 = a2 + r2;
+		double rho4 = sqr(rho2), rho6 = cub(rho2), r2rho2 = 2 * r2 - rho2;
 		double dydt4 = 2 * M / Delta / rho4 * (a2r2 * r2rho2 * y[5] - 2 * Delta * a2 * r * sint * cost * y[6] * (1 - a / constant::c * sint2 * y[7]) - a / constant::c * (2 * r4 + r2 * rho2 + a2 * r2rho2) * sint2 * y[5] * y[7]);
 		//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 		dydt[4] = dydt4 * y[4];
@@ -58,11 +53,8 @@ namespace kerr {
 	}
 	double angularMomentum(const double r[], void *params) {
 		double M = constant::G * ((source *)params)->mass * constant::M_sun / constant::c2;
-		double r2 = sqr(r[1]);
-		double sint = sin(r[2]);
-		double sint2 = sqr(sint);
-		double a = ((source *)params)->spin * M;
-		double a2 = sqr(a);
+		double a = ((source *)params)->spin * M, sint = sin(r[2]);
+		double a2 = sqr(a), r2 = sqr(r[1]), sint2 = sqr(sint);
 		double rho2 = r2 + a2 * sqr(cos(r[2]));
 		double mrrho2 = 2 * M * r[1] / rho2;
 		return (-mrrho2 * a * constant::c + (a2 + r2 + mrrho2 * a2 * sint2) * r[7]) * sint2 / r[4];
@@ -70,11 +62,8 @@ namespace kerr {
 	namespace particle {
 		int normalization(double y[], void *params) {
 			double M = constant::G * ((source *)params)->mass * constant::M_sun / constant::c2;
-			double r = y[1], r2 = sqr(y[1]);
-			double sint = sin(y[2]);
-			double sint2 = sqr(sint), sint4 = quad(sint);
-			double a = ((source *)params)->spin * M;
-			double a2 = sqr(a);
+			double a = ((source *)params)->spin * M, r = y[1], sint = sin(y[2]);
+			double a2 = sqr(a), r2 = sqr(r), sint2 = sqr(sint), sint4 = quad(sint);
 			double rho2 = r2 + a2 * sqr(cos(y[2]));
 			double mrrho2 = 2 * M * r / rho2;
 			y[4] = sqrt(1 - mrrho2 + 2 * mrrho2 * a * sint2 * y[7] / constant::c - (rho2 / (r2 - 2 * M * r + a2) * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mrrho2 * a2 * sint4) * sqr(y[7])) / constant::c2);
@@ -84,11 +73,8 @@ namespace kerr {
 	namespace light {
 		int normalization(double y[], void *params) {
 			double M = constant::G * ((source *)params)->mass * constant::M_sun / constant::c2;
-			double r = y[1], r2 = sqr(y[1]);
-			double sint = sin(y[2]);
-			double sint2 = sqr(sint), sint4 = quad(sint);
-			double a = ((source *)params)->spin * M;
-			double a2 = sqr(a);
+			double a = ((source *)params)->spin * M, r = y[1], sint = sin(y[2]);
+			double a2 = sqr(a), r2 = sqr(r), sint2 = sqr(sint), sint4 = quad(sint);
 			double rho2 = r2 + a2 * sqr(cos(y[2]));
 			double mrrho2 = 2 * M * r / rho2;
 			double effa = rho2 / (r2 - 2 * M * r + a2) * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mrrho2 * a2 * sint4) * sqr(y[7]);
