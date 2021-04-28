@@ -6,21 +6,21 @@ namespace constant {
 	extern const double pi;
 	extern const double pi2;
 	// Physical
-	extern const double c;
-	extern const double c2;
-	extern const double c3;
-	extern const double c4;
-	extern const double c5;
-	extern const double c6;
 	extern const double e;
 	extern const double h;
-	extern const double G;
 	// Time
+	extern const double s;
+	extern const double day;
 	extern const double yr;
 	// Length
+	extern const double cm;
 	extern const double AU;
 	extern const double pc;
 	// Mass
-	extern const double M_sun;
+	extern const double M_earth;
+	extern const double M_jup;
+	// Energy
+	extern const double erg;
+	extern const double J;
 } // namespace constant
 #endif

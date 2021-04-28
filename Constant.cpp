@@ -5,20 +5,20 @@ namespace constant {
 	const double pi = 3.141592653589793;
 	const double pi2 = 9.869604401089358;
 	// Physical
-	const double c = 2.99792458e10;
-	const double c2 = 8.9875517873681764e20;
-	const double c3 = 2.6944002417373989539e31;
-	const double c4 = 8.0776087130624902293e41;
-	const double c5 = 2.4216061708512206534e52;
-	const double c6 = 7.2597926626745539199e62;
 	const double e = 1.60217662e-19;
-	const double h = 6.62607004e-27;
-	const double G = 6.67408e-8;
+	const double h = 7.52764601e-76;
 	// Time
-	const double yr = 3.15576e7;
+	const double s = 2.0302544672808e5;
+	const double day = 1.75413986e10;
+	const double yr = 6.40699584e12;
 	// Length
-	const double AU = 1.49597871e+13;
-	const double pc = 3.08567758e+18;
+	const double cm = 6.77219994e-6;
+	const double AU = 1.01310669e8;
+	const double pc = 2.08968255e13;
 	// Mass
-	const double M_sun = 1.98847542e+33;
+	const double M_earth = 3.00348935e-6;
+	const double M_jup = 9.5459e-4;
+	// Energy
+	const double erg = 5.59567759e-55;
+	const double J = 5.59567759e-48;
 } // namespace constant

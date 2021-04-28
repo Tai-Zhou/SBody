@@ -71,8 +71,8 @@ int main(int argc, char *argv[]) {
 	spin = 0;
 	absAcc = 1e-15;
 	relAcc = 1e-15;
-	tFinal = 1e10;
-	tRec = 1e5;
+	tFinal = 1e8 * constant::s;
+	tRec = tFinal / 100000;
 	tCal = 3600;
 	NPSK = 1;
 	PN = 1;
@@ -148,98 +148,76 @@ int main(int argc, char *argv[]) {
 	gsl_odeiv2_control *ode_control;
 	gsl_odeiv2_evolve *ode_evolve;
 	gsl_odeiv2_system ode_system;
-	double x[8], y[8];
+	double x[8], y[8], z[8];
+	ode_control = gsl_odeiv2_control_y_new(absAcc, relAcc);
+	ode_system.params = &params;
+	if (NPSK < 2) {
+		y[0] = constant::AU / 100;
+		y[1] = 0;
+		y[2] = 0;
+		y[3] = -sqrt(100 * mass / constant::AU) * cos(constant::pi / 10);
+		y[4] = sqrt(100 * mass / constant::AU) * sin(constant::pi / 10);
+		y[5] = 0;
+	}
+	else {
+		x[0] = 0;
+		x[2] = 0;
+		x[3] = 0;
+		x[7] = 0;
+		if (PL) {
+			x[1] = constant::AU / 100;
+			x[5] = -sqrt(100 * mass / constant::AU) * cos(constant::pi / 10);
+			x[6] = sqrt(100 * mass / constant::AU) * sin(constant::pi / 10);
+		}
+		else {
+			x[1] = mass * 442990;
+			x[5] = 0;
+			x[6] = 1;
+		}
+	}
 	if (NPSK == 0) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, newton::dimension);
-		ode_control = gsl_odeiv2_control_y_new(absAcc, relAcc);
 		ode_evolve = gsl_odeiv2_evolve_alloc(newton::dimension);
 		ode_system.function = newton::function;
 		ode_system.jacobian = newton::jacobian;
 		ode_system.dimension = newton::dimension;
-		ode_system.params = &params;
-		y[0] = constant::AU;
-		y[1] = 0;
-		y[2] = 0;
-		y[3] = -sqrt(mass * constant::G * constant::M_sun / constant::AU) * cos(constant::pi / 200);
-		y[4] = sqrt(mass * constant::G * constant::M_sun / constant::AU) * sin(constant::pi / 200);
-		y[5] = 0;
 		output = "newton";
 	}
 	else if (NPSK == 1) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, postnewtonian::dimension);
-		ode_control = gsl_odeiv2_control_y_new(absAcc, relAcc);
 		ode_evolve = gsl_odeiv2_evolve_alloc(postnewtonian::dimension);
 		ode_system.function = postnewtonian::function;
 		ode_system.jacobian = postnewtonian::jacobian;
 		ode_system.dimension = postnewtonian::dimension;
-		ode_system.params = &params;
-		y[0] = constant::AU;
-		y[1] = 0;
-		y[2] = 0;
-		y[3] = -sqrt(mass * constant::G * constant::M_sun / constant::AU) * cos(constant::pi / 200);
-		y[4] = sqrt(mass * constant::G * constant::M_sun / constant::AU) * sin(constant::pi / 200);
-		y[5] = 0;
 		output = "postnewtonian";
 	}
 	else if (NPSK == 2) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, schwarzschild::dimension);
-		ode_control = gsl_odeiv2_control_y_new(absAcc, relAcc);
 		ode_evolve = gsl_odeiv2_evolve_alloc(schwarzschild::dimension);
 		ode_system.function = schwarzschild::function;
 		ode_system.jacobian = schwarzschild::jacobian;
 		ode_system.dimension = schwarzschild::dimension;
-		ode_system.params = &params;
 		if (PL) {
-			x[0] = 0;
-			x[1] = constant::AU;
-			x[2] = 0;
-			x[3] = 0;
-			x[5] = -sqrt(mass * constant::G * constant::M_sun / constant::AU) * cos(constant::pi / 200);
-			x[6] = sqrt(mass * constant::G * constant::M_sun / constant::AU) * sin(constant::pi / 200);
-			x[7] = 0;
 			schwarzschild::c2s(x, y);
 			schwarzschild::particle::normalization(y, &params);
 		}
 		else {
-			x[0] = 0;
-			x[1] = mass * 442990;
-			x[2] = 0;
-			x[3] = 0;
-			x[5] = 0;
-			x[6] = 1;
-			x[7] = 0;
 			schwarzschild::c2s(x, y);
 			schwarzschild::light::normalization(y, &params);
 		}
 		output = "schwarzschild";
 	}
-	else {
+	else if (NPSK == 3) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, kerr::dimension);
-		ode_control = gsl_odeiv2_control_y_new(absAcc, relAcc);
 		ode_evolve = gsl_odeiv2_evolve_alloc(kerr::dimension);
 		ode_system.function = kerr::function;
 		ode_system.jacobian = kerr::jacobian;
 		ode_system.dimension = kerr::dimension;
-		ode_system.params = &params;
 		if (PL) {
-			x[0] = 0;
-			x[1] = constant::AU;
-			x[2] = 0;
-			x[3] = 0;
-			x[5] = -sqrt(mass * constant::G * constant::M_sun / constant::AU) * cos(constant::pi / 200);
-			x[6] = sqrt(mass * constant::G * constant::M_sun / constant::AU) * sin(constant::pi / 200);
-			x[7] = 0;
 			kerr::c2s(x, y);
 			kerr::particle::normalization(y, &params);
 		}
 		else {
-			x[0] = 0;
-			x[1] = mass * 442990;
-			x[2] = 0;
-			x[3] = 0;
-			x[5] = 0;
-			x[6] = 1;
-			x[7] = 0;
 			kerr::c2s(x, y);
 			kerr::light::normalization(y, &params);
 		}
@@ -275,7 +253,7 @@ int main(int argc, char *argv[]) {
 			temp[9] = schwarzschild::energy(y, &params);
 			temp[10] = schwarzschild::angularMomentum(y, &params);
 		}
-		else {
+		else if (NPSK == 3) {
 			kerr::s2c(y, &temp[0]);
 			temp[8] = t;
 			temp[9] = kerr::energy(y, &params);

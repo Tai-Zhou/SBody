@@ -19,7 +19,7 @@ namespace newton {
 		dydt[0] = y[3];
 		dydt[1] = y[4];
 		dydt[2] = y[5];
-		double F = constant::G * ((source *)params)->mass * constant::M_sun / cub(norm(y));
+		double F = ((source *)params)->mass / cub(norm(y));
 		dydt[3] = -F * y[0];
 		dydt[4] = -F * y[1];
 		dydt[5] = -F * y[2];
@@ -29,7 +29,7 @@ namespace newton {
 		return GSL_SUCCESS;
 	}
 	double energy(const double x[], void *params) {
-		return dot(x + 3) / 2 - constant::G * ((source *)params)->mass * constant::M_sun / norm(x);
+		return dot(x + 3) / 2 - ((source *)params)->mass / norm(x);
 	}
 	double angularMomentum(const double x[], void *params) {
 		double J[3];
