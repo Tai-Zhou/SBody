@@ -228,10 +228,10 @@ int main(int argc, char *argv[]) {
 	vector<double> temp(ode_system.dimension + 3);
 	while (tStep < tFinal) {
 		tStep = min(tStep + tRec, tFinal);
-		while (status == 0 && t != tStep) {
+		while (status == 0 && t != tStep)
 			status = gsl_odeiv2_evolve_apply(ode_evolve, ode_control, ode_step, &ode_system, &t, tStep, &h, y);
-			if (progressBar)
-				bar.set_progress(100 * t / tFinal);
+		if (progressBar)
+			bar.set_progress(100 * t / tFinal);
 		}
 		if (NPSK == 0) {
 			for (int i = 0; i < 6; ++i)
