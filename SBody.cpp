@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
 			spin = atof(optarg);
 			break;
 		case 't':
-			tFinal = atof(optarg);
+			tFinal = atof(optarg) * constant::s;
 			break;
 		case 'o':
 			tRec = atof(optarg);
