@@ -9,6 +9,7 @@ namespace kerr {
 	int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 	double energy(const double y[], void *params);
 	double angularMomentum(const double y[], void *params);
+	double carter(const double r[], void *params);
 	namespace particle {
 		int normalization(double y[], void *params);
 	} // namespace particle
