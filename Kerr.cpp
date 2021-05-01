@@ -65,7 +65,7 @@ namespace kerr {
 		double a2 = sqr(a), r2 = sqr(r[1]), sint2 = sqr(sin(r[2])), cost2 = sqr(cos(r[2]));
 		double rho2 = r2 + a2 * cost2;
 		double mrrho2 = 2 * M * r[1] / rho2;
-		return (sqr(rho2 * r[6]) + cost2 * (a2 * (sqr(r[4]) - sqr(mrrho2 * (1 - a * sint2 * r[7]) - 1)) + sqr(-mrrho2 * a + (a2 + r2 + mrrho2 * a2 * sint2) * r[7]) * sint2)) / sqr(r[4]);
+		return cost2 * a2 + (sqr(rho2 * r[6]) + cost2 * (sqr(-mrrho2 * a + (a2 + r2 + mrrho2 * a2 * sint2) * r[7]) * sint2 - a2 * sqr(mrrho2 * (1 - a * sint2 * r[7]) - 1))) / sqr(r[4]);
 	}
 	namespace particle {
 		int normalization(double y[], void *params) {
