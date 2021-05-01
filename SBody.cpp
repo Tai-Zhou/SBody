@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
 	absAcc = 1e-15;
 	relAcc = 1e-15;
 	tFinal = 1e8 * constant::s;
-	tRec = tFinal / 100000;
+	tRec = tFinal / 100000 * constant::s;
 	tCal = 3600;
 	NPSK = 1;
 	PN = 1;
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
 			tFinal = atof(optarg) * constant::s;
 			break;
 		case 'o':
-			tRec = atof(optarg);
+			tRec = atof(optarg) * constant::s;
 			break;
 		case 'c':
 			tCal = atof(optarg);
@@ -235,26 +235,26 @@ int main(int argc, char *argv[]) {
 		if (NPSK == 0) {
 			for (int i = 0; i < 6; ++i)
 				temp[i] = y[i];
-			temp[6] = t;
+			temp[6] = t / constant::s;
 			temp[7] = newton::energy(y, &params);
 			temp[8] = newton::angularMomentum(y, &params);
 		}
 		else if (NPSK == 1) {
 			for (int i = 0; i < 6; ++i)
 				temp[i] = y[i];
-			temp[6] = t;
+			temp[6] = t / constant::s;
 			temp[7] = postnewtonian::energy(y, &params);
 			temp[8] = postnewtonian::angularMomentum(y, &params);
 		}
 		else if (NPSK == 2) {
 			schwarzschild::s2c(y, &temp[0]);
-			temp[8] = t;
+			temp[8] = t / constant::s;
 			temp[9] = schwarzschild::energy(y, &params);
 			temp[10] = schwarzschild::angularMomentum(y, &params);
 		}
 		else if (NPSK == 3) {
 			kerr::s2c(y, &temp[0]);
-			temp[8] = t;
+			temp[8] = t / constant::s;
 			temp[9] = kerr::energy(y, &params);
 			temp[10] = kerr::angularMomentum(y, &params);
 		}
