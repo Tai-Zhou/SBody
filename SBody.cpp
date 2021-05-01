@@ -199,14 +199,11 @@ int main(int argc, char *argv[]) {
 		ode_system.function = schwarzschild::function;
 		ode_system.jacobian = schwarzschild::jacobian;
 		ode_system.dimension = schwarzschild::dimension;
-		if (PL) {
-			schwarzschild::c2s(x, y);
+		schwarzschild::c2s(x, y);
+		if (PL)
 			schwarzschild::particle::normalization(y, &params);
-		}
-		else {
-			schwarzschild::c2s(x, y);
+		else
 			schwarzschild::light::normalization(y, &params);
-		}
 		output = "schwarzschild";
 	}
 	else if (NPSK == 3) {
@@ -215,14 +212,11 @@ int main(int argc, char *argv[]) {
 		ode_system.function = kerr::function;
 		ode_system.jacobian = kerr::jacobian;
 		ode_system.dimension = kerr::dimension;
-		if (PL) {
-			kerr::c2s(x, y);
+		kerr::c2s(x, y);
+		if (PL)
 			kerr::particle::normalization(y, &params);
-		}
-		else {
-			kerr::c2s(x, y);
+		else
 			kerr::light::normalization(y, &params);
-		}
 		output = "kerr";
 	}
 	int status = 0;
