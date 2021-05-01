@@ -71,8 +71,8 @@ int main(int argc, char *argv[]) {
 	spin = 0;
 	absAcc = 1e-15;
 	relAcc = 1e-15;
-	tFinal = 1e8 * constant::s;
-	tRec = tFinal / 100000 * constant::s;
+	tFinal = 1e8;
+	tRec = tFinal / 100000;
 	tCal = 3600;
 	NPSK = 1;
 	PN = 1;
@@ -139,6 +139,8 @@ int main(int argc, char *argv[]) {
 			help();
 			return 1;
 		}
+	tFinal *= constant::s;
+	tRec *= constant::s;
 	if (progressBar)
 		indicators::show_console_cursor(false);
 	source params(mass, spin);
