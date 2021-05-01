@@ -53,6 +53,7 @@ void help() {
 	cout << endl;
 	cout << "Support:" << endl;
 	cout << "  github.com/Tai-Zhou/SBody" << endl;
+	exit(1);
 }
 
 int main(int argc, char *argv[]) {
@@ -137,7 +138,6 @@ int main(int argc, char *argv[]) {
 			break;
 		default:
 			help();
-			return 1;
 		}
 	tFinal *= constant::s;
 	tRec *= constant::s;
