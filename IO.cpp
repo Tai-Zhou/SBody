@@ -1,5 +1,7 @@
 #include "IO.h"
 
+#include <fitsio.h>
+
 namespace IO {
 	int save() {
 		return 0;
