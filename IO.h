@@ -20,6 +20,18 @@ namespace IO {
 		NumPyFile.close();
 		return 0;
 	}
+	template <typename T>
+	int CSVSave(const std::vector<std::vector<T>> &data, std::string fileName) {
+		std::ofstream CSVFile(fileName + ".csv", std::ios::out);
+		for (const std::vector<T> &line : data) {
+			for (const T element : line)
+				CSVFile << element << ',';
+			CSVFile.seekp(-1, std::ios::cur);
+			CSVFile << std::endl;
+		}
+		CSVFile.close();
+		return 0;
+	}
 	int save();
 	int load();
 } // namespace IO
