@@ -19,6 +19,7 @@
 #include "Constant.h"
 #include "IO.h"
 #include "Kerr.h"
+#include "KerrH.h"
 #include "Newton.h"
 #include "PostNewtonian.h"
 #include "Schwarzschild.h"
@@ -42,7 +43,7 @@ void help() {
 	cout << "  -t --time   [f]: time limit [" << tFinal << "] (s)" << endl;
 	cout << "  -o --rec    [f]: record interval [" << tRec << "] (s)" << endl;
 	cout << "  -c --tcal   [f]: time limit of calculation [" << tCal << "] (s)" << endl;
-	cout << "  -n --NPSK   [i]: Newton (0)/PN (1)/Schwarzschild (2)/Kerr (3) [" << NPSK << "]" << endl;
+	cout << "  -n --NPSK   [i]: Newton (0)/PN (1)/Schwarzschild (2)/Kerr (3)/KerrH (4) [" << NPSK << "]" << endl;
 	cout << "  -p --PN     [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [" << PN << "]" << endl;
 	cout << "  -a --abs    [f]: absolute accuracy [" << absAcc << "]" << endl;
 	cout << "  -r --rel    [f]: relative accuracy [" << relAcc << "]" << endl;
@@ -75,7 +76,7 @@ int main(int argc, char *argv[]) {
 	tFinal = 1e8;
 	tRec = tFinal / 100000;
 	tCal = 3600;
-	NPSK = 1;
+	NPSK = 4;
 	PN = 1;
 	PL = 1;
 	progressBar = 1;
@@ -117,6 +118,8 @@ int main(int argc, char *argv[]) {
 			break;
 		case 'n':
 			NPSK = atoi(optarg);
+			if (NPSK < 0 || NPSK > 4)
+				help();
 			break;
 		case 'p':
 			PN = atoi(optarg);
@@ -165,16 +168,17 @@ int main(int argc, char *argv[]) {
 		x[0] = 0;
 		x[2] = 0;
 		x[3] = 0;
-		x[7] = 0;
 		if (PL) {
-			x[1] = constant::AU / 100;
-			x[5] = -sqrt(100 * mass / constant::AU) * cos(constant::pi / 10);
-			x[6] = sqrt(100 * mass / constant::AU) * sin(constant::pi / 10);
+			x[1] = 100;
+			x[5] = -sqrt(mass / 60) * cos(constant::pi / 10);
+			x[6] = sqrt(mass / 60) * sin(constant::pi / 10) * sin(constant::pi / 4);
+			x[7] = sqrt(mass / 60) * sin(constant::pi / 10) * cos(constant::pi / 4);
 		}
 		else {
 			x[1] = mass * 442990;
 			x[5] = 0;
 			x[6] = 1;
+			x[7] = 0;
 		}
 	}
 	if (NPSK == 0) {
@@ -219,6 +223,20 @@ int main(int argc, char *argv[]) {
 			kerr::light::normalization(y, &params);
 		output = "kerr";
 	}
+	else if (NPSK == 4) {
+		ode_step = gsl_odeiv2_step_alloc(ode_type, kerrH::dimension);
+		ode_evolve = gsl_odeiv2_evolve_alloc(kerrH::dimension);
+		ode_system.function = kerrH::function;
+		ode_system.jacobian = kerrH::jacobian;
+		ode_system.dimension = kerrH::dimension;
+		kerrH::c2s(x, z);
+		if (PL)
+			kerrH::particle::normalization(z, &params);
+		else
+			kerrH::light::normalization(z, &params);
+		kerrH::qdq2qp(z, y, &params);
+		output = "kerrH";
+	}
 	int status = 0;
 	vector<vector<double>> rec;
 	vector<double> temp(ode_system.dimension + 3);
@@ -252,7 +270,16 @@ int main(int argc, char *argv[]) {
 			kerr::s2c(y, &temp[0]);
 			temp[8] = t / constant::s;
 			temp[9] = kerr::energy(y, &params);
-			temp[10] = kerr::angularMomentum(y, &params);
+			//temp[10] = kerr::angularMomentum(y, &params);
+			temp[10] = kerr::carter(y, &params);
+		}
+		else if (NPSK == 4) {
+			kerrH::qp2qdq(y, x, &params);
+			kerrH::s2c(x, &temp[0]);
+			temp[8] = t / constant::s;
+			temp[9] = kerrH::energy(y, &params);
+			//temp[10] = kerrH::angularMomentum(y, &params);
+			temp[10] = kerrH::carter(y, &params);
 		}
 		rec.push_back(temp);
 	}
