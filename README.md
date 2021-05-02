@@ -1,4 +1,7 @@
 # SBody
+
+[![CMake](https://github.com/Tai-Zhou/SBody/actions/workflows/cmake.yml/badge.svg)](https://github.com/Tai-Zhou/SBody/actions/workflows/cmake.yml)
+
 The "S" in the name of SBody stands for "Some" and "Speed".
 
 * [Library & Tool](#library--tool)
