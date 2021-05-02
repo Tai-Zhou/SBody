@@ -55,8 +55,7 @@ namespace kerr {
 		double M = ((source *)params)->mass;
 		double a = ((source *)params)->spin * M, sint = sin(r[2]);
 		double a2 = sqr(a), r2 = sqr(r[1]), sint2 = sqr(sint);
-		double rho2 = r2 + a2 * sqr(cos(r[2]));
-		double mrrho2 = 2 * M * r[1] / rho2;
+		double mrrho2 = 2 * M * r[1] / (r2 + a2 * sqr(cos(r[2])));
 		return (-mrrho2 * a + (a2 + r2 + mrrho2 * a2 * sint2) * r[7]) * sint2 / r[4];
 	}
 	double carter(const double r[], void *params) {
