@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.10)
-project(SBody VERSION 0.0.1)
+cmake_minimum_required(VERSION 3.12)
+project(SBody VERSION 0.0.1.210504)
+add_compile_definitions(VERSION="${PROJECT_VERSION}")
 set(CMAKE_CXX_STANDARD 11)
 find_package(GSL REQUIRED)
 include_directories(SYSTEM indicators/include)
