@@ -2,7 +2,7 @@
 
 [![CMake](https://github.com/Tai-Zhou/SBody/actions/workflows/cmake.yml/badge.svg)](https://github.com/Tai-Zhou/SBody/actions/workflows/cmake.yml)
 
-The "S" in the name of SBody stands for "Some" and "Speed".
+The "S" in the name of SBody stands for "Small", "Some", and "Speed".
 
 * [Library & Tool](#library--tool)
   * [CMake](#cmake)
@@ -11,6 +11,7 @@ The "S" in the name of SBody stands for "Some" and "Speed".
   * [indicators](#indicators)
   * [Python Packages](#python-packages)
     * [NumPy](#numpy)
+* [Changelog](#changelog)
 * [Lisence](#lisence)
 
 ## Library & Tool
@@ -36,6 +37,9 @@ SBody uses [indicators](https://github.com/p-ranav/indicators) to show the progr
 ### Python Packages
 #### NumPy
 SBody output can be saved in [NPY format version 2.0](https://numpy.org/devdocs/reference/generated/numpy.lib.format.html#format-version-2-0).
+
+## Changelog
+Changelog can be found [here](CHANGELOG.md).
 
 ## Lisence
 This program uses [GNU Scientific Library](https://www.gnu.org/software/gsl/) (GSL), so the program can only be distributed under the terms of the [GNU General Public License](https://www.gnu.org/licenses/gpl-3.0.html) (GPL).
