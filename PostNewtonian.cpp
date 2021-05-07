@@ -17,67 +17,60 @@ namespace postnewtonian {
 		return ::s2c(r, r + 3, x, x + 3);
 	}
 	int function(double t, const double y[], double dydt[], void *params) {
-		double r = norm(y);
-		double rdot = dot(y, y + 3) / r;
-		double vsqr = dot(y + 3);
-		double SM = ((source *)params)->mass;
-		double F = SM / cub(norm(y));
+		double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
+		double mr = m / r, r2 = sqr(r), rdot = dot(y, y + 3) / r;
+		double F = mr / r2, rdot2 = sqr(rdot);
 		dydt[0] = y[3];
 		dydt[1] = y[4];
 		dydt[2] = y[5];
-		dydt[3] = -F * y[0];
-		dydt[4] = -F * y[1];
-		dydt[5] = -F * y[2];
 		double A, B, A1 = 0, B1 = 0, A2 = 0, B2 = 0, A25 = 0, B25 = 0, A3 = 0, B3 = 0, A35 = 0, B35 = 0;
 		if (PN & 1) {
-			A1 = vsqr - 4 * SM / r;
-			B1 = -4 * rdot;
+			A1 = vsqr - 4. * mr;
+			B1 = -4. * rdot;
 		}
 		if (PN & 2) {
-			A2 = SM / r * (-2 * sqr(rdot) + 9 * SM / r);
-			B2 = 2 * SM / r * rdot;
+			A2 = mr * (-2. * sqr(rdot) + 9. * mr);
+			B2 = 2. * mr * rdot;
 		}
 		if (PN & 8) {
-			A3 = -16 * cub(SM / r) + sqr(rdot * SM / r);
-			B3 = -4 * rdot * sqr(SM / r);
+			A3 = -16. * cub(mr) + rdot2 * sqr(mr);
+			B3 = -4. * rdot * sqr(mr);
 		}
 		A = A1 + A2 + A25 + A3 + A35;
 		B = B1 + B2 + B25 + B3 + B35;
-		dydt[3] -= SM * (A * y[0] / r + B * y[3]) / sqr(r);
-		dydt[4] -= SM * (A * y[1] / r + B * y[4]) / sqr(r);
-		dydt[5] -= SM * (A * y[2] / r + B * y[5]) / sqr(r);
+		dydt[3] = -F * (y[0] + A * y[0] + B * y[3] * r);
+		dydt[4] = -F * (y[1] + A * y[1] + B * y[4] * r);
+		dydt[5] = -F * (y[2] + A * y[2] + B * y[5] * r);
 		return GSL_SUCCESS;
 	}
 	int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 		return GSL_SUCCESS;
 	}
-	double energy(const double x[], void *params) {
-		double r = norm(x);
-		double rdot = dot(x, x + 3) / r;
-		double vsqr = dot(x + 3);
-		double SM = ((source *)params)->mass;
-		double E = vsqr / 2 - SM / r;
+	double energy(const double y[], void *params) {
+		double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
+		double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = sqr(vsqr), vsqr3 = cub(vsqr), vsqr4 = quad(vsqr);
+		double mr2 = sqr(mr), mr3 = cub(mr), mr4 = quad(mr), rdot2 = sqr(rdot);
+		double E = 0.5 * vsqr - mr;
 		if (PN & 1)
-			E += 0.5 * sqr(SM / r) + 0.375 * sqr(vsqr) + 1.5 * vsqr * SM / r;
+			E += 0.5 * mr2 + 0.375 * vsqr2 + 1.5 * vsqr * mr;
 		if (PN & 2)
-			E += -0.5 * cub(SM / r) + 5 / 16 * cub(vsqr) + 1.75 * sqr(SM / r) * vsqr + 0.5 * sqr(SM / r) * sqr(rdot) + 2.625 * SM / r * sqr(vsqr);
+			E += -0.5 * mr3 + 0.3125 * vsqr3 + 1.75 * mr2 * vsqr + 0.5 * mr2 * rdot2 + 2.625 * mr * vsqr2;
 		if (PN & 8)
-			E += 0.375 * quad(SM / r) + 1.25 * cub(SM / r) * vsqr + 1.5 * cub(SM / r) * sqr(rdot) + 35 / 128 * quad(vsqr) + 135 / 16 * sqr(SM / r) * sqr(vsqr) + 0.75 * sqr(SM / r) * vsqr * sqr(rdot) + 55 / 16 * SM / r * cub(vsqr);
+			E += 0.375 * mr4 + 1.25 * mr3 * vsqr + 1.5 * mr3 * rdot2 + 0.2734375 * vsqr4 + 8.4375 * mr2 * vsqr2 + 0.75 * mr2 * vsqr * rdot2 + 3.4375 * mr * vsqr3;
 		return E;
 	}
-	double angularMomentum(const double x[], void *params) {
-		double r = norm(x);
-		double rdot = dot(x, x + 3) / r;
-		double vsqr = dot(x + 3);
-		double SM = ((source *)params)->mass;
+	double angularMomentum(const double y[], void *params) {
+		double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
+		double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = sqr(vsqr), vsqr3 = cub(vsqr);
+		double mr2 = sqr(mr), mr3 = cub(mr), rdot2 = sqr(rdot);
 		double J[3], eff = 0;
-		cross(x, x + 3, J);
+		cross(y, y + 3, J);
 		if (PN & 1)
-			eff += 3 * SM / r + 0.5 * vsqr;
+			eff += 3. * mr + 0.5 * vsqr;
 		if (PN & 2)
-			eff += 3.5 * sqr(SM / r) + 0.375 * sqr(vsqr) + 3.5 * SM / r * vsqr;
+			eff += 3.5 * mr2 + 0.375 * vsqr2 + 3.5 * mr * vsqr;
 		if (PN & 8)
-			eff += 2.5 * cub(SM / r) + 5 / 16 * cub(vsqr) + 11.25 * sqr(SM / r) * vsqr + 0.5 * sqr(SM / r) * sqr(rdot) + 4.125 * SM / r * sqr(vsqr);
+			eff += 2.5 * mr3 + 0.3125 * vsqr3 + 11.25 * mr2 * vsqr + 0.5 * mr2 * rdot2 + 4.125 * mr * vsqr2;
 		for (int i = 0; i < 3; ++i)
 			J[i] += J[i] * eff;
 		return norm(J);

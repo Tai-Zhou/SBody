@@ -29,7 +29,7 @@ namespace newton {
 		return GSL_SUCCESS;
 	}
 	double energy(const double x[], void *params) {
-		return dot(x + 3) / 2 - ((source *)params)->mass / norm(x);
+		return 0.5 * dot(x + 3) - ((source *)params)->mass / norm(x);
 	}
 	double angularMomentum(const double x[], void *params) {
 		double J[3];
