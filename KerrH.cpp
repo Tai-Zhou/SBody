@@ -28,15 +28,14 @@ namespace kerrH {
 		u[1] = r[1];
 		u[2] = r[2];
 		u[3] = r[3];
-		double m = ((source *)params)->mass;
-		double a = ((source *)params)->spin;
+		double m = ((source *)params)->mass, a = ((source *)params)->spin;
 		double r2 = sqr(r[1]), a2 = sqr(a), sint2 = sqr(sin(r[2]));
 		double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * sqr(cos(r[2]));
-		double mrrho2 = 2. * m * r[1] / rho2;
-		u[4] = (mrrho2 - 1. - mrrho2 * a * sint2 * r[7]) / r[4];
+		double mr_rho2 = 2. * m * r[1] / rho2;
+		u[4] = (mr_rho2 - 1. - mr_rho2 * a * sint2 * r[7]) / r[4];
 		u[5] = rho2 * r[5] / (Delta * r[4]);
 		u[6] = rho2 * r[6] / r[4];
-		u[7] = (-mrrho2 * a + (a2 + r2 + mrrho2 * a2 * sint2) * r[7]) * sint2 / r[4];
+		u[7] = (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 / r[4];
 		return 0;
 	}
 	int qp2qdq(const double u[], double r[], void *params) {
@@ -44,20 +43,18 @@ namespace kerrH {
 		r[1] = u[1];
 		r[2] = u[2];
 		r[3] = u[3];
-		double m = ((source *)params)->mass;
-		double a = ((source *)params)->spin;
+		double m = ((source *)params)->mass, a = ((source *)params)->spin;
 		double a2 = sqr(a), r2 = sqr(r[1]);
 		double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * sqr(cos(r[2]));
-		double mrrho2 = 2. * m * r[1] / rho2;
-		r[4] = -Delta / ((Delta + mrrho2 * (a2 + r2)) * u[4] + mrrho2 * a * u[7]);
+		double mr_rho2 = 2. * m * r[1] / rho2;
+		r[4] = -Delta / ((Delta + mr_rho2 * (a2 + r2)) * u[4] + mr_rho2 * a * u[7]);
 		r[5] = Delta / rho2 * u[5] * r[4];
 		r[6] = u[6] / rho2 * r[4];
-		r[7] = (-mrrho2 * a * u[4] + (1. - mrrho2) / sqr(sin(r[2])) * u[7]) / Delta * r[4];
+		r[7] = (-mr_rho2 * a * u[4] + (1. - mr_rho2) / sqr(sin(r[2])) * u[7]) / Delta * r[4];
 		return 0;
 	}
 	int function(double t, const double y[], double dydt[], void *params) {
-		double m = ((source *)params)->mass;
-		double a = ((source *)params)->spin, r = y[1], sint = sin(y[2]), cost = cos(y[2]), E = -y[4], Theta = sqr(y[6]), L = y[7];
+		double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]), cost = cos(y[2]), E = -y[4], Theta = sqr(y[6]), L = y[7];
 		double a2 = sqr(a), a4 = quad(a), r2 = sqr(y[1]), r4 = quad(y[1]), sint2 = sqr(sint), sint3 = cub(sint), sint4 = quad(sint), cost2 = sqr(cost), cost3 = cub(cost), cost4 = quad(cost);
 		double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2, a2r2 = a2 + r2;
 		double rho4 = sqr(rho2);
@@ -85,34 +82,27 @@ namespace kerrH {
 		return r[7];
 	}
 	double carter(const double r[], void *params) {
-		double m = ((source *)params)->mass;
-		double a = ((source *)params)->spin;
-		double a2 = sqr(a), r2 = sqr(r[1]), cost2 = sqr(cos(r[2]));
-		double rho2 = r2 + a2 * cost2;
-		double mrrho2 = 2. * m * r[1] / rho2;
-		return cost2 * a2 + (sqr(r[6]) + cost2 * (sqr(r[7]) / sqr(sin(r[2])) - a2 * sqr(r[4])));
+		return sqr(r[6]) + sqr(cos(r[2])) * (sqr(((source *)params)->spin) * (1. - sqr(r[4])) + sqr(r[7]) / sqr(sin(r[2])));
 	}
 	namespace particle {
 		int normalization(double y[], void *params) {
-			double m = ((source *)params)->mass;
-			double a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
+			double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
 			double a2 = sqr(a), r2 = sqr(r), sint2 = sqr(sint), sint4 = quad(sint);
 			double rho2 = r2 + a2 * sqr(cos(y[2]));
-			double mrrho2 = 2. * m * r / rho2;
-			y[4] = sqrt(1 - mrrho2 + 2 * mrrho2 * a * sint2 * y[7] - (rho2 / (r2 - 2 * m * r + a2) * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mrrho2 * a2 * sint4) * sqr(y[7])));
+			double mr_rho2 = 2. * m * r / rho2;
+			y[4] = sqrt(1 - mr_rho2 + 2 * mr_rho2 * a * sint2 * y[7] - (rho2 / (r2 - 2 * m * r + a2) * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * sqr(y[7])));
 			return std::isnan(y[4]);
 		}
 	} // namespace particle
 	namespace light {
 		int normalization(double y[], void *params) {
-			double m = ((source *)params)->mass;
-			double a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
+			double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
 			double a2 = sqr(a), r2 = sqr(r), sint2 = sqr(sint), sint4 = quad(sint);
 			double rho2 = r2 + a2 * sqr(cos(y[2]));
-			double mrrho2 = 2. * m * r / rho2;
-			double effa = rho2 / (r2 - 2. * m * r + a2) * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mrrho2 * a2 * sint4) * sqr(y[7]);
-			double effb = -2. * mrrho2 * a * sint2 * y[7];
-			double effc = mrrho2 - 1.;
+			double mr_rho2 = 2. * m * r / rho2;
+			double effa = rho2 / (r2 - 2. * m * r + a2) * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * sqr(y[7]);
+			double effb = -2. * mr_rho2 * a * sint2 * y[7];
+			double effc = mr_rho2 - 1.;
 			double eff = 0.5 * (-effb + sqrt(sqr(effb) - 4. * effa * effc)) / effa;
 			y[4] = 1.; //frequency
 			y[5] *= eff;
