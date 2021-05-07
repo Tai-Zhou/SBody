@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
 	const char *optShort = "m:s:t:o:c:n:p:a:r:f:lbh";
-	static struct option optLong[] = {
+	const struct option optLong[] = {
 		{"mass", required_argument, NULL, 'm'},
 		{"spin", required_argument, NULL, 's'},
 		{"time", required_argument, NULL, 't'},
