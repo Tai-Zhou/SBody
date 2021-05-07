@@ -58,6 +58,7 @@ void help() {
 }
 
 int main(int argc, char *argv[]) {
+	auto start = chrono::steady_clock::now();
 	indicators::BlockProgressBar bar{
 		indicators::option::BarWidth{80},
 		indicators::option::Start{"["},
@@ -73,13 +74,13 @@ int main(int argc, char *argv[]) {
 	spin = 0;
 	absAcc = 1e-15;
 	relAcc = 1e-15;
-	tFinal = 1e8;
-	tRec = tFinal / 100000;
+	tFinal = 1e0;
+	tRec = 1e-5 * tFinal;
 	tCal = 3600;
 	NPSK = 4;
 	PN = 1;
 	PL = 1;
-	progressBar = 1;
+	progressBar = 0;
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
 	const char *optShort = "m:s:t:o:c:n:p:a:r:f:lbh";
@@ -169,10 +170,10 @@ int main(int argc, char *argv[]) {
 		x[2] = 0;
 		x[3] = 0;
 		if (PL) {
-			x[1] = 100;
-			x[5] = -sqrt(mass / 60) * cos(constant::pi / 10);
-			x[6] = sqrt(mass / 60) * sin(constant::pi / 10) * sin(constant::pi / 4);
-			x[7] = sqrt(mass / 60) * sin(constant::pi / 10) * cos(constant::pi / 4);
+			x[1] = 10;
+			x[5] = -sqrt(mass / 10) * cos(constant::pi / 2);
+			x[6] = sqrt(mass / 10) * sin(constant::pi / 2) * sin(constant::pi / 4);
+			x[7] = sqrt(mass / 10) * sin(constant::pi / 2) * cos(constant::pi / 4);
 		}
 		else {
 			x[1] = mass * 442990;
@@ -282,6 +283,9 @@ int main(int argc, char *argv[]) {
 			temp[10] = kerrH::carter(y, &params);
 		}
 		rec.push_back(temp);
+		auto tpass = chrono::steady_clock::now() - start; // nano seconds
+		if (tpass.count() >= tCal * 1000000000)
+			return 0;
 	}
 	if (progressBar) {
 		bar.set_option(indicators::option::PrefixText{"Complete!"});
