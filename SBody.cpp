@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
 	tRec *= constant::s;
 	if (progressBar)
 		indicators::show_console_cursor(false);
-	source params(mass, spin);
+	source params(mass, spin * mass);
 	postnewtonian::PN = PN;
 	const gsl_odeiv2_step_type *ode_type = gsl_odeiv2_step_rk8pd;
 	gsl_odeiv2_step *ode_step;

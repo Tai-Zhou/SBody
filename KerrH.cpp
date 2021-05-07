@@ -29,7 +29,7 @@ namespace kerrH {
 		u[2] = r[2];
 		u[3] = r[3];
 		double m = ((source *)params)->mass;
-		double a = ((source *)params)->spin * m;
+		double a = ((source *)params)->spin;
 		double r2 = sqr(r[1]), a2 = sqr(a), sint2 = sqr(sin(r[2]));
 		double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * sqr(cos(r[2]));
 		double mrrho2 = 2. * m * r[1] / rho2;
@@ -45,7 +45,7 @@ namespace kerrH {
 		r[2] = u[2];
 		r[3] = u[3];
 		double m = ((source *)params)->mass;
-		double a = ((source *)params)->spin * m;
+		double a = ((source *)params)->spin;
 		double a2 = sqr(a), r2 = sqr(r[1]);
 		double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * sqr(cos(r[2]));
 		double mrrho2 = 2. * m * r[1] / rho2;
@@ -57,7 +57,7 @@ namespace kerrH {
 	}
 	int function(double t, const double y[], double dydt[], void *params) {
 		double m = ((source *)params)->mass;
-		double a = ((source *)params)->spin * m, r = y[1], sint = sin(y[2]), cost = cos(y[2]), E = -y[4], Theta = sqr(y[6]), L = y[7];
+		double a = ((source *)params)->spin, r = y[1], sint = sin(y[2]), cost = cos(y[2]), E = -y[4], Theta = sqr(y[6]), L = y[7];
 		double a2 = sqr(a), a4 = quad(a), r2 = sqr(y[1]), r4 = quad(y[1]), sint2 = sqr(sint), sint3 = cub(sint), sint4 = quad(sint), cost2 = sqr(cost), cost3 = cub(cost), cost4 = quad(cost);
 		double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2, a2r2 = a2 + r2;
 		double rho4 = sqr(rho2);
@@ -86,7 +86,7 @@ namespace kerrH {
 	}
 	double carter(const double r[], void *params) {
 		double m = ((source *)params)->mass;
-		double a = ((source *)params)->spin * m;
+		double a = ((source *)params)->spin;
 		double a2 = sqr(a), r2 = sqr(r[1]), cost2 = sqr(cos(r[2]));
 		double rho2 = r2 + a2 * cost2;
 		double mrrho2 = 2. * m * r[1] / rho2;
@@ -95,7 +95,7 @@ namespace kerrH {
 	namespace particle {
 		int normalization(double y[], void *params) {
 			double m = ((source *)params)->mass;
-			double a = ((source *)params)->spin * m, r = y[1], sint = sin(y[2]);
+			double a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
 			double a2 = sqr(a), r2 = sqr(r), sint2 = sqr(sint), sint4 = quad(sint);
 			double rho2 = r2 + a2 * sqr(cos(y[2]));
 			double mrrho2 = 2. * m * r / rho2;
@@ -106,7 +106,7 @@ namespace kerrH {
 	namespace light {
 		int normalization(double y[], void *params) {
 			double m = ((source *)params)->mass;
-			double a = ((source *)params)->spin * m, r = y[1], sint = sin(y[2]);
+			double a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
 			double a2 = sqr(a), r2 = sqr(r), sint2 = sqr(sint), sint4 = quad(sint);
 			double rho2 = r2 + a2 * sqr(cos(y[2]));
 			double mrrho2 = 2. * m * r / rho2;
