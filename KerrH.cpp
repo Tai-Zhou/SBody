@@ -54,13 +54,12 @@ namespace kerrH {
 		return 0;
 	}
 	int function(double t, const double y[], double dydt[], void *params) {
-		double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]), cost = cos(y[2]), E = -y[4], Theta = sqr(y[6]), L = y[7];
-		double a2 = sqr(a), a4 = quad(a), r2 = sqr(y[1]), r4 = quad(y[1]), sint2 = sqr(sint), sint3 = cub(sint), sint4 = quad(sint), cost2 = sqr(cost), cost3 = cub(cost), cost4 = quad(cost);
+		double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]), cost = cos(y[2]), Theta = sqr(y[6]);
+		double a2 = sqr(a), r2 = sqr(y[1]), sint2 = sqr(sint), sint4 = quad(sint), cost2 = sqr(cost);
 		double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2, a2r2 = a2 + r2;
 		double rho4 = sqr(rho2);
 		double Q = Theta + cost2 * (a2 * (1. - sqr(y[4])) + sqr(y[7]) / sint2);
 		double R = sqr(y[4] * a2r2 + a * y[7]) - Delta * (r2 + sqr(y[7] + a * y[4]) + Q);
-		double dRdr = 4. * y[4] * r * (y[4] * a2r2 + a * y[7]) - 2. * (r - m) * (r2 + sqr(y[7] + a * y[4]) + Q) - 2. * Delta * r;
 		//[\tau,r,\theta,\phi,p_t,p_r,p_\theta,p_\phi]
 		dydt[0] = rho2 / (-a2r2 * (y[4] * a2r2 + a * y[7]) / Delta + a * (y[7] + a * y[4] * sint2));					//d\tau/dt
 		dydt[1] = Delta / rho2 * y[5] * dydt[0];																		//dr/dt
