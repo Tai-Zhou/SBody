@@ -26,9 +26,9 @@ namespace schwarzschild {
 		dydt[1] = y[5]; //dr/dt
 		dydt[2] = y[6]; //d\theta/dt
 		dydt[3] = y[7]; //d\phi/dt
-		double m = ((source *)params)->mass, r = y[1], sint = sin(y[2]), cost = cos(y[2]);
-		double r2m = r - 2. * m, r3m = r - 3. * m;
-		double r2mr = r2m * r;
+		const double m = ((source *)params)->mass, r = y[1], sint = sin(y[2]), cost = cos(y[2]);
+		const double r2m = r - 2. * m, r3m = r - 3. * m;
+		const double r2mr = r2m * r;
 		//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 		dydt[4] = 2. * m * y[5] / r2mr * y[4];
 		//d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
@@ -50,7 +50,7 @@ namespace schwarzschild {
 	}
 	namespace particle {
 		int normalization(double y[], void *params) {
-			double g00 = 1. - 2. * ((source *)params)->mass / y[1];
+			const double g00 = 1. - 2. * ((source *)params)->mass / y[1];
 			if (g00 <= 0)
 				return 1;
 			y[4] = sqrt(g00 - (sqr(y[5]) / g00 + sqr(y[1] * y[6]) + sqr(y[1] * sin(y[2]) * y[7])));
@@ -59,10 +59,10 @@ namespace schwarzschild {
 	} // namespace particle
 	namespace light {
 		int normalization(double y[], void *params) {
-			double g00 = 1. - 2. * ((source *)params)->mass / y[1];
+			const double g00 = 1. - 2. * ((source *)params)->mass / y[1];
 			if (g00 <= 0)
 				return 1;
-			double eff = g00 / sqrt(sqr(y[5]) + g00 * (sqr(y[1] * y[6]) + sqr(y[1] * sin(y[2]) * y[7])));
+			const double eff = g00 / sqrt(sqr(y[5]) + g00 * (sqr(y[1] * y[6]) + sqr(y[1] * sin(y[2]) * y[7])));
 			y[4] = 1.; //frequency
 			y[5] *= eff;
 			y[6] *= eff;

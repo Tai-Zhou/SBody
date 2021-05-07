@@ -28,10 +28,10 @@ namespace kerrH {
 		u[1] = r[1];
 		u[2] = r[2];
 		u[3] = r[3];
-		double m = ((source *)params)->mass, a = ((source *)params)->spin;
-		double r2 = sqr(r[1]), a2 = sqr(a), sint2 = sqr(sin(r[2]));
-		double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * sqr(cos(r[2]));
-		double mr_rho2 = 2. * m * r[1] / rho2;
+		const double m = ((source *)params)->mass, a = ((source *)params)->spin;
+		const double r2 = sqr(r[1]), a2 = sqr(a), sint2 = sqr(sin(r[2]));
+		const double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * sqr(cos(r[2]));
+		const double mr_rho2 = 2. * m * r[1] / rho2;
 		u[4] = (mr_rho2 - 1. - mr_rho2 * a * sint2 * r[7]) / r[4];
 		u[5] = rho2 * r[5] / (Delta * r[4]);
 		u[6] = rho2 * r[6] / r[4];
@@ -43,10 +43,10 @@ namespace kerrH {
 		r[1] = u[1];
 		r[2] = u[2];
 		r[3] = u[3];
-		double m = ((source *)params)->mass, a = ((source *)params)->spin;
-		double a2 = sqr(a), r2 = sqr(r[1]);
-		double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * sqr(cos(r[2]));
-		double mr_rho2 = 2. * m * r[1] / rho2;
+		const double m = ((source *)params)->mass, a = ((source *)params)->spin;
+		const double a2 = sqr(a), r2 = sqr(r[1]);
+		const double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * sqr(cos(r[2]));
+		const double mr_rho2 = 2. * m * r[1] / rho2;
 		r[4] = -Delta / ((Delta + mr_rho2 * (a2 + r2)) * u[4] + mr_rho2 * a * u[7]);
 		r[5] = Delta / rho2 * u[5] * r[4];
 		r[6] = u[6] / rho2 * r[4];
@@ -54,12 +54,12 @@ namespace kerrH {
 		return 0;
 	}
 	int function(double t, const double y[], double dydt[], void *params) {
-		double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]), cost = cos(y[2]), Theta = sqr(y[6]);
-		double a2 = sqr(a), r2 = sqr(y[1]), sint2 = sqr(sint), sint4 = quad(sint), cost2 = sqr(cost);
-		double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2, a2r2 = a2 + r2;
-		double rho4 = sqr(rho2);
-		double Q = Theta + cost2 * (a2 * (1. - sqr(y[4])) + sqr(y[7]) / sint2);
-		double R = sqr(y[4] * a2r2 + a * y[7]) - Delta * (r2 + sqr(y[7] + a * y[4]) + Q);
+		const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]), cost = cos(y[2]), Theta = sqr(y[6]);
+		const double a2 = sqr(a), r2 = sqr(y[1]), sint2 = sqr(sint), sint4 = quad(sint), cost2 = sqr(cost);
+		const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2, a2r2 = a2 + r2;
+		const double rho4 = sqr(rho2);
+		const double Q = Theta + cost2 * (a2 * (1. - sqr(y[4])) + sqr(y[7]) / sint2);
+		const double R = sqr(y[4] * a2r2 + a * y[7]) - Delta * (r2 + sqr(y[7] + a * y[4]) + Q);
 		//[\tau,r,\theta,\phi,p_t,p_r,p_\theta,p_\phi]
 		dydt[0] = rho2 / (-a2r2 * (y[4] * a2r2 + a * y[7]) / Delta + a * (y[7] + a * y[4] * sint2));					//d\tau/dt
 		dydt[1] = Delta / rho2 * y[5] * dydt[0];																		//dr/dt
@@ -85,24 +85,24 @@ namespace kerrH {
 	}
 	namespace particle {
 		int normalization(double y[], void *params) {
-			double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
-			double a2 = sqr(a), r2 = sqr(r), sint2 = sqr(sint), sint4 = quad(sint);
-			double rho2 = r2 + a2 * sqr(cos(y[2]));
-			double mr_rho2 = 2. * m * r / rho2;
+			const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
+			const double a2 = sqr(a), r2 = sqr(r), sint2 = sqr(sint), sint4 = quad(sint);
+			const double rho2 = r2 + a2 * sqr(cos(y[2]));
+			const double mr_rho2 = 2. * m * r / rho2;
 			y[4] = sqrt(1 - mr_rho2 + 2 * mr_rho2 * a * sint2 * y[7] - (rho2 / (r2 - 2 * m * r + a2) * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * sqr(y[7])));
 			return std::isnan(y[4]);
 		}
 	} // namespace particle
 	namespace light {
 		int normalization(double y[], void *params) {
-			double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
-			double a2 = sqr(a), r2 = sqr(r), sint2 = sqr(sint), sint4 = quad(sint);
-			double rho2 = r2 + a2 * sqr(cos(y[2]));
-			double mr_rho2 = 2. * m * r / rho2;
-			double effa = rho2 / (r2 - 2. * m * r + a2) * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * sqr(y[7]);
-			double effb = -2. * mr_rho2 * a * sint2 * y[7];
-			double effc = mr_rho2 - 1.;
-			double eff = 0.5 * (-effb + sqrt(sqr(effb) - 4. * effa * effc)) / effa;
+			const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
+			const double a2 = sqr(a), r2 = sqr(r), sint2 = sqr(sint), sint4 = quad(sint);
+			const double rho2 = r2 + a2 * sqr(cos(y[2]));
+			const double mr_rho2 = 2. * m * r / rho2;
+			const double effa = rho2 / (r2 - 2. * m * r + a2) * sqr(y[5]) + rho2 * sqr(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * sqr(y[7]);
+			const double effb = -2. * mr_rho2 * a * sint2 * y[7];
+			const double effc = mr_rho2 - 1.;
+			const double eff = 0.5 * (-effb + sqrt(sqr(effb) - 4. * effa * effc)) / effa;
 			y[4] = 1.; //frequency
 			y[5] *= eff;
 			y[6] *= eff;

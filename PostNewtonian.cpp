@@ -17,13 +17,13 @@ namespace postnewtonian {
 		return ::s2c(r, r + 3, x, x + 3);
 	}
 	int function(double t, const double y[], double dydt[], void *params) {
-		double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
-		double mr = m / r, r2 = sqr(r), rdot = dot(y, y + 3) / r;
-		double F = mr / r2, rdot2 = sqr(rdot);
+		const double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
+		const double mr = m / r, r2 = sqr(r), rdot = dot(y, y + 3) / r;
+		const double F = mr / r2, rdot2 = sqr(rdot);
 		dydt[0] = y[3];
 		dydt[1] = y[4];
 		dydt[2] = y[5];
-		double A, B, A1 = 0, B1 = 0, A2 = 0, B2 = 0, A25 = 0, B25 = 0, A3 = 0, B3 = 0, A35 = 0, B35 = 0;
+		double A1 = 0, B1 = 0, A2 = 0, B2 = 0, A25 = 0, B25 = 0, A3 = 0, B3 = 0, A35 = 0, B35 = 0;
 		if (PN & 1) {
 			A1 = vsqr - 4. * mr;
 			B1 = -4. * rdot;
@@ -36,8 +36,7 @@ namespace postnewtonian {
 			A3 = -16. * cub(mr) + rdot2 * sqr(mr);
 			B3 = -4. * rdot * sqr(mr);
 		}
-		A = A1 + A2 + A25 + A3 + A35;
-		B = B1 + B2 + B25 + B3 + B35;
+		const double A = A1 + A2 + A25 + A3 + A35, B = B1 + B2 + B25 + B3 + B35;
 		dydt[3] = -F * (y[0] + A * y[0] + B * y[3] * r);
 		dydt[4] = -F * (y[1] + A * y[1] + B * y[4] * r);
 		dydt[5] = -F * (y[2] + A * y[2] + B * y[5] * r);
@@ -47,9 +46,9 @@ namespace postnewtonian {
 		return GSL_SUCCESS;
 	}
 	double energy(const double y[], void *params) {
-		double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
-		double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = sqr(vsqr), vsqr3 = cub(vsqr), vsqr4 = quad(vsqr);
-		double mr2 = sqr(mr), mr3 = cub(mr), mr4 = quad(mr), rdot2 = sqr(rdot);
+		const double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
+		const double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = sqr(vsqr), vsqr3 = cub(vsqr), vsqr4 = quad(vsqr);
+		const double mr2 = sqr(mr), mr3 = cub(mr), mr4 = quad(mr), rdot2 = sqr(rdot);
 		double E = 0.5 * vsqr - mr;
 		if (PN & 1)
 			E += 0.5 * mr2 + 0.375 * vsqr2 + 1.5 * vsqr * mr;
@@ -60,9 +59,9 @@ namespace postnewtonian {
 		return E;
 	}
 	double angularMomentum(const double y[], void *params) {
-		double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
-		double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = sqr(vsqr), vsqr3 = cub(vsqr);
-		double mr2 = sqr(mr), mr3 = cub(mr), rdot2 = sqr(rdot);
+		const double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
+		const double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = sqr(vsqr), vsqr3 = cub(vsqr);
+		const double mr2 = sqr(mr), mr3 = cub(mr), rdot2 = sqr(rdot);
 		double J[3], eff = 0;
 		cross(y, y + 3, J);
 		if (PN & 1)
