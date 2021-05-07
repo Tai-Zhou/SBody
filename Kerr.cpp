@@ -29,16 +29,16 @@ namespace kerr {
 		double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]), cost = cos(y[2]);
 		double a2 = sqr(a), a4 = quad(a), r2 = sqr(r), r4 = quad(r), sint2 = sqr(sint), sint4 = quad(sint), cost2 = sqr(cost), cost4 = quad(cost), cott = cost / sint;
 		double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2, a2r2 = a2 + r2;
-		double Delta_1 = 1 / Delta, rho4 = sqr(rho2), rho_6 = 1 / cub(rho2), r2rho2 = 2. * r2 - rho2;
-		double dydt4 = 2. * m * Delta_1 / rho4 * (a2r2 * r2rho2 * y[5] - 2. * Delta * a2 * r * sint * cost * y[6] * (1. - a * sint2 * y[7]) - a * (2. * r4 + r2 * rho2 + a2 * r2rho2) * sint2 * y[5] * y[7]);
+		double rho4 = sqr(rho2), rho6 = cub(rho2), r2rho2 = 2. * r2 - rho2;
+		double dydt4 = 2. * m / (Delta * rho4) * (a2r2 * r2rho2 * y[5] - 2. * Delta * a2 * r * sint * cost * y[6] * (1. - a * sint2 * y[7]) - a * (2. * r4 + r2 * rho2 + a2 * r2rho2) * sint2 * y[5] * y[7]);
 		//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 		dydt[4] = dydt4 * y[4];
 		//d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[5] = (-Delta * m * r2rho2 - (r - (r - m) * rho2 * Delta_1) * rho4 * sqr(y[5]) + 2. * a2 * sint * cost * rho4 * y[5] * y[6] + r * Delta * rho4 * sqr(y[6]) + 2. * Delta * m * a * r2rho2 * sint2 * y[7] - Delta * sint2 * (m * a2 * sint2 * r2rho2 - r * rho4) * sqr(y[7])) * rho_6 + dydt4 * y[5];
+		dydt[5] = (-Delta * m * r2rho2 - (r - (r - m) * rho2 / Delta) * rho4 * sqr(y[5]) + 2. * a2 * sint * cost * rho4 * y[5] * y[6] + r * Delta * rho4 * sqr(y[6]) + 2. * Delta * m * a * r2rho2 * sint2 * y[7] - Delta * sint2 * (m * a2 * sint2 * r2rho2 - r * rho4) * sqr(y[7])) / rho6 + dydt4 * y[5];
 		//d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[6] = (2. * m * a2 * r * sint * cost - a2 * sint * cost * rho4 * Delta_1 * sqr(y[5]) - 2. * r * rho4 * y[5] * y[6] + a2 * sint * cost * rho4 * sqr(y[6]) - 4. * m * a * r * sint * cost * a2r2 * y[7] + sint * cost * (2. * m * a4 * r * sint4 + 4. * m * a2 * r * sint2 * rho2 + a2r2 * rho4) * sqr(y[7])) * rho_6 + dydt4 * y[6];
+		dydt[6] = (2. * m * a2 * r * sint * cost - a2 * sint * cost * rho4 / Delta * sqr(y[5]) - 2. * r * rho4 * y[5] * y[6] + a2 * sint * cost * rho4 * sqr(y[6]) - 4. * m * a * r * sint * cost * a2r2 * y[7] + sint * cost * (2. * m * a4 * r * sint4 + 4. * m * a2 * r * sint2 * rho2 + a2r2 * rho4) * sqr(y[7])) / rho6 + dydt4 * y[6];
 		//d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[7] = (-2. * m * a * r2rho2 * rho2 * Delta_1 * y[5] + 4. * m * a * r * cott * rho2 * y[6] - 2. * rho2 * Delta_1 * (r * rho4 - 2. * m * r2 * rho2 - r2rho2 * m * a2 * sint2) * y[5] * y[7] - 2. * cott * Delta_1 * ((rho2 - 2. * m * r) * (a2r2 * rho4 + 4. * m * a2 * r * rho2 * sint2 + 2. * m * a4 * r * sint4) + 4. * sqr(m) * a2 * r2 * a2r2 * sint2) * y[6] * y[7]) * rho_6 + dydt4 * y[7];
+		dydt[7] = (-2. * m * a * r2rho2 * rho2 / Delta * y[5] + 4. * m * a * r * cott * rho2 * y[6] - 2. * rho2 / Delta * (r * rho4 - 2. * m * r2 * rho2 - r2rho2 * m * a2 * sint2) * y[5] * y[7] - 2. * cott / Delta * ((rho2 - 2. * m * r) * (a2r2 * rho4 + 4. * m * a2 * r * rho2 * sint2 + 2. * m * a4 * r * sint4) + 4. * sqr(m) * a2 * r2 * a2r2 * sint2) * y[6] * y[7]) / rho6 + dydt4 * y[7];
 		return GSL_SUCCESS;
 	}
 	int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
