@@ -162,8 +162,8 @@ int main(int argc, char *argv[]) {
 		y[0] = constant::AU / 100;
 		y[1] = 0;
 		y[2] = 0;
-		y[3] = -sqrt(100 * mass / constant::AU) * cos(constant::pi / 10);
-		y[4] = sqrt(100 * mass / constant::AU) * sin(constant::pi / 10);
+		y[3] = -sqrt(100 * mass / constant::AU) * cos(M_PI / 10);
+		y[4] = sqrt(100 * mass / constant::AU) * sin(M_PI / 10);
 		y[5] = 0;
 	}
 	else {
@@ -173,8 +173,8 @@ int main(int argc, char *argv[]) {
 		if (PL) {
 			x[1] = 10 * mass;
 			x[5] = 0;
-			x[6] = sqrt(0.1) * sin(151. / 180. * constant::pi);
-			x[7] = sqrt(0.1) * cos(151. / 180. * constant::pi);
+			x[6] = sqrt(0.1) * sin(151. / 180. * M_PI);
+			x[7] = sqrt(0.1) * cos(151. / 180. * M_PI);
 		}
 		else {
 			x[1] = mass * 442990;

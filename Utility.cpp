@@ -55,7 +55,7 @@ int c2s(const double x[], const double v[], double r[], double w[]) {
 			if (v[1] >= 0)
 				r[2] = acos(v[0] / normVXY);
 			else
-				r[2] = 2 * constant::pi - acos(v[0] / normVXY);
+				r[2] = 2 * M_PI - acos(v[0] / normVXY);
 			if (x[2] >= 0)
 				w[1] = normVXY / r[0];
 			else
@@ -67,7 +67,7 @@ int c2s(const double x[], const double v[], double r[], double w[]) {
 		if (x[1] >= 0)
 			r[2] = acos(x[0] / normXY);
 		else
-			r[2] = 2 * constant::pi - acos(x[0] / normXY);
+			r[2] = 2 * M_PI - acos(x[0] / normXY);
 		w[1] = (-v[2] + x[2] / r[0] * w[0]) / normXY;
 		w[2] = (v[1] * x[0] - v[0] * x[1]) / gsl_pow_2(normXY);
 	}
