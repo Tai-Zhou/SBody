@@ -1,6 +1,7 @@
 #include "PostNewtonian.h"
 
 #include <gsl/gsl_errno.h>
+#include <gsl/gsl_math.h>
 
 #include "Constant.h"
 #include "Utility.h"
@@ -18,8 +19,8 @@ namespace postnewtonian {
 	}
 	int function(double t, const double y[], double dydt[], void *params) {
 		const double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
-		const double mr = m / r, r2 = sqr(r), rdot = dot(y, y + 3) / r;
-		const double F = mr / r2, rdot2 = sqr(rdot);
+		const double mr = m / r, r2 = gsl_pow_2(r), rdot = dot(y, y + 3) / r;
+		const double F = mr / r2, rdot2 = gsl_pow_2(rdot);
 		dydt[0] = y[3];
 		dydt[1] = y[4];
 		dydt[2] = y[5];
@@ -29,12 +30,12 @@ namespace postnewtonian {
 			B1 = -4. * rdot;
 		}
 		if (PN & 2) {
-			A2 = mr * (-2. * sqr(rdot) + 9. * mr);
+			A2 = mr * (-2. * gsl_pow_2(rdot) + 9. * mr);
 			B2 = 2. * mr * rdot;
 		}
 		if (PN & 8) {
-			A3 = -16. * cub(mr) + rdot2 * sqr(mr);
-			B3 = -4. * rdot * sqr(mr);
+			A3 = -16. * gsl_pow_3(mr) + rdot2 * gsl_pow_2(mr);
+			B3 = -4. * rdot * gsl_pow_2(mr);
 		}
 		const double A = A1 + A2 + A25 + A3 + A35, B = B1 + B2 + B25 + B3 + B35;
 		dydt[3] = -F * (y[0] + A * y[0] + B * y[3] * r);
@@ -47,8 +48,8 @@ namespace postnewtonian {
 	}
 	double energy(const double y[], void *params) {
 		const double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
-		const double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = sqr(vsqr), vsqr3 = cub(vsqr), vsqr4 = quad(vsqr);
-		const double mr2 = sqr(mr), mr3 = cub(mr), mr4 = quad(mr), rdot2 = sqr(rdot);
+		const double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = gsl_pow_2(vsqr), vsqr3 = gsl_pow_3(vsqr), vsqr4 = gsl_pow_4(vsqr);
+		const double mr2 = gsl_pow_2(mr), mr3 = gsl_pow_3(mr), mr4 = gsl_pow_4(mr), rdot2 = gsl_pow_2(rdot);
 		double E = 0.5 * vsqr - mr;
 		if (PN & 1)
 			E += 0.5 * mr2 + 0.375 * vsqr2 + 1.5 * vsqr * mr;
@@ -60,8 +61,8 @@ namespace postnewtonian {
 	}
 	double angularMomentum(const double y[], void *params) {
 		const double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
-		const double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = sqr(vsqr), vsqr3 = cub(vsqr);
-		const double mr2 = sqr(mr), mr3 = cub(mr), rdot2 = sqr(rdot);
+		const double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = gsl_pow_2(vsqr), vsqr3 = gsl_pow_3(vsqr);
+		const double mr2 = gsl_pow_2(mr), mr3 = gsl_pow_3(mr), rdot2 = gsl_pow_2(rdot);
 		double J[3], eff = 0;
 		cross(y, y + 3, J);
 		if (PN & 1)

@@ -12,6 +12,7 @@
 
 #include <getopt.h>
 
+#include <gsl/gsl_math.h>
 #include <gsl/gsl_odeiv2.h>
 #include <indicators/block_progress_bar.hpp>
 #include <indicators/cursor_control.hpp>

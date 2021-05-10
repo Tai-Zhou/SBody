@@ -2,20 +2,10 @@
 
 #include <cmath>
 
+#include <gsl/gsl_math.h>
+
 #include "Constant.h"
 
-//Square of x
-double sqr(const double x) {
-	return x * x;
-}
-// Cubic of x
-double cub(const double x) {
-	return x * x * x;
-}
-// 4th power of x
-double quad(const double x) {
-	return x * x * x * x;
-}
 // Dot product of vector x·y, or x·x if y == nullptr
 double dot(const double x[], const double y[], int dimension) {
 	if (dimension == 3) {
@@ -79,7 +69,7 @@ int c2s(const double x[], const double v[], double r[], double w[]) {
 		else
 			r[2] = 2 * constant::pi - acos(x[0] / normXY);
 		w[1] = (-v[2] + x[2] / r[0] * w[0]) / normXY;
-		w[2] = (v[1] * x[0] - v[0] * x[1]) / sqr(normXY);
+		w[2] = (v[1] * x[0] - v[0] * x[1]) / gsl_pow_2(normXY);
 	}
 	return 0;
 }

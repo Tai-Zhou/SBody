@@ -1,9 +1,11 @@
 #include "Constant.h"
 
+#include <gsl/gsl_math.h>
+
 namespace constant {
 	// Math
-	const double pi = 3.141592653589793;
-	const double pi2 = 9.869604401089358;
+	const double pi = M_PI;
+	const double pi2 = gsl_pow_2(M_PI);
 	// Physical
 	const double e = 1.60217662e-19;
 	const double h = 7.52764601e-76;
