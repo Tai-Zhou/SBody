@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
 		indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
 	signal(SIGINT, interruptHandler);
 	h = 1e-3;
-	mass = 1;
+	mass = 4e6;
 	spin = 0;
 	absAcc = 1e-15;
 	relAcc = 1e-15;
@@ -170,10 +170,10 @@ int main(int argc, char *argv[]) {
 		x[2] = 0;
 		x[3] = 0;
 		if (PL) {
-			x[1] = 10;
-			x[5] = -sqrt(mass / 10) * cos(constant::pi / 2);
-			x[6] = sqrt(mass / 10) * sin(constant::pi / 2) * sin(constant::pi / 4);
-			x[7] = sqrt(mass / 10) * sin(constant::pi / 2) * cos(constant::pi / 4);
+			x[1] = 10 * mass;
+			x[5] = 0;
+			x[6] = sqrt(0.1) * sin(151. / 180. * constant::pi);
+			x[7] = sqrt(0.1) * cos(151. / 180. * constant::pi);
 		}
 		else {
 			x[1] = mass * 442990;
