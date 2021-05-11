@@ -21,6 +21,7 @@
 #include "IO.h"
 #include "Kerr.h"
 #include "KerrH.h"
+#include "Metric.h"
 #include "Newton.h"
 #include "PostNewtonian.h"
 #include "Schwarzschild.h"
@@ -28,6 +29,7 @@
 #include "Utility.h"
 
 using namespace std;
+using namespace SBody;
 
 void interruptHandler(int signum) {
 	if (progressBar)
@@ -149,7 +151,7 @@ int main(int argc, char *argv[]) {
 	if (progressBar)
 		indicators::show_console_cursor(false);
 	source params(mass, spin * mass);
-	postnewtonian::PN = PN;
+	Metric::Postnewtonian::PN = PN;
 	const gsl_odeiv2_step_type *ode_type = gsl_odeiv2_step_rk8pd;
 	gsl_odeiv2_step *ode_step;
 	gsl_odeiv2_control *ode_control;
@@ -184,59 +186,59 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	if (NPSK == 0) {
-		ode_step = gsl_odeiv2_step_alloc(ode_type, newton::dimension);
-		ode_evolve = gsl_odeiv2_evolve_alloc(newton::dimension);
-		ode_system.function = newton::function;
-		ode_system.jacobian = newton::jacobian;
-		ode_system.dimension = newton::dimension;
+		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Newton::dimension);
+		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Newton::dimension);
+		ode_system.function = Metric::Newton::function;
+		ode_system.jacobian = Metric::Newton::jacobian;
+		ode_system.dimension = Metric::Newton::dimension;
 		output = "newton";
 	}
 	else if (NPSK == 1) {
-		ode_step = gsl_odeiv2_step_alloc(ode_type, postnewtonian::dimension);
-		ode_evolve = gsl_odeiv2_evolve_alloc(postnewtonian::dimension);
-		ode_system.function = postnewtonian::function;
-		ode_system.jacobian = postnewtonian::jacobian;
-		ode_system.dimension = postnewtonian::dimension;
+		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Postnewtonian::dimension);
+		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Postnewtonian::dimension);
+		ode_system.function = Metric::Postnewtonian::function;
+		ode_system.jacobian = Metric::Postnewtonian::jacobian;
+		ode_system.dimension = Metric::Postnewtonian::dimension;
 		output = "postnewtonian";
 	}
 	else if (NPSK == 2) {
-		ode_step = gsl_odeiv2_step_alloc(ode_type, schwarzschild::dimension);
-		ode_evolve = gsl_odeiv2_evolve_alloc(schwarzschild::dimension);
-		ode_system.function = schwarzschild::function;
-		ode_system.jacobian = schwarzschild::jacobian;
-		ode_system.dimension = schwarzschild::dimension;
-		schwarzschild::c2s(x, y);
+		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Schwarzschild::dimension);
+		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Schwarzschild::dimension);
+		ode_system.function = Metric::Schwarzschild::function;
+		ode_system.jacobian = Metric::Schwarzschild::jacobian;
+		ode_system.dimension = Metric::Schwarzschild::dimension;
+		Metric::Schwarzschild::c2s(x, y);
 		if (PL)
-			schwarzschild::particle::normalization(y, &params);
+			Metric::Schwarzschild::particle::normalization(y, &params);
 		else
-			schwarzschild::light::normalization(y, &params);
+			Metric::Schwarzschild::light::normalization(y, &params);
 		output = "schwarzschild";
 	}
 	else if (NPSK == 3) {
-		ode_step = gsl_odeiv2_step_alloc(ode_type, kerr::dimension);
-		ode_evolve = gsl_odeiv2_evolve_alloc(kerr::dimension);
-		ode_system.function = kerr::function;
-		ode_system.jacobian = kerr::jacobian;
-		ode_system.dimension = kerr::dimension;
-		kerr::c2s(x, y);
+		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Kerr::dimension);
+		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Kerr::dimension);
+		ode_system.function = Metric::Kerr::function;
+		ode_system.jacobian = Metric::Kerr::jacobian;
+		ode_system.dimension = Metric::Kerr::dimension;
+		Metric::Kerr::c2s(x, y);
 		if (PL)
-			kerr::particle::normalization(y, &params);
+			Metric::Kerr::particle::normalization(y, &params);
 		else
-			kerr::light::normalization(y, &params);
+			Metric::Kerr::light::normalization(y, &params);
 		output = "kerr";
 	}
 	else if (NPSK == 4) {
-		ode_step = gsl_odeiv2_step_alloc(ode_type, kerrH::dimension);
-		ode_evolve = gsl_odeiv2_evolve_alloc(kerrH::dimension);
-		ode_system.function = kerrH::function;
-		ode_system.jacobian = kerrH::jacobian;
-		ode_system.dimension = kerrH::dimension;
-		kerrH::c2s(x, z);
+		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::KerrH::dimension);
+		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::KerrH::dimension);
+		ode_system.function = Metric::KerrH::function;
+		ode_system.jacobian = Metric::KerrH::jacobian;
+		ode_system.dimension = Metric::KerrH::dimension;
+		Metric::KerrH::c2s(x, z);
 		if (PL)
-			kerrH::particle::normalization(z, &params);
+			Metric::KerrH::particle::normalization(z, &params);
 		else
-			kerrH::light::normalization(z, &params);
-		kerrH::qdq2qp(z, y, &params);
+			Metric::KerrH::light::normalization(z, &params);
+		Metric::KerrH::qdq2qp(z, y, &params);
 		output = "kerrH";
 	}
 	int status = 0;
@@ -252,36 +254,36 @@ int main(int argc, char *argv[]) {
 			for (int i = 0; i < 6; ++i)
 				temp[i] = y[i];
 			temp[6] = t / constant::s;
-			temp[7] = newton::energy(y, &params);
-			temp[8] = newton::angularMomentum(y, &params);
+			temp[7] = Metric::Newton::energy(y, &params);
+			temp[8] = Metric::Newton::angularMomentum(y, &params);
 		}
 		else if (NPSK == 1) {
 			for (int i = 0; i < 6; ++i)
 				temp[i] = y[i];
 			temp[6] = t / constant::s;
-			temp[7] = postnewtonian::energy(y, &params);
-			temp[8] = postnewtonian::angularMomentum(y, &params);
+			temp[7] = Metric::Postnewtonian::energy(y, &params);
+			temp[8] = Metric::Postnewtonian::angularMomentum(y, &params);
 		}
 		else if (NPSK == 2) {
-			schwarzschild::s2c(y, &temp[0]);
+			Metric::Schwarzschild::s2c(y, &temp[0]);
 			temp[8] = t / constant::s;
-			temp[9] = schwarzschild::energy(y, &params);
-			temp[10] = schwarzschild::angularMomentum(y, &params);
+			temp[9] = Metric::Schwarzschild::energy(y, &params);
+			temp[10] = Metric::Schwarzschild::angularMomentum(y, &params);
 		}
 		else if (NPSK == 3) {
-			kerr::s2c(y, &temp[0]);
+			Metric::Kerr::s2c(y, &temp[0]);
 			temp[8] = t / constant::s;
-			temp[9] = kerr::energy(y, &params);
-			//temp[10] = kerr::angularMomentum(y, &params);
-			temp[10] = kerr::carter(y, &params);
+			temp[9] = Metric::Kerr::energy(y, &params);
+			//temp[10] = Metric::Kerr::angularMomentum(y, &params);
+			temp[10] = Metric::Kerr::carter(y, &params);
 		}
 		else if (NPSK == 4) {
-			kerrH::qp2qdq(y, x, &params);
-			kerrH::s2c(x, &temp[0]);
+			Metric::KerrH::qp2qdq(y, x, &params);
+			Metric::KerrH::s2c(x, &temp[0]);
 			temp[8] = t / constant::s;
-			temp[9] = kerrH::energy(y, &params);
-			//temp[10] = kerrH::angularMomentum(y, &params);
-			temp[10] = kerrH::carter(y, &params);
+			temp[9] = Metric::KerrH::energy(y, &params);
+			//temp[10] = Metric::KerrH::angularMomentum(y, &params);
+			temp[10] = Metric::KerrH::carter(y, &params);
 		}
 		rec.push_back(temp);
 		auto tpass = chrono::steady_clock::now() - start; // nano seconds
