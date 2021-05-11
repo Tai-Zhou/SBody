@@ -19,12 +19,7 @@
 
 #include "Constant.h"
 #include "IO.h"
-#include "Kerr.h"
-#include "KerrH.h"
 #include "Metric.h"
-#include "Newton.h"
-#include "PostNewtonian.h"
-#include "Schwarzschild.h"
 #include "Unit.h"
 #include "Utility.h"
 
