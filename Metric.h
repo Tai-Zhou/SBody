@@ -34,13 +34,9 @@ namespace SBody {
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[], void *params);
 			double angularMomentum(const double y[], void *params);
-			namespace particle {
-				int normalization(double y[], void *params);
-			} // namespace particle
-			namespace light {
-				int normalization(double y[], void *params);
-			} // namespace light
-		}	  // namespace Schwarzschild
+			int particleNormalization(double y[], void *params);
+			int lightNormalization(double y[], void *params);
+		} // namespace Schwarzschild
 		namespace Kerr {
 			extern const int dimension;
 			int c2s(const double x[], double r[]);
@@ -50,13 +46,9 @@ namespace SBody {
 			double energy(const double y[], void *params);
 			double angularMomentum(const double y[], void *params);
 			double carter(const double r[], void *params);
-			namespace particle {
-				int normalization(double y[], void *params);
-			} // namespace particle
-			namespace light {
-				int normalization(double y[], void *params);
-			} // namespace light
-		}	  // namespace Kerr
+			int particleNormalization(double y[], void *params);
+			int lightNormalization(double y[], void *params);
+		} // namespace Kerr
 		namespace KerrH {
 			extern const int dimension;
 			int c2s(const double x[], double r[]);
@@ -69,14 +61,10 @@ namespace SBody {
 			double energy(const double y[], void *params);
 			double angularMomentum(const double y[], void *params);
 			double carter(const double r[], void *params);
-			namespace particle {
-				int normalization(double y[], void *params);
-			} // namespace particle
-			namespace light {
-				int normalization(double y[], void *params);
-			} // namespace light
-		}	  // namespace KerrH
-	}		  // namespace Metric
+			int particleNormalization(double y[], void *params);
+			int lightNormalization(double y[], void *params);
+		} // namespace KerrH
+	}	  // namespace Metric
 } // namespace SBody
 
 #endif

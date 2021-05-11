@@ -204,9 +204,9 @@ int main(int argc, char *argv[]) {
 		ode_system.dimension = Metric::Schwarzschild::dimension;
 		Metric::Schwarzschild::c2s(x, y);
 		if (PL)
-			Metric::Schwarzschild::particle::normalization(y, &params);
+			Metric::Schwarzschild::particleNormalization(y, &params);
 		else
-			Metric::Schwarzschild::light::normalization(y, &params);
+			Metric::Schwarzschild::lightNormalization(y, &params);
 		output = "schwarzschild";
 	}
 	else if (NPSK == 3) {
@@ -217,9 +217,9 @@ int main(int argc, char *argv[]) {
 		ode_system.dimension = Metric::Kerr::dimension;
 		Metric::Kerr::c2s(x, y);
 		if (PL)
-			Metric::Kerr::particle::normalization(y, &params);
+			Metric::Kerr::particleNormalization(y, &params);
 		else
-			Metric::Kerr::light::normalization(y, &params);
+			Metric::Kerr::lightNormalization(y, &params);
 		output = "kerr";
 	}
 	else if (NPSK == 4) {
@@ -230,9 +230,9 @@ int main(int argc, char *argv[]) {
 		ode_system.dimension = Metric::KerrH::dimension;
 		Metric::KerrH::c2s(x, z);
 		if (PL)
-			Metric::KerrH::particle::normalization(z, &params);
+			Metric::KerrH::particleNormalization(z, &params);
 		else
-			Metric::KerrH::light::normalization(z, &params);
+			Metric::KerrH::lightNormalization(z, &params);
 		Metric::KerrH::qdq2qp(z, y, &params);
 		output = "kerrH";
 	}

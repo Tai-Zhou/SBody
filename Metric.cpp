@@ -202,29 +202,25 @@ namespace SBody {
 			double angularMomentum(const double r[], void *params) {
 				return gsl_pow_2(r[1]) * r[7] / r[4];
 			}
-			namespace particle {
-				int normalization(double y[], void *params) {
-					const double g00 = 1. - 2. * ((source *)params)->mass / y[1];
-					if (g00 <= 0)
-						return 1;
-					y[4] = sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
-					return std::isnan(y[4]);
-				}
-			} // namespace particle
-			namespace light {
-				int normalization(double y[], void *params) {
-					const double g00 = 1. - 2. * ((source *)params)->mass / y[1];
-					if (g00 <= 0)
-						return 1;
-					const double eff = g00 / sqrt(gsl_pow_2(y[5]) + g00 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
-					y[4] = 1.; //frequency
-					y[5] *= eff;
-					y[6] *= eff;
-					y[7] *= eff;
-					return 0;
-				}
-			} // namespace light
-		}	  // namespace Schwarzschild
+			int particleNormalization(double y[], void *params) {
+				const double g00 = 1. - 2. * ((source *)params)->mass / y[1];
+				if (g00 <= 0)
+					return 1;
+				y[4] = sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+				return std::isnan(y[4]);
+			}
+			int lightNormalization(double y[], void *params) {
+				const double g00 = 1. - 2. * ((source *)params)->mass / y[1];
+				if (g00 <= 0)
+					return 1;
+				const double eff = g00 / sqrt(gsl_pow_2(y[5]) + g00 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+				y[4] = 1.; //frequency
+				y[5] *= eff;
+				y[6] *= eff;
+				y[7] *= eff;
+				return 0;
+			}
+		} // namespace Schwarzschild
 		namespace Kerr {
 			const int dimension = 8;
 			// from cartesian to spherical
@@ -280,34 +276,30 @@ namespace SBody {
 				const double mr_rho2 = 2. * m * r[1] / rho2;
 				return cost2 * a2 + (gsl_pow_2(rho2 * r[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 - a2 * gsl_pow_2(mr_rho2 * (1. - a * sint2 * r[7]) - 1.))) / gsl_pow_2(r[4]);
 			}
-			namespace particle {
-				int normalization(double y[], void *params) {
-					const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
-					const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
-					const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
-					const double mr_rho2 = 2. * m * r / rho2;
-					y[4] = sqrt(1. - mr_rho2 + 2. * mr_rho2 * a * sint2 * y[7] - (rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7])));
-					return std::isnan(y[4]);
-				}
-			} // namespace particle
-			namespace light {
-				int normalization(double y[], void *params) {
-					const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
-					const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
-					const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
-					const double mr_rho2 = 2. * m * r / rho2;
-					const double effa = rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7]);
-					const double effb = -2. * mr_rho2 * a * sint2 * y[7];
-					const double effc = mr_rho2 - 1.;
-					const double eff = 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
-					y[4] = 1.; //frequency
-					y[5] *= eff;
-					y[6] *= eff;
-					y[7] *= eff;
-					return 0;
-				}
-			} // namespace light
-		}	  // namespace Kerr
+			int particleNormalization(double y[], void *params) {
+				const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
+				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
+				const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
+				const double mr_rho2 = 2. * m * r / rho2;
+				y[4] = sqrt(1. - mr_rho2 + 2. * mr_rho2 * a * sint2 * y[7] - (rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7])));
+				return std::isnan(y[4]);
+			}
+			int lightNormalization(double y[], void *params) {
+				const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
+				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
+				const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
+				const double mr_rho2 = 2. * m * r / rho2;
+				const double effa = rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7]);
+				const double effb = -2. * mr_rho2 * a * sint2 * y[7];
+				const double effc = mr_rho2 - 1.;
+				const double eff = 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
+				y[4] = 1.; //frequency
+				y[5] *= eff;
+				y[6] *= eff;
+				y[7] *= eff;
+				return 0;
+			}
+		} // namespace Kerr
 		namespace KerrH {
 			const int dimension = 8;
 
@@ -384,33 +376,29 @@ namespace SBody {
 			double carter(const double r[], void *params) {
 				return gsl_pow_2(r[6]) + gsl_pow_2(cos(r[2])) * (gsl_pow_2(((source *)params)->spin) * (1. - gsl_pow_2(r[4])) + gsl_pow_2(r[7]) / gsl_pow_2(sin(r[2])));
 			}
-			namespace particle {
-				int normalization(double y[], void *params) {
-					const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
-					const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
-					const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
-					const double mr_rho2 = 2. * m * r / rho2;
-					y[4] = sqrt(1 - mr_rho2 + 2 * mr_rho2 * a * sint2 * y[7] - (rho2 / (r2 - 2 * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7])));
-					return std::isnan(y[4]);
-				}
-			} // namespace particle
-			namespace light {
-				int normalization(double y[], void *params) {
-					const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
-					const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
-					const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
-					const double mr_rho2 = 2. * m * r / rho2;
-					const double effa = rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7]);
-					const double effb = -2. * mr_rho2 * a * sint2 * y[7];
-					const double effc = mr_rho2 - 1.;
-					const double eff = 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
-					y[4] = 1.; //frequency
-					y[5] *= eff;
-					y[6] *= eff;
-					y[7] *= eff;
-					return 0;
-				}
-			} // namespace light
-		}	  // namespace KerrH
-	}		  // namespace Metric
+			int particleNormalization(double y[], void *params) {
+				const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
+				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
+				const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
+				const double mr_rho2 = 2. * m * r / rho2;
+				y[4] = sqrt(1 - mr_rho2 + 2 * mr_rho2 * a * sint2 * y[7] - (rho2 / (r2 - 2 * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7])));
+				return std::isnan(y[4]);
+			}
+			int lightNormalization(double y[], void *params) {
+				const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
+				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
+				const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
+				const double mr_rho2 = 2. * m * r / rho2;
+				const double effa = rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7]);
+				const double effb = -2. * mr_rho2 * a * sint2 * y[7];
+				const double effc = mr_rho2 - 1.;
+				const double eff = 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
+				y[4] = 1.; //frequency
+				y[5] *= eff;
+				y[6] *= eff;
+				y[7] *= eff;
+				return 0;
+			}
+		} // namespace KerrH
+	}	  // namespace Metric
 } // namespace SBody
