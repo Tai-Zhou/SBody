@@ -77,30 +77,6 @@ namespace SBody {
 		}
 		namespace Newton {
 			const int dimension = 6;
-			int function(double t, const double y[], double dydt[], void *params) {
-				dydt[0] = y[3];
-				dydt[1] = y[4];
-				dydt[2] = y[5];
-				const double F = ((source *)params)->mass / gsl_pow_3(norm(y));
-				dydt[3] = -F * y[0];
-				dydt[4] = -F * y[1];
-				dydt[5] = -F * y[2];
-				return GSL_SUCCESS;
-			}
-			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
-				return GSL_SUCCESS;
-			}
-			double energy(const double x[], void *params) {
-				return 0.5 * dot(x + 3) - ((source *)params)->mass / norm(x);
-			}
-			double angularMomentum(const double x[], void *params) {
-				double J[3];
-				cross(x, x + 3, J);
-				return norm(J);
-			}
-		} // namespace Newton
-		namespace Postnewtonian {
-			const int dimension = 6;
 			int PN = 1;
 			int function(double t, const double y[], double dydt[], void *params) {
 				const double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
@@ -160,7 +136,7 @@ namespace SBody {
 					J[i] += J[i] * eff;
 				return norm(J);
 			}
-		} // namespace Postnewtonian
+		} // namespace Newton
 		namespace Schwarzschild {
 			const int dimension = 8;
 			int function(double t, const double y[], double dydt[], void *params) {

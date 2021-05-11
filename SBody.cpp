@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
 	if (progressBar)
 		indicators::show_console_cursor(false);
 	source params(mass, spin * mass);
-	Metric::Postnewtonian::PN = PN;
+	Metric::Newton::PN = PN;
 	const gsl_odeiv2_step_type *ode_type = gsl_odeiv2_step_rk8pd;
 	gsl_odeiv2_step *ode_step;
 	gsl_odeiv2_control *ode_control;
@@ -186,15 +186,7 @@ int main(int argc, char *argv[]) {
 		ode_system.function = Metric::Newton::function;
 		ode_system.jacobian = Metric::Newton::jacobian;
 		ode_system.dimension = Metric::Newton::dimension;
-		output = "newton";
-	}
-	else if (NPSK == 1) {
-		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Postnewtonian::dimension);
-		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Postnewtonian::dimension);
-		ode_system.function = Metric::Postnewtonian::function;
-		ode_system.jacobian = Metric::Postnewtonian::jacobian;
-		ode_system.dimension = Metric::Postnewtonian::dimension;
-		output = "postnewtonian";
+		output = "Newton";
 	}
 	else if (NPSK == 2) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Schwarzschild::dimension);
@@ -207,7 +199,7 @@ int main(int argc, char *argv[]) {
 			Metric::Schwarzschild::particleNormalization(y, &params);
 		else
 			Metric::Schwarzschild::lightNormalization(y, &params);
-		output = "schwarzschild";
+		output = "Schwarzschild";
 	}
 	else if (NPSK == 3) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Kerr::dimension);
@@ -220,7 +212,7 @@ int main(int argc, char *argv[]) {
 			Metric::Kerr::particleNormalization(y, &params);
 		else
 			Metric::Kerr::lightNormalization(y, &params);
-		output = "kerr";
+		output = "Kerr";
 	}
 	else if (NPSK == 4) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::KerrH::dimension);
@@ -234,7 +226,7 @@ int main(int argc, char *argv[]) {
 		else
 			Metric::KerrH::lightNormalization(z, &params);
 		Metric::KerrH::qdq2qp(z, y, &params);
-		output = "kerrH";
+		output = "KerrH";
 	}
 	int status = 0;
 	vector<vector<double>> rec;
@@ -251,13 +243,6 @@ int main(int argc, char *argv[]) {
 			temp[6] = t / constant::s;
 			temp[7] = Metric::Newton::energy(y, &params);
 			temp[8] = Metric::Newton::angularMomentum(y, &params);
-		}
-		else if (NPSK == 1) {
-			for (int i = 0; i < 6; ++i)
-				temp[i] = y[i];
-			temp[6] = t / constant::s;
-			temp[7] = Metric::Postnewtonian::energy(y, &params);
-			temp[8] = Metric::Postnewtonian::angularMomentum(y, &params);
 		}
 		else if (NPSK == 2) {
 			Metric::s2c(y, &temp[0], Metric::Schwarzschild::dimension);
