@@ -41,11 +41,12 @@ void help() {
 	cout << "  -t --time   [f]: time limit [" << tFinal << "] (s)" << endl;
 	cout << "  -o --rec    [f]: record interval [" << tRec << "] (s)" << endl;
 	cout << "  -c --tcal   [f]: time limit of calculation [" << tCal << "] (s)" << endl;
-	cout << "  -n --NSK   [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrH (3) [" << NSK << "]" << endl;
+	cout << "  -n --NSK    [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrH (3) [" << NSK << "]" << endl;
 	cout << "  -p --PN     [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [" << PN << "]" << endl;
 	cout << "  -a --abs    [f]: absolute accuracy [" << absAcc << "]" << endl;
 	cout << "  -r --rel    [f]: relative accuracy [" << relAcc << "]" << endl;
 	cout << "  -f --format [s]: storage format [" << storeFormat << "]" << endl;
+	cout << "  -h --hamilton  : use hamilonian instead of geodesic" << endl;
 	cout << "  -l --light     : light instead of particle" << endl;
 	cout << "  -b --proBar    : show progress bar" << endl;
 	cout << "  -h --help      : this help information" << endl;
@@ -141,8 +142,8 @@ int main(int argc, char *argv[]) {
 		default:
 			help();
 		}
-	tFinal *= constant::s;
-	tRec *= constant::s;
+	tFinal *= Constant::s;
+	tRec *= Constant::s;
 	if (progressBar)
 		indicators::show_console_cursor(false);
 	source params(mass, spin * mass);
@@ -156,11 +157,11 @@ int main(int argc, char *argv[]) {
 	ode_control = gsl_odeiv2_control_y_new(absAcc, relAcc);
 	ode_system.params = &params;
 	if (NSK == 0) {
-		y[0] = constant::AU / 100;
+		y[0] = Constant::AU / 100;
 		y[1] = 0;
 		y[2] = 0;
-		y[3] = -sqrt(100 * mass / constant::AU) * cos(M_PI / 10);
-		y[4] = sqrt(100 * mass / constant::AU) * sin(M_PI / 10);
+		y[3] = -sqrt(100 * mass / Constant::AU) * cos(M_PI / 10);
+		y[4] = sqrt(100 * mass / Constant::AU) * sin(M_PI / 10);
 		y[5] = 0;
 	}
 	else {
@@ -188,7 +189,7 @@ int main(int argc, char *argv[]) {
 		ode_system.dimension = Metric::Newton::dimension;
 		output = "Newton";
 	}
-	else if (NSK == 2) {
+	else if (NSK == 1) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Schwarzschild::dimension);
 		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Schwarzschild::dimension);
 		ode_system.function = Metric::Schwarzschild::function;
@@ -201,7 +202,7 @@ int main(int argc, char *argv[]) {
 			Metric::Schwarzschild::lightNormalization(y, &params);
 		output = "Schwarzschild";
 	}
-	else if (NSK == 3) {
+	else if (NSK == 2) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Kerr::dimension);
 		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Kerr::dimension);
 		ode_system.function = Metric::Kerr::function;
@@ -214,7 +215,7 @@ int main(int argc, char *argv[]) {
 			Metric::Kerr::lightNormalization(y, &params);
 		output = "Kerr";
 	}
-	else if (NSK == 4) {
+	else if (NSK == 3) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::KerrH::dimension);
 		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::KerrH::dimension);
 		ode_system.function = Metric::KerrH::function;
@@ -240,27 +241,27 @@ int main(int argc, char *argv[]) {
 		if (NSK == 0) {
 			for (int i = 0; i < 6; ++i)
 				temp[i] = y[i];
-			temp[6] = t / constant::s;
+			temp[6] = t / Constant::s;
 			temp[7] = Metric::Newton::energy(y, &params);
 			temp[8] = Metric::Newton::angularMomentum(y, &params);
 		}
-		else if (NSK == 2) {
+		else if (NSK == 1) {
 			Metric::s2c(y, &temp[0], Metric::Schwarzschild::dimension);
-			temp[8] = t / constant::s;
+			temp[8] = t / Constant::s;
 			temp[9] = Metric::Schwarzschild::energy(y, &params);
 			temp[10] = Metric::Schwarzschild::angularMomentum(y, &params);
 		}
-		else if (NSK == 3) {
+		else if (NSK == 2) {
 			Metric::s2c(y, &temp[0], Metric::Kerr::dimension);
-			temp[8] = t / constant::s;
+			temp[8] = t / Constant::s;
 			temp[9] = Metric::Kerr::energy(y, &params);
 			//temp[10] = Metric::Kerr::angularMomentum(y, &params);
 			temp[10] = Metric::Kerr::carter(y, &params);
 		}
-		else if (NSK == 4) {
+		else if (NSK == 3) {
 			Metric::KerrH::qp2qdq(y, x, &params);
 			Metric::s2c(x, &temp[0], Metric::KerrH::dimension);
-			temp[8] = t / constant::s;
+			temp[8] = t / Constant::s;
 			temp[9] = Metric::KerrH::energy(y, &params);
 			//temp[10] = Metric::KerrH::angularMomentum(y, &params);
 			temp[10] = Metric::KerrH::carter(y, &params);

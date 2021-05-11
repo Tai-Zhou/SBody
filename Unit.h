@@ -3,8 +3,10 @@
 
 #include "Constant.h"
 
-namespace unit {
+namespace SBody {
+	namespace Unit {
 
-} // namespace unit
+	} // namespace Unit
+} // namespace SBody
 
 #endif
