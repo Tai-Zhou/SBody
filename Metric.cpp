@@ -48,6 +48,13 @@ namespace SBody {
 			}
 			return 0;
 		}
+		int c2s(const double x[], double r[], const int dimension) {
+			if (dimension == 6)
+				return c2s(x, x + 3, r, r + 3);
+			r[0] = x[0];
+			r[4] = x[4];
+			return c2s(x + 1, x + 5, r + 1, r + 5);
+		}
 		int s2c(const double r[], const double w[], double x[], double v[]) {
 			// r = {r, \theta, \phi}
 			// w = {v_r, v_\theta, v_\phi}
@@ -61,14 +68,15 @@ namespace SBody {
 			v[2] = w[0] * cos(r[1]) - r[0] * sin(r[1]) * w[1];
 			return 0;
 		}
+		int s2c(const double r[], double x[], const int dimension) {
+			if (dimension == 6)
+				return s2c(r, r + 3, x, x + 3);
+			x[0] = r[0];
+			x[4] = r[4];
+			return s2c(r + 1, r + 5, x + 1, x + 5);
+		}
 		namespace Newton {
 			const int dimension = 6;
-			int c2s(const double x[], double r[]) {
-				return Metric::c2s(x, x + 3, r, r + 3);
-			}
-			int s2c(const double r[], double x[]) {
-				return Metric::s2c(r, r + 3, x, x + 3);
-			}
 			int function(double t, const double y[], double dydt[], void *params) {
 				dydt[0] = y[3];
 				dydt[1] = y[4];
@@ -94,14 +102,6 @@ namespace SBody {
 		namespace Postnewtonian {
 			const int dimension = 6;
 			int PN = 1;
-			// from cartesian to spherical
-			int c2s(const double x[], double r[]) {
-				return Metric::c2s(x, x + 3, r, r + 3);
-			}
-			// from spherical to cartesian
-			int s2c(const double r[], double x[]) {
-				return Metric::s2c(r, r + 3, x, x + 3);
-			}
 			int function(double t, const double y[], double dydt[], void *params) {
 				const double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
 				const double mr = m / r, r2 = gsl_pow_2(r), rdot = dot(y, y + 3) / r;
@@ -163,18 +163,6 @@ namespace SBody {
 		} // namespace Postnewtonian
 		namespace Schwarzschild {
 			const int dimension = 8;
-			// from cartesian to spherical
-			int c2s(const double x[], double r[]) {
-				r[0] = x[0];
-				r[4] = x[4];
-				return Metric::c2s(x + 1, x + 5, r + 1, r + 5);
-			}
-			// from spherical to cartesian
-			int s2c(const double r[], double x[]) {
-				x[0] = r[0];
-				x[4] = r[4];
-				return Metric::s2c(r + 1, r + 5, x + 1, x + 5);
-			}
 			int function(double t, const double y[], double dydt[], void *params) {
 				dydt[0] = y[4]; //d\tau/dt
 				dydt[1] = y[5]; //dr/dt
@@ -223,18 +211,6 @@ namespace SBody {
 		} // namespace Schwarzschild
 		namespace Kerr {
 			const int dimension = 8;
-			// from cartesian to spherical
-			int c2s(const double x[], double r[]) {
-				r[0] = x[0];
-				r[4] = x[4];
-				return Metric::c2s(x + 1, x + 5, r + 1, r + 5);
-			}
-			// from spherical to cartesian
-			int s2c(const double r[], double x[]) {
-				x[0] = r[0];
-				x[4] = r[4];
-				return Metric::s2c(r + 1, r + 5, x + 1, x + 5);
-			}
 			int function(double t, const double y[], double dydt[], void *params) {
 				dydt[0] = y[4]; //d\tau/dt
 				dydt[1] = y[5]; //dr/dt
@@ -302,19 +278,6 @@ namespace SBody {
 		} // namespace Kerr
 		namespace KerrH {
 			const int dimension = 8;
-
-			// from cartesian to spherical
-			int c2s(const double x[], double r[]) {
-				r[0] = x[0];
-				r[4] = x[4];
-				return Metric::c2s(x + 1, x + 5, r + 1, r + 5);
-			}
-			// from spherical to cartesian
-			int s2c(const double r[], double x[]) {
-				x[0] = r[0];
-				x[4] = r[4];
-				return Metric::s2c(r + 1, r + 5, x + 1, x + 5);
-			}
 			int qdq2qp(const double r[], double u[], void *params) {
 				//[u^t,u^r,u^theta,u^phi]
 				u[0] = r[0];

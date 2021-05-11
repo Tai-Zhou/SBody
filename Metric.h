@@ -5,12 +5,12 @@ namespace SBody {
 	namespace Metric {
 		// from cartesian to spherical
 		int c2s(const double x[], const double v[], double r[], double w[]);
+		int c2s(const double x[], double r[], const int dimension);
 		// from spherical to cartesian
 		int s2c(const double r[], const double w[], double x[], double v[]);
+		int s2c(const double r[], double x[], const int dimension);
 		namespace Newton {
 			extern const int dimension;
-			int c2s(const double x[], double r[]);
-			int s2c(const double r[], double x[]);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double x[], void *params);
@@ -19,8 +19,6 @@ namespace SBody {
 		namespace Postnewtonian {
 			extern const int dimension;
 			extern int PN;
-			int c2s(const double x[], double r[]);
-			int s2c(const double r[], double x[]);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[], void *params);
@@ -28,8 +26,6 @@ namespace SBody {
 		} // namespace Postnewtonian
 		namespace Schwarzschild {
 			extern const int dimension;
-			int c2s(const double x[], double r[]);
-			int s2c(const double r[], double x[]);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[], void *params);
@@ -39,8 +35,6 @@ namespace SBody {
 		} // namespace Schwarzschild
 		namespace Kerr {
 			extern const int dimension;
-			int c2s(const double x[], double r[]);
-			int s2c(const double r[], double x[]);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[], void *params);
@@ -51,8 +45,6 @@ namespace SBody {
 		} // namespace Kerr
 		namespace KerrH {
 			extern const int dimension;
-			int c2s(const double x[], double r[]);
-			int s2c(const double r[], double x[]);
 			int qdq2qp(const double r[], double u[], void *params);
 			int qp2qdq(const double u[], double r[], void *params);
 			int function(double t, const double y[], double dydt[], void *params);

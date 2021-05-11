@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
 		ode_system.function = Metric::Schwarzschild::function;
 		ode_system.jacobian = Metric::Schwarzschild::jacobian;
 		ode_system.dimension = Metric::Schwarzschild::dimension;
-		Metric::Schwarzschild::c2s(x, y);
+		Metric::c2s(x, y, Metric::Schwarzschild::dimension);
 		if (PL)
 			Metric::Schwarzschild::particleNormalization(y, &params);
 		else
@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
 		ode_system.function = Metric::Kerr::function;
 		ode_system.jacobian = Metric::Kerr::jacobian;
 		ode_system.dimension = Metric::Kerr::dimension;
-		Metric::Kerr::c2s(x, y);
+		Metric::c2s(x, y, Metric::Kerr::dimension);
 		if (PL)
 			Metric::Kerr::particleNormalization(y, &params);
 		else
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
 		ode_system.function = Metric::KerrH::function;
 		ode_system.jacobian = Metric::KerrH::jacobian;
 		ode_system.dimension = Metric::KerrH::dimension;
-		Metric::KerrH::c2s(x, z);
+		Metric::c2s(x, z, Metric::KerrH::dimension);
 		if (PL)
 			Metric::KerrH::particleNormalization(z, &params);
 		else
@@ -260,13 +260,13 @@ int main(int argc, char *argv[]) {
 			temp[8] = Metric::Postnewtonian::angularMomentum(y, &params);
 		}
 		else if (NPSK == 2) {
-			Metric::Schwarzschild::s2c(y, &temp[0]);
+			Metric::s2c(y, &temp[0], Metric::Schwarzschild::dimension);
 			temp[8] = t / constant::s;
 			temp[9] = Metric::Schwarzschild::energy(y, &params);
 			temp[10] = Metric::Schwarzschild::angularMomentum(y, &params);
 		}
 		else if (NPSK == 3) {
-			Metric::Kerr::s2c(y, &temp[0]);
+			Metric::s2c(y, &temp[0], Metric::Kerr::dimension);
 			temp[8] = t / constant::s;
 			temp[9] = Metric::Kerr::energy(y, &params);
 			//temp[10] = Metric::Kerr::angularMomentum(y, &params);
@@ -274,7 +274,7 @@ int main(int argc, char *argv[]) {
 		}
 		else if (NPSK == 4) {
 			Metric::KerrH::qp2qdq(y, x, &params);
-			Metric::KerrH::s2c(x, &temp[0]);
+			Metric::s2c(x, &temp[0], Metric::KerrH::dimension);
 			temp[8] = t / constant::s;
 			temp[9] = Metric::KerrH::energy(y, &params);
 			//temp[10] = Metric::KerrH::angularMomentum(y, &params);
