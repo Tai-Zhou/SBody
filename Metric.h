@@ -42,7 +42,6 @@ namespace SBody {
 			int qdq2qp(const double r[], double u[], void *params);
 			int qp2qdq(const double u[], double r[], void *params);
 			int function(double t, const double y[], double dydt[], void *params);
-			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[], void *params);
 			double angularMomentum(const double y[], void *params);

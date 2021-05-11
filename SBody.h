@@ -13,7 +13,7 @@ double absAcc, relAcc;
 double tFinal;
 double tRec;
 double tCal;
-int NPSK;
+int NSK;
 int PN;
 int PL;
 int progressBar;

@@ -41,7 +41,7 @@ void help() {
 	cout << "  -t --time   [f]: time limit [" << tFinal << "] (s)" << endl;
 	cout << "  -o --rec    [f]: record interval [" << tRec << "] (s)" << endl;
 	cout << "  -c --tcal   [f]: time limit of calculation [" << tCal << "] (s)" << endl;
-	cout << "  -n --NPSK   [i]: Newton (0)/PN (1)/Schwarzschild (2)/Kerr (3)/KerrH (4) [" << NPSK << "]" << endl;
+	cout << "  -n --NSK   [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrH (3) [" << NSK << "]" << endl;
 	cout << "  -p --PN     [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [" << PN << "]" << endl;
 	cout << "  -a --abs    [f]: absolute accuracy [" << absAcc << "]" << endl;
 	cout << "  -r --rel    [f]: relative accuracy [" << relAcc << "]" << endl;
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
 	tFinal = 1e0;
 	tRec = 1e-5 * tFinal;
 	tCal = 3600;
-	NPSK = 4;
+	NSK = 3;
 	PN = 1;
 	PL = 1;
 	progressBar = 0;
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
 		{"time", required_argument, NULL, 't'},
 		{"rec", required_argument, NULL, 'o'},
 		{"tcal", required_argument, NULL, 'c'},
-		{"NPSK", required_argument, NULL, 'n'},
+		{"NSK", required_argument, NULL, 'n'},
 		{"PN", required_argument, NULL, 'p'},
 		{"abs", required_argument, NULL, 'a'},
 		{"rel", required_argument, NULL, 'r'},
@@ -116,8 +116,8 @@ int main(int argc, char *argv[]) {
 			tCal = atof(optarg);
 			break;
 		case 'n':
-			NPSK = atoi(optarg);
-			if (NPSK < 0 || NPSK > 4)
+			NSK = atoi(optarg);
+			if (NSK < 0 || NSK > 3)
 				help();
 			break;
 		case 'p':
@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
 	double x[8], y[8], z[8];
 	ode_control = gsl_odeiv2_control_y_new(absAcc, relAcc);
 	ode_system.params = &params;
-	if (NPSK < 2) {
+	if (NSK == 0) {
 		y[0] = constant::AU / 100;
 		y[1] = 0;
 		y[2] = 0;
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
 			x[7] = 0;
 		}
 	}
-	if (NPSK == 0) {
+	if (NSK == 0) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Newton::dimension);
 		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Newton::dimension);
 		ode_system.function = Metric::Newton::function;
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
 		ode_system.dimension = Metric::Newton::dimension;
 		output = "Newton";
 	}
-	else if (NPSK == 2) {
+	else if (NSK == 2) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Schwarzschild::dimension);
 		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Schwarzschild::dimension);
 		ode_system.function = Metric::Schwarzschild::function;
@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
 			Metric::Schwarzschild::lightNormalization(y, &params);
 		output = "Schwarzschild";
 	}
-	else if (NPSK == 3) {
+	else if (NSK == 3) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Kerr::dimension);
 		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Kerr::dimension);
 		ode_system.function = Metric::Kerr::function;
@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
 			Metric::Kerr::lightNormalization(y, &params);
 		output = "Kerr";
 	}
-	else if (NPSK == 4) {
+	else if (NSK == 4) {
 		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::KerrH::dimension);
 		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::KerrH::dimension);
 		ode_system.function = Metric::KerrH::function;
@@ -237,27 +237,27 @@ int main(int argc, char *argv[]) {
 			status = gsl_odeiv2_evolve_apply(ode_evolve, ode_control, ode_step, &ode_system, &t, tStep, &h, y);
 		if (progressBar)
 			bar.set_progress(100 * t / tFinal);
-		if (NPSK == 0) {
+		if (NSK == 0) {
 			for (int i = 0; i < 6; ++i)
 				temp[i] = y[i];
 			temp[6] = t / constant::s;
 			temp[7] = Metric::Newton::energy(y, &params);
 			temp[8] = Metric::Newton::angularMomentum(y, &params);
 		}
-		else if (NPSK == 2) {
+		else if (NSK == 2) {
 			Metric::s2c(y, &temp[0], Metric::Schwarzschild::dimension);
 			temp[8] = t / constant::s;
 			temp[9] = Metric::Schwarzschild::energy(y, &params);
 			temp[10] = Metric::Schwarzschild::angularMomentum(y, &params);
 		}
-		else if (NPSK == 3) {
+		else if (NSK == 3) {
 			Metric::s2c(y, &temp[0], Metric::Kerr::dimension);
 			temp[8] = t / constant::s;
 			temp[9] = Metric::Kerr::energy(y, &params);
 			//temp[10] = Metric::Kerr::angularMomentum(y, &params);
 			temp[10] = Metric::Kerr::carter(y, &params);
 		}
-		else if (NPSK == 4) {
+		else if (NSK == 4) {
 			Metric::KerrH::qp2qdq(y, x, &params);
 			Metric::s2c(x, &temp[0], Metric::KerrH::dimension);
 			temp[8] = t / constant::s;
