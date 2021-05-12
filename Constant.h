@@ -4,6 +4,7 @@
 namespace SBody {
 	namespace Constant {
 		// Math
+		extern const double epsilon;
 		extern const double pi2;
 		// Physical
 		extern const double e;

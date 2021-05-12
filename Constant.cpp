@@ -5,6 +5,7 @@
 namespace SBody {
 	namespace Constant {
 		// Math
+		const double epsilon = 1e-9;
 		const double pi2 = 9.86960440108935861883449099987615111;
 		// Physical
 		const double e = 1.60217662e-19;
