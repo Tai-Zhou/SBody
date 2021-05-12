@@ -2,14 +2,13 @@
 #define _UTILITY_H
 
 namespace SBody {
-	struct source {
-		const double mass;
-		const double spin;
-		source(double _m, double _s = 0) : mass(_m), spin(_s) {}
-	};
-
+	// Dot product of vector x·y, or x·x if y == nullptr
 	double dot(const double x[], const double y[] = nullptr, int dimension = 3);
+
+	// Length of vector x, with 3 dimensions set by default
 	double norm(const double x[], int dimension = 3);
+
+	// Cross product of vector x \times y, stored in z
 	void cross(const double x[], const double y[], double z[]);
 	double _0x(const double x);
 	double _0x1(const double x);

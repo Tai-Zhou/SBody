@@ -1,5 +1,3 @@
-// Main program
-
 #ifndef _SBODY_H
 #define _SBODY_H
 

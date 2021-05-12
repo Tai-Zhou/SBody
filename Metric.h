@@ -2,6 +2,12 @@
 #define _METRIC_H
 
 namespace SBody {
+	struct source {
+		const double mass;
+		const double spin;
+		source(double _m, double _s = 0);
+	};
+
 	namespace Metric {
 		// from cartesian to spherical
 		int c2s(const double x[], const double v[], double r[], double w[]);
