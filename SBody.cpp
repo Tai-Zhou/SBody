@@ -149,12 +149,9 @@ int main(int argc, char *argv[]) {
 	if (progressBar)
 		indicators::show_console_cursor(false);
 	source params(mass, spin * mass);
-	Metric::Newton::PN = PN;
-	const gsl_odeiv2_step_type *ode_type = gsl_odeiv2_step_rk8pd;
-	gsl_odeiv2_step *ode_step;
-	gsl_odeiv2_control *ode_control;
-	gsl_odeiv2_evolve *ode_evolve;
-	gsl_odeiv2_system ode_system;
+	view cam = view(3, 1e-2, mass * 1000., M_PI_4, 0, tFinal);
+	cam.traceBack(2, &params);
+	return 0;
 	double x[8], y[8], z[8];
 	if (NSK == 0) {
 		y[0] = Constant::AU / 100;
@@ -181,16 +178,11 @@ int main(int argc, char *argv[]) {
 			x[7] = 0;
 		}
 	}
-	integrator integ(NSK == 0 ? 6 : 8, &params);
-	if (NSK == 0) {
-		integ.system.function = Metric::Newton::function;
-		integ.system.jacobian = Metric::Newton::jacobian;
+	integrator integ(NSK, &params);
+	if (NSK == 0)
 		output = "Newton";
-	}
 	else if (NSK == 1) {
-		integ.system.function = Metric::Schwarzschild::function;
-		integ.system.jacobian = Metric::Schwarzschild::jacobian;
-		Metric::c2s(x, y, 8);
+		Metric::c2s(x, y, Metric::dimension[NSK]);
 		if (PL)
 			Metric::Schwarzschild::particleNormalization(y, &params);
 		else
@@ -198,8 +190,6 @@ int main(int argc, char *argv[]) {
 		output = "Schwarzschild";
 	}
 	else if (NSK == 2) {
-		integ.system.function = Metric::Kerr::function;
-		integ.system.jacobian = Metric::Kerr::jacobian;
 		Metric::c2s(x, y, 8);
 		if (PL)
 			Metric::Kerr::particleNormalization(y, &params);
@@ -208,8 +198,6 @@ int main(int argc, char *argv[]) {
 		output = "Kerr";
 	}
 	else if (NSK == 3) {
-		integ.system.function = Metric::KerrH::function;
-		integ.system.jacobian = Metric::KerrH::jacobian;
 		Metric::c2s(x, z, 8);
 		if (PL)
 			Metric::KerrH::particleNormalization(z, &params);
@@ -235,13 +223,13 @@ int main(int argc, char *argv[]) {
 			temp[8] = Metric::Newton::angularMomentum(y, &params);
 		}
 		else if (NSK == 1) {
-			Metric::s2c(y, &temp[0], Metric::Schwarzschild::dimension);
+			Metric::s2c(y, &temp[0], Metric::dimension[1]);
 			temp[8] = t / Constant::s;
 			temp[9] = Metric::Schwarzschild::energy(y, &params);
 			temp[10] = Metric::Schwarzschild::angularMomentum(y, &params);
 		}
 		else if (NSK == 2) {
-			Metric::s2c(y, &temp[0], Metric::Kerr::dimension);
+			Metric::s2c(y, &temp[0], Metric::dimension[2]);
 			temp[8] = t / Constant::s;
 			temp[9] = Metric::Kerr::energy(y, &params);
 			//temp[10] = Metric::Kerr::angularMomentum(y, &params);
@@ -249,7 +237,7 @@ int main(int argc, char *argv[]) {
 		}
 		else if (NSK == 3) {
 			Metric::KerrH::qp2qdq(y, x, &params);
-			Metric::s2c(x, &temp[0], Metric::KerrH::dimension);
+			Metric::s2c(x, &temp[0], Metric::dimension[3]);
 			temp[8] = t / Constant::s;
 			temp[9] = Metric::KerrH::energy(y, &params);
 			//temp[10] = Metric::KerrH::angularMomentum(y, &params);

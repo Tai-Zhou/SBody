@@ -11,6 +11,9 @@ namespace SBody {
 	};
 
 	namespace Metric {
+		extern const size_t dimension[4];
+		extern int (*function[4])(double, const double[], double[], void *);
+		extern int (*jacobian[4])(double, const double[], double *, double[], void *);
 		// from cartesian to spherical
 		int c2s(const double x[], const double v[], double r[], double w[]);
 		int c2s(const double x[], double r[], const size_t dimension);
@@ -18,8 +21,8 @@ namespace SBody {
 		// from spherical to cartesian
 		int s2c(const double r[], const double w[], double x[], double v[]);
 		int s2c(const double r[], double x[], const size_t dimension);
+
 		namespace Newton {
-			extern const size_t dimension;
 			extern int PN;
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
@@ -27,7 +30,6 @@ namespace SBody {
 			double angularMomentum(const double x[], void *params);
 		} // namespace Newton
 		namespace Schwarzschild {
-			extern const size_t dimension;
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[], void *params);
@@ -36,7 +38,6 @@ namespace SBody {
 			int lightNormalization(double y[], void *params);
 		} // namespace Schwarzschild
 		namespace Kerr {
-			extern const size_t dimension;
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[], void *params);
@@ -46,7 +47,6 @@ namespace SBody {
 			int lightNormalization(double y[], void *params);
 		} // namespace Kerr
 		namespace KerrH {
-			extern const size_t dimension;
 			int qdq2qp(const double r[], double u[], void *params);
 			int qp2qdq(const double u[], double r[], void *params);
 			int function(double t, const double y[], double dydt[], void *params);

@@ -11,6 +11,7 @@
 namespace SBody {
 	source::source(double _m, double _s) : mass(_m), spin(_s) {}
 	namespace Metric {
+		const size_t dimension[4] = {6, 8, 8, 8};
 		int c2s(const double x[], const double v[], double r[], double w[]) {
 			// x = {x, y, z}
 			// v = {v_x, v_y, v_z}
@@ -77,8 +78,17 @@ namespace SBody {
 			x[4] = r[4];
 			return s2c(r + 1, r + 5, x + 1, x + 5);
 		}
+		int (*function[4])(double, const double[], double[], void *) = {
+			Newton::function,
+			Schwarzschild::function,
+			Kerr::function,
+			KerrH::function};
+		int (*jacobian[4])(double, const double[], double *, double[], void *) = {
+			Newton::jacobian,
+			Schwarzschild::jacobian,
+			Kerr::jacobian,
+			KerrH::jacobian};
 		namespace Newton {
-			const size_t dimension = 6;
 			int PN = 1;
 			int function(double t, const double y[], double dydt[], void *params) {
 				const double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
@@ -140,7 +150,6 @@ namespace SBody {
 			}
 		} // namespace Newton
 		namespace Schwarzschild {
-			const size_t dimension = 8;
 			int function(double t, const double y[], double dydt[], void *params) {
 				dydt[0] = y[4]; //d\tau/dt
 				dydt[1] = y[5]; //dr/dt
@@ -188,7 +197,6 @@ namespace SBody {
 			}
 		} // namespace Schwarzschild
 		namespace Kerr {
-			const size_t dimension = 8;
 			int function(double t, const double y[], double dydt[], void *params) {
 				dydt[0] = y[4]; //d\tau/dt
 				dydt[1] = y[5]; //dr/dt
@@ -255,7 +263,6 @@ namespace SBody {
 			}
 		} // namespace Kerr
 		namespace KerrH {
-			const size_t dimension = 8;
 			int qdq2qp(const double r[], double u[], void *params) {
 				//[u^t,u^r,u^theta,u^phi]
 				u[0] = r[0];
