@@ -9,7 +9,7 @@
 #include "Utility.h"
 
 namespace SBody {
-	source::source(double _m, double _s) : mass(_m), spin(_s) {}
+	source::source(double mass, double spin) : mass(mass), spin(spin) {}
 	namespace Metric {
 		int c2s(const double x[], const double v[], double r[], double w[]) {
 			// x = {x, y, z}

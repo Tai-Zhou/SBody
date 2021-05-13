@@ -181,30 +181,30 @@ int main(int argc, char *argv[]) {
 	integrator integ(NSK, &params);
 	if (NSK == 0)
 		output = "Newton";
-	else if (NSK == 1) {
+	else {
 		Metric::c2s(x, y);
-		if (PL)
-			Metric::Schwarzschild::particleNormalization(y, &params);
-		else
-			Metric::Schwarzschild::lightNormalization(y, &params);
-		output = "Schwarzschild";
-	}
-	else if (NSK == 2) {
-		Metric::c2s(x, y);
-		if (PL)
-			Metric::Kerr::particleNormalization(y, &params);
-		else
-			Metric::Kerr::lightNormalization(y, &params);
-		output = "Kerr";
-	}
-	else if (NSK == 3) {
-		Metric::c2s(x, z);
-		if (PL)
-			Metric::KerrH::particleNormalization(z, &params);
-		else
-			Metric::KerrH::lightNormalization(z, &params);
-		Metric::KerrH::qdq2qp(z, y, &params);
-		output = "KerrH";
+		if (NSK == 1) {
+			if (PL)
+				Metric::Schwarzschild::particleNormalization(y, &params);
+			else
+				Metric::Schwarzschild::lightNormalization(y, &params);
+			output = "Schwarzschild";
+		}
+		else if (NSK == 2) {
+			if (PL)
+				Metric::Kerr::particleNormalization(y, &params);
+			else
+				Metric::Kerr::lightNormalization(y, &params);
+			output = "Kerr";
+		}
+		else if (NSK == 3) {
+			if (PL)
+				Metric::KerrH::particleNormalization(z, &params);
+			else
+				Metric::KerrH::lightNormalization(z, &params);
+			Metric::KerrH::qdq2qp(z, y, &params);
+			output = "KerrH";
+		}
 	}
 	int status = 0;
 	vector<vector<double>> rec;
@@ -215,38 +215,24 @@ int main(int argc, char *argv[]) {
 			status = integ.apply(&t, tStep, &h, y);
 		if (progressBar)
 			bar.set_progress(100 * t / tFinal);
-		if (NSK == 0) {
-			for (int i = 0; i < 8; ++i)
-				temp[i] = y[i];
-			temp[8] = t / Constant::s;
-			temp[9] = Metric::Newton::energy(y, &params);
-			temp[10] = Metric::Newton::angularMomentum(y, &params);
-		}
-		else if (NSK == 1) {
+		if (NSK == 0)
+			temp = {y[0], y[1], y[2], y[3], y[4], y[5], y[6], y[7]};
+		else if (NSK == 1)
 			Metric::s2c(y, &temp[0]);
-			temp[8] = t / Constant::s;
-			temp[9] = Metric::Schwarzschild::energy(y, &params);
-			temp[10] = Metric::Schwarzschild::angularMomentum(y, &params);
-		}
-		else if (NSK == 2) {
+		else if (NSK == 2)
 			Metric::s2c(y, &temp[0]);
-			temp[8] = t / Constant::s;
-			temp[9] = Metric::Kerr::energy(y, &params);
-			temp[10] = Metric::Kerr::angularMomentum(y, &params);
-			temp[11] = Metric::Kerr::carter(y, &params);
-		}
 		else if (NSK == 3) {
 			Metric::KerrH::qp2qdq(y, x, &params);
 			Metric::s2c(x, &temp[0]);
-			temp[8] = t / Constant::s;
-			temp[9] = Metric::KerrH::energy(y, &params);
-			temp[10] = Metric::KerrH::angularMomentum(y, &params);
-			temp[11] = Metric::KerrH::carter(y, &params);
 		}
+		temp[8] = t / Constant::s;
+		temp[9] = Metric::energy[NSK](y, &params);
+		temp[10] = Metric::angularMomentum[NSK](y, &params);
+		temp[11] = Metric::carter[NSK](y, &params);
 		rec.push_back(temp);
 		auto tpass = chrono::steady_clock::now() - start; // nano seconds
 		if (tpass.count() >= tCal * 1000000000)
-			return 0;
+			break;
 	}
 	if (progressBar) {
 		bar.set_option(indicators::option::PrefixText{"Complete!"});

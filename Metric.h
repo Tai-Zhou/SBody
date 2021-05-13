@@ -7,7 +7,7 @@ namespace SBody {
 	struct source {
 		const double mass;
 		const double spin;
-		source(double _m, double _s = 0);
+		source(double mass, double spin = 0);
 	};
 
 	namespace Metric {
