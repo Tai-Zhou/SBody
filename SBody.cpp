@@ -23,6 +23,7 @@
 #include "Metric.h"
 #include "Unit.h"
 #include "Utility.h"
+#include "View.h"
 
 using namespace std;
 using namespace SBody;
