@@ -208,7 +208,7 @@ int main(int argc, char *argv[]) {
 	}
 	int status = 0;
 	vector<vector<double>> rec;
-	vector<double> temp(integ.system.dimension + 3);
+	vector<double> temp(12);
 	while (tStep < tFinal) {
 		tStep = min(tStep + tRec, tFinal);
 		while (status == 0 && t != tStep)
@@ -216,11 +216,11 @@ int main(int argc, char *argv[]) {
 		if (progressBar)
 			bar.set_progress(100 * t / tFinal);
 		if (NSK == 0) {
-			for (int i = 0; i < 6; ++i)
+			for (int i = 0; i < 8; ++i)
 				temp[i] = y[i];
-			temp[6] = t / Constant::s;
-			temp[7] = Metric::Newton::energy(y, &params);
-			temp[8] = Metric::Newton::angularMomentum(y, &params);
+			temp[8] = t / Constant::s;
+			temp[9] = Metric::Newton::energy(y, &params);
+			temp[10] = Metric::Newton::angularMomentum(y, &params);
 		}
 		else if (NSK == 1) {
 			Metric::s2c(y, &temp[0]);
@@ -232,16 +232,16 @@ int main(int argc, char *argv[]) {
 			Metric::s2c(y, &temp[0]);
 			temp[8] = t / Constant::s;
 			temp[9] = Metric::Kerr::energy(y, &params);
-			//temp[10] = Metric::Kerr::angularMomentum(y, &params);
-			temp[10] = Metric::Kerr::carter(y, &params);
+			temp[10] = Metric::Kerr::angularMomentum(y, &params);
+			temp[11] = Metric::Kerr::carter(y, &params);
 		}
 		else if (NSK == 3) {
 			Metric::KerrH::qp2qdq(y, x, &params);
 			Metric::s2c(x, &temp[0]);
 			temp[8] = t / Constant::s;
 			temp[9] = Metric::KerrH::energy(y, &params);
-			//temp[10] = Metric::KerrH::angularMomentum(y, &params);
-			temp[10] = Metric::KerrH::carter(y, &params);
+			temp[10] = Metric::KerrH::angularMomentum(y, &params);
+			temp[11] = Metric::KerrH::carter(y, &params);
 		}
 		rec.push_back(temp);
 		auto tpass = chrono::steady_clock::now() - start; // nano seconds

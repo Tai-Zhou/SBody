@@ -83,6 +83,24 @@ namespace SBody {
 			Schwarzschild::jacobian,
 			Kerr::jacobian,
 			KerrH::jacobian};
+		double (*energy[4])(const double[], void *) = {
+			Newton::energy,
+			Schwarzschild::energy,
+			Kerr::energy,
+			KerrH::energy,
+		};
+		double (*angularMomentum[4])(const double[], void *) = {
+			Newton::angularMomentum,
+			Schwarzschild::angularMomentum,
+			Kerr::angularMomentum,
+			KerrH::angularMomentum,
+		};
+		double (*carter[4])(const double[], void *params) = {
+			Newton::carter,
+			Schwarzschild::carter,
+			Kerr::carter,
+			KerrH::carter,
+		};
 		namespace Newton {
 			int PN = 1;
 			int function(double t, const double y[], double dydt[], void *params) {
@@ -143,6 +161,11 @@ namespace SBody {
 					J[i] += J[i] * eff;
 				return norm(J);
 			}
+			double carter(const double y[], void *params) { //FIXME: not verified!
+				double c[3];
+				cross(y + 1, y + 5, c);
+				return dot(c) / gsl_pow_2(y[4]);
+			}
 		} // namespace Newton
 		namespace Schwarzschild {
 			int function(double t, const double y[], double dydt[], void *params) {
@@ -171,6 +194,9 @@ namespace SBody {
 			}
 			double angularMomentum(const double r[], void *params) {
 				return gsl_pow_2(r[1]) * r[7] / r[4];
+			}
+			double carter(const double y[], void *params) {
+				return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2]))) / gsl_pow_2(y[4]);
 			}
 			int particleNormalization(double y[], void *params) {
 				const double g00 = 1. - 2. * ((source *)params)->mass / y[1];
@@ -226,12 +252,12 @@ namespace SBody {
 				const double mr_rho2 = 2. * m * r[1] / (r2 + a2 * gsl_pow_2(cos(r[2])));
 				return (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 / r[4];
 			}
-			double carter(const double r[], void *params) {
+			double carter(const double y[], void *params) {
 				const double m = ((source *)params)->mass, a = ((source *)params)->spin;
-				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r[1]), sint2 = gsl_pow_2(sin(r[2])), cost2 = gsl_pow_2(cos(r[2]));
+				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2])), cost2 = gsl_pow_2(cos(y[2]));
 				const double rho2 = r2 + a2 * cost2;
-				const double mr_rho2 = 2. * m * r[1] / rho2;
-				return cost2 * a2 + (gsl_pow_2(rho2 * r[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 - a2 * gsl_pow_2(mr_rho2 * (1. - a * sint2 * r[7]) - 1.))) / gsl_pow_2(r[4]);
+				const double mr_rho2 = 2. * m * y[1] / rho2;
+				return cost2 * a2 + (gsl_pow_2(rho2 * y[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * y[7]) * sint2 - a2 * gsl_pow_2(mr_rho2 * (1. - a * sint2 * y[7]) - 1.))) / gsl_pow_2(y[4]);
 			}
 			int particleNormalization(double y[], void *params) {
 				const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
@@ -316,8 +342,8 @@ namespace SBody {
 			double angularMomentum(const double r[], void *params) {
 				return r[7];
 			}
-			double carter(const double r[], void *params) {
-				return gsl_pow_2(r[6]) + gsl_pow_2(cos(r[2])) * (gsl_pow_2(((source *)params)->spin) * (1. - gsl_pow_2(r[4])) + gsl_pow_2(r[7]) / gsl_pow_2(sin(r[2])));
+			double carter(const double y[], void *params) {
+				return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (gsl_pow_2(((source *)params)->spin) * (1. - gsl_pow_2(y[4])) + gsl_pow_2(y[7]) / gsl_pow_2(sin(y[2])));
 			}
 			int particleNormalization(double y[], void *params) {
 				const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);

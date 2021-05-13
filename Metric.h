@@ -13,6 +13,10 @@ namespace SBody {
 	namespace Metric {
 		extern int (*function[4])(double, const double[], double[], void *);
 		extern int (*jacobian[4])(double, const double[], double *, double[], void *);
+		extern double (*energy[4])(const double[], void *);
+		extern double (*angularMomentum[4])(const double[], void *);
+		extern double (*carter[4])(const double[], void *);
+
 		// from cartesian to spherical
 		int c2s(const double x[], const double v[], double r[], double w[]);
 		int c2s(const double x[], double r[]);
@@ -27,12 +31,14 @@ namespace SBody {
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double x[], void *params);
 			double angularMomentum(const double x[], void *params);
+			double carter(const double y[], void *params);
 		} // namespace Newton
 		namespace Schwarzschild {
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[], void *params);
 			double angularMomentum(const double y[], void *params);
+			double carter(const double y[], void *params);
 			int particleNormalization(double y[], void *params);
 			int lightNormalization(double y[], void *params);
 		} // namespace Schwarzschild
@@ -41,7 +47,7 @@ namespace SBody {
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[], void *params);
 			double angularMomentum(const double y[], void *params);
-			double carter(const double r[], void *params);
+			double carter(const double y[], void *params);
 			int particleNormalization(double y[], void *params);
 			int lightNormalization(double y[], void *params);
 		} // namespace Kerr
@@ -52,7 +58,7 @@ namespace SBody {
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[], void *params);
 			double angularMomentum(const double y[], void *params);
-			double carter(const double r[], void *params);
+			double carter(const double y[], void *params);
 			int particleNormalization(double y[], void *params);
 			int lightNormalization(double y[], void *params);
 		} // namespace KerrH
