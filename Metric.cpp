@@ -11,7 +11,6 @@
 namespace SBody {
 	source::source(double _m, double _s) : mass(_m), spin(_s) {}
 	namespace Metric {
-		const size_t dimension[4] = {6, 8, 8, 8};
 		int c2s(const double x[], const double v[], double r[], double w[]) {
 			// x = {x, y, z}
 			// v = {v_x, v_y, v_z}
@@ -51,9 +50,7 @@ namespace SBody {
 			}
 			return 0;
 		}
-		int c2s(const double x[], double r[], const size_t dimension) {
-			if (dimension == 6)
-				return c2s(x, x + 3, r, r + 3);
+		int c2s(const double x[], double r[]) {
 			r[0] = x[0];
 			r[4] = x[4];
 			return c2s(x + 1, x + 5, r + 1, r + 5);
@@ -71,9 +68,7 @@ namespace SBody {
 			v[2] = w[0] * cos(r[1]) - r[0] * sin(r[1]) * w[1];
 			return 0;
 		}
-		int s2c(const double r[], double x[], const size_t dimension) {
-			if (dimension == 6)
-				return s2c(r, r + 3, x, x + 3);
+		int s2c(const double r[], double x[]) {
 			x[0] = r[0];
 			x[4] = r[4];
 			return s2c(r + 1, r + 5, x + 1, x + 5);

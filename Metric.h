@@ -11,16 +11,15 @@ namespace SBody {
 	};
 
 	namespace Metric {
-		extern const size_t dimension[4];
 		extern int (*function[4])(double, const double[], double[], void *);
 		extern int (*jacobian[4])(double, const double[], double *, double[], void *);
 		// from cartesian to spherical
 		int c2s(const double x[], const double v[], double r[], double w[]);
-		int c2s(const double x[], double r[], const size_t dimension);
+		int c2s(const double x[], double r[]);
 
 		// from spherical to cartesian
 		int s2c(const double r[], const double w[], double x[], double v[]);
-		int s2c(const double r[], double x[], const size_t dimension);
+		int s2c(const double r[], double x[]);
 
 		namespace Newton {
 			extern int PN;

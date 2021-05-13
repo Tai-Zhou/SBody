@@ -9,8 +9,8 @@
 
 namespace SBody {
 	double absAcc = 1e-15, relAcc = 1e-15;
-	integrator::integrator(const int _metric, void *_params, const gsl_odeiv2_step_type *_type) : type(_type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(Metric::dimension[_metric])), step(gsl_odeiv2_step_alloc(_type, Metric::dimension[_metric])) {
-		system = {Metric::function[_metric], Metric::jacobian[_metric], Metric::dimension[_metric], _params};
+	integrator::integrator(const int _metric, void *_params, const gsl_odeiv2_step_type *_type) : type(_type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(_type, 8)) {
+		system = {Metric::function[_metric], Metric::jacobian[_metric], 8, _params};
 	}
 	int integrator::apply(double *t, double t1, double *h, double *y) {
 		return gsl_odeiv2_evolve_apply(evolve, control, step, &system, t, t1, h, y);

@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
 	if (NSK == 0)
 		output = "Newton";
 	else if (NSK == 1) {
-		Metric::c2s(x, y, Metric::dimension[NSK]);
+		Metric::c2s(x, y);
 		if (PL)
 			Metric::Schwarzschild::particleNormalization(y, &params);
 		else
@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
 		output = "Schwarzschild";
 	}
 	else if (NSK == 2) {
-		Metric::c2s(x, y, 8);
+		Metric::c2s(x, y);
 		if (PL)
 			Metric::Kerr::particleNormalization(y, &params);
 		else
@@ -198,7 +198,7 @@ int main(int argc, char *argv[]) {
 		output = "Kerr";
 	}
 	else if (NSK == 3) {
-		Metric::c2s(x, z, 8);
+		Metric::c2s(x, z);
 		if (PL)
 			Metric::KerrH::particleNormalization(z, &params);
 		else
@@ -223,13 +223,13 @@ int main(int argc, char *argv[]) {
 			temp[8] = Metric::Newton::angularMomentum(y, &params);
 		}
 		else if (NSK == 1) {
-			Metric::s2c(y, &temp[0], Metric::dimension[1]);
+			Metric::s2c(y, &temp[0]);
 			temp[8] = t / Constant::s;
 			temp[9] = Metric::Schwarzschild::energy(y, &params);
 			temp[10] = Metric::Schwarzschild::angularMomentum(y, &params);
 		}
 		else if (NSK == 2) {
-			Metric::s2c(y, &temp[0], Metric::dimension[2]);
+			Metric::s2c(y, &temp[0]);
 			temp[8] = t / Constant::s;
 			temp[9] = Metric::Kerr::energy(y, &params);
 			//temp[10] = Metric::Kerr::angularMomentum(y, &params);
@@ -237,7 +237,7 @@ int main(int argc, char *argv[]) {
 		}
 		else if (NSK == 3) {
 			Metric::KerrH::qp2qdq(y, x, &params);
-			Metric::s2c(x, &temp[0], Metric::dimension[3]);
+			Metric::s2c(x, &temp[0]);
 			temp[8] = t / Constant::s;
 			temp[9] = Metric::KerrH::energy(y, &params);
 			//temp[10] = Metric::KerrH::angularMomentum(y, &params);
