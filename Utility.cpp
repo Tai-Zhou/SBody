@@ -7,6 +7,14 @@
 #include "Constant.h"
 
 namespace SBody {
+	double absAcc = 1e-15, relAcc = 1e-15;
+	integrator::integrator(const size_t _dimension, void *_params, const gsl_odeiv2_step_type *_type) : type(_type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(_dimension)), step(gsl_odeiv2_step_alloc(_type, _dimension)) {
+		system.dimension = _dimension;
+		system.params = _params;
+	}
+	int integrator::apply(double *t, double t1, double *h, double *y) {
+		return gsl_odeiv2_evolve_apply(evolve, control, step, &system, t, t1, h, y);
+	}
 	double dot(const double x[], const double y[], int dimension) {
 		if (dimension == 3) {
 			if (y == nullptr)

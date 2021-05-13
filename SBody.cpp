@@ -7,6 +7,7 @@
 #include <cmath>
 #include <csignal>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
@@ -73,8 +74,6 @@ int main(int argc, char *argv[]) {
 	h = 1e-3;
 	mass = 4e6;
 	spin = 0;
-	absAcc = 1e-15;
-	relAcc = 1e-15;
 	tFinal = 1e0;
 	tRec = 1e-5 * tFinal;
 	tCal = 3600;
@@ -146,6 +145,7 @@ int main(int argc, char *argv[]) {
 		}
 	tFinal *= Constant::s;
 	tRec *= Constant::s;
+	Metric::Newton::PN = PN;
 	if (progressBar)
 		indicators::show_console_cursor(false);
 	source params(mass, spin * mass);
@@ -156,8 +156,6 @@ int main(int argc, char *argv[]) {
 	gsl_odeiv2_evolve *ode_evolve;
 	gsl_odeiv2_system ode_system;
 	double x[8], y[8], z[8];
-	ode_control = gsl_odeiv2_control_y_new(absAcc, relAcc);
-	ode_system.params = &params;
 	if (NSK == 0) {
 		y[0] = Constant::AU / 100;
 		y[1] = 0;
@@ -183,21 +181,16 @@ int main(int argc, char *argv[]) {
 			x[7] = 0;
 		}
 	}
+	integrator integ(NSK == 0 ? 6 : 8, &params);
 	if (NSK == 0) {
-		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Newton::dimension);
-		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Newton::dimension);
-		ode_system.function = Metric::Newton::function;
-		ode_system.jacobian = Metric::Newton::jacobian;
-		ode_system.dimension = Metric::Newton::dimension;
+		integ.system.function = Metric::Newton::function;
+		integ.system.jacobian = Metric::Newton::jacobian;
 		output = "Newton";
 	}
 	else if (NSK == 1) {
-		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Schwarzschild::dimension);
-		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Schwarzschild::dimension);
-		ode_system.function = Metric::Schwarzschild::function;
-		ode_system.jacobian = Metric::Schwarzschild::jacobian;
-		ode_system.dimension = Metric::Schwarzschild::dimension;
-		Metric::c2s(x, y, Metric::Schwarzschild::dimension);
+		integ.system.function = Metric::Schwarzschild::function;
+		integ.system.jacobian = Metric::Schwarzschild::jacobian;
+		Metric::c2s(x, y, 8);
 		if (PL)
 			Metric::Schwarzschild::particleNormalization(y, &params);
 		else
@@ -205,12 +198,9 @@ int main(int argc, char *argv[]) {
 		output = "Schwarzschild";
 	}
 	else if (NSK == 2) {
-		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::Kerr::dimension);
-		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::Kerr::dimension);
-		ode_system.function = Metric::Kerr::function;
-		ode_system.jacobian = Metric::Kerr::jacobian;
-		ode_system.dimension = Metric::Kerr::dimension;
-		Metric::c2s(x, y, Metric::Kerr::dimension);
+		integ.system.function = Metric::Kerr::function;
+		integ.system.jacobian = Metric::Kerr::jacobian;
+		Metric::c2s(x, y, 8);
 		if (PL)
 			Metric::Kerr::particleNormalization(y, &params);
 		else
@@ -218,12 +208,9 @@ int main(int argc, char *argv[]) {
 		output = "Kerr";
 	}
 	else if (NSK == 3) {
-		ode_step = gsl_odeiv2_step_alloc(ode_type, Metric::KerrH::dimension);
-		ode_evolve = gsl_odeiv2_evolve_alloc(Metric::KerrH::dimension);
-		ode_system.function = Metric::KerrH::function;
-		ode_system.jacobian = Metric::KerrH::jacobian;
-		ode_system.dimension = Metric::KerrH::dimension;
-		Metric::c2s(x, z, Metric::KerrH::dimension);
+		integ.system.function = Metric::KerrH::function;
+		integ.system.jacobian = Metric::KerrH::jacobian;
+		Metric::c2s(x, z, 8);
 		if (PL)
 			Metric::KerrH::particleNormalization(z, &params);
 		else
@@ -233,11 +220,11 @@ int main(int argc, char *argv[]) {
 	}
 	int status = 0;
 	vector<vector<double>> rec;
-	vector<double> temp(ode_system.dimension + 3);
+	vector<double> temp(integ.system.dimension + 3);
 	while (tStep < tFinal) {
 		tStep = min(tStep + tRec, tFinal);
 		while (status == 0 && t != tStep)
-			status = gsl_odeiv2_evolve_apply(ode_evolve, ode_control, ode_step, &ode_system, &t, tStep, &h, y);
+			status = integ.apply(&t, tStep, &h, y);
 		if (progressBar)
 			bar.set_progress(100 * t / tFinal);
 		if (NSK == 0) {
