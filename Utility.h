@@ -8,19 +8,19 @@ namespace SBody {
 	extern double relAcc;
 	struct integrator {
 		const gsl_odeiv2_step_type *type;
-		gsl_odeiv2_control *const control;
-		gsl_odeiv2_evolve *const evolve;
-		gsl_odeiv2_step *const step;
+		gsl_odeiv2_control *control;
+		gsl_odeiv2_evolve *evolve;
+		gsl_odeiv2_step *step;
 		gsl_odeiv2_system system;
-		integrator(const int metric, void *params, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
-		int apply(double *t, double t1, double *h, double *y);
+		integrator(const size_t NSK, void *params, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
+		int apply(double *t, const double t1, double *h, double *y);
 	};
 
 	// Dot product of vector x·y, or x·x if y == nullptr
-	double dot(const double x[], const double y[] = nullptr, int dimension = 3);
+	double dot(const double x[], const double y[] = nullptr, size_t dimension = 3);
 
 	// Length of vector x, with 3 dimensions set by default
-	double norm(const double x[], int dimension = 3);
+	double norm(const double x[], size_t dimension = 3);
 
 	// Cross product of vector x \times y, stored in z
 	void cross(const double x[], const double y[], double z[]);

@@ -73,34 +73,11 @@ namespace SBody {
 			x[4] = r[4];
 			return s2c(r + 1, r + 5, x + 1, x + 5);
 		}
-		int (*function[4])(double, const double[], double[], void *) = {
-			Newton::function,
-			Schwarzschild::function,
-			Kerr::function,
-			KerrH::function};
-		int (*jacobian[4])(double, const double[], double *, double[], void *) = {
-			Newton::jacobian,
-			Schwarzschild::jacobian,
-			Kerr::jacobian,
-			KerrH::jacobian};
-		double (*energy[4])(const double[], void *) = {
-			Newton::energy,
-			Schwarzschild::energy,
-			Kerr::energy,
-			KerrH::energy,
-		};
-		double (*angularMomentum[4])(const double[], void *) = {
-			Newton::angularMomentum,
-			Schwarzschild::angularMomentum,
-			Kerr::angularMomentum,
-			KerrH::angularMomentum,
-		};
-		double (*carter[4])(const double[], void *params) = {
-			Newton::carter,
-			Schwarzschild::carter,
-			Kerr::carter,
-			KerrH::carter,
-		};
+		std::array<int (*)(double, const double[], double[], void *), 4> function{Newton::function, Schwarzschild::function, Kerr::function, KerrH::function};
+		std::array<int (*)(double, const double[], double *, double[], void *), 4> jacobian{Newton::jacobian, Schwarzschild::jacobian, Kerr::jacobian, KerrH::jacobian};
+		std::array<double (*)(const double[], void *), 4> energy{Newton::energy, Schwarzschild::energy, Kerr::energy, KerrH::energy};
+		std::array<double (*)(const double[], void *), 4> angularMomentum{Newton::angularMomentum, Schwarzschild::angularMomentum, Kerr::angularMomentum, KerrH::angularMomentum};
+		std::array<double (*)(const double[], void *params), 4> carter{Newton::carter, Schwarzschild::carter, Kerr::carter, KerrH::carter};
 		namespace Newton {
 			int PN = 1;
 			int function(double t, const double y[], double dydt[], void *params) {

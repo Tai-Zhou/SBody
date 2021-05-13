@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
 			break;
 		case 'n':
 			NSK = atoi(optarg);
-			if (NSK < 0 || NSK > 3)
+			if (NSK > 3)
 				help();
 			break;
 		case 'p':

@@ -9,13 +9,13 @@
 
 namespace SBody {
 	double absAcc = 1e-15, relAcc = 1e-15;
-	integrator::integrator(const int NSK, void *params, const gsl_odeiv2_step_type *type) : type(type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(type, 8)) {
+	integrator::integrator(const size_t NSK, void *const params, const gsl_odeiv2_step_type *type) : type(type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(type, 8)) {
 		system = {Metric::function[NSK], Metric::jacobian[NSK], 8, params};
 	}
-	int integrator::apply(double *t, double t1, double *h, double *y) {
+	int integrator::apply(double *t, const double t1, double *h, double *y) {
 		return gsl_odeiv2_evolve_apply(evolve, control, step, &system, t, t1, h, y);
 	}
-	double dot(const double x[], const double y[], int dimension) {
+	double dot(const double x[], const double y[], size_t dimension) {
 		if (dimension == 3) {
 			if (y == nullptr)
 				return x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
@@ -26,7 +26,7 @@ namespace SBody {
 			sum += x[dimension] * y[dimension];
 		return sum;
 	}
-	double norm(const double x[], int dimension) {
+	double norm(const double x[], size_t dimension) {
 		if (dimension == 3)
 			return sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
 		double sum = 0;
