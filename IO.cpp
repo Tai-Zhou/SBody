@@ -12,7 +12,7 @@ namespace SBody {
 		template <typename T>
 		int NumPySave(const vector<vector<T>> &data, string fileName) {
 			char NumPyHead[10] = {'\x93', 'N', 'U', 'M', 'P', 'Y', '\x01', '\x00', '\x76', '\x00'};
-			ofstream NumPyFile(fileName + ".npy", ios::binary | ios::out);
+			ofstream NumPyFile("out/" + fileName + ".npy", ios::binary | ios::out);
 			NumPyFile.write(NumPyHead, 10);
 			NumPyFile << "{'descr': '<" << (sizeof(T) == 4 ? "i4" : "f8")
 					  << "', 'fortran_order': False, 'shape': (                                                                  \n";
@@ -28,7 +28,7 @@ namespace SBody {
 		template <typename T>
 		int NumPySave(const vector<T> &data, string fileName) {
 			char NumPyHead[10] = {'\x93', 'N', 'U', 'M', 'P', 'Y', '\x01', '\x00', '\x76', '\x00'};
-			ofstream NumPyFile(fileName + ".npy", ios::binary | ios::out);
+			ofstream NumPyFile("out/" + fileName + ".npy", ios::binary | ios::out);
 			NumPyFile.write(NumPyHead, 10);
 			NumPyFile << "{'descr': '<" << (sizeof(T) == 4 ? "i4" : "f8")
 					  << "', 'fortran_order': False, 'shape': (                                                                  \n";
@@ -42,7 +42,7 @@ namespace SBody {
 		template int NumPySave(const vector<array<double, 3>> &data, string fileName);
 		template <typename T>
 		int CSVSave(const vector<vector<T>> &data, string fileName) {
-			ofstream CSVFile(fileName + ".csv", ios::out);
+			ofstream CSVFile("out/" + fileName + ".csv", ios::out);
 			for (const vector<T> &line : data) {
 				for (const T element : line)
 					CSVFile << element << ',';

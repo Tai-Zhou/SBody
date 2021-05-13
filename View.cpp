@@ -34,8 +34,17 @@ namespace SBody {
 		if (theta < Constant::epsilon || M_PI - theta < Constant::epsilon) {
 			for (int i = 0; i < pixel; ++i)
 				for (int j = 0; j < pixel; ++j) {
+					t = 0;
+					tStep = 0;
+					h = 1e-3;
 					const double k = gsl_hypot(i - 0.5 * pixel, j - 0.5 * pixel);
+					ph[0] = 0;
+					ph[1] = r;
+					ph[2] = theta;
+					ph[4] = 1;
+					ph[5] = -1;
 					ph[6] = (theta < M_PI_2 ? 1 : -1) * tana_pix * k;
+					ph[7] = 0;
 					if (k < Constant::epsilon)
 						ph[3] = 0;
 					else {
@@ -60,9 +69,18 @@ namespace SBody {
 				}
 		}
 		else
-			for (int i = 0; i < pixel; ++i) {
-				ph[6] = tana_pix * (i - 0.5 * pixel);
+			for (int i = 0; i < pixel; ++i)
 				for (int j = 0; j < pixel; ++j) {
+					t = 0;
+					tStep = 0;
+					h = 1e-3;
+					ph[0] = 0;
+					ph[1] = r;
+					ph[2] = theta;
+					ph[3] = phi;
+					ph[4] = 1;
+					ph[5] = -1;
+					ph[6] = tana_pix * (i - 0.5 * pixel);
 					ph[7] = tana_pix * (j - 0.5 * pixel) / sint;
 					if (NSK == 1)
 						Metric::Schwarzschild::lightNormalization(ph, params);
@@ -78,7 +96,6 @@ namespace SBody {
 					}
 					IO::NumPySave(traces[i * pixel + j], "trace-" + to_string(i * pixel + j));
 				}
-			}
 		/*if (NSK == 0) {
 		}
 		else if (NSK == 1) {
