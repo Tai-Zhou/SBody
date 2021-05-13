@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <tuple>
 
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_odeiv2.h>
