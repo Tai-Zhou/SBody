@@ -5,7 +5,6 @@
 
 void interruptHandler(int signum);
 void help();
-double h;
 double mass, spin;
 double tFinal;
 double tRec;

@@ -1,6 +1,8 @@
 #ifndef _UTILITY_H
 #define _UTILITY_H
 
+#include <string>
+
 #include <gsl/gsl_odeiv2.h>
 
 namespace SBody {

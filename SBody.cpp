@@ -71,13 +71,13 @@ int main(int argc, char *argv[]) {
 		indicators::option::ShowRemainingTime{true},
 		indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
 	signal(SIGINT, interruptHandler);
-	h = 1e-3;
+	double h = 1e-3;
 	mass = 4e6;
 	spin = 0;
-	tFinal = 1e0;
+	tFinal = 1e5;
 	tRec = 1e-5 * tFinal;
 	tCal = 3600;
-	NSK = 3;
+	NSK = 1;
 	PN = 1;
 	PL = 1;
 	progressBar = 0;
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
 		indicators::show_console_cursor(false);
 	source params(mass, spin * mass);
 	view cam = view(3, 1e-2, mass * 1000., M_PI_4, 0, tFinal);
-	cam.traceBack(2, &params);
+	cam.traceBack(1, &params);
 	return 0;
 	double x[8], y[8], z[8];
 	if (NSK == 0) {
@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
 	vector<double> temp(12);
 	while (tStep < tFinal) {
 		tStep = min(tStep + tRec, tFinal);
-		while (status == 0 && t != tStep)
+		while (status == 0 && t < tStep)
 			status = integ.apply(&t, tStep, &h, y);
 		if (progressBar)
 			bar.set_progress(100 * t / tFinal);

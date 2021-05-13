@@ -16,7 +16,7 @@ namespace SBody {
 		const double tFinal;
 		const size_t duration;
 		const size_t frame;
-		std::vector<std::vector<std::tuple<double, double, double>>> traces;
+		std::vector<std::vector<std::array<double, 3>>> traces;
 
 	  public:
 		view(const size_t pixel, const double viewAngle, const double r, const double theta, const double phi, const double tFinal, const size_t duration = 300, const size_t frame = 30);
