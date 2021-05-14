@@ -1,9 +1,7 @@
 #include "View.h"
 
-#include <array>
 #include <cmath>
 #include <string>
-#include <tuple>
 
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_odeiv2.h>
@@ -37,7 +35,7 @@ namespace SBody {
 					t = 0;
 					tStep = 0;
 					h = 1e-3;
-					const double k = gsl_hypot(i - 0.5 * pixel, j - 0.5 * pixel);
+					const double k = gsl_hypot(i - 0.5 * pixel + 0.5, j - 0.5 * pixel + 0.5);
 					ph[0] = 0;
 					ph[1] = r;
 					ph[2] = theta;
@@ -49,9 +47,9 @@ namespace SBody {
 						ph[3] = 0;
 					else {
 						if (2 * i <= pixel)
-							ph[3] = (theta < M_PI_2 ? 1. : -1.) * acos((j - 0.5 * pixel) / k);
+							ph[3] = (theta < M_PI_2 ? 1. : -1.) * acos((j - 0.5 * pixel + 0.5) / k);
 						else
-							ph[3] = (theta < M_PI_2 ? 1. : -1.) * (2. * M_PI - acos((j - 0.5 * pixel) / k));
+							ph[3] = (theta < M_PI_2 ? 1. : -1.) * (2. * M_PI - acos((j - 0.5 * pixel + 0.5) / k));
 					}
 					if (NSK == 1)
 						Metric::Schwarzschild::lightNormalization(ph, params);
@@ -80,8 +78,8 @@ namespace SBody {
 					ph[3] = phi;
 					ph[4] = 1;
 					ph[5] = -1;
-					ph[6] = tana_pix * (i - 0.5 * pixel);
-					ph[7] = tana_pix * (j - 0.5 * pixel) / sint;
+					ph[6] = tana_pix * (i - 0.5 * pixel + 0.5);
+					ph[7] = tana_pix * (j - 0.5 * pixel + 0.5) / sint;
 					if (NSK == 1)
 						Metric::Schwarzschild::lightNormalization(ph, params);
 					else if (NSK == 2)

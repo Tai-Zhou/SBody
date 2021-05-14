@@ -1,6 +1,7 @@
 #ifndef _VIEW_H
 #define _VIEW_H
 
+#include <array>
 #include <vector>
 
 #include "Utility.h"
