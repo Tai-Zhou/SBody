@@ -51,10 +51,8 @@ namespace SBody {
 					}
 					if (NSK == 1)
 						Metric::Schwarzschild::lightNormalization(ph);
-					else if (NSK == 2)
+					else if (NSK == 2 || NSK == 3)
 						Metric::Kerr::lightNormalization(ph);
-					else if (NSK == 3)
-						Metric::KerrH::lightNormalization(ph);
 					while (status == 0) {
 						status = integ.apply(&t, GSL_POSINF, &h, ph);
 						if (ph[1] < 100 * Metric::m) {
@@ -77,10 +75,8 @@ namespace SBody {
 					ph[7] = tana_pix * (j - 0.5 * pixel + 0.5) / sint;
 					if (NSK == 1)
 						Metric::Schwarzschild::lightNormalization(ph);
-					else if (NSK == 2)
+					else if (NSK == 2 || NSK == 3)
 						Metric::Kerr::lightNormalization(ph);
-					else if (NSK == 3)
-						Metric::KerrH::lightNormalization(ph);
 					while (status == 0) {
 						status = integ.apply(&t, GSL_POSINF, &h, ph);
 						if (ph[1] < 100 * Metric::m) {

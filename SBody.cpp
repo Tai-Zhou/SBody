@@ -195,9 +195,9 @@ int main(int argc, char *argv[]) {
 		}
 		else if (NSK == 3) {
 			if (PL)
-				Metric::KerrH::particleNormalization(z);
+				Metric::Kerr::particleNormalization(z);
 			else
-				Metric::KerrH::lightNormalization(z);
+				Metric::Kerr::lightNormalization(z);
 			Metric::KerrH::qdq2qp(z, y);
 		}
 	}
