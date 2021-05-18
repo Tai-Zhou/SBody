@@ -11,11 +11,47 @@
 namespace SBody {
 	source::source(double mass, double spin) : mass(mass), spin(spin) {}
 	namespace Metric {
+		std::string name = "";
 		int (*function)(double, const double[], double[], void *) = nullptr;
 		int (*jacobian)(double, const double[], double *, double[], void *) = nullptr;
 		double (*energy)(const double[], void *) = nullptr;
 		double (*angularMomentum)(const double[], void *) = nullptr;
 		double (*carter)(const double[], void *params) = nullptr;
+		void setMetric(int NSK) {
+			switch (NSK) {
+			case 0:
+				name = "Newton";
+				function = Newton::function;
+				jacobian = Newton::jacobian;
+				energy = Newton::energy;
+				angularMomentum = Newton::angularMomentum;
+				carter = Newton::carter;
+				break;
+			case 1:
+				name = "Schwarzschild";
+				function = Schwarzschild::function;
+				jacobian = Schwarzschild::jacobian;
+				energy = Schwarzschild::energy;
+				angularMomentum = Schwarzschild::angularMomentum;
+				carter = Schwarzschild::carter;
+				break;
+			case 2:
+				name = "Kerr";
+				function = Kerr::function;
+				jacobian = Kerr::jacobian;
+				energy = Kerr::energy;
+				angularMomentum = Kerr::angularMomentum;
+				carter = Kerr::carter;
+				break;
+			case 3:
+				name = "KerrH";
+				function = KerrH::function;
+				jacobian = KerrH::jacobian;
+				energy = KerrH::energy;
+				angularMomentum = KerrH::angularMomentum;
+				carter = KerrH::carter;
+			}
+		}
 		int c2s(const double x[], const double v[], double r[], double w[]) {
 			// x = {x, y, z}
 			// v = {v_x, v_y, v_z}
