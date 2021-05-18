@@ -6,8 +6,9 @@
 namespace SBody {
 	namespace Metric {
 		extern double m;
-		extern double a;
+		extern double a, a2, a4;
 		extern std::string name;
+		extern double (*ds2)(const double[], const double[]);
 		extern int (*function)(double, const double[], double[], void *);
 		extern int (*jacobian)(double, const double[], double *, double[], void *);
 		extern double (*energy)(const double[]);
@@ -59,8 +60,6 @@ namespace SBody {
 			double energy(const double y[]);
 			double angularMomentum(const double y[]);
 			double carter(const double y[]);
-			int particleNormalization(double y[]);
-			int lightNormalization(double y[]);
 		} // namespace KerrH
 	}	  // namespace Metric
 } // namespace SBody
