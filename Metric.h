@@ -28,6 +28,7 @@ namespace SBody {
 
 		namespace Newton {
 			extern int PN;
+			double ds2(const double x[], const double y[]);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double x[]);
@@ -35,6 +36,7 @@ namespace SBody {
 			double carter(const double y[]);
 		} // namespace Newton
 		namespace Schwarzschild {
+			double ds2(const double x[], const double y[]);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[]);
@@ -44,6 +46,7 @@ namespace SBody {
 			int lightNormalization(double y[]);
 		} // namespace Schwarzschild
 		namespace Kerr {
+			double ds2(const double x[], const double y[]);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[]);

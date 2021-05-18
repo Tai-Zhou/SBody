@@ -27,7 +27,7 @@ namespace SBody {
 			switch (NSK) {
 			case 0:
 				name = "Newton";
-				function = Newton::function;
+				ds2 = Newton::ds2;
 				function = Newton::function;
 				jacobian = Newton::jacobian;
 				energy = Newton::energy;
@@ -36,6 +36,7 @@ namespace SBody {
 				break;
 			case 1:
 				name = "Schwarzschild";
+				ds2 = Schwarzschild::ds2;
 				function = Schwarzschild::function;
 				jacobian = Schwarzschild::jacobian;
 				energy = Schwarzschild::energy;
@@ -44,6 +45,7 @@ namespace SBody {
 				break;
 			case 2:
 				name = "Kerr";
+				ds2 = Kerr::ds2;
 				function = Kerr::function;
 				jacobian = Kerr::jacobian;
 				energy = Kerr::energy;
@@ -52,6 +54,7 @@ namespace SBody {
 				break;
 			case 3:
 				name = "KerrH";
+				ds2 = Kerr::ds2;
 				function = KerrH::function;
 				jacobian = KerrH::jacobian;
 				energy = KerrH::energy;
@@ -246,10 +249,9 @@ namespace SBody {
 		namespace Kerr {
 			double ds2(const double x[], const double y[]) {
 				const double r = x[1], sint = sin(x[2]), cost = cos(x[2]);
-				const double r2 = gsl_pow_2(r), r4 = gsl_pow_4(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost2 = gsl_pow_2(cost), cott = cost / sint;
-				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2, a2r2 = a2 + r2;
-				const double rho4 = gsl_pow_2(rho2), rho6 = gsl_pow_3(rho2), r2rho2 = 2. * r2 - rho2;
-				return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * (x[3] - y[3]));
+				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), cost2 = gsl_pow_2(cost);
+				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2;
+				return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[1] * (x[2] - y[2])) + ((r2 + a2) * sint2 + 2 * m * r * a2 * gsl_pow_2(sint2) / rho2) * gsl_pow_2(x[3] - y[3]);
 			}
 			int function(double t, const double y[], double dydt[], void *params) {
 				dydt[0] = y[4]; //d\tau/dt
