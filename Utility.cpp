@@ -9,10 +9,10 @@
 
 namespace SBody {
 	double absAcc = 1e-15, relAcc = 1e-15;
-	integrator::integrator(const size_t NSK, void *const params, const gsl_odeiv2_step_type *type) : type(type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(type, 8)) {
+	integrator::integrator(size_t NSK, void *params, const gsl_odeiv2_step_type *type) : type(type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(type, 8)) {
 		system = {Metric::function[NSK], Metric::jacobian[NSK], 8, params};
 	}
-	int integrator::apply(double *t, const double t1, double *h, double *y) {
+	int integrator::apply(double *t, double t1, double *h, double *y) {
 		return gsl_odeiv2_evolve_apply(evolve, control, step, &system, t, t1, h, y);
 	}
 	double dot(const double x[], const double y[], size_t dimension) {
@@ -39,10 +39,10 @@ namespace SBody {
 		z[1] = x[2] * y[0] - x[0] * y[2];
 		z[2] = x[0] * y[1] - x[1] * y[0];
 	}
-	double _0x(const double x) {
+	double _0x(double x) {
 		return x > 0 ? x : 0;
 	}
-	double _0x1(const double x) {
+	double _0x1(double x) {
 		if (x < 0)
 			return 0;
 		return x < 1 ? x : 1;

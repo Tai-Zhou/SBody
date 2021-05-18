@@ -14,8 +14,8 @@ namespace SBody {
 		gsl_odeiv2_evolve *evolve;
 		gsl_odeiv2_step *step;
 		gsl_odeiv2_system system;
-		integrator(const size_t NSK, void *params, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
-		int apply(double *t, const double t1, double *h, double *y);
+		integrator(size_t NSK, void *params, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
+		int apply(double *t, double t1, double *h, double *y);
 	};
 
 	// Dot product of vector x·y, or x·x if y == nullptr
@@ -26,8 +26,8 @@ namespace SBody {
 
 	// Cross product of vector x \times y, stored in z
 	void cross(const double x[], const double y[], double z[]);
-	double _0x(const double x);
-	double _0x1(const double x);
+	double _0x(double x);
+	double _0x1(double x);
 } // namespace SBody
 
 #endif

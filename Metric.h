@@ -3,8 +3,6 @@
 
 #include <array>
 
-#include <stddef.h>
-
 namespace SBody {
 	struct source {
 		const double mass;

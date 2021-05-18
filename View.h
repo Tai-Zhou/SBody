@@ -17,10 +17,10 @@ namespace SBody {
 		const double tFinal;
 		const size_t duration;
 		const size_t frame;
-		std::vector<std::vector<std::array<double, 3>>> traces;
+		std::vector<std::array<double, 9>> initials;
 
 	  public:
-		view(const size_t pixel, const double viewAngle, const double r, const double theta, const double phi, const double tFinal, const size_t duration = 300, const size_t frame = 30);
+		view(size_t pixel, double viewAngle, double r, double theta, double phi, double tFinal, size_t duration = 300, size_t frame = 30);
 		void traceBack(size_t NSK, struct source *params);
 	};
 } // namespace SBody

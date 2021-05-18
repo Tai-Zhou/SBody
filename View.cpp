@@ -13,7 +13,7 @@
 using namespace std;
 
 namespace SBody {
-	view::view(const size_t pixel, const double viewAngle, const double r, const double theta, const double phi, const double tFinal, const size_t duration, const size_t frame)
+	view::view(size_t pixel, double viewAngle, double r, double theta, double phi, double tFinal, size_t duration, size_t frame)
 		: pixel(pixel),
 		  viewAngle(viewAngle),
 		  r(r),
@@ -22,19 +22,17 @@ namespace SBody {
 		  tFinal(tFinal),
 		  duration(duration),
 		  frame(frame) {
-		traces = vector<vector<array<double, 3>>>(pixel * pixel, {{r, theta, phi}});
+		initials = vector<array<double, 9>>(pixel * pixel);
 	}
 	void view::traceBack(size_t NSK, source *params) {
-		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), tFrame = tFinal / duration;
-		double ph[8] = {0., r, theta, phi, 1., -1., 0., 0.}, t = 0, tStep = 0, h = 1e-3;
+		const double mass = params->mass, sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), tFrame = tFinal / duration;
+		double ph[8] = {0., r, theta, phi, 1., -1., 0., 0.}, last[3], t = 0, tStep = 0, h = 1e-3;
 		int status = 0;
 		integrator integ(NSK, params);
+		vector<vector<int>> screen(pixel, vector<int>(pixel));
 		if (theta < Constant::epsilon || M_PI - theta < Constant::epsilon) {
 			for (int i = 0; i < pixel; ++i)
 				for (int j = 0; j < pixel; ++j) {
-					t = 0;
-					tStep = 0;
-					h = 1e-3;
 					const double k = gsl_hypot(i - 0.5 * pixel + 0.5, j - 0.5 * pixel + 0.5);
 					ph[0] = 0;
 					ph[1] = r;
@@ -57,21 +55,18 @@ namespace SBody {
 						Metric::Kerr::lightNormalization(ph, params);
 					else if (NSK == 3)
 						Metric::KerrH::lightNormalization(ph, params);
-					while (tStep < tFinal) {
-						tStep += tFrame;
-						while (status == 0 && t < tStep)
-							status = integ.apply(&t, tStep, &h, ph);
-						traces[i * pixel + j].push_back({ph[1], ph[2], ph[3]});
+					while (status == 0) {
+						status = integ.apply(&t, GSL_POSINF, &h, ph);
+						if (ph[1] < 100 * mass) {
+							initials[i * pixel + j] = {ph[0], ph[1], ph[2], ph[3], ph[4], ph[5], ph[6], ph[7], t};
+							break;
+						}
 					}
-					IO::NumPySave(traces[i * pixel + j], "trace-" + to_string(i * pixel + j));
 				}
 		}
 		else
 			for (int i = 0; i < pixel; ++i)
 				for (int j = 0; j < pixel; ++j) {
-					t = 0;
-					tStep = 0;
-					h = 1e-3;
 					ph[0] = 0;
 					ph[1] = r;
 					ph[2] = theta;
@@ -86,21 +81,31 @@ namespace SBody {
 						Metric::Kerr::lightNormalization(ph, params);
 					else if (NSK == 3)
 						Metric::KerrH::lightNormalization(ph, params);
-					while (tStep < tFinal) {
-						tStep += tFrame;
-						while (status == 0 && t < tStep)
-							status = integ.apply(&t, tStep, &h, ph);
-						traces[i * pixel + j].push_back({ph[1], ph[2], ph[3]});
+					while (status == 0) {
+						status = integ.apply(&t, GSL_POSINF, &h, ph);
+						if (ph[1] < 100 * mass) {
+							initials[i * pixel + j] = {ph[0], ph[1], ph[2], ph[3], ph[4], ph[5], ph[6], ph[7], t};
+							break;
+						}
 					}
-					IO::NumPySave(traces[i * pixel + j], "trace-" + to_string(i * pixel + j));
 				}
-		/*if (NSK == 0) {
-		}
-		else if (NSK == 1) {
-		}
-		else if (NSK == 2) {
-		}
-		else if (NSK == 3) {
-		}*/
+		for (int i = 0; i < pixel; ++i)
+			for (int j = 0; j < pixel; ++j) {
+				t = 0;
+				tStep = 0;
+				h = 1e-3;
+				while (tStep < tFinal) {
+					tStep += tFrame;
+					while (status == 0 && t < tStep) {
+						last[0] = ph[1];
+						last[1] = ph[2];
+						last[2] = ph[3];
+						status = integ.apply(&t, tStep, &h, ph);
+						if (ph[1] > 6 * mass && ph[1] < 12 * mass && (ph[2] - M_PI_2) * (last[1] - M_PI_2) < 0)
+							screen[i][j] = 1;
+					}
+				}
+			}
+		IO::NumPySave(screen, "screen");
 	}
 } // namespace SBody

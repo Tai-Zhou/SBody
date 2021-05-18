@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
 	if (progressBar)
 		indicators::show_console_cursor(false);
 	source params(mass, spin * mass);
-	view cam = view(3, 5e-3, mass * 1000., M_PI_4, 0, tFinal, 3000);
+	view cam = view(100, 2e-2, mass * 1000., M_PI_4, 0, tFinal, 3000);
 	cam.traceBack(1, &params);
 	return 0;
 	double x[8], y[8], z[8];
