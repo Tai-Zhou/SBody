@@ -19,6 +19,8 @@ namespace SBody {
 		double (*energy)(const double[]) = nullptr;
 		double (*angularMomentum)(const double[]) = nullptr;
 		double (*carter)(const double[]) = nullptr;
+		int (*particleNormalization)(double[]) = nullptr;
+		int (*lightNormalization)(double[]) = nullptr;
 		void setMetric(int NSK, double mass, double spin) {
 			m = mass;
 			a = mass * spin;
@@ -33,6 +35,8 @@ namespace SBody {
 				energy = Newton::energy;
 				angularMomentum = Newton::angularMomentum;
 				carter = Newton::carter;
+				particleNormalization = Newton::particleNormalization;
+				lightNormalization = Newton::lightNormalization;
 				break;
 			case 1:
 				name = "Schwarzschild";
@@ -42,6 +46,8 @@ namespace SBody {
 				energy = Schwarzschild::energy;
 				angularMomentum = Schwarzschild::angularMomentum;
 				carter = Schwarzschild::carter;
+				particleNormalization = Schwarzschild::particleNormalization;
+				lightNormalization = Schwarzschild::lightNormalization;
 				break;
 			case 2:
 				name = "Kerr";
@@ -51,6 +57,8 @@ namespace SBody {
 				energy = Kerr::energy;
 				angularMomentum = Kerr::angularMomentum;
 				carter = Kerr::carter;
+				particleNormalization = Kerr::particleNormalization;
+				lightNormalization = Kerr::lightNormalization;
 				break;
 			case 3:
 				name = "KerrH";
@@ -60,6 +68,8 @@ namespace SBody {
 				energy = KerrH::energy;
 				angularMomentum = KerrH::angularMomentum;
 				carter = KerrH::carter;
+				particleNormalization = Kerr::particleNormalization;
+				lightNormalization = Kerr::lightNormalization;
 			}
 		}
 		int c2s(const double x[], const double v[], double r[], double w[]) {
@@ -192,6 +202,12 @@ namespace SBody {
 				cross(y + 1, y + 5, c);
 				return dot(c) / gsl_pow_2(y[4]);
 			}
+			int particleNormalization(double y[]) { //TODO: limit the light speed
+				return 0;
+			}
+			int lightNormalization(double y[]) { //TODO: limit the light speed
+				return 0;
+			}
 		} // namespace Newton
 		namespace Schwarzschild {
 			double ds2(const double x[], const double y[]) {
@@ -316,33 +332,24 @@ namespace SBody {
 			}
 		} // namespace Kerr
 		namespace KerrH {
-			int qdq2qp(const double r[], double u[]) {
-				//[u^t,u^r,u^theta,u^phi]
-				u[0] = r[0];
-				u[1] = r[1];
-				u[2] = r[2];
-				u[3] = r[3];
-				const double r2 = gsl_pow_2(r[1]), sint2 = gsl_pow_2(sin(r[2]));
+			int qdq2qp(double r[]) {
+				const double dtaudt = r[4], r2 = gsl_pow_2(r[1]), sint2 = gsl_pow_2(sin(r[2]));
 				const double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * gsl_pow_2(cos(r[2]));
 				const double mr_rho2 = 2. * m * r[1] / rho2;
-				u[4] = (mr_rho2 - 1. - mr_rho2 * a * sint2 * r[7]) / r[4];
-				u[5] = rho2 * r[5] / (Delta * r[4]);
-				u[6] = rho2 * r[6] / r[4];
-				u[7] = (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 / r[4];
+				r[4] = (mr_rho2 - 1. - mr_rho2 * a * sint2 * r[7]) / dtaudt;
+				r[5] *= rho2 / (Delta * dtaudt);
+				r[6] *= rho2 / dtaudt;
+				r[7] = (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 / dtaudt;
 				return 0;
 			}
-			int qp2qdq(const double u[], double r[]) {
-				r[0] = u[0];
-				r[1] = u[1];
-				r[2] = u[2];
-				r[3] = u[3];
-				const double r2 = gsl_pow_2(r[1]);
+			int qp2qdq(double r[]) {
+				const double pt = r[4], r2 = gsl_pow_2(r[1]);
 				const double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * gsl_pow_2(cos(r[2]));
 				const double mr_rho2 = 2. * m * r[1] / rho2;
-				r[4] = -Delta / ((Delta + mr_rho2 * (a2 + r2)) * u[4] + mr_rho2 * a * u[7]);
-				r[5] = Delta / rho2 * u[5] * r[4];
-				r[6] = u[6] / rho2 * r[4];
-				r[7] = (-mr_rho2 * a * u[4] + (1. - mr_rho2) / gsl_pow_2(sin(r[2])) * u[7]) / Delta * r[4];
+				r[4] = -Delta / ((Delta + mr_rho2 * (a2 + r2)) * pt + mr_rho2 * a * r[7]);
+				r[5] *= Delta / rho2 * pt;
+				r[6] *= pt / rho2;
+				r[7] = (-mr_rho2 * a * pt + (1. - mr_rho2) / gsl_pow_2(sin(r[2])) * r[7]) / Delta * pt;
 				return 0;
 			}
 			int function(double t, const double y[], double dydt[], void *params) {

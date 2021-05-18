@@ -36,10 +36,10 @@ namespace SBody {
 					const double k = gsl_hypot(i - 0.5 * pixel + 0.5, j - 0.5 * pixel + 0.5);
 					ph[0] = 0;
 					ph[1] = r;
-					ph[2] = theta;
+					ph[2] = theta < M_PI_2 ? 0 : M_PI;
 					ph[4] = 1;
 					ph[5] = -1;
-					ph[6] = (theta < M_PI_2 ? 1 : -1) * tana_pix * k;
+					ph[6] = sign(M_PI_2 - theta) * tana_pix * k;
 					ph[7] = 0;
 					if (k < Constant::epsilon)
 						ph[3] = 0;

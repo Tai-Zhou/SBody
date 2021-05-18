@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
 	view cam = view(100, 2e-2, mass * 1000., M_PI_4, 0, tFinal, 3000);
 	cam.traceBack(1);
 	return 0;
-	double x[8], y[8], z[8];
+	double x[8], y[8];
 	if (NSK == 0) {
 		y[0] = Constant::AU / 100;
 		y[1] = 0;
@@ -181,25 +181,12 @@ int main(int argc, char *argv[]) {
 	output = Metric::name;
 	if (NSK != 0) {
 		Metric::c2s(x, y);
-		if (NSK == 1) {
-			if (PL)
-				Metric::Schwarzschild::particleNormalization(y);
-			else
-				Metric::Schwarzschild::lightNormalization(y);
-		}
-		else if (NSK == 2) {
-			if (PL)
-				Metric::Kerr::particleNormalization(y);
-			else
-				Metric::Kerr::lightNormalization(y);
-		}
-		else if (NSK == 3) {
-			if (PL)
-				Metric::Kerr::particleNormalization(z);
-			else
-				Metric::Kerr::lightNormalization(z);
-			Metric::KerrH::qdq2qp(z, y);
-		}
+		if (PL)
+			Metric::particleNormalization(y);
+		else
+			Metric::lightNormalization(y);
+		if (NSK == 3)
+			Metric::KerrH::qdq2qp(y);
 	}
 	integrator integ;
 	int status = 0;
@@ -213,13 +200,10 @@ int main(int argc, char *argv[]) {
 			bar.set_progress(100 * t / tFinal);
 		if (NSK == 0)
 			temp = {y[0], y[1], y[2], y[3], y[4], y[5], y[6], y[7]};
-		else if (NSK == 1)
+		else {
+			if (NSK == 3)
+				Metric::KerrH::qp2qdq(y);
 			Metric::s2c(y, &temp[0]);
-		else if (NSK == 2)
-			Metric::s2c(y, &temp[0]);
-		else if (NSK == 3) {
-			Metric::KerrH::qp2qdq(y, x);
-			Metric::s2c(x, &temp[0]);
 		}
 		temp[8] = t / Constant::s;
 		temp[9] = Metric::energy(y);
