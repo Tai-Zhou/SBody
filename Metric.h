@@ -1,8 +1,6 @@
 #ifndef _METRIC_H
 #define _METRIC_H
 
-#include <array>
-
 namespace SBody {
 	struct source {
 		const double mass;
@@ -11,11 +9,11 @@ namespace SBody {
 	};
 
 	namespace Metric {
-		extern std::array<int (*)(double, const double[], double[], void *), 4> function;
-		extern std::array<int (*)(double, const double[], double *, double[], void *), 4> jacobian;
-		extern std::array<double (*)(const double[], void *), 4> energy;
-		extern std::array<double (*)(const double[], void *), 4> angularMomentum;
-		extern std::array<double (*)(const double[], void *params), 4> carter;
+		extern int (*function)(double, const double[], double[], void *);
+		extern int (*jacobian)(double, const double[], double *, double[], void *);
+		extern double (*energy)(const double[], void *);
+		extern double (*angularMomentum)(const double[], void *);
+		extern double (*carter)(const double[], void *params);
 
 		// from cartesian to spherical
 		int c2s(const double x[], const double v[], double r[], double w[]);

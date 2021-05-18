@@ -178,7 +178,39 @@ int main(int argc, char *argv[]) {
 			x[7] = 0;
 		}
 	}
-	integrator integ(NSK, &params);
+	switch (NSK) {
+	case 0:
+		Metric::function = Metric::Newton::function;
+		Metric::jacobian = Metric::Newton::jacobian;
+		Metric::energy = Metric::Newton::energy;
+		Metric::angularMomentum = Metric::Newton::angularMomentum;
+		Metric::carter = Metric::Newton::carter;
+		break;
+	case 1:
+		Metric::function = Metric::Schwarzschild::function;
+		Metric::jacobian = Metric::Schwarzschild::jacobian;
+		Metric::energy = Metric::Schwarzschild::energy;
+		Metric::angularMomentum = Metric::Schwarzschild::angularMomentum;
+		Metric::carter = Metric::Schwarzschild::carter;
+		break;
+	case 2:
+		Metric::function = Metric::Kerr::function;
+		Metric::jacobian = Metric::Kerr::jacobian;
+		Metric::energy = Metric::Kerr::energy;
+		Metric::angularMomentum = Metric::Kerr::angularMomentum;
+		Metric::carter = Metric::Kerr::carter;
+		break;
+	case 3:
+		Metric::function = Metric::KerrH::function;
+		Metric::jacobian = Metric::KerrH::jacobian;
+		Metric::energy = Metric::KerrH::energy;
+		Metric::angularMomentum = Metric::KerrH::angularMomentum;
+		Metric::carter = Metric::KerrH::carter;
+		break;
+	default:
+		return 1;
+	}
+	integrator integ(&params);
 	if (NSK == 0)
 		output = "Newton";
 	else {
@@ -226,9 +258,9 @@ int main(int argc, char *argv[]) {
 			Metric::s2c(x, &temp[0]);
 		}
 		temp[8] = t / Constant::s;
-		temp[9] = Metric::energy[NSK](y, &params);
-		temp[10] = Metric::angularMomentum[NSK](y, &params);
-		temp[11] = Metric::carter[NSK](y, &params);
+		temp[9] = Metric::energy(y, &params);
+		temp[10] = Metric::angularMomentum(y, &params);
+		temp[11] = Metric::carter(y, &params);
 		rec.push_back(temp);
 		auto tpass = chrono::steady_clock::now() - start; // nano seconds
 		if (tpass.count() >= tCal * 1000000000)

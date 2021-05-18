@@ -11,6 +11,11 @@
 namespace SBody {
 	source::source(double mass, double spin) : mass(mass), spin(spin) {}
 	namespace Metric {
+		int (*function)(double, const double[], double[], void *) = nullptr;
+		int (*jacobian)(double, const double[], double *, double[], void *) = nullptr;
+		double (*energy)(const double[], void *) = nullptr;
+		double (*angularMomentum)(const double[], void *) = nullptr;
+		double (*carter)(const double[], void *params) = nullptr;
 		int c2s(const double x[], const double v[], double r[], double w[]) {
 			// x = {x, y, z}
 			// v = {v_x, v_y, v_z}
@@ -73,11 +78,6 @@ namespace SBody {
 			x[4] = r[4];
 			return s2c(r + 1, r + 5, x + 1, x + 5);
 		}
-		std::array<int (*)(double, const double[], double[], void *), 4> function{Newton::function, Schwarzschild::function, Kerr::function, KerrH::function};
-		std::array<int (*)(double, const double[], double *, double[], void *), 4> jacobian{Newton::jacobian, Schwarzschild::jacobian, Kerr::jacobian, KerrH::jacobian};
-		std::array<double (*)(const double[], void *), 4> energy{Newton::energy, Schwarzschild::energy, Kerr::energy, KerrH::energy};
-		std::array<double (*)(const double[], void *), 4> angularMomentum{Newton::angularMomentum, Schwarzschild::angularMomentum, Kerr::angularMomentum, KerrH::angularMomentum};
-		std::array<double (*)(const double[], void *params), 4> carter{Newton::carter, Schwarzschild::carter, Kerr::carter, KerrH::carter};
 		namespace Newton {
 			int PN = 1;
 			int function(double t, const double y[], double dydt[], void *params) {

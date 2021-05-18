@@ -28,7 +28,7 @@ namespace SBody {
 		const double mass = params->mass, sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), tFrame = tFinal / duration;
 		double ph[8] = {0., r, theta, phi, 1., -1., 0., 0.}, last[3], t = 0, tStep = 0, h = 1e-3;
 		int status = 0;
-		integrator integ(NSK, params);
+		integrator integ(params);
 		vector<vector<int>> screen(pixel, vector<int>(pixel));
 		if (theta < Constant::epsilon || M_PI - theta < Constant::epsilon) {
 			for (int i = 0; i < pixel; ++i)

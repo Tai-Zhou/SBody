@@ -14,7 +14,7 @@ namespace SBody {
 		gsl_odeiv2_evolve *evolve;
 		gsl_odeiv2_step *step;
 		gsl_odeiv2_system system;
-		integrator(size_t NSK, void *params, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
+		integrator(void *params, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
 		int apply(double *t, double t1, double *h, double *y);
 	};
 
