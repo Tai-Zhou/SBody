@@ -26,6 +26,14 @@ namespace SBody {
 
 	// Cross product of vector x \times y, stored in z
 	void cross(const double x[], const double y[], double z[]);
+
+	// return sign of x
+	int sign(int x);
+	double sign(double x);
+
+	// return 1 if x, y have opposite signs
+	int oppositeSign(double x, double y);
+
 	double _0x(double x);
 	double _0x1(double x);
 } // namespace SBody

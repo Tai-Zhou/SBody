@@ -8,7 +8,7 @@ namespace SBody {
 			virtual int hit(const double current[], const double last[]);
 		};
 		class star : public object {
-		  private:
+		  protected:
 			const int fixed;
 			const double radius;
 			double pos[8];
@@ -18,23 +18,30 @@ namespace SBody {
 			int hit(const double current[], const double last[]);
 		};
 		class disk : public object {
-		  private:
+		  protected:
 			const double innerRadius;
 			const double outerRadius;
+
+		  public:
+			disk(double innerRadius, double outerRadius);
+			int hit(const double current[], const double last[]);
+		};
+		class thickDisk : public disk {
+		  protected:
 			const double halfAngle;
 
 		  public:
-			disk(double innerRadius, double outerRadius, double halfAngle);
-			virtual int hit(const double current[], const double last[]);
+			thickDisk(double innerRadius, double outerRadius, double halfAngle);
+			int hit(const double current[], const double last[]);
 		};
 		class torus : public object {
-		  private:
+		  protected:
 			const double majorRadius;
 			const double minorRadius;
 
 		  public:
 			torus(double majorRadius, double minorRadius);
-			virtual int hit(const double current[], const double last[]);
+			int hit(const double current[], const double last[]);
 		};
 	} // namespace Object
 } // namespace SBody
