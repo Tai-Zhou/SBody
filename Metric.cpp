@@ -9,15 +9,18 @@
 #include "Utility.h"
 
 namespace SBody {
-	source::source(double mass, double spin) : mass(mass), spin(spin) {}
 	namespace Metric {
+		double m = 1;
+		double a = 0;
 		std::string name = "";
 		int (*function)(double, const double[], double[], void *) = nullptr;
 		int (*jacobian)(double, const double[], double *, double[], void *) = nullptr;
-		double (*energy)(const double[], void *) = nullptr;
-		double (*angularMomentum)(const double[], void *) = nullptr;
-		double (*carter)(const double[], void *params) = nullptr;
-		void setMetric(int NSK) {
+		double (*energy)(const double[]) = nullptr;
+		double (*angularMomentum)(const double[]) = nullptr;
+		double (*carter)(const double[]) = nullptr;
+		void setMetric(int NSK, double mass, double spin) {
+			m = mass;
+			a = mass * spin;
 			switch (NSK) {
 			case 0:
 				name = "Newton";
@@ -117,7 +120,7 @@ namespace SBody {
 		namespace Newton {
 			int PN = 1;
 			int function(double t, const double y[], double dydt[], void *params) {
-				const double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
+				const double r = norm(y), vsqr = dot(y + 3);
 				const double mr = m / r, r2 = gsl_pow_2(r), rdot = dot(y, y + 3) / r;
 				const double F = mr / r2, rdot2 = gsl_pow_2(rdot);
 				dydt[0] = y[3];
@@ -145,8 +148,8 @@ namespace SBody {
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 				return GSL_SUCCESS;
 			}
-			double energy(const double y[], void *params) {
-				const double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
+			double energy(const double y[]) {
+				const double r = norm(y), vsqr = dot(y + 3);
 				const double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = gsl_pow_2(vsqr), vsqr3 = gsl_pow_3(vsqr), vsqr4 = gsl_pow_4(vsqr);
 				const double mr2 = gsl_pow_2(mr), mr3 = gsl_pow_3(mr), mr4 = gsl_pow_4(mr), rdot2 = gsl_pow_2(rdot);
 				double E = 0.5 * vsqr - mr;
@@ -158,8 +161,8 @@ namespace SBody {
 					E += 0.375 * mr4 + 1.25 * mr3 * vsqr + 1.5 * mr3 * rdot2 + 0.2734375 * vsqr4 + 8.4375 * mr2 * vsqr2 + 0.75 * mr2 * vsqr * rdot2 + 3.4375 * mr * vsqr3;
 				return E;
 			}
-			double angularMomentum(const double y[], void *params) {
-				const double m = ((source *)params)->mass, r = norm(y), vsqr = dot(y + 3);
+			double angularMomentum(const double y[]) {
+				const double r = norm(y), vsqr = dot(y + 3);
 				const double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = gsl_pow_2(vsqr), vsqr3 = gsl_pow_3(vsqr);
 				const double mr2 = gsl_pow_2(mr), mr3 = gsl_pow_3(mr), rdot2 = gsl_pow_2(rdot);
 				double J[3], eff = 0;
@@ -174,7 +177,7 @@ namespace SBody {
 					J[i] += J[i] * eff;
 				return norm(J);
 			}
-			double carter(const double y[], void *params) { //FIXME: not verified!
+			double carter(const double y[]) { //FIXME: not verified!
 				double c[3];
 				cross(y + 1, y + 5, c);
 				return dot(c) / gsl_pow_2(y[4]);
@@ -186,7 +189,7 @@ namespace SBody {
 				dydt[1] = y[5]; //dr/dt
 				dydt[2] = y[6]; //d\theta/dt
 				dydt[3] = y[7]; //d\phi/dt
-				const double m = ((source *)params)->mass, r = y[1], sint = sin(y[2]), cost = cos(y[2]);
+				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]);
 				const double r2m = r - 2. * m, r3m = r - 3. * m;
 				const double r2mr = r2m * r;
 				//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
@@ -202,24 +205,24 @@ namespace SBody {
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 				return GSL_SUCCESS;
 			}
-			double energy(const double r[], void *params) {
-				return (2. * ((source *)params)->mass / r[1] - 1.) / r[4];
+			double energy(const double r[]) {
+				return (2. * m / r[1] - 1.) / r[4];
 			}
-			double angularMomentum(const double r[], void *params) {
+			double angularMomentum(const double r[]) {
 				return gsl_pow_2(r[1]) * r[7] / r[4];
 			}
-			double carter(const double y[], void *params) {
+			double carter(const double y[]) {
 				return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2]))) / gsl_pow_2(y[4]);
 			}
-			int particleNormalization(double y[], void *params) {
-				const double g00 = 1. - 2. * ((source *)params)->mass / y[1];
+			int particleNormalization(double y[]) {
+				const double g00 = 1. - 2. * m / y[1];
 				if (g00 <= 0)
 					return 1;
 				y[4] = sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
 				return std::isnan(y[4]);
 			}
-			int lightNormalization(double y[], void *params) {
-				const double g00 = 1. - 2. * ((source *)params)->mass / y[1];
+			int lightNormalization(double y[]) {
+				const double g00 = 1. - 2. * m / y[1];
 				if (g00 <= 0)
 					return 1;
 				const double eff = g00 / sqrt(gsl_pow_2(y[5]) + g00 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
@@ -236,7 +239,7 @@ namespace SBody {
 				dydt[1] = y[5]; //dr/dt
 				dydt[2] = y[6]; //d\theta/dt
 				dydt[3] = y[7]; //d\phi/dt
-				const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]), cost = cos(y[2]);
+				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]);
 				const double a2 = gsl_pow_2(a), a4 = gsl_pow_4(a), r2 = gsl_pow_2(r), r4 = gsl_pow_4(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost2 = gsl_pow_2(cost), cott = cost / sint;
 				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2, a2r2 = a2 + r2;
 				const double rho4 = gsl_pow_2(rho2), rho6 = gsl_pow_3(rho2), r2rho2 = 2. * r2 - rho2;
@@ -254,34 +257,31 @@ namespace SBody {
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 				return GSL_SUCCESS;
 			}
-			double energy(const double r[], void *params) {
-				const double m = ((source *)params)->mass, a = ((source *)params)->spin;
+			double energy(const double r[]) {
 				const double rho2 = gsl_pow_2(r[1]) + gsl_pow_2(a) * gsl_pow_2(cos(r[2]));
 				return (2. * m * r[1] / rho2 * (1. - a * gsl_pow_2(sin(r[2])) * r[7]) - 1.) / r[4];
 			}
-			double angularMomentum(const double r[], void *params) {
-				const double m = ((source *)params)->mass, a = ((source *)params)->spin;
+			double angularMomentum(const double r[]) {
 				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r[1]), sint2 = gsl_pow_2(sin(r[2]));
 				const double mr_rho2 = 2. * m * r[1] / (r2 + a2 * gsl_pow_2(cos(r[2])));
 				return (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 / r[4];
 			}
-			double carter(const double y[], void *params) {
-				const double m = ((source *)params)->mass, a = ((source *)params)->spin;
+			double carter(const double y[]) {
 				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2])), cost2 = gsl_pow_2(cos(y[2]));
 				const double rho2 = r2 + a2 * cost2;
 				const double mr_rho2 = 2. * m * y[1] / rho2;
 				return cost2 * a2 + (gsl_pow_2(rho2 * y[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * y[7]) * sint2 - a2 * gsl_pow_2(mr_rho2 * (1. - a * sint2 * y[7]) - 1.))) / gsl_pow_2(y[4]);
 			}
-			int particleNormalization(double y[], void *params) {
-				const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
+			int particleNormalization(double y[]) {
+				const double r = y[1], sint = sin(y[2]);
 				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
 				const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
 				const double mr_rho2 = 2. * m * r / rho2;
 				y[4] = sqrt(1. - mr_rho2 + 2. * mr_rho2 * a * sint2 * y[7] - (rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7])));
 				return std::isnan(y[4]);
 			}
-			int lightNormalization(double y[], void *params) {
-				const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
+			int lightNormalization(double y[]) {
+				const double r = y[1], sint = sin(y[2]);
 				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
 				const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
 				const double mr_rho2 = 2. * m * r / rho2;
@@ -297,13 +297,12 @@ namespace SBody {
 			}
 		} // namespace Kerr
 		namespace KerrH {
-			int qdq2qp(const double r[], double u[], void *params) {
+			int qdq2qp(const double r[], double u[]) {
 				//[u^t,u^r,u^theta,u^phi]
 				u[0] = r[0];
 				u[1] = r[1];
 				u[2] = r[2];
 				u[3] = r[3];
-				const double m = ((source *)params)->mass, a = ((source *)params)->spin;
 				const double r2 = gsl_pow_2(r[1]), a2 = gsl_pow_2(a), sint2 = gsl_pow_2(sin(r[2]));
 				const double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * gsl_pow_2(cos(r[2]));
 				const double mr_rho2 = 2. * m * r[1] / rho2;
@@ -313,12 +312,11 @@ namespace SBody {
 				u[7] = (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 / r[4];
 				return 0;
 			}
-			int qp2qdq(const double u[], double r[], void *params) {
+			int qp2qdq(const double u[], double r[]) {
 				r[0] = u[0];
 				r[1] = u[1];
 				r[2] = u[2];
 				r[3] = u[3];
-				const double m = ((source *)params)->mass, a = ((source *)params)->spin;
 				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r[1]);
 				const double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * gsl_pow_2(cos(r[2]));
 				const double mr_rho2 = 2. * m * r[1] / rho2;
@@ -329,7 +327,7 @@ namespace SBody {
 				return 0;
 			}
 			int function(double t, const double y[], double dydt[], void *params) {
-				const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]), cost = cos(y[2]), Theta = gsl_pow_2(y[6]);
+				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]), Theta = gsl_pow_2(y[6]);
 				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost2 = gsl_pow_2(cost);
 				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2, a2r2 = a2 + r2;
 				const double rho4 = gsl_pow_2(rho2);
@@ -349,25 +347,25 @@ namespace SBody {
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 				return GSL_SUCCESS;
 			}
-			double energy(const double r[], void *params) {
+			double energy(const double r[]) {
 				return -r[4];
 			}
-			double angularMomentum(const double r[], void *params) {
+			double angularMomentum(const double r[]) {
 				return r[7];
 			}
-			double carter(const double y[], void *params) {
-				return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (gsl_pow_2(((source *)params)->spin) * (1. - gsl_pow_2(y[4])) + gsl_pow_2(y[7]) / gsl_pow_2(sin(y[2])));
+			double carter(const double y[]) {
+				return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (gsl_pow_2(a) * (1. - gsl_pow_2(y[4])) + gsl_pow_2(y[7]) / gsl_pow_2(sin(y[2])));
 			}
-			int particleNormalization(double y[], void *params) {
-				const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
+			int particleNormalization(double y[]) {
+				const double r = y[1], sint = sin(y[2]);
 				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
 				const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
 				const double mr_rho2 = 2. * m * r / rho2;
 				y[4] = sqrt(1 - mr_rho2 + 2 * mr_rho2 * a * sint2 * y[7] - (rho2 / (r2 - 2 * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7])));
 				return std::isnan(y[4]);
 			}
-			int lightNormalization(double y[], void *params) {
-				const double m = ((source *)params)->mass, a = ((source *)params)->spin, r = y[1], sint = sin(y[2]);
+			int lightNormalization(double y[]) {
+				const double r = y[1], sint = sin(y[2]);
 				const double a2 = gsl_pow_2(a), r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
 				const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
 				const double mr_rho2 = 2. * m * r / rho2;

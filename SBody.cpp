@@ -148,9 +148,8 @@ int main(int argc, char *argv[]) {
 	Metric::Newton::PN = PN;
 	if (progressBar)
 		indicators::show_console_cursor(false);
-	source params(mass, spin * mass);
 	view cam = view(100, 2e-2, mass * 1000., M_PI_4, 0, tFinal, 3000);
-	cam.traceBack(1, &params);
+	cam.traceBack(1);
 	return 0;
 	double x[8], y[8], z[8];
 	if (NSK == 0) {
@@ -178,31 +177,31 @@ int main(int argc, char *argv[]) {
 			x[7] = 0;
 		}
 	}
-	Metric::setMetric(NSK);
+	Metric::setMetric(NSK, mass, spin);
 	output = Metric::name;
 	if (NSK != 0) {
 		Metric::c2s(x, y);
 		if (NSK == 1) {
 			if (PL)
-				Metric::Schwarzschild::particleNormalization(y, &params);
+				Metric::Schwarzschild::particleNormalization(y);
 			else
-				Metric::Schwarzschild::lightNormalization(y, &params);
+				Metric::Schwarzschild::lightNormalization(y);
 		}
 		else if (NSK == 2) {
 			if (PL)
-				Metric::Kerr::particleNormalization(y, &params);
+				Metric::Kerr::particleNormalization(y);
 			else
-				Metric::Kerr::lightNormalization(y, &params);
+				Metric::Kerr::lightNormalization(y);
 		}
 		else if (NSK == 3) {
 			if (PL)
-				Metric::KerrH::particleNormalization(z, &params);
+				Metric::KerrH::particleNormalization(z);
 			else
-				Metric::KerrH::lightNormalization(z, &params);
-			Metric::KerrH::qdq2qp(z, y, &params);
+				Metric::KerrH::lightNormalization(z);
+			Metric::KerrH::qdq2qp(z, y);
 		}
 	}
-	integrator integ(&params);
+	integrator integ;
 	int status = 0;
 	vector<vector<double>> rec;
 	vector<double> temp(12);
@@ -219,13 +218,13 @@ int main(int argc, char *argv[]) {
 		else if (NSK == 2)
 			Metric::s2c(y, &temp[0]);
 		else if (NSK == 3) {
-			Metric::KerrH::qp2qdq(y, x, &params);
+			Metric::KerrH::qp2qdq(y, x);
 			Metric::s2c(x, &temp[0]);
 		}
 		temp[8] = t / Constant::s;
-		temp[9] = Metric::energy(y, &params);
-		temp[10] = Metric::angularMomentum(y, &params);
-		temp[11] = Metric::carter(y, &params);
+		temp[9] = Metric::energy(y);
+		temp[10] = Metric::angularMomentum(y);
+		temp[11] = Metric::carter(y);
 		rec.push_back(temp);
 		auto tpass = chrono::steady_clock::now() - start; // nano seconds
 		if (tpass.count() >= tCal * 1000000000)

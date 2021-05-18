@@ -24,11 +24,11 @@ namespace SBody {
 		  frame(frame) {
 		initials = vector<array<double, 9>>(pixel * pixel);
 	}
-	void view::traceBack(size_t NSK, source *params) {
-		const double mass = params->mass, sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), tFrame = tFinal / duration;
+	void view::traceBack(size_t NSK) {
+		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), tFrame = tFinal / duration;
 		double ph[8] = {0., r, theta, phi, 1., -1., 0., 0.}, last[3], t = 0, tStep = 0, h = 1e-3;
 		int status = 0;
-		integrator integ(params);
+		integrator integ(nullptr);
 		vector<vector<int>> screen(pixel, vector<int>(pixel));
 		if (theta < Constant::epsilon || M_PI - theta < Constant::epsilon) {
 			for (int i = 0; i < pixel; ++i)
@@ -50,14 +50,14 @@ namespace SBody {
 							ph[3] = (theta < M_PI_2 ? 1. : -1.) * (2. * M_PI - acos((j - 0.5 * pixel + 0.5) / k));
 					}
 					if (NSK == 1)
-						Metric::Schwarzschild::lightNormalization(ph, params);
+						Metric::Schwarzschild::lightNormalization(ph);
 					else if (NSK == 2)
-						Metric::Kerr::lightNormalization(ph, params);
+						Metric::Kerr::lightNormalization(ph);
 					else if (NSK == 3)
-						Metric::KerrH::lightNormalization(ph, params);
+						Metric::KerrH::lightNormalization(ph);
 					while (status == 0) {
 						status = integ.apply(&t, GSL_POSINF, &h, ph);
-						if (ph[1] < 100 * mass) {
+						if (ph[1] < 100 * Metric::m) {
 							initials[i * pixel + j] = {ph[0], ph[1], ph[2], ph[3], ph[4], ph[5], ph[6], ph[7], t};
 							break;
 						}
@@ -76,14 +76,14 @@ namespace SBody {
 					ph[6] = tana_pix * (i - 0.5 * pixel + 0.5);
 					ph[7] = tana_pix * (j - 0.5 * pixel + 0.5) / sint;
 					if (NSK == 1)
-						Metric::Schwarzschild::lightNormalization(ph, params);
+						Metric::Schwarzschild::lightNormalization(ph);
 					else if (NSK == 2)
-						Metric::Kerr::lightNormalization(ph, params);
+						Metric::Kerr::lightNormalization(ph);
 					else if (NSK == 3)
-						Metric::KerrH::lightNormalization(ph, params);
+						Metric::KerrH::lightNormalization(ph);
 					while (status == 0) {
 						status = integ.apply(&t, GSL_POSINF, &h, ph);
-						if (ph[1] < 100 * mass) {
+						if (ph[1] < 100 * Metric::m) {
 							initials[i * pixel + j] = {ph[0], ph[1], ph[2], ph[3], ph[4], ph[5], ph[6], ph[7], t};
 							break;
 						}
@@ -101,7 +101,7 @@ namespace SBody {
 						last[1] = ph[2];
 						last[2] = ph[3];
 						status = integ.apply(&t, tStep, &h, ph);
-						if (ph[1] > 6 * mass && ph[1] < 12 * mass && (ph[2] - M_PI_2) * (last[1] - M_PI_2) < 0)
+						if (ph[1] > 6 * Metric::m && ph[1] < 12 * Metric::m && (ph[2] - M_PI_2) * (last[1] - M_PI_2) < 0)
 							screen[i][j] = 1;
 					}
 				}
