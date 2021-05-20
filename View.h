@@ -4,8 +4,6 @@
 #include <array>
 #include <vector>
 
-#include "Utility.h"
-
 namespace SBody {
 	class view {
 	  private:

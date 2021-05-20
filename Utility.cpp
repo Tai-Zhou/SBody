@@ -5,15 +5,14 @@
 #include <gsl/gsl_math.h>
 
 #include "Constant.h"
-#include "Metric.h"
 
 namespace SBody {
 	double absAcc = 1e-15, relAcc = 1e-15;
 	const double epsilon = 1e-9;
 	const double M_2PI = 6.28318530717958647692528676655900576;
 	const double M_PI2 = 9.86960440108935861883449099987615111;
-	integrator::integrator(int cartesian, void *params, const gsl_odeiv2_step_type *type) : cartesian(cartesian), type(type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(type, 8)) {
-		system = {Metric::function, Metric::jacobian, 8, params};
+	integrator::integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int cartesian, void *params, const gsl_odeiv2_step_type *type) : cartesian(cartesian), type(type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(type, 8)) {
+		system = {function, jacobian, 8, params};
 	}
 	int integrator::apply(double *t, double t1, double *h, double *y) {
 		int status = gsl_odeiv2_evolve_apply(evolve, control, step, &system, t, t1, h, y);

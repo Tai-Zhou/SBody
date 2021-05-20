@@ -10,6 +10,7 @@
 #include "IO.h"
 #include "Metric.h"
 #include "Object.h"
+#include "Utility.h"
 
 using namespace std;
 
@@ -29,7 +30,7 @@ namespace SBody {
 		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), tFrame = 30 * Constant::R_sun;
 		double ph[8] = {0., r, theta, phi, 1., -1., 0., 0.}, last[8], t = 0, tStep = 0, h = 1e-3;
 		int status = 0;
-		integrator integ(0);
+		integrator integ(Metric::function, Metric::jacobian, 0);
 		vector<vector<int>> screen(pixel, vector<int>(pixel));
 		if (theta < epsilon || M_PI - theta < epsilon) {
 			for (int i = 0; i < pixel; ++i)

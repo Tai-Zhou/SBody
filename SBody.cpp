@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
 		if (NSK == 3)
 			Metric::KerrH::qdq2qp(y);
 	}
-	integrator integ(NSK == 0);
+	integrator integ(Metric::function, Metric::jacobian, NSK == 0);
 	int status = 0;
 	vector<vector<double>> rec;
 	vector<double> temp(12);
