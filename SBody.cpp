@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
 	output = Metric::name;
 	if (progressBar)
 		indicators::show_console_cursor(false);
-	view cam = view(100, 2e-2, mass * 1000., M_PI_2, 0, tFinal, 3000);
+	view cam = view(100, 2e-2, mass * 1000., M_PI_2, tFinal, 3000);
 	cam.traceBack();
 	return 0;
 	double x[8], y[8];

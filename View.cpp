@@ -15,12 +15,11 @@
 using namespace std;
 
 namespace SBody {
-	view::view(size_t pixel, double viewAngle, double r, double theta, double phi, double tFinal, size_t duration, size_t frame)
+	view::view(size_t pixel, double viewAngle, double r, double theta, double tFinal, size_t duration, size_t frame)
 		: pixel(pixel),
 		  viewAngle(viewAngle),
 		  r(r),
 		  theta(theta),
-		  phi(phi),
 		  tFinal(tFinal),
 		  duration(duration),
 		  frame(frame) {
@@ -28,7 +27,7 @@ namespace SBody {
 	}
 	void view::traceBack() {
 		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), tFrame = 30 * Constant::R_sun;
-		double ph[8] = {0., r, theta, phi, 1., -1., 0., 0.}, last[8], t = 0, tStep = 0, h = 1e-3;
+		double ph[8] = {0., r, theta, 0, 1., -1., 0., 0.}, last[8], t = 0, tStep = 0, h = 1e-3;
 		int status = 0;
 		integrator integ(Metric::function, Metric::jacobian, 0);
 		vector<vector<int>> screen(pixel, vector<int>(pixel));
@@ -73,7 +72,7 @@ namespace SBody {
 					ph[0] = 0;
 					ph[1] = r;
 					ph[2] = theta;
-					ph[3] = phi;
+					ph[3] = 0;
 					ph[4] = 1;
 					ph[5] = -1;
 					ph[6] = tana_pix * (i - 0.5 * pixel + 0.5);
