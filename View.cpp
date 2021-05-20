@@ -15,17 +15,13 @@
 using namespace std;
 
 namespace SBody {
-	view::view(size_t pixel, double viewAngle, double r, double theta, double tFinal, size_t duration, size_t frame)
-		: pixel(pixel),
-		  viewAngle(viewAngle),
-		  r(r),
-		  theta(theta),
-		  tFinal(tFinal),
-		  duration(duration),
-		  frame(frame) {
+	view::view(double viewAngle, double r, double theta, double tFinal, size_t duration, size_t frame)
+		: viewAngle(viewAngle), r(r), theta(theta), tFinal(tFinal), duration(duration), frame(frame) {}
+	void view::traceBack() {}
+	camera::camera(size_t pixel, double viewAngle, double r, double theta, double tFinal, size_t duration, size_t frame) : view(viewAngle, r, theta, tFinal, duration, frame), pixel(pixel) {
 		initials = vector<array<double, 9>>(pixel * pixel);
 	}
-	void view::traceBack() {
+	void camera::traceBack() {
 		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), tFrame = 30 * Constant::R_sun;
 		double ph[8] = {0., r, theta, 0, 1., -1., 0., 0.}, last[8], t = 0, tStep = 0, h = 1e-3;
 		int status = 0;
