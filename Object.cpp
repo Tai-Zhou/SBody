@@ -7,6 +7,7 @@
 
 namespace SBody {
 	namespace Object {
+		std::vector<object *> objectList;
 		star::star(double radius, const double position[], int fixed) : fixed(fixed), radius(radius), r2(gsl_pow_2(radius)) {
 			for (int i = 0; i < 8; ++i)
 				pos[i] = position[i];

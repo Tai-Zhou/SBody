@@ -1,9 +1,16 @@
 #ifndef _OBJECT_H
 #define _OBJECT_H
 
+#include <vector>
+
 namespace SBody {
 	namespace Object {
-		class star {
+		class object {
+		  public:
+			virtual int hit(const double current[], const double last[]) = 0;
+		};
+		extern std::vector<object *> objectList;
+		class star : public object {
 		  protected:
 			const int fixed;
 			const double radius;
@@ -14,7 +21,7 @@ namespace SBody {
 			star(double radius, const double position[], int fixed = 0);
 			int hit(const double current[], const double last[] = nullptr);
 		};
-		class disk {
+		class disk : public object {
 		  protected:
 			const double innerRadius;
 			const double outerRadius;
@@ -31,7 +38,7 @@ namespace SBody {
 			thickDisk(double innerRadius, double outerRadius, double halfAngle);
 			int hit(const double current[], const double last[] = nullptr);
 		};
-		class torus {
+		class torus : public object {
 		  protected:
 			const double majorRadius;
 			const double minorRadius;

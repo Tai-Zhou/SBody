@@ -20,13 +20,11 @@ namespace SBody {
 	void view::traceBack() {}
 	camera::camera(size_t pixel, double viewAngle, double r, double theta, double tFinal, size_t duration, size_t frame) : view(viewAngle, r, theta, tFinal, duration, frame), pixel(pixel) {
 		initials = vector<array<double, 9>>(pixel * pixel);
-	}
-	void camera::traceBack() {
-		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), tFrame = 30 * Constant::R_sun;
-		double ph[8] = {0., r, theta, 0, 1., -1., 0., 0.}, last[8], t = 0, tStep = 0, h = 1e-3;
+		screen = vector<vector<int>>(pixel, vector<int>(pixel));
+		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel);
+		double ph[8] = {0., r, theta, 0, 1., -1., 0., 0.}, t = 0, h = 1e-3;
 		int status = 0;
 		integrator integ(Metric::function, Metric::jacobian, 0);
-		vector<vector<int>> screen(pixel, vector<int>(pixel));
 		if (theta < epsilon || M_PI - theta < epsilon) {
 			for (int i = 0; i < pixel; ++i)
 				for (int j = 0; j < pixel; ++j) {
@@ -82,7 +80,11 @@ namespace SBody {
 						}
 					}
 				}
-		double pos[8] = {0., 6. * Metric::m, M_PI_2, M_PI};
+	}
+	void camera::traceBack() {
+		double pos[8] = {0., 6. * Metric::m, M_PI_2, M_PI}, ph[8] = {0., r, theta, 0, 1., -1., 0., 0.}, last[8], t = 0, h = 1e-3;
+		int status = 0;
+		integrator integ(Metric::function, Metric::jacobian, 0);
 		Object::star fStar(5 * Constant::R_sun, pos, 1);
 		for (int i = 0; i < pixel; ++i)
 			for (int j = 0; j < pixel; ++j) {
@@ -108,6 +110,8 @@ namespace SBody {
 					}
 				}
 			}
+	}
+	void camera::save() {
 		IO::NumPySave(screen, "screen");
 	}
 } // namespace SBody
