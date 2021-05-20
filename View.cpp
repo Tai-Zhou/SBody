@@ -9,6 +9,7 @@
 #include "Constant.h"
 #include "IO.h"
 #include "Metric.h"
+#include "Object.h"
 
 using namespace std;
 
@@ -24,15 +25,18 @@ namespace SBody {
 		  frame(frame) {
 		initials = vector<array<double, 9>>(pixel * pixel);
 	}
-	void view::traceBack(size_t NSK) {
-		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), tFrame = tFinal / duration;
-		double ph[8] = {0., r, theta, phi, 1., -1., 0., 0.}, last[3], t = 0, tStep = 0, h = 1e-3;
+	void view::traceBack() {
+		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), tFrame = 30 * Constant::R_sun;
+		double ph[8] = {0., r, theta, phi, 1., -1., 0., 0.}, last[8], t = 0, tStep = 0, h = 1e-3;
 		int status = 0;
-		integrator integ(nullptr);
+		integrator integ(0);
 		vector<vector<int>> screen(pixel, vector<int>(pixel));
-		if (theta < Constant::epsilon || M_PI - theta < Constant::epsilon) {
+		if (theta < epsilon || M_PI - theta < epsilon) {
 			for (int i = 0; i < pixel; ++i)
 				for (int j = 0; j < pixel; ++j) {
+					integ.reset();
+					t = 0;
+					h = 1e-3;
 					const double k = gsl_hypot(i - 0.5 * pixel + 0.5, j - 0.5 * pixel + 0.5);
 					ph[0] = 0;
 					ph[1] = r;
@@ -41,7 +45,7 @@ namespace SBody {
 					ph[5] = -1;
 					ph[6] = sign(M_PI_2 - theta) * tana_pix * k;
 					ph[7] = 0;
-					if (k < Constant::epsilon)
+					if (k < epsilon)
 						ph[3] = 0;
 					else {
 						if (2 * i <= pixel)
@@ -49,12 +53,9 @@ namespace SBody {
 						else
 							ph[3] = (theta < M_PI_2 ? 1. : -1.) * (2. * M_PI - acos((j - 0.5 * pixel + 0.5) / k));
 					}
-					if (NSK == 1)
-						Metric::Schwarzschild::lightNormalization(ph);
-					else if (NSK == 2 || NSK == 3)
-						Metric::Kerr::lightNormalization(ph);
-					while (status == 0) {
-						status = integ.apply(&t, GSL_POSINF, &h, ph);
+					Metric::lightNormalization(ph);
+					while (status == 0 && t < tFinal) {
+						status = integ.apply(&t, tFinal, &h, ph);
 						if (ph[1] < 100 * Metric::m) {
 							initials[i * pixel + j] = {ph[0], ph[1], ph[2], ph[3], ph[4], ph[5], ph[6], ph[7], t};
 							break;
@@ -65,6 +66,9 @@ namespace SBody {
 		else
 			for (int i = 0; i < pixel; ++i)
 				for (int j = 0; j < pixel; ++j) {
+					integ.reset();
+					t = 0;
+					h = 1e-3;
 					ph[0] = 0;
 					ph[1] = r;
 					ph[2] = theta;
@@ -73,32 +77,38 @@ namespace SBody {
 					ph[5] = -1;
 					ph[6] = tana_pix * (i - 0.5 * pixel + 0.5);
 					ph[7] = tana_pix * (j - 0.5 * pixel + 0.5) / sint;
-					if (NSK == 1)
-						Metric::Schwarzschild::lightNormalization(ph);
-					else if (NSK == 2 || NSK == 3)
-						Metric::Kerr::lightNormalization(ph);
-					while (status == 0) {
-						status = integ.apply(&t, GSL_POSINF, &h, ph);
+					Metric::lightNormalization(ph);
+					while (status == 0 && t < tFinal) {
+						status = integ.apply(&t, tFinal, &h, ph);
 						if (ph[1] < 100 * Metric::m) {
 							initials[i * pixel + j] = {ph[0], ph[1], ph[2], ph[3], ph[4], ph[5], ph[6], ph[7], t};
 							break;
 						}
 					}
 				}
+		double pos[8] = {0., 6. * Metric::m, M_PI_2, M_PI};
+		Object::star fStar(5 * Constant::R_sun, pos, 1);
 		for (int i = 0; i < pixel; ++i)
 			for (int j = 0; j < pixel; ++j) {
-				t = 0;
-				tStep = 0;
+				integ.reset();
 				h = 1e-3;
-				while (tStep < tFinal) {
-					tStep += tFrame;
-					while (status == 0 && t < tStep) {
-						last[0] = ph[1];
-						last[1] = ph[2];
-						last[2] = ph[3];
-						status = integ.apply(&t, tStep, &h, ph);
-						if (ph[1] > 6 * Metric::m && ph[1] < 12 * Metric::m && (ph[2] - M_PI_2) * (last[1] - M_PI_2) < 0)
-							screen[i][j] = 1;
+				ph[0] = initials[i * pixel + j][0];
+				ph[1] = initials[i * pixel + j][1];
+				ph[2] = initials[i * pixel + j][2];
+				ph[3] = initials[i * pixel + j][3];
+				ph[4] = initials[i * pixel + j][4];
+				ph[5] = initials[i * pixel + j][5];
+				ph[6] = initials[i * pixel + j][6];
+				ph[7] = initials[i * pixel + j][7];
+				t = initials[i * pixel + j][8];
+				while (status == 0 && t < tFinal) {
+					last[1] = ph[1];
+					last[2] = ph[2];
+					last[3] = ph[3];
+					status = integ.apply(&t, tFinal, &h, ph);
+					if (fStar.hit(ph, last)) {
+						screen[i][j] = 1;
+						break;
 					}
 				}
 			}

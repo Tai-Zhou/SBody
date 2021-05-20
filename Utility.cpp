@@ -9,11 +9,27 @@
 
 namespace SBody {
 	double absAcc = 1e-15, relAcc = 1e-15;
-	integrator::integrator(void *params, const gsl_odeiv2_step_type *type) : type(type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(type, 8)) {
+	const double epsilon = 1e-9;
+	const double M_2PI = 6.28318530717958647692528676655900576;
+	const double M_PI2 = 9.86960440108935861883449099987615111;
+	integrator::integrator(int cartesian, void *params, const gsl_odeiv2_step_type *type) : cartesian(cartesian), type(type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(type, 8)) {
 		system = {Metric::function, Metric::jacobian, 8, params};
 	}
 	int integrator::apply(double *t, double t1, double *h, double *y) {
-		return gsl_odeiv2_evolve_apply(evolve, control, step, &system, t, t1, h, y);
+		int status = gsl_odeiv2_evolve_apply(evolve, control, step, &system, t, t1, h, y);
+		if (!cartesian) {
+			y[2] = mod2Pi(y[2]);
+			if (y[2] >= M_PI) {
+				y[2] = M_2PI - y[2];
+				y[6] = -y[6];
+				y[3] += M_PI;
+			}
+			y[3] = mod2Pi(y[3]);
+		}
+		return status;
+	}
+	int integrator::reset() {
+		return gsl_odeiv2_evolve_reset(evolve);
 	}
 	double dot(const double x[], const double y[], size_t dimension) {
 		if (dimension == 3) {
@@ -47,6 +63,13 @@ namespace SBody {
 	}
 	int oppositeSign(double x, double y) {
 		return (x >= 0. && y <= 0.) || (x <= 0. && y >= 0.);
+	}
+	double mod2Pi(double x) {
+		while (x < 0)
+			x += M_2PI;
+		while (x >= M_2PI)
+			x -= M_2PI;
+		return x;
 	}
 	double _0x(double x) {
 		return x > 0 ? x : 0;

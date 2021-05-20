@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
 	double h = 1e-3;
 	mass = 4e6;
 	spin = 0;
-	tFinal = 5e4;
+	tFinal = 1e6;
 	tRec = 1e-5 * tFinal;
 	tCal = 3600;
 	NSK = 1;
@@ -145,11 +145,13 @@ int main(int argc, char *argv[]) {
 		}
 	tFinal *= Constant::s;
 	tRec *= Constant::s;
+	Metric::setMetric(NSK, mass, spin);
 	Metric::Newton::PN = PN;
+	output = Metric::name;
 	if (progressBar)
 		indicators::show_console_cursor(false);
-	view cam = view(100, 2e-2, mass * 1000., M_PI_4, 0, tFinal, 3000);
-	cam.traceBack(1);
+	view cam = view(100, 2e-2, mass * 1000., M_PI_2, 0, tFinal, 3000);
+	cam.traceBack();
 	return 0;
 	double x[8], y[8];
 	if (NSK == 0) {
@@ -176,10 +178,6 @@ int main(int argc, char *argv[]) {
 			x[6] = 1;
 			x[7] = 0;
 		}
-	}
-	Metric::setMetric(NSK, mass, spin);
-	output = Metric::name;
-	if (NSK != 0) {
 		Metric::c2s(x, y);
 		if (PL)
 			Metric::particleNormalization(y);
@@ -188,7 +186,7 @@ int main(int argc, char *argv[]) {
 		if (NSK == 3)
 			Metric::KerrH::qdq2qp(y);
 	}
-	integrator integ;
+	integrator integ(NSK == 0);
 	int status = 0;
 	vector<vector<double>> rec;
 	vector<double> temp(12);

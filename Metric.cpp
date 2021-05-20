@@ -78,14 +78,14 @@ namespace SBody {
 			// r = {r, \theta, \phi}
 			// w = {v_r, v_\theta, v_\phi}
 			r[0] = norm(x);
-			if (r[0] < Constant::epsilon)
+			if (r[0] < epsilon)
 				return 1;
 			r[1] = acos(x[2] / r[0]);
 			w[0] = dot(x, v) / r[0];
 			double normXY = norm(x, 2);
-			if (normXY < Constant::epsilon) {
+			if (normXY < epsilon) {
 				double normVXY = norm(v, 2);
-				if (normVXY < Constant::epsilon) {
+				if (normVXY < epsilon) {
 					r[2] = 0;
 					w[1] = 0;
 				}
@@ -211,7 +211,7 @@ namespace SBody {
 		} // namespace Newton
 		namespace Schwarzschild {
 			double ds2(const double x[], const double y[]) {
-				return (1 - 2 * m / x[1]) * gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * (x[3] - y[3]));
+				return x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2 * m) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * (x[3] - y[3]));
 			}
 			int function(double t, const double y[], double dydt[], void *params) {
 				dydt[0] = y[4]; //d\tau/dt

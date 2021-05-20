@@ -8,14 +8,20 @@
 namespace SBody {
 	extern double absAcc;
 	extern double relAcc;
+	extern const double epsilon;
+	extern const double M_2PI;
+	extern const double M_PI2;
 	struct integrator {
+		const int cartesian;
 		const gsl_odeiv2_step_type *type;
 		gsl_odeiv2_control *control;
 		gsl_odeiv2_evolve *evolve;
 		gsl_odeiv2_step *step;
 		gsl_odeiv2_system system;
-		integrator(void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
+		integrator(int cartesian, void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
 		int apply(double *t, double t1, double *h, double *y);
+		int reset();
+		int checkCoordinate(double *y);
 	};
 
 	// Dot product of vector x·y, or x·x if y == nullptr
@@ -33,6 +39,9 @@ namespace SBody {
 
 	// return 1 if x, y have opposite signs
 	int oppositeSign(double x, double y);
+
+	// return x in [0, 2*pi)
+	double mod2Pi(double x);
 
 	double _0x(double x);
 	double _0x1(double x);

@@ -4,9 +4,6 @@
 
 namespace SBody {
 	namespace Constant {
-		// Math
-		const double epsilon = 1e-9;
-		const double pi2 = 9.86960440108935861883449099987615111;
 		// Physical
 		const double e = 1.60217662e-19;
 		const double h = 7.52764601e-76;
@@ -16,6 +13,7 @@ namespace SBody {
 		const double yr = 6.40699584e12;
 		// Length
 		const double cm = 6.77219994e-6;
+		const double R_sun = 4.71141950e5;
 		const double AU = 1.01310669e8;
 		const double pc = 2.08968255e13;
 		// Mass

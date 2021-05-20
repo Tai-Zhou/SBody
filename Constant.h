@@ -15,6 +15,7 @@ namespace SBody {
 		extern const double yr;
 		// Length
 		extern const double cm;
+		extern const double R_sun;
 		extern const double AU;
 		extern const double pc;
 		// Mass
