@@ -95,14 +95,14 @@ namespace SBody {
 			double ph[8] = {0., r, theta, 0, 1., -1., 0., 0.}, last[8], t = 0, h = 1e-3; // TODO: should add t_0 (initials[8]) here
 			int status = 0;
 			integrator integ(Metric::function, Metric::jacobian, 0);
-			ph[0] = initials[i * pixel + j][0];
-			ph[1] = initials[i * pixel + j][1];
-			ph[2] = initials[i * pixel + j][2];
-			ph[3] = initials[i * pixel + j][3];
-			ph[4] = initials[i * pixel + j][4];
-			ph[5] = initials[i * pixel + j][5];
-			ph[6] = initials[i * pixel + j][6];
-			ph[7] = initials[i * pixel + j][7];
+			ph[0] = initials[p][0];
+			ph[1] = initials[p][1];
+			ph[2] = initials[p][2];
+			ph[3] = initials[p][3];
+			ph[4] = initials[p][4];
+			ph[5] = initials[p][5];
+			ph[6] = initials[p][6];
+			ph[7] = initials[p][7];
 			while (status == 0 && t < 1000. * Metric::m) {
 				last[1] = ph[1];
 				last[2] = ph[2];
@@ -110,8 +110,8 @@ namespace SBody {
 				status = integ.apply(&t, 1000. * Metric::m, &h, ph);
 				for (auto objP : Object::objectList)
 					if (objP->hit(ph, last))
-						screen[i][j] = 1;
-				if (screen[i][j])
+						screen[i][j] = objP->frequency(ph, last); //FIXME: if multi objects
+				if (screen[i][j] > epsilon)
 					break;
 			}
 		}

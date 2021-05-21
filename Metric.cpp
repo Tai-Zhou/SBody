@@ -13,7 +13,8 @@ namespace SBody {
 		double m = 1;
 		double a = 0, a2 = 0, a4 = 0;
 		std::string name = "";
-		double (*ds2)(const double[], const double[]) = nullptr;
+		double (*metricDot)(const double[], const double[], const double[], const size_t) = nullptr;
+		double (*ds2)(const double[], const double[], const size_t) = nullptr;
 		int (*function)(double, const double[], double[], void *) = nullptr;
 		int (*jacobian)(double, const double[], double *, double[], void *) = nullptr;
 		double (*energy)(const double[]) = nullptr;
@@ -29,6 +30,7 @@ namespace SBody {
 			switch (NSK) {
 			case 0:
 				name = "Newton";
+				metricDot = Newton::metricDot;
 				ds2 = Newton::ds2;
 				function = Newton::function;
 				jacobian = Newton::jacobian;
@@ -40,6 +42,7 @@ namespace SBody {
 				break;
 			case 1:
 				name = "Schwarzschild";
+				metricDot = Schwarzschild::metricDot;
 				ds2 = Schwarzschild::ds2;
 				function = Schwarzschild::function;
 				jacobian = Schwarzschild::jacobian;
@@ -51,6 +54,7 @@ namespace SBody {
 				break;
 			case 2:
 				name = "Kerr";
+				metricDot = Kerr::metricDot;
 				ds2 = Kerr::ds2;
 				function = Kerr::function;
 				jacobian = Kerr::jacobian;
@@ -62,6 +66,7 @@ namespace SBody {
 				break;
 			case 3:
 				name = "KerrH";
+				metricDot = Kerr::metricDot;
 				ds2 = Kerr::ds2;
 				function = KerrH::function;
 				jacobian = KerrH::jacobian;
@@ -136,8 +141,15 @@ namespace SBody {
 		}
 		namespace Newton {
 			int PN = 1;
-			double ds2(const double x[], const double y[]) {
-				return gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[2] - y[2]) + gsl_pow_2(x[3] - y[3]);
+			double metricDot(const double g[], const double x[], const double y[], const size_t dimension) {
+				if (dimension == 3)
+					return x[1] * y[1] + x[2] * y[2] + x[3] * y[3];
+				return -x[0] * y[0] + x[1] * y[1] + x[2] * y[2] + x[3] * y[3];
+			}
+			double ds2(const double x[], const double y[], const size_t dimension) {
+				if (dimension == 3)
+					return gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[2] - y[2]) + gsl_pow_2(x[3] - y[3]);
+				return -gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[2] - y[2]) + gsl_pow_2(x[3] - y[3]);
 			}
 			int function(double t, const double y[], double dydt[], void *params) {
 				const double r = norm(y), vsqr = dot(y + 3);
@@ -210,8 +222,15 @@ namespace SBody {
 			}
 		} // namespace Newton
 		namespace Schwarzschild {
-			double ds2(const double x[], const double y[]) {
-				return x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2 * m) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * (x[3] - y[3]));
+			double metricDot(const double g[], const double x[], const double y[], const size_t dimension) {
+				if (dimension == 3)
+					return g[1] * x[1] * y[1] / (g[1] - 2 * m) + gsl_pow_2(g[1]) * x[2] * y[2] + gsl_pow_2(g[1] * sin(g[2])) * x[3] * y[3];
+				return -(1 - 2 * m / g[1]) * x[0] * y[0] + g[1] * x[1] * y[1] / (g[1] - 2 * m) + gsl_pow_2(g[1]) * x[2] * y[2] + gsl_pow_2(g[1] * sin(g[2])) * x[3] * y[3];
+			}
+			double ds2(const double x[], const double y[], const size_t dimension) {
+				if (dimension == 3)
+					return x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2 * m) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * (x[3] - y[3]));
+				return -(1 - 2 * m / x[1]) * gsl_pow_2(x[0] - y[0]) + x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2 * m) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * (x[3] - y[3]));
 			}
 			int function(double t, const double y[], double dydt[], void *params) {
 				dydt[0] = y[4]; //d\tau/dt
@@ -263,11 +282,23 @@ namespace SBody {
 			}
 		} // namespace Schwarzschild
 		namespace Kerr {
-			double ds2(const double x[], const double y[]) {
-				const double r = x[1], sint = sin(x[2]), cost = cos(x[2]);
+			double metricDot(const double g[], const double x[], const double y[], const size_t dimension) {
+				const double r = g[1], sint = sin(g[2]), cost = cos(g[2]);
 				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), cost2 = gsl_pow_2(cost);
 				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2;
-				return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[1] * (x[2] - y[2])) + ((r2 + a2) * sint2 + 2 * m * r * a2 * gsl_pow_2(sint2) / rho2) * gsl_pow_2(x[3] - y[3]);
+				const double mr_rho2 = 2. * m * r / rho2;
+				if (dimension == 3)
+					return (rho2 / Delta) * x[1] * y[1] + rho2 * gsl_pow_2(g[1]) * x[2] * y[2] + ((r2 + a2) * sint2 + 2 * m * r * a2 * gsl_pow_2(sint2) / rho2) * x[3] * y[3];
+				return (mr_rho2 - 1.) * x[0] * y[0] - mr_rho2 * a * sint2 * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * gsl_pow_2(g[1]) * x[2] * y[2] + ((r2 + a2) * sint2 + 2 * m * r * a2 * gsl_pow_2(sint2) / rho2) * x[3] * y[3];
+			}
+			double ds2(const double x[], const double y[], const size_t dimension) {
+				const double r = x[1], sint = sin(x[2]), cost = cos(x[2]), d0 = x[0] - y[0], d3 = x[3] - y[3];
+				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), cost2 = gsl_pow_2(cost);
+				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2;
+				const double mr_rho2 = 2. * m * r / rho2;
+				if (dimension == 3)
+					return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[1] * (x[2] - y[2])) + ((r2 + a2) * sint2 + 2 * m * r * a2 * gsl_pow_2(sint2) / rho2) * gsl_pow_2(d3);
+				return (mr_rho2 - 1.) * gsl_pow_2(d0) - 2. * mr_rho2 * a * sint2 * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[1] * (x[2] - y[2])) + ((r2 + a2) * sint2 + mr_rho2 * a2 * gsl_pow_2(sint2)) * gsl_pow_2(d3);
 			}
 			int function(double t, const double y[], double dydt[], void *params) {
 				dydt[0] = y[4]; //d\tau/dt

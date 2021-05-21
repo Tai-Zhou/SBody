@@ -8,6 +8,7 @@ namespace SBody {
 		class object {
 		  public:
 			virtual int hit(const double current[], const double last[]) = 0;
+			virtual double frequency(const double current[], const double last[]) = 0;
 		};
 		extern std::vector<object *> objectList;
 		class star : public object {
@@ -20,6 +21,7 @@ namespace SBody {
 			double pos[8]; // FIXME
 			star(double radius, const double position[], int fixed = 0);
 			int hit(const double current[], const double last[] = nullptr);
+			double frequency(const double current[], const double last[]);
 		};
 		class disk : public object {
 		  protected:
@@ -29,6 +31,7 @@ namespace SBody {
 		  public:
 			disk(double innerRadius, double outerRadius);
 			int hit(const double current[], const double last[] = nullptr);
+			double frequency(const double current[], const double last[]);
 		};
 		class thickDisk : public disk {
 		  protected:
@@ -37,6 +40,7 @@ namespace SBody {
 		  public:
 			thickDisk(double innerRadius, double outerRadius, double halfAngle);
 			int hit(const double current[], const double last[] = nullptr);
+			double frequency(const double current[], const double last[]);
 		};
 		class torus : public object {
 		  protected:
@@ -46,6 +50,7 @@ namespace SBody {
 		  public:
 			torus(double majorRadius, double minorRadius);
 			int hit(const double current[], const double last[] = nullptr);
+			double frequency(const double current[], const double last[]);
 		};
 	} // namespace Object
 } // namespace SBody

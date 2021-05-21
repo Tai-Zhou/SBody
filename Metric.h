@@ -8,7 +8,8 @@ namespace SBody {
 		extern double m;
 		extern double a, a2, a4;
 		extern std::string name;
-		extern double (*ds2)(const double[], const double[]);
+		extern double (*metricDot)(const double[], const double[], const double[], const size_t);
+		extern double (*ds2)(const double[], const double[], const size_t);
 		extern int (*function)(double, const double[], double[], void *);
 		extern int (*jacobian)(double, const double[], double *, double[], void *);
 		extern double (*energy)(const double[]);
@@ -30,7 +31,8 @@ namespace SBody {
 
 		namespace Newton {
 			extern int PN;
-			double ds2(const double x[], const double y[]);
+			double metricDot(const double g[], const double x[], const double y[], const size_t dimension);
+			double ds2(const double x[], const double y[], const size_t dimension);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double x[]);
@@ -40,7 +42,8 @@ namespace SBody {
 			int lightNormalization(double y[], double e);
 		} // namespace Newton
 		namespace Schwarzschild {
-			double ds2(const double x[], const double y[]);
+			double metricDot(const double g[], const double x[], const double y[], const size_t dimension);
+			double ds2(const double x[], const double y[], const size_t dimension);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[]);
@@ -50,7 +53,8 @@ namespace SBody {
 			int lightNormalization(double y[], double e);
 		} // namespace Schwarzschild
 		namespace Kerr {
-			double ds2(const double x[], const double y[]);
+			double metricDot(const double g[], const double x[], const double y[], const size_t dimension);
+			double ds2(const double x[], const double y[], const size_t dimension);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[]);
