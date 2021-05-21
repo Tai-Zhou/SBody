@@ -15,9 +15,9 @@ namespace SBody {
 			const int fixed;
 			const double radius;
 			const double r2;
-			double pos[8];
 
 		  public:
+			double pos[8]; // FIXME
 			star(double radius, const double position[], int fixed = 0);
 			int hit(const double current[], const double last[] = nullptr);
 		};

@@ -11,8 +11,6 @@ double tRec;
 double tCal;
 size_t NSK;
 size_t PN;
-int PL;
-int progressBar;
 std::string storeFormat;
 std::string output;
 

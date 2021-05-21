@@ -48,8 +48,8 @@ namespace SBody {
 							ph[3] = (theta < M_PI_2 ? 1. : -1.) * (2. * M_PI - acos((j - 0.5 * pixel + 0.5) / k));
 					}
 					Metric::lightNormalization(ph);
-					while (status == 0 && t < tFinal) {
-						status = integ.apply(&t, tFinal, &h, ph);
+					while (status == 0 && t < r + 100) {
+						status = integ.apply(&t, r + 100, &h, ph);
 						if (ph[1] < 100 * Metric::m) {
 							initials[i * pixel + j] = {ph[0], ph[1], ph[2], ph[3], ph[4], ph[5], ph[6], ph[7], t};
 							break;
@@ -72,8 +72,8 @@ namespace SBody {
 					ph[6] = tana_pix * (i - 0.5 * pixel + 0.5);
 					ph[7] = tana_pix * (j - 0.5 * pixel + 0.5) / sint;
 					Metric::lightNormalization(ph);
-					while (status == 0 && t < tFinal) {
-						status = integ.apply(&t, tFinal, &h, ph);
+					while (status == 0 && t < r + 100. * Metric::m) {
+						status = integ.apply(&t, r + 100. * Metric::m, &h, ph);
 						if (ph[1] < 100 * Metric::m) {
 							initials[i * pixel + j] = {ph[0], ph[1], ph[2], ph[3], ph[4], ph[5], ph[6], ph[7], t};
 							break;
@@ -82,10 +82,9 @@ namespace SBody {
 				}
 	}
 	void camera::traceBack() {
-		double pos[8] = {0., 6. * Metric::m, M_PI_2, M_PI}, ph[8] = {0., r, theta, 0, 1., -1., 0., 0.}, last[8], t = 0, h = 1e-3;
+		double ph[8] = {0., r, theta, 0, 1., -1., 0., 0.}, last[8], t = 0, h = 1e-3;
 		int status = 0;
 		integrator integ(Metric::function, Metric::jacobian, 0);
-		Object::star fStar(5 * Constant::R_sun, pos, 1);
 		for (int i = 0; i < pixel; ++i)
 			for (int j = 0; j < pixel; ++j) {
 				integ.reset();
@@ -98,16 +97,17 @@ namespace SBody {
 				ph[5] = initials[i * pixel + j][5];
 				ph[6] = initials[i * pixel + j][6];
 				ph[7] = initials[i * pixel + j][7];
-				t = initials[i * pixel + j][8];
-				while (status == 0 && t < tFinal) {
+				t = 0; // TODO: should add t_0 (initials[8]) here
+				while (status == 0 && t < 1000. * Metric::m) {
 					last[1] = ph[1];
 					last[2] = ph[2];
 					last[3] = ph[3];
-					status = integ.apply(&t, tFinal, &h, ph);
-					if (fStar.hit(ph, last)) {
-						screen[i][j] = 1;
+					status = integ.apply(&t, 1000. * Metric::m, &h, ph);
+					for (auto objP : Object::objectList)
+						if (objP->hit(ph, last))
+							screen[i][j] = 1;
+					if (screen[i][j])
 						break;
-					}
 				}
 			}
 	}

@@ -22,7 +22,7 @@
 #include "Constant.h"
 #include "IO.h"
 #include "Metric.h"
-#include "Unit.h"
+#include "Object.h"
 #include "Utility.h"
 #include "View.h"
 
@@ -30,8 +30,7 @@ using namespace std;
 using namespace SBody;
 
 void interruptHandler(int signum) {
-	if (progressBar)
-		indicators::show_console_cursor(true);
+	indicators::show_console_cursor(true);
 	exit(signum);
 }
 
@@ -45,13 +44,14 @@ void help() {
 	cout << "  -o --rec    [f]: record interval [" << tRec << "] (s)" << endl;
 	cout << "  -c --tcal   [f]: time limit of calculation [" << tCal << "] (s)" << endl;
 	cout << "  -n --NSK    [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrH (3) [" << NSK << "]" << endl;
-	cout << "  -p --PN     [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [" << PN << "]" << endl;
+	cout << "  -P --PN     [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [" << PN << "]" << endl;
 	cout << "  -a --abs    [f]: absolute accuracy [" << absAcc << "]" << endl;
 	cout << "  -r --rel    [f]: relative accuracy [" << relAcc << "]" << endl;
-	cout << "  -f --format [s]: storage format [" << storeFormat << "]" << endl;
+	cout << "  -f --format [s]: storage format [" << storeFormat << "]" << endl; //TODO: use int instead of str
 	cout << "  -h --hamilton  : use hamilonian instead of geodesic" << endl;
 	cout << "  -l --light     : light instead of particle" << endl;
-	cout << "  -b --proBar    : show progress bar" << endl;
+	cout << "  -R --ray       : ray-tracing" << endl;
+	cout << "  -b --bar       : show progress bar" << endl;
 	cout << "  -h --help      : this help information" << endl;
 	cout << endl;
 	cout << "Support:" << endl;
@@ -74,16 +74,17 @@ int main(int argc, char *argv[]) {
 	double h = 1e-3;
 	mass = 4e6;
 	spin = 0;
-	tFinal = 1e6;
-	tRec = 1e-5 * tFinal;
+	tFinal = 1e4;
+	tRec = 1e-2 * tFinal;
 	tCal = 3600;
 	NSK = 1;
 	PN = 1;
-	PL = 1;
-	progressBar = 0;
+	int PL = 1;
+	int rayTracing = 1;
+	int progressBar = 1;
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
-	const char *optShort = "m:s:t:o:c:n:p:a:r:f:lbh";
+	const char *optShort = "m:s:t:o:c:n:P:a:r:f:lRbh";
 	const struct option optLong[] = {
 		{"mass", required_argument, NULL, 'm'},
 		{"spin", required_argument, NULL, 's'},
@@ -91,12 +92,13 @@ int main(int argc, char *argv[]) {
 		{"rec", required_argument, NULL, 'o'},
 		{"tcal", required_argument, NULL, 'c'},
 		{"NSK", required_argument, NULL, 'n'},
-		{"PN", required_argument, NULL, 'p'},
+		{"PN", required_argument, NULL, 'P'},
 		{"abs", required_argument, NULL, 'a'},
 		{"rel", required_argument, NULL, 'r'},
 		{"format", required_argument, NULL, 'f'},
 		{"light", no_argument, NULL, 'l'},
-		{"proBar", no_argument, NULL, 'b'},
+		{"ray", no_argument, NULL, 'R'},
+		{"bar", no_argument, NULL, 'b'},
 		{"help", no_argument, NULL, 'h'},
 		{NULL, 0, NULL, 0}};
 	int opt;
@@ -122,7 +124,7 @@ int main(int argc, char *argv[]) {
 			if (NSK > 3)
 				help();
 			break;
-		case 'p':
+		case 'P':
 			PN = atoi(optarg);
 			break;
 		case 'a':
@@ -137,6 +139,9 @@ int main(int argc, char *argv[]) {
 		case 'l':
 			PL = 0;
 			break;
+		case 'R':
+			rayTracing = 1;
+			break;
 		case 'b':
 			progressBar = 1;
 			break;
@@ -150,9 +155,6 @@ int main(int argc, char *argv[]) {
 	output = Metric::name;
 	if (progressBar)
 		indicators::show_console_cursor(false);
-	camera cam(100, 2e-2, mass * 1000., M_PI_2, tFinal, 3000);
-	cam.traceBack();
-	return 0;
 	double x[8], y[8];
 	if (NSK == 0) {
 		y[0] = Constant::AU / 100;
@@ -169,8 +171,8 @@ int main(int argc, char *argv[]) {
 		if (PL) {
 			x[1] = 10 * mass;
 			x[5] = 0;
-			x[6] = sqrt(0.1) * sin(151. / 180. * M_PI);
-			x[7] = sqrt(0.1) * cos(151. / 180. * M_PI);
+			x[6] = 1.1 * sqrt(0.1);
+			x[7] = 0;
 		}
 		else {
 			x[1] = mass * 442990;
@@ -188,25 +190,30 @@ int main(int argc, char *argv[]) {
 	}
 	integrator integ(Metric::function, Metric::jacobian, NSK == 0);
 	int status = 0;
+	Object::star star_0(Constant::R_sun, y, 0);
+	Object::objectList.push_back(&star_0);
+	camera cam(100, 3e-2, mass * 1000., 0, tFinal, 3000);
 	vector<vector<double>> rec;
 	vector<double> temp(12);
 	while (tStep < tFinal) {
 		tStep = min(tStep + tRec, tFinal);
 		while (status == 0 && t < tStep)
-			status = integ.apply(&t, tStep, &h, y);
+			status = integ.apply(&t, tStep, &h, star_0.pos);
 		if (progressBar)
 			bar.set_progress(100 * t / tFinal);
 		if (NSK == 0)
-			temp = {y[0], y[1], y[2], y[3], y[4], y[5], y[6], y[7]};
+			temp = {star_0.pos[0], star_0.pos[1], star_0.pos[2], star_0.pos[3], star_0.pos[4], star_0.pos[5], star_0.pos[6], star_0.pos[7]};
 		else {
 			if (NSK == 3)
-				Metric::KerrH::qp2qdq(y);
-			Metric::s2c(y, &temp[0]);
+				Metric::KerrH::qp2qdq(y); //FIXME: must not be replaced!
+			Metric::s2c(star_0.pos, &temp[0]);
 		}
 		temp[8] = t / Constant::s;
-		temp[9] = Metric::energy(y);
-		temp[10] = Metric::angularMomentum(y);
-		temp[11] = Metric::carter(y);
+		temp[9] = Metric::energy(star_0.pos);
+		temp[10] = Metric::angularMomentum(star_0.pos);
+		temp[11] = Metric::carter(star_0.pos);
+		if (rayTracing)
+			cam.traceBack();
 		rec.push_back(temp);
 		auto tpass = chrono::steady_clock::now() - start; // nano seconds
 		if (tpass.count() >= tCal * 1000000000)
@@ -217,6 +224,8 @@ int main(int argc, char *argv[]) {
 		bar.mark_as_completed();
 		indicators::show_console_cursor(true);
 	}
+	if (rayTracing)
+		cam.save();
 	IO::NumPySave(rec, output);
 	return 0;
 }
