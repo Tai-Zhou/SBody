@@ -15,7 +15,7 @@ namespace SBody {
 		extern double (*angularMomentum)(const double[]);
 		extern double (*carter)(const double[]);
 		extern int (*particleNormalization)(double[]);
-		extern int (*lightNormalization)(double[]);
+		extern int (*lightNormalization)(double[], double);
 
 		// set function pointers above
 		void setMetric(int NSK, double mass, double spin);
@@ -37,7 +37,7 @@ namespace SBody {
 			double angularMomentum(const double x[]);
 			double carter(const double y[]);
 			int particleNormalization(double y[]);
-			int lightNormalization(double y[]);
+			int lightNormalization(double y[], double e);
 		} // namespace Newton
 		namespace Schwarzschild {
 			double ds2(const double x[], const double y[]);
@@ -47,7 +47,7 @@ namespace SBody {
 			double angularMomentum(const double y[]);
 			double carter(const double y[]);
 			int particleNormalization(double y[]);
-			int lightNormalization(double y[]);
+			int lightNormalization(double y[], double e);
 		} // namespace Schwarzschild
 		namespace Kerr {
 			double ds2(const double x[], const double y[]);
@@ -57,7 +57,7 @@ namespace SBody {
 			double angularMomentum(const double y[]);
 			double carter(const double y[]);
 			int particleNormalization(double y[]);
-			int lightNormalization(double y[]);
+			int lightNormalization(double y[], double e);
 		} // namespace Kerr
 		namespace KerrH {
 			int qdq2qp(double r[]);

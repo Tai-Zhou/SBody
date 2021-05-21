@@ -47,7 +47,7 @@ namespace SBody {
 						else
 							ph[3] = (theta < M_PI_2 ? 1. : -1.) * (2. * M_PI - acos((j - 0.5 * pixel + 0.5) / k));
 					}
-					Metric::lightNormalization(ph);
+					Metric::lightNormalization(ph, 1.);
 					while (status == 0 && t < r + 100) {
 						status = integ.apply(&t, r + 100, &h, ph);
 						if (ph[1] < 100 * Metric::m) {
@@ -71,7 +71,7 @@ namespace SBody {
 					ph[5] = -1;
 					ph[6] = tana_pix * (i - 0.5 * pixel + 0.5);
 					ph[7] = tana_pix * (j - 0.5 * pixel + 0.5) / sint;
-					Metric::lightNormalization(ph);
+					Metric::lightNormalization(ph, 1.);
 					while (status == 0 && t < r + 100. * Metric::m) {
 						status = integ.apply(&t, r + 100. * Metric::m, &h, ph);
 						if (ph[1] < 100 * Metric::m) {

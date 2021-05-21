@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
 		if (PL)
 			Metric::particleNormalization(y);
 		else
-			Metric::lightNormalization(y);
+			Metric::lightNormalization(y, 1.);
 		if (NSK == 3)
 			Metric::KerrH::qdq2qp(y);
 	}

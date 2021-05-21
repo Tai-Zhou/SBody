@@ -20,7 +20,7 @@ namespace SBody {
 		double (*angularMomentum)(const double[]) = nullptr;
 		double (*carter)(const double[]) = nullptr;
 		int (*particleNormalization)(double[]) = nullptr;
-		int (*lightNormalization)(double[]) = nullptr;
+		int (*lightNormalization)(double[], double) = nullptr;
 		void setMetric(int NSK, double mass, double spin) {
 			m = mass;
 			a = mass * spin;
@@ -205,7 +205,7 @@ namespace SBody {
 			int particleNormalization(double y[]) { //TODO: limit the light speed
 				return 0;
 			}
-			int lightNormalization(double y[]) { //TODO: limit the light speed
+			int lightNormalization(double y[], double e) { //TODO: limit the light speed
 				return 0;
 			}
 		} // namespace Newton
@@ -250,12 +250,12 @@ namespace SBody {
 				y[4] = sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
 				return std::isnan(y[4]);
 			}
-			int lightNormalization(double y[]) {
+			int lightNormalization(double y[], double e) {
 				const double g00 = 1. - 2. * m / y[1];
 				if (g00 <= 0)
 					return 1;
 				const double eff = g00 / sqrt(gsl_pow_2(y[5]) + g00 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
-				y[4] = 1.; //frequency
+				y[4] = e;
 				y[5] *= eff;
 				y[6] *= eff;
 				y[7] *= eff;
@@ -315,7 +315,7 @@ namespace SBody {
 				y[4] = sqrt(1. - mr_rho2 + 2. * mr_rho2 * a * sint2 * y[7] - (rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7])));
 				return std::isnan(y[4]);
 			}
-			int lightNormalization(double y[]) {
+			int lightNormalization(double y[], double e) {
 				const double r = y[1], sint = sin(y[2]);
 				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
 				const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
@@ -324,7 +324,7 @@ namespace SBody {
 				const double effb = -2. * mr_rho2 * a * sint2 * y[7];
 				const double effc = mr_rho2 - 1.;
 				const double eff = 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
-				y[4] = 1.; //frequency
+				y[4] = e;
 				y[5] *= eff;
 				y[6] *= eff;
 				y[7] *= eff;
