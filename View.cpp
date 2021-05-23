@@ -65,7 +65,8 @@ namespace SBody {
 		screen.push_back({alpha1, beta1, s.frequency(ph)});
 	}
 	void view::save(string fileName) {
-		IO::NumPySave(screen, fileName);
+		IO::NumPy<double> output(fileName);
+		output.save(screen);
 	}
 	camera::camera(size_t pixel, double viewAngle, double r, double theta, double tFinal, size_t duration, size_t frame) : view(r, theta, tFinal, duration, frame), pixel(pixel), viewAngle(viewAngle) {
 		screen = vector<vector<double>>(pixel, vector<double>(pixel));

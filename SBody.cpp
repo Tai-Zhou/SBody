@@ -153,7 +153,6 @@ int main(int argc, char *argv[]) {
 	tRec *= Constant::s;
 	Metric::setMetric(NSK, mass, spin);
 	Metric::Newton::PN = PN;
-	output = Metric::name;
 	if (progressBar)
 		indicators::show_console_cursor(false);
 	double x[8], y[8];
@@ -234,6 +233,7 @@ int main(int argc, char *argv[]) {
 		vie.save("view");
 	if (ray & 2)
 		cam.save("camera");
-	IO::NumPySave(rec, output);
+	IO::NumPy<double> output(Metric::name);
+	output.save(rec);
 	return 0;
 }

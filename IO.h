@@ -1,41 +1,23 @@
 #ifndef _IO_H
 #define _IO_H
 
-#include <array>
 #include <fstream>
 #include <string>
 #include <vector>
 
 namespace SBody {
 	namespace IO {
+		class file {
+		  protected:
+			const std::string fileName;
+			file(std::string fileName);
+		};
 		template <typename T>
-		int NumPySave(const std::vector<std::vector<T>> &data, std::string fileName) {
-			char NumPyHead[10] = {'\x93', 'N', 'U', 'M', 'P', 'Y', '\x01', '\x00', '\x76', '\x00'};
-			std::ofstream NumPyFile("out/" + fileName + ".npy", std::ios::binary | std::ios::out);
-			NumPyFile.write(NumPyHead, 10);
-			NumPyFile << "{'descr': '<" << (sizeof(T) == 4 ? "i4" : "f8")
-					  << "', 'fortran_order': False, 'shape': (                                                                  \n";
-			for (const std::vector<T> &line : data)
-				NumPyFile.write((char *)(&line[0]), sizeof(T) * line.size());
-			NumPyFile.seekp(61);
-			NumPyFile << data.size() << ", " << data[0].size() << "), }";
-			NumPyFile.close();
-			return 0;
-		}
-		template <typename T>
-		int NumPySave(const std::vector<T> &data, std::string fileName) {
-			char NumPyHead[10] = {'\x93', 'N', 'U', 'M', 'P', 'Y', '\x01', '\x00', '\x76', '\x00'};
-			std::ofstream NumPyFile("out/" + fileName + ".npy", std::ios::binary | std::ios::out);
-			NumPyFile.write(NumPyHead, 10);
-			NumPyFile << "{'descr': '<" << (sizeof(T) == 4 ? "i4" : "f8")
-					  << "', 'fortran_order': False, 'shape': (                                                                  \n";
-			for (const T &line : data)
-				NumPyFile.write((char *)(line.data()), sizeof(double) * line.size());
-			NumPyFile.seekp(61);
-			NumPyFile << data.size() << ", " << data[0].size() << "), }";
-			NumPyFile.close();
-			return 0;
-		}
+		class NumPy : public file {
+		  public:
+			NumPy(std::string fileName);
+			int save(const std::vector<std::vector<T>> &data);
+		};
 		template <typename T>
 		int CSVSave(const std::vector<std::vector<T>> &data, std::string fileName) {
 			std::ofstream CSVFile("out/" + fileName + ".csv", std::ios::out);
