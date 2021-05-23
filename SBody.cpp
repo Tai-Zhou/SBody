@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
 		if (PL) {
 			x[1] = 10 * mass;
 			x[5] = 0;
-			x[6] = 1.1 * sqrt(0.1);
+			x[6] = 1.05 * sqrt(0.1);
 			x[7] = 0;
 		}
 		else {
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
 	int status = 0;
 	Object::star star_0(Constant::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
-	camera cam(100, 3e-2, mass * 1000., 0, tFinal, 3000);
+	camera cam(100, 4e-2, mass * 1000., M_PI_4, tFinal, 3000);
 	vector<vector<double>> rec;
 	vector<double> temp(12);
 	while (tStep < tFinal) {
@@ -225,7 +225,7 @@ int main(int argc, char *argv[]) {
 		indicators::show_console_cursor(true);
 	}
 	if (rayTracing)
-		cam.save();
+		cam.save("camera");
 	IO::NumPySave(rec, output);
 	return 0;
 }

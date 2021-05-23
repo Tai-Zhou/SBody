@@ -1,7 +1,6 @@
 #include "View.h"
 
 #include <cmath>
-#include <string>
 
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_odeiv2.h>
@@ -16,12 +15,15 @@
 using namespace std;
 
 namespace SBody {
-	view::view(double viewAngle, double r, double theta, double tFinal, size_t duration, size_t frame)
-		: viewAngle(viewAngle), r(r), theta(theta), tFinal(tFinal), duration(duration), frame(frame) {}
-	void view::traceBack() {}
+	view::view(double viewAngle, double r, double theta, double tFinal, size_t duration, size_t frame) : viewAngle(viewAngle), r(r), theta(theta), tFinal(tFinal), duration(duration), frame(frame) {}
+	void view::traceBack() {
+	}
+	void view::save(string fileName) {
+		IO::NumPySave(screen, fileName);
+	}
 	camera::camera(size_t pixel, double viewAngle, double r, double theta, double tFinal, size_t duration, size_t frame) : view(viewAngle, r, theta, tFinal, duration, frame), pixel(pixel) {
-		initials = vector<array<double, 9>>(pixel * pixel);
 		screen = vector<vector<double>>(pixel, vector<double>(pixel));
+		initials = vector<array<double, 9>>(pixel * pixel);
 		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel);
 		if (theta < epsilon || M_PI - theta < epsilon) {
 #pragma omp parallel for
@@ -115,8 +117,5 @@ namespace SBody {
 					break;
 			}
 		}
-	}
-	void camera::save() {
-		IO::NumPySave(screen, "screen");
 	}
 } // namespace SBody

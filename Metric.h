@@ -8,7 +8,7 @@ namespace SBody {
 		extern double m;
 		extern double a, a2, a4;
 		extern std::string name;
-		extern double (*metricDot)(const double[], const double[], const double[], const size_t);
+		extern double (*dot)(const double[], const double[], const double[], const size_t);
 		extern double (*ds2)(const double[], const double[], const size_t);
 		extern int (*function)(double, const double[], double[], void *);
 		extern int (*jacobian)(double, const double[], double *, double[], void *);
@@ -31,7 +31,7 @@ namespace SBody {
 
 		namespace Newton {
 			extern int PN;
-			double metricDot(const double g[], const double x[], const double y[], const size_t dimension);
+			double dot(const double g[], const double x[], const double y[], const size_t dimension);
 			double ds2(const double x[], const double y[], const size_t dimension);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
@@ -42,7 +42,7 @@ namespace SBody {
 			int lightNormalization(double y[], double e);
 		} // namespace Newton
 		namespace Schwarzschild {
-			double metricDot(const double g[], const double x[], const double y[], const size_t dimension);
+			double dot(const double g[], const double x[], const double y[], const size_t dimension);
 			double ds2(const double x[], const double y[], const size_t dimension);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
@@ -53,7 +53,7 @@ namespace SBody {
 			int lightNormalization(double y[], double e);
 		} // namespace Schwarzschild
 		namespace Kerr {
-			double metricDot(const double g[], const double x[], const double y[], const size_t dimension);
+			double dot(const double g[], const double x[], const double y[], const size_t dimension);
 			double ds2(const double x[], const double y[], const size_t dimension);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);

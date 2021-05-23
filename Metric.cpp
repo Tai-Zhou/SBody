@@ -13,7 +13,7 @@ namespace SBody {
 		double m = 1;
 		double a = 0, a2 = 0, a4 = 0;
 		std::string name = "";
-		double (*metricDot)(const double[], const double[], const double[], const size_t) = nullptr;
+		double (*dot)(const double[], const double[], const double[], const size_t) = nullptr;
 		double (*ds2)(const double[], const double[], const size_t) = nullptr;
 		int (*function)(double, const double[], double[], void *) = nullptr;
 		int (*jacobian)(double, const double[], double *, double[], void *) = nullptr;
@@ -30,7 +30,7 @@ namespace SBody {
 			switch (NSK) {
 			case 0:
 				name = "Newton";
-				metricDot = Newton::metricDot;
+				dot = Newton::dot;
 				ds2 = Newton::ds2;
 				function = Newton::function;
 				jacobian = Newton::jacobian;
@@ -42,7 +42,7 @@ namespace SBody {
 				break;
 			case 1:
 				name = "Schwarzschild";
-				metricDot = Schwarzschild::metricDot;
+				dot = Schwarzschild::dot;
 				ds2 = Schwarzschild::ds2;
 				function = Schwarzschild::function;
 				jacobian = Schwarzschild::jacobian;
@@ -54,7 +54,7 @@ namespace SBody {
 				break;
 			case 2:
 				name = "Kerr";
-				metricDot = Kerr::metricDot;
+				dot = Kerr::dot;
 				ds2 = Kerr::ds2;
 				function = Kerr::function;
 				jacobian = Kerr::jacobian;
@@ -66,7 +66,7 @@ namespace SBody {
 				break;
 			case 3:
 				name = "KerrH";
-				metricDot = Kerr::metricDot;
+				dot = Kerr::dot;
 				ds2 = Kerr::ds2;
 				function = KerrH::function;
 				jacobian = KerrH::jacobian;
@@ -86,7 +86,7 @@ namespace SBody {
 			if (r[0] < epsilon)
 				return 1;
 			r[1] = acos(x[2] / r[0]);
-			w[0] = dot(x, v) / r[0];
+			w[0] = SBody::dot(x, v) / r[0];
 			double normXY = norm(x, 2);
 			if (normXY < epsilon) {
 				double normVXY = norm(v, 2);
@@ -141,7 +141,7 @@ namespace SBody {
 		}
 		namespace Newton {
 			int PN = 1;
-			double metricDot(const double g[], const double x[], const double y[], const size_t dimension) {
+			double dot(const double g[], const double x[], const double y[], const size_t dimension) {
 				if (dimension == 3)
 					return x[1] * y[1] + x[2] * y[2] + x[3] * y[3];
 				return -x[0] * y[0] + x[1] * y[1] + x[2] * y[2] + x[3] * y[3];
@@ -152,8 +152,8 @@ namespace SBody {
 				return -gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[2] - y[2]) + gsl_pow_2(x[3] - y[3]);
 			}
 			int function(double t, const double y[], double dydt[], void *params) {
-				const double r = norm(y), vsqr = dot(y + 3);
-				const double mr = m / r, r2 = gsl_pow_2(r), rdot = dot(y, y + 3) / r;
+				const double r = norm(y), vsqr = SBody::dot(y + 3);
+				const double mr = m / r, r2 = gsl_pow_2(r), rdot = SBody::dot(y, y + 3) / r;
 				const double F = mr / r2, mr2 = gsl_pow_2(mr), rdot2 = gsl_pow_2(rdot);
 				dydt[0] = y[3];
 				dydt[1] = y[4];
@@ -181,8 +181,8 @@ namespace SBody {
 				return GSL_SUCCESS;
 			}
 			double energy(const double y[]) {
-				const double r = norm(y), vsqr = dot(y + 3);
-				const double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = gsl_pow_2(vsqr), vsqr3 = gsl_pow_3(vsqr), vsqr4 = gsl_pow_4(vsqr);
+				const double r = norm(y), vsqr = SBody::dot(y + 3);
+				const double mr = m / r, rdot = SBody::dot(y, y + 3) / r, vsqr2 = gsl_pow_2(vsqr), vsqr3 = gsl_pow_3(vsqr), vsqr4 = gsl_pow_4(vsqr);
 				const double mr2 = gsl_pow_2(mr), mr3 = gsl_pow_3(mr), mr4 = gsl_pow_4(mr), rdot2 = gsl_pow_2(rdot);
 				double E = 0.5 * vsqr - mr;
 				if (PN & 1)
@@ -194,8 +194,8 @@ namespace SBody {
 				return E;
 			}
 			double angularMomentum(const double y[]) {
-				const double r = norm(y), vsqr = dot(y + 3);
-				const double mr = m / r, rdot = dot(y, y + 3) / r, vsqr2 = gsl_pow_2(vsqr), vsqr3 = gsl_pow_3(vsqr);
+				const double r = norm(y), vsqr = SBody::dot(y + 3);
+				const double mr = m / r, rdot = SBody::dot(y, y + 3) / r, vsqr2 = gsl_pow_2(vsqr), vsqr3 = gsl_pow_3(vsqr);
 				const double mr2 = gsl_pow_2(mr), mr3 = gsl_pow_3(mr), rdot2 = gsl_pow_2(rdot);
 				double J[3], eff = 0;
 				cross(y, y + 3, J);
@@ -212,7 +212,7 @@ namespace SBody {
 			double carter(const double y[]) { //FIXME: not verified!
 				double c[3];
 				cross(y + 1, y + 5, c);
-				return dot(c) / gsl_pow_2(y[4]);
+				return SBody::dot(c) / gsl_pow_2(y[4]);
 			}
 			int particleNormalization(double y[]) { //TODO: limit the light speed
 				return 0;
@@ -222,7 +222,7 @@ namespace SBody {
 			}
 		} // namespace Newton
 		namespace Schwarzschild {
-			double metricDot(const double g[], const double x[], const double y[], const size_t dimension) {
+			double dot(const double g[], const double x[], const double y[], const size_t dimension) {
 				if (dimension == 3)
 					return g[1] * x[1] * y[1] / (g[1] - 2 * m) + gsl_pow_2(g[1]) * x[2] * y[2] + gsl_pow_2(g[1] * sin(g[2])) * x[3] * y[3];
 				return -(1 - 2 * m / g[1]) * x[0] * y[0] + g[1] * x[1] * y[1] / (g[1] - 2 * m) + gsl_pow_2(g[1]) * x[2] * y[2] + gsl_pow_2(g[1] * sin(g[2])) * x[3] * y[3];
@@ -282,7 +282,7 @@ namespace SBody {
 			}
 		} // namespace Schwarzschild
 		namespace Kerr {
-			double metricDot(const double g[], const double x[], const double y[], const size_t dimension) {
+			double dot(const double g[], const double x[], const double y[], const size_t dimension) {
 				const double r = g[1], sint = sin(g[2]), cost = cos(g[2]);
 				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), cost2 = gsl_pow_2(cost);
 				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2;

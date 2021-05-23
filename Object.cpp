@@ -22,10 +22,8 @@ namespace SBody {
 			return 0;
 		}
 		double star::frequency(const double current[], const double last[]) {
-			double e = 0;
-			for (int i = 0; i < 8; ++i)
-				e += current[i];
-			return e;
+			const double u[4] = {1, current[5], current[6], current[7]};
+			return Metric::dot(pos, pos + 4, u, 4) / current[4];
 		}
 		disk::disk(double innerRadius, double outerRadius) : innerRadius(innerRadius), outerRadius(outerRadius) {}
 		int disk::hit(const double current[], const double last[]) {
