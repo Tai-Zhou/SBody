@@ -54,8 +54,8 @@ namespace SBody {
 					ph[2] = s.pos[2];
 					ph[3] += dt * ph[7];
 					const double dphisint = (ph[3] - phis) * sints;
-					rp += 0.5 * (rs - ph[1] * cos(dphisint));
-					phip -= 0.5 * (asin(ph[1] * sin(dphisint) / (rp * sints)));
+					rp += rs - ph[1] * cos(dphisint);
+					phip -= asin(ph[1] * sin(dphisint) / (rp * sints));
 					alpha1 = rp * sints * sin(phip);
 					beta1 = rp * costs * sinto - rp * sints * cos(phip) * costo;
 					break;
