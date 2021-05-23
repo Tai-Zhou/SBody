@@ -74,8 +74,8 @@ int main(int argc, char *argv[]) {
 	double h = 1e-3;
 	mass = 4e6;
 	spin = 0;
-	tFinal = 2e5;
-	tRec = 1e-3 * tFinal;
+	tFinal = 1e4;
+	tRec = 1e-4 * tFinal;
 	tCal = 3600;
 	NSK = 1;
 	PN = 1;
@@ -170,9 +170,9 @@ int main(int argc, char *argv[]) {
 		x[2] = 0;
 		x[3] = 0;
 		if (PL) {
-			x[1] = 100 * mass;
+			x[1] = 10 * mass;
 			x[5] = 0;
-			x[6] = 1.05 * sqrt(1e-2);
+			x[6] = 1.05 * sqrt(0.1);
 			x[7] = 0;
 		}
 		else {
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
 	int status = 0;
 	Object::star star_0(Constant::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
-	view vie(mass * 1e4, M_PI_4, tFinal, 3000);
+	view vie(mass * 1e3, M_PI_4, tFinal, 3000);
 	camera cam(100, 4e-2, mass * 1000., M_PI_4, tFinal, 3000);
 	if (ray & 2)
 		cam.initialize();
