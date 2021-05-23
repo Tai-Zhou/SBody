@@ -21,9 +21,9 @@ namespace SBody {
 				return 1; // if min distance between current and last < radius, return 1;
 			return 0;
 		}
-		double star::frequency(const double current[], const double last[]) {
-			const double u[4] = {1, current[5], current[6], current[7]};
-			return Metric::dot(pos, pos + 4, u, 4) / current[4];
+		double star::frequency(const double ph[]) {
+			const double u[4] = {1, pos[5], pos[6], pos[7]}, v[4] = {1, -ph[5], -ph[6], -ph[7]};
+			return -Metric::dot(pos, u, v, 4) / (pos[4] * ph[4]);
 		}
 		disk::disk(double innerRadius, double outerRadius) : innerRadius(innerRadius), outerRadius(outerRadius) {}
 		int disk::hit(const double current[], const double last[]) {
@@ -32,7 +32,7 @@ namespace SBody {
 			// if min distance between current and last < radius, return 1;
 			return 0;
 		}
-		double disk::frequency(const double current[], const double last[]) {
+		double disk::frequency(const double ph[]) {
 			return 1.;
 		}
 		thickDisk::thickDisk(double innerRadius, double outerRadius, double halfAngle) : disk(innerRadius, outerRadius), halfAngle(halfAngle) {}
@@ -42,7 +42,7 @@ namespace SBody {
 			// if min distance between current and last < radius, return 1;
 			return 0;
 		}
-		double thickDisk::frequency(const double current[], const double last[]) {
+		double thickDisk::frequency(const double ph[]) {
 			return 1.;
 		}
 		torus::torus(double majorRadius, double minorRadius) : majorRadius(majorRadius), minorRadius(minorRadius) {}
@@ -53,7 +53,7 @@ namespace SBody {
 			// if min distance between current and last < radius, return 1;
 			return 0;
 		}
-		double torus::frequency(const double current[], const double last[]) {
+		double torus::frequency(const double ph[]) {
 			return 1.;
 		}
 	} // namespace Object

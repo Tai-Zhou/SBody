@@ -192,7 +192,8 @@ int main(int argc, char *argv[]) {
 	int status = 0;
 	Object::star star_0(Constant::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
-	camera cam(100, 4e-2, mass * 1000., M_PI_4, tFinal, 3000);
+	//camera cam(100, 4e-2, mass * 1000., M_PI_4, tFinal, 3000);
+	view cam(mass * 1000., 0, tFinal, 3000);
 	vector<vector<double>> rec;
 	vector<double> temp(12);
 	while (tStep < tFinal) {
@@ -213,7 +214,7 @@ int main(int argc, char *argv[]) {
 		temp[10] = Metric::angularMomentum(star_0.pos);
 		temp[11] = Metric::carter(star_0.pos);
 		if (rayTracing)
-			cam.traceBack();
+			cam.traceBack(star_0);
 		rec.push_back(temp);
 		auto tpass = chrono::steady_clock::now() - start; // nano seconds
 		if (tpass.count() >= tCal * 1000000000)
@@ -225,7 +226,7 @@ int main(int argc, char *argv[]) {
 		indicators::show_console_cursor(true);
 	}
 	if (rayTracing)
-		cam.save("camera");
+		cam.save("view");
 	IO::NumPySave(rec, output);
 	return 0;
 }
