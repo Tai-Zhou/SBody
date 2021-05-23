@@ -12,6 +12,7 @@ namespace SBody {
 			const std::string fileName;
 			file(std::string fileName);
 		};
+		// T should be int or double
 		template <typename T>
 		class NumPy : public file {
 		  public:
@@ -19,17 +20,11 @@ namespace SBody {
 			int save(const std::vector<std::vector<T>> &data);
 		};
 		template <typename T>
-		int CSVSave(const std::vector<std::vector<T>> &data, std::string fileName) {
-			std::ofstream CSVFile("out/" + fileName + ".csv", std::ios::out);
-			for (const std::vector<T> &line : data) {
-				for (const T element : line)
-					CSVFile << element << ',';
-				CSVFile.seekp(-1, std::ios::cur);
-				CSVFile << std::endl;
-			}
-			CSVFile.close();
-			return 0;
-		}
+		class CSV : public file {
+		  public:
+			CSV(std::string fileName);
+			int save(const std::vector<std::vector<T>> &data);
+		};
 		int save();
 		int load();
 	} // namespace IO

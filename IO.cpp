@@ -25,6 +25,20 @@ namespace SBody {
 		}
 		template class NumPy<int>;
 		template class NumPy<double>;
+		template <typename T>
+		int CSV<T>::save(const vector<vector<T>> &data) {
+			ofstream CSVFile("out/" + fileName + ".csv", ios::out);
+			for (const vector<T> &line : data) {
+				for (const T element : line)
+					CSVFile << element << ',';
+				CSVFile.seekp(-1, ios::cur);
+				CSVFile << endl;
+			}
+			CSVFile.close();
+			return 0;
+		}
+		template class CSV<int>;
+		template class CSV<double>;
 		int save() {
 			return 0;
 		}
