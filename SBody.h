@@ -11,6 +11,7 @@ double tRec;
 double tCal;
 size_t NSK;
 size_t PN;
+size_t ray;
 std::string storeFormat;
 std::string output;
 

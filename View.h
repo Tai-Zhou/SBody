@@ -30,6 +30,7 @@ namespace SBody {
 
 	  public:
 		camera(size_t pixel, double viewAngle, double r, double theta, double tFinal, size_t duration = 300, size_t frame = 30);
+		void initialize();
 		void traceBack();
 	};
 } // namespace SBody

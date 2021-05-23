@@ -19,7 +19,7 @@ namespace SBody {
 	void view::traceBack(Object::star &s) {
 		const double sints = sin(s.pos[2]), costs = cos(s.pos[2]), sinto = sin(theta), costo = cos(theta), rs = s.pos[1], phis = s.pos[3], t1 = r + 100. * Metric::m;
 		double alpha0 = GSL_POSINF, alpha1 = rs * sints * sin(phis), beta0 = GSL_POSINF, beta1 = rs * costs * sinto - rs * sints * cos(phis) * costo, ph[8], rp = rs, phip = phis;
-		while (abs(1 - alpha0 / alpha1) > 1e-3 || abs(1 - beta0 / beta1) > 1e-3) {
+		while (abs(alpha1 - alpha0) > abs(1e-3 * alpha1) || abs(beta1 - beta0) > abs(1e-3 * beta1)) {
 			alpha0 = alpha1;
 			beta0 = beta1;
 			ph[0] = 0.;
@@ -33,12 +33,12 @@ namespace SBody {
 					ph[3] = (theta < M_PI_2 ? 1. : -1.) * acos(-beta1 / k);
 				else
 					ph[3] = M_2PI - (theta < M_PI_2 ? 1. : -1.) * acos(-beta1 / k);
-				ph[6] = k / gsl_pow_2(r);
+				ph[6] = sign(M_PI_2 - theta) * k / gsl_pow_2(r);
 				ph[7] = 0.;
 			}
 			else {
 				ph[3] = 0.,
-				ph[6] = beta1 / gsl_pow_2(r);
+				ph[6] = -beta1 / gsl_pow_2(r);
 				ph[7] = alpha1 / (gsl_pow_2(r) * sinto);
 			}
 			double lastt, t = 0, h = 1e-3;
@@ -70,6 +70,8 @@ namespace SBody {
 	camera::camera(size_t pixel, double viewAngle, double r, double theta, double tFinal, size_t duration, size_t frame) : view(r, theta, tFinal, duration, frame), pixel(pixel), viewAngle(viewAngle) {
 		screen = vector<vector<double>>(pixel, vector<double>(pixel));
 		initials = vector<array<double, 9>>(pixel * pixel);
+	}
+	void camera::initialize() {
 		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), t1 = r + 100. * Metric::m;
 		if (theta < epsilon || M_PI - theta < epsilon) {
 #pragma omp parallel for
