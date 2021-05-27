@@ -229,8 +229,8 @@ namespace SBody {
 			}
 			double ds2(const double x[], const double y[], const size_t dimension) {
 				if (dimension == 3)
-					return x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2 * m) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * (x[3] - y[3]));
-				return -(1 - 2 * m / x[1]) * gsl_pow_2(x[0] - y[0]) + x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2 * m) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * (x[3] - y[3]));
+					return x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2 * m) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * mod2Pi(x[3] - y[3]));
+				return -(1 - 2 * m / x[1]) * gsl_pow_2(x[0] - y[0]) + x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2 * m) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * mod2Pi(x[3] - y[3]));
 			}
 			int function(double t, const double y[], double dydt[], void *params) {
 				dydt[0] = y[4]; //d\tau/dt
@@ -292,7 +292,7 @@ namespace SBody {
 				return (mr_rho2 - 1.) * x[0] * y[0] - mr_rho2 * a * sint2 * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * gsl_pow_2(g[1]) * x[2] * y[2] + ((r2 + a2) * sint2 + 2 * m * r * a2 * gsl_pow_2(sint2) / rho2) * x[3] * y[3];
 			}
 			double ds2(const double x[], const double y[], const size_t dimension) {
-				const double r = x[1], sint = sin(x[2]), cost = cos(x[2]), d0 = x[0] - y[0], d3 = x[3] - y[3];
+				const double r = x[1], sint = sin(x[2]), cost = cos(x[2]), d0 = x[0] - y[0], d3 = mod2Pi(x[3] - y[3]);
 				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), cost2 = gsl_pow_2(cost);
 				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2;
 				const double mr_rho2 = 2. * m * r / rho2;
