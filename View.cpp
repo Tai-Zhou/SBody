@@ -17,9 +17,9 @@ using namespace std;
 namespace SBody {
 	view::view(double r, double theta, double tFinal, size_t duration, size_t frame) : r(r), theta(theta), tFinal(tFinal), duration(duration), frame(frame) {}
 	void view::traceBack(Object::star &s) {
-		const double sints = sin(s.pos[2]), costs = cos(s.pos[2]), sinto = sin(theta), costo = cos(theta), rs = s.pos[1], phis = s.pos[3], t1 = r + 100. * Metric::m;
+		const double sints = sin(s.pos[2]), costs = cos(s.pos[2]), sinto = sin(theta), costo = cos(theta), rs = s.pos[1], phis = s.pos[3], t1 = r + 2e4 * Metric::m;
 		double alpha0 = GSL_POSINF, alpha1 = rs * sints * sin(phis), beta0 = GSL_POSINF, beta1 = rs * costs * sinto - rs * sints * cos(phis) * costo, ph[8], rp = rs, phip = phis;
-		while (abs(alpha1 - alpha0) > abs(1e-3 * alpha1) || abs(beta1 - beta0) > abs(1e-3 * beta1)) {
+		while (abs(alpha1 - alpha0) > 1e-3 * (1. + gsl_hypot(alpha1, beta1)) || abs(beta1 - beta0) > 1e-3 * (1. + gsl_hypot(alpha1, beta1))) {
 			alpha0 = alpha1;
 			beta0 = beta1;
 			ph[0] = 0.;
@@ -54,7 +54,7 @@ namespace SBody {
 					ph[2] = s.pos[2];
 					ph[3] += dt * ph[7];
 					const double dphisint = (ph[3] - phis) * sints;
-					rp += rs - ph[1] * cos(dphisint);
+					rp += rs - ph[1] * cos(dphisint); //FIXME:!!!!!!!
 					phip -= asin(ph[1] * sin(dphisint) / (rp * sints));
 					alpha1 = rp * sints * sin(phip);
 					beta1 = rp * costs * sinto - rp * sints * cos(phip) * costo;

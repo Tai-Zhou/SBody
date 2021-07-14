@@ -58,6 +58,20 @@ void help() {
 	cout << "  github.com/Tai-Zhou/SBody" << endl;
 	exit(1);
 }
+/*
+int pos() {
+	double mass, a, e, an = M_PI * 1.25, pp = M_PI * 0.35, ta = 0, in = M_PI * 0.75;
+	double p[8], r = a * (1 - e * e) / (1 + e * cos(ta));
+	double tp1 = r * cos(pp + ta), tp2 = r * sin(pp + ta) * cos(in);
+	p[1] = tp1 * cos(an) - tp2 * sin(an);
+	p[2] = tp1 * sin(an) + tp2 * cos(an);
+	p[3] = -r * sin(pp + ta) * sin(in);
+	double vtheta = (1 - e * e) * sqrt(mass * a) / r, vr = sqrt(2. * mass / r - mass / a - vtheta * vtheta);
+	double tp5 = -vtheta * sin(pp + ta) + vr * cos(pp + ta), tp6 = (vtheta * cos(pp + ta) + vr * sin(pp + ta)) * cos(in);
+	p[7] = -(vtheta * cos(pp + ta) + vr * sin(pp + ta)) * sin(in);
+	p[5] = tp5 * cos(an) - tp6 * sin(an);
+	p[6] = tp5 * sin(an) + tp6 * cos(an);
+}*/
 
 int main(int argc, char *argv[]) {
 	auto start = chrono::steady_clock::now();
@@ -73,18 +87,18 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, interruptHandler);
 	double h = 1e-3;
 	mass = 4e6;
-	spin = 0;
-	tFinal = 1e4;
-	tRec = 1e-4 * tFinal;
+	spin = 1.0;
+	tFinal = 1.2e8;
+	tRec = 1e-3 * tFinal;
 	tCal = 3600;
-	NSK = 1;
+	NSK = 2;
 	PN = 1;
-	ray = 1;
+	ray = 0;
 	int PL = 1;
 	int progressBar = 1;
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
-	const char *optShort = "m:s:t:o:c:n:P:R:a:r:f:lbh";
+	const char *optShort = "m:s:t:o:c:n:P:R:a:r:i:e:f:lbh";
 	const struct option optLong[] = {
 		{"mass", required_argument, NULL, 'm'},
 		{"spin", required_argument, NULL, 's'},
@@ -96,6 +110,8 @@ int main(int argc, char *argv[]) {
 		{"ray", required_argument, NULL, 'R'},
 		{"abs", required_argument, NULL, 'a'},
 		{"rel", required_argument, NULL, 'r'},
+		{"inc", required_argument, NULL, 'i'},
+		{"eps", required_argument, NULL, 'e'},
 		{"format", required_argument, NULL, 'f'},
 		{"light", no_argument, NULL, 'l'},
 		{"ray", no_argument, NULL, 'R'},
@@ -103,6 +119,7 @@ int main(int argc, char *argv[]) {
 		{"help", no_argument, NULL, 'h'},
 		{NULL, 0, NULL, 0}};
 	int opt;
+	double inc = 0, eps = 0;
 	while ((opt = getopt_long(argc, argv, optShort, optLong, NULL)) != -1)
 		switch (opt) {
 		case 'm':
@@ -137,6 +154,12 @@ int main(int argc, char *argv[]) {
 		case 'r':
 			relAcc = atof(optarg);
 			break;
+		case 'i':
+			inc = atof(optarg);
+			break;
+		case 'e':
+			eps = atof(optarg);
+			break;
 		case 'f':
 			storeFormat = atoi(optarg);
 			break;
@@ -169,10 +192,23 @@ int main(int argc, char *argv[]) {
 		x[2] = 0;
 		x[3] = 0;
 		if (PL) {
-			x[1] = 10 * mass;
-			x[5] = 0;
-			x[6] = 1.05 * sqrt(0.1);
-			x[7] = 0;
+			//x[1] = 7598 * mass;
+			//x[5] = -0.95 * sqrt(1. / 7598);
+			//x[6] = sqrt(1. - 0.95 * 0.95) * sqrt(1. / 7598) * cos(M_PI_2 / 10);
+			//x[7] = sqrt(1. - 0.95 * 0.95) * sqrt(1. / 7598) * sin(M_PI_2 / 10);
+			double a = 300 * Constant::AU, e = 0.95, an = M_PI * 175 / 180, pp = M_PI * 185 / 180, ta = M_PI, in = M_PI * 151 / 180;
+			double r = a * (1 - e * e) / (1 + e * cos(ta));
+			double tp1 = r * cos(pp + ta), tp2 = r * sin(pp + ta) * cos(in);
+			double xp1 = tp1 * cos(an) - tp2 * sin(an), xp2 = tp1 * sin(an) + tp2 * cos(an), xp3 = -r * sin(pp + ta) * sin(in);
+			x[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
+			x[2] = xp2 * cos(eps) - xp1 * sin(eps);
+			x[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
+			double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = sqrt(2. * mass / r - mass / a - vtheta * vtheta);
+			double tp5 = -vtheta * sin(pp + ta) + vr * cos(pp + ta), tp6 = (vtheta * cos(pp + ta) + vr * sin(pp + ta)) * cos(in);
+			double xp5 = tp5 * cos(an) - tp6 * sin(an), xp6 = tp5 * sin(an) + tp6 * cos(an), xp7 = -(vtheta * cos(pp + ta) + vr * sin(pp + ta)) * sin(in);
+			x[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
+			x[6] = xp6 * cos(eps) - xp5 * sin(eps);
+			x[7] = xp7 * cos(inc) - (xp5 * cos(eps) + xp6 * sin(eps)) * sin(inc);
 		}
 		else {
 			x[1] = mass * 442990;
@@ -192,7 +228,7 @@ int main(int argc, char *argv[]) {
 	int status = 0;
 	Object::star star_0(Constant::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
-	view vie(mass * 1e3, M_PI_4, tFinal, 3000);
+	view vie(mass * 4.17936511e6, M_PI_4, tFinal, 3000);
 	camera cam(100, 4e-2, mass * 1000., M_PI_4, tFinal, 3000);
 	if (ray & 2)
 		cam.initialize();
@@ -233,7 +269,7 @@ int main(int argc, char *argv[]) {
 		vie.save("view");
 	if (ray & 2)
 		cam.save("camera");
-	IO::NumPy<double> output(Metric::name);
+	IO::NumPy<double> output(Metric::name + 'i' + to_string(inc) + 'e' + to_string(eps));
 	output.save(rec);
 	return 0;
 }
