@@ -15,54 +15,85 @@
 using namespace std;
 
 namespace SBody {
-	view::view(double r, double theta, double tFinal, size_t duration, size_t frame) : r(r), theta(theta), tFinal(tFinal), duration(duration), frame(frame) {}
-	void view::traceBack(Object::star &s) {
-		const double sints = sin(s.pos[2]), costs = cos(s.pos[2]), sinto = sin(theta), costo = cos(theta), rs = s.pos[1], phis = s.pos[3], t1 = r + 2e4 * Metric::m;
-		double alpha0 = GSL_POSINF, alpha1 = rs * sints * sin(phis), beta0 = GSL_POSINF, beta1 = rs * costs * sinto - rs * sints * cos(phis) * costo, ph[8], rp = rs, phip = phis;
-		while (abs(alpha1 - alpha0) > 1e-3 * (1. + gsl_hypot(alpha1, beta1)) || abs(beta1 - beta0) > 1e-3 * (1. + gsl_hypot(alpha1, beta1))) {
+	view::view(double r, double theta, double tFinal, size_t duration, size_t frame) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(r + 2e4 * Metric::m), duration(duration), frame(frame) {}
+	void view::traceBack(Object::star &s, int rayNO) {
+		//Metric::setMetric(2, 4e6, 1);
+		const double rs = s.pos[1], thetas = s.pos[2], phis = s.pos[3], sints = sin(thetas), costs = cos(thetas), sinps = sin(phis), cosps = cos(phis);
+		double alpha0 = GSL_POSINF, alpha1 = rs * sints * sin(phis), beta0 = GSL_POSINF, beta1 = rs * costs * sinto - rs * sints * cosps * costo, ph[9], cosph, last[9], h;
+		vector<double> qdq(12);
+		vector<vector<double>> rec;
+		while (abs(alpha1 - alpha0) > epsilon * (1. + gsl_hypot(alpha1, beta1)) || abs(beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
+			rec.clear();
 			alpha0 = alpha1;
 			beta0 = beta1;
 			ph[0] = 0.;
 			ph[1] = r;
-			ph[2] = theta;
 			ph[4] = 1.;
 			ph[5] = -1.;
+			ph[8] = 0.;
 			if (sinto < epsilon) {
 				const double k = gsl_hypot(alpha1, beta1);
-				if (alpha1 >= 0)
-					ph[3] = (theta < M_PI_2 ? 1. : -1.) * acos(-beta1 / k);
-				else
-					ph[3] = M_2PI - (theta < M_PI_2 ? 1. : -1.) * acos(-beta1 / k);
-				ph[6] = sign(M_PI_2 - theta) * k / gsl_pow_2(r);
+				if (M_PI_2 > theta) {
+					ph[2] = 1e-15;
+					ph[3] = alpha1 >= 0. ? acos(-beta1 / k) : M_2PI - acos(-beta1 / k);
+					ph[6] = k / gsl_pow_2(r);
+				}
+				else {
+					ph[2] = M_PI - 1e-15;
+					ph[3] = alpha1 >= 0. ? -acos(-beta1 / k) : M_2PI + acos(-beta1 / k);
+					ph[6] = -k / gsl_pow_2(r);
+				}
 				ph[7] = 0.;
 			}
 			else {
+				ph[2] = theta;
 				ph[3] = 0.,
 				ph[6] = -beta1 / gsl_pow_2(r);
 				ph[7] = alpha1 / (gsl_pow_2(r) * sinto);
 			}
-			double lastt, t = 0, h = 1e-3;
+			h = 1e-3;
 			Metric::lightNormalization(ph, 1.);
-			integrator integ(Metric::function, Metric::jacobian, 0);
-			int status = 0;
-			while (status == 0 && t < t1) {
-				lastt = ph[2];
-				status = integ.apply(&t, t1, &h, ph);
-				if (oppositeSign(ph[2] - s.pos[2], lastt - s.pos[2])) {
-					const double dt = (s.pos[2] - ph[2]) / ph[6];
-					ph[1] += dt * ph[5];
-					ph[2] = s.pos[2];
-					ph[3] += dt * ph[7];
-					const double dphisint = (ph[3] - phis) * sints;
-					rp += rs - ph[1] * cos(dphisint); //FIXME:!!!!!!!
-					phip -= asin(ph[1] * sin(dphisint) / (rp * sints));
-					alpha1 = rp * sints * sin(phip);
-					beta1 = rp * costs * sinto - rp * sints * cos(phip) * costo;
-					break;
+			const int kerrh = 1;
+			if (kerrh)
+				Metric::KerrH::qdq2qp(ph);
+			integrator integ(kerrh ? Metric::KerrH::function : Metric::function, kerrh ? Metric::KerrH::jacobian : Metric::jacobian, 0);
+			int status = 0, fixed = 0;
+			while (status == 0 && ph[8] < tFinal) {
+				copy(ph, ph + 9, last);
+				if (fixed)
+					status = integ.apply_fixed(ph + 8, h, ph);
+				else
+					status = integ.apply(ph + 8, tFinal, &h, ph);
+				cosph = (rs * sints * cosps - ph[1] * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * cos(ph[2])) * costo;
+				if (cosph >= 0) {
+					if (cosph > rs * epsilon) {
+						copy(last, last + 9, ph);
+						h *= 0.5;
+						integ.reset();
+						fixed = 1;
+					}
+					else {
+						alpha1 += rs * sints * sinps - ph[1] * sin(ph[2]) * sin(ph[3]); //TODO:OPT!
+						beta1 += rs * costs * sinto - rs * sints * cosps * costo - ph[1] * cos(ph[2]) * sinto + ph[1] * sin(ph[2]) * cos(ph[3]) * costo;
+						break;
+					}
+				}
+				else {
+					copy(ph, ph + 8, qdq.begin());
+					if (kerrh)
+						Metric::KerrH::qp2qdq(qdq.data());
+					qdq[8] = ph[8] / Constant::s;
+					qdq[9] = Metric::energy(qdq.data());
+					qdq[10] = Metric::angularMomentum(qdq.data());
+					qdq[11] = Metric::carterL(qdq.data());
+					rec.push_back(qdq);
 				}
 			}
 		}
-		screen.push_back({alpha1, beta1, s.frequency(ph)});
+		screen.push_back({alpha1, beta1, s.frequency(qdq.data()), ph[8] / Constant::s});
+		IO::NumPy<double> output("Trace " + to_string(rayNO));
+		output.save(rec);
+		//Metric::setMetric(1, 4e6, 1);
 	}
 	void view::save(string fileName) {
 		IO::NumPy<double> output(fileName);

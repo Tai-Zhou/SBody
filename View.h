@@ -12,6 +12,8 @@ namespace SBody {
 	  protected:
 		const double r;
 		const double theta;
+		const double sinto;
+		const double costo;
 		const double tFinal;
 		const size_t duration;
 		const size_t frame;
@@ -19,7 +21,7 @@ namespace SBody {
 
 	  public:
 		view(double r, double theta, double tFinal, size_t duration = 300, size_t frame = 30);
-		void traceBack(Object::star &s);
+		void traceBack(Object::star &s, int rayNO);
 		void save(std::string fileName = "view");
 	};
 	class camera : public view {

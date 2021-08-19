@@ -87,15 +87,15 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, interruptHandler);
 	double h = 1e-3;
 	mass = 4e6;
-	spin = 1.0;
-	tFinal = 1.2e8;
+	spin = 0.;
+	tFinal = 1e9;
 	tRec = 1e-3 * tFinal;
 	tCal = 3600;
 	NSK = 2;
 	PN = 1;
-	ray = 0;
+	ray = 1;
 	int PL = 1;
-	int progressBar = 1;
+	int progressBar = 0;
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
 	const char *optShort = "m:s:t:o:c:n:P:R:a:r:i:e:f:lbh";
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
 		{"help", no_argument, NULL, 'h'},
 		{NULL, 0, NULL, 0}};
 	int opt;
-	double inc = 0, eps = 0;
+	double inc = 0.8, eps = 3.1;
 	while ((opt = getopt_long(argc, argv, optShort, optLong, NULL)) != -1)
 		switch (opt) {
 		case 'm':
@@ -196,14 +196,14 @@ int main(int argc, char *argv[]) {
 			//x[5] = -0.95 * sqrt(1. / 7598);
 			//x[6] = sqrt(1. - 0.95 * 0.95) * sqrt(1. / 7598) * cos(M_PI_2 / 10);
 			//x[7] = sqrt(1. - 0.95 * 0.95) * sqrt(1. / 7598) * sin(M_PI_2 / 10);
-			double a = 300 * Constant::AU, e = 0.95, an = M_PI * 175 / 180, pp = M_PI * 185 / 180, ta = M_PI, in = M_PI * 151 / 180;
+			double a = 848. * Constant::AU, e = 0.68, an = M_PI * 175. / 180., pp = M_PI * 185. / 180., ta = M_PI * 1., in = M_PI * 151. / 180.;
 			double r = a * (1 - e * e) / (1 + e * cos(ta));
 			double tp1 = r * cos(pp + ta), tp2 = r * sin(pp + ta) * cos(in);
 			double xp1 = tp1 * cos(an) - tp2 * sin(an), xp2 = tp1 * sin(an) + tp2 * cos(an), xp3 = -r * sin(pp + ta) * sin(in);
 			x[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
 			x[2] = xp2 * cos(eps) - xp1 * sin(eps);
 			x[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
-			double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = sqrt(2. * mass / r - mass / a - vtheta * vtheta);
+			double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(ta)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
 			double tp5 = -vtheta * sin(pp + ta) + vr * cos(pp + ta), tp6 = (vtheta * cos(pp + ta) + vr * sin(pp + ta)) * cos(in);
 			double xp5 = tp5 * cos(an) - tp6 * sin(an), xp6 = tp5 * sin(an) + tp6 * cos(an), xp7 = -(vtheta * cos(pp + ta) + vr * sin(pp + ta)) * sin(in);
 			x[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
@@ -228,29 +228,32 @@ int main(int argc, char *argv[]) {
 	int status = 0;
 	Object::star star_0(Constant::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
-	view vie(mass * 4.17936511e6, M_PI_4, tFinal, 3000);
-	camera cam(100, 4e-2, mass * 1000., M_PI_4, tFinal, 3000);
+	view vie(mass * 4.17936511e7, inc, tFinal, 3000);
+	camera cam(100, 4e-2, mass * 1000., inc, tFinal, 3000);
 	if (ray & 2)
 		cam.initialize();
 	vector<vector<double>> rec;
 	vector<double> temp(12);
+	int rayNO = 0;
 	while (tStep < tFinal) {
 		tStep = min(tStep + tRec, tFinal);
 		while (status == 0 && t < tStep)
 			status = integ.apply(&t, tStep, &h, star_0.pos);
 		if (NSK == 0)
-			temp = {star_0.pos[0], star_0.pos[1], star_0.pos[2], star_0.pos[3], star_0.pos[4], star_0.pos[5], star_0.pos[6], star_0.pos[7]};
+			copy(star_0.pos, star_0.pos + 8, temp.begin());
 		else {
-			if (NSK == 3)
-				Metric::KerrH::qp2qdq(y); //FIXME: must not be replaced!
-			Metric::s2c(star_0.pos, &temp[0]);
+			if (NSK == 3) {
+				copy(star_0.pos, star_0.pos + 8, temp.begin());
+				Metric::KerrH::qp2qdq(temp.data());
+			}
+			Metric::s2c(star_0.pos, temp.data());
 		}
 		temp[8] = t / Constant::s;
 		temp[9] = Metric::energy(star_0.pos);
 		temp[10] = Metric::angularMomentum(star_0.pos);
 		temp[11] = Metric::carter(star_0.pos);
 		if (ray & 1)
-			vie.traceBack(star_0);
+			vie.traceBack(star_0, rayNO++);
 		if (ray & 2)
 			cam.traceBack();
 		rec.push_back(temp);
@@ -261,15 +264,19 @@ int main(int argc, char *argv[]) {
 			break;
 	}
 	if (progressBar) {
-		bar.set_option(indicators::option::PrefixText{"Complete!"});
+		bar.set_option(indicators::option::PrefixText{string("Complete(") + to_string(inc) + "," + to_string(eps) + ")"});
 		bar.mark_as_completed();
 		indicators::show_console_cursor(true);
 	}
-	if (ray & 1)
-		vie.save("view");
+	if (ray & 1) {
+		if (spin < epsilon)
+			vie.save("view e" + to_string(eps));
+		else
+			vie.save(string("view i") + to_string(inc) + "e" + to_string(eps));
+	}
 	if (ray & 2)
-		cam.save("camera");
-	IO::NumPy<double> output(Metric::name + 'i' + to_string(inc) + 'e' + to_string(eps));
+		cam.save(string("camera i") + to_string(inc) + "e" + to_string(eps));
+	IO::NumPy<double> output(Metric::name + (spin < epsilon ? " 0i" : " i") + to_string(inc) + 'e' + to_string(eps));
 	output.save(rec);
 	return 0;
 }

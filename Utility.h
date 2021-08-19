@@ -19,7 +19,9 @@ namespace SBody {
 		gsl_odeiv2_step *step;
 		gsl_odeiv2_system system;
 		integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int cartesian, void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
+		~integrator();
 		int apply(double *t, double t1, double *h, double *y);
+		int apply_fixed(double *t, const double h, double *y);
 		int reset();
 		int checkCoordinate(double *y);
 	};

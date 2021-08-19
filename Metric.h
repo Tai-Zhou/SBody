@@ -15,6 +15,7 @@ namespace SBody {
 		extern double (*energy)(const double[]);
 		extern double (*angularMomentum)(const double[]);
 		extern double (*carter)(const double[]);
+		extern double (*carterL)(const double[]);
 		extern int (*particleNormalization)(double[]);
 		extern int (*lightNormalization)(double[], double);
 
@@ -60,6 +61,7 @@ namespace SBody {
 			double energy(const double y[]);
 			double angularMomentum(const double y[]);
 			double carter(const double y[]);
+			double carterL(const double y[]);
 			int particleNormalization(double y[]);
 			int lightNormalization(double y[], double e);
 		} // namespace Kerr
@@ -71,6 +73,7 @@ namespace SBody {
 			double energy(const double y[]);
 			double angularMomentum(const double y[]);
 			double carter(const double y[]);
+			double carterL(const double y[]);
 		} // namespace KerrH
 	}	  // namespace Metric
 } // namespace SBody
