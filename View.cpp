@@ -22,7 +22,7 @@ namespace SBody {
 		double alpha0 = GSL_POSINF, alpha1 = rs * sints * sin(phis), beta0 = GSL_POSINF, beta1 = rs * costs * sinto - rs * sints * cosps * costo, ph[9], cosph, last[9], h;
 		vector<double> qdq(12);
 		vector<vector<double>> rec;
-		while (abs(alpha1 - alpha0) > epsilon * (1. + gsl_hypot(alpha1, beta1)) || abs(beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
+		while (gsl_hypot(alpha1 - alpha0, beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
 			rec.clear();
 			alpha0 = alpha1;
 			beta0 = beta1;
@@ -157,18 +157,9 @@ namespace SBody {
 			double ph[8], last[8], t = 0., h = 1e-3; // TODO: should add t_0 (initials[8]) here
 			int status = 0;
 			integrator integ(Metric::function, Metric::jacobian, 0);
-			ph[0] = initials[p][0];
-			ph[1] = initials[p][1];
-			ph[2] = initials[p][2];
-			ph[3] = initials[p][3];
-			ph[4] = initials[p][4];
-			ph[5] = initials[p][5];
-			ph[6] = initials[p][6];
-			ph[7] = initials[p][7];
+			copy(initials[p].data(), initials[p].data() + 8, ph);
 			while (status == 0 && t < t1) {
-				last[1] = ph[1];
-				last[2] = ph[2];
-				last[3] = ph[3];
+				copy(ph, ph + 3, last);
 				status = integ.apply(&t, t1, &h, ph);
 				for (auto objP : Object::objectList)
 					if (objP->hit(ph, last))
