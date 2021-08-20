@@ -14,8 +14,7 @@ namespace SBody {
 		extern int (*jacobian)(double, const double[], double *, double[], void *);
 		extern double (*energy)(const double[]);
 		extern double (*angularMomentum)(const double[]);
-		extern double (*carter)(const double[]);
-		extern double (*carterL)(const double[]);
+		extern double (*carter)(const double[], const double);
 		extern int (*particleNormalization)(double[]);
 		extern int (*lightNormalization)(double[], double);
 
@@ -38,7 +37,7 @@ namespace SBody {
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double x[]);
 			double angularMomentum(const double x[]);
-			double carter(const double y[]);
+			double carter(const double y[], const double mu2);
 			int particleNormalization(double y[]);
 			int lightNormalization(double y[], double e);
 		} // namespace Newton
@@ -49,7 +48,7 @@ namespace SBody {
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[]);
 			double angularMomentum(const double y[]);
-			double carter(const double y[]);
+			double carter(const double y[], const double mu2);
 			int particleNormalization(double y[]);
 			int lightNormalization(double y[], double e);
 		} // namespace Schwarzschild
@@ -60,8 +59,7 @@ namespace SBody {
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[]);
 			double angularMomentum(const double y[]);
-			double carter(const double y[]);
-			double carterL(const double y[]);
+			double carter(const double y[], const double mu2);
 			int particleNormalization(double y[]);
 			int lightNormalization(double y[], double e);
 		} // namespace Kerr
@@ -72,8 +70,7 @@ namespace SBody {
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[]);
 			double angularMomentum(const double y[]);
-			double carter(const double y[]);
-			double carterL(const double y[]);
+			double carter(const double y[], const double mu2);
 		} // namespace KerrH
 	}	  // namespace Metric
 } // namespace SBody

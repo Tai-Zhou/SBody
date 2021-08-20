@@ -251,7 +251,7 @@ int main(int argc, char *argv[]) {
 		temp[8] = t / Constant::s;
 		temp[9] = Metric::energy(star_0.pos);
 		temp[10] = Metric::angularMomentum(star_0.pos);
-		temp[11] = Metric::carter(star_0.pos);
+		temp[11] = Metric::carter(star_0.pos, 1.);
 		if (ray & 1)
 			vie.traceBack(star_0, rayNO++);
 		if (ray & 2)

@@ -85,7 +85,7 @@ namespace SBody {
 					qdq[8] = ph[8] / Constant::s;
 					qdq[9] = Metric::energy(qdq.data());
 					qdq[10] = Metric::angularMomentum(qdq.data());
-					qdq[11] = Metric::carterL(qdq.data());
+					qdq[11] = Metric::carter(qdq.data(), 0.);
 					rec.push_back(qdq);
 				}
 			}

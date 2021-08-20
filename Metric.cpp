@@ -19,8 +19,7 @@ namespace SBody {
 		int (*jacobian)(double, const double[], double *, double[], void *) = nullptr;
 		double (*energy)(const double[]) = nullptr;
 		double (*angularMomentum)(const double[]) = nullptr;
-		double (*carter)(const double[]) = nullptr;
-		double (*carterL)(const double[]) = nullptr;
+		double (*carter)(const double[], const double) = nullptr;
 		int (*particleNormalization)(double[]) = nullptr;
 		int (*lightNormalization)(double[], double) = nullptr;
 		void setMetric(int NSK, double mass, double spin) {
@@ -38,7 +37,6 @@ namespace SBody {
 				energy = Newton::energy;
 				angularMomentum = Newton::angularMomentum;
 				carter = Newton::carter;
-				carterL = Newton::carter;
 				particleNormalization = Newton::particleNormalization;
 				lightNormalization = Newton::lightNormalization;
 				break;
@@ -51,7 +49,6 @@ namespace SBody {
 				energy = Schwarzschild::energy;
 				angularMomentum = Schwarzschild::angularMomentum;
 				carter = Schwarzschild::carter;
-				carterL = Schwarzschild::carter;
 				particleNormalization = Schwarzschild::particleNormalization;
 				lightNormalization = Schwarzschild::lightNormalization;
 				break;
@@ -64,7 +61,6 @@ namespace SBody {
 				energy = Kerr::energy;
 				angularMomentum = Kerr::angularMomentum;
 				carter = Kerr::carter;
-				carterL = Kerr::carterL;
 				particleNormalization = Kerr::particleNormalization;
 				lightNormalization = Kerr::lightNormalization;
 				break;
@@ -77,7 +73,6 @@ namespace SBody {
 				energy = KerrH::energy;
 				angularMomentum = KerrH::angularMomentum;
 				carter = KerrH::carter;
-				carterL = KerrH::carterL;
 				particleNormalization = Kerr::particleNormalization;
 				lightNormalization = Kerr::lightNormalization;
 			}
@@ -214,7 +209,7 @@ namespace SBody {
 					J[i] += J[i] * eff;
 				return norm(J);
 			}
-			double carter(const double y[]) { //FIXME: not verified!
+			double carter(const double y[], const double mu2) { //FIXME: not verified!
 				double c[3];
 				cross(y + 1, y + 5, c);
 				return SBody::dot(c) / gsl_pow_2(y[4]);
@@ -264,7 +259,7 @@ namespace SBody {
 			double angularMomentum(const double r[]) {
 				return gsl_pow_2(r[1]) * r[7] / r[4];
 			}
-			double carter(const double y[]) {
+			double carter(const double y[], const double mu2) {
 				return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2]))) / gsl_pow_2(y[4]);
 			}
 			int particleNormalization(double y[]) {
@@ -337,17 +332,11 @@ namespace SBody {
 				const double mr_rho2 = 2. * m * r[1] / (r2 + a2 * gsl_pow_2(cos(r[2])));
 				return (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 / r[4];
 			}
-			double carter(const double y[]) {
+			double carter(const double y[], const double mu2) {
 				const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2])), cost2 = gsl_pow_2(cos(y[2]));
 				const double rho2 = r2 + a2 * cost2;
 				const double mr_rho2 = 2. * m * y[1] / rho2;
-				return cost2 * a2 + (gsl_pow_2(rho2 * y[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * y[7]) * sint2 - a2 * gsl_pow_2(mr_rho2 * (1. - a * sint2 * y[7]) - 1.))) / gsl_pow_2(y[4]);
-			}
-			double carterL(const double y[]) {
-				const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2])), cost2 = gsl_pow_2(cos(y[2]));
-				const double rho2 = r2 + a2 * cost2;
-				const double mr_rho2 = 2. * m * y[1] / rho2;
-				return (gsl_pow_2(rho2 * y[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * y[7]) * sint2 - a2 * gsl_pow_2(mr_rho2 * (1. - a * sint2 * y[7]) - 1.))) / gsl_pow_2(y[4]);
+				return mu2 * cost2 * a2 + (gsl_pow_2(rho2 * y[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * y[7]) * sint2 - a2 * gsl_pow_2(mr_rho2 * (1. - a * sint2 * y[7]) - 1.))) / gsl_pow_2(y[4]);
 			}
 			int particleNormalization(double y[]) {
 				const double r = y[1], sint = sin(y[2]);
@@ -421,11 +410,8 @@ namespace SBody {
 			double angularMomentum(const double r[]) {
 				return r[7];
 			}
-			double carter(const double y[]) {
-				return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (a2 * (1. - gsl_pow_2(y[4])) + gsl_pow_2(y[7] / sin(y[2])));
-			}
-			double carterL(const double y[]) {
-				return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (-a2 * gsl_pow_2(y[4]) + gsl_pow_2(y[7] / sin(y[2])));
+			double carter(const double y[], const double mu2) {
+				return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (a2 * (mu2 - gsl_pow_2(y[4])) + gsl_pow_2(y[7] / sin(y[2])));
 			}
 		} // namespace KerrH
 	}	  // namespace Metric
