@@ -198,13 +198,13 @@ int main(int argc, char *argv[]) {
 			//x[7] = sqrt(1. - 0.95 * 0.95) * sqrt(1. / 7598) * sin(M_PI_2 / 10);
 			double a = 848. * Constant::AU, e = 0.68, an = M_PI * 175. / 180., pp = M_PI * 185. / 180., ta = M_PI * 1., in = M_PI * 151. / 180.;
 			double r = a * (1 - e * e) / (1 + e * cos(ta));
-			double tp1 = r * cos(pp + ta), tp2 = r * sin(pp + ta) * cos(in);
-			double xp1 = tp1 * cos(an) - tp2 * sin(an), xp2 = tp1 * sin(an) + tp2 * cos(an), xp3 = -r * sin(pp + ta) * sin(in);
+			double tp1 = -r * cos(pp + ta), tp2 = -r * sin(pp + ta) * cos(in);
+			double xp1 = tp1 * cos(an) - tp2 * sin(an), xp2 = tp2 * cos(an) + tp1 * sin(an), xp3 = -r * sin(pp + ta) * sin(in);
 			x[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
 			x[2] = xp2 * cos(eps) - xp1 * sin(eps);
 			x[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
 			double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(ta)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
-			double tp5 = -vtheta * sin(pp + ta) + vr * cos(pp + ta), tp6 = (vtheta * cos(pp + ta) + vr * sin(pp + ta)) * cos(in);
+			double tp5 = vtheta * sin(pp + ta) - vr * cos(pp + ta), tp6 = -(vtheta * cos(pp + ta) + vr * sin(pp + ta)) * cos(in);
 			double xp5 = tp5 * cos(an) - tp6 * sin(an), xp6 = tp5 * sin(an) + tp6 * cos(an), xp7 = -(vtheta * cos(pp + ta) + vr * sin(pp + ta)) * sin(in);
 			x[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
 			x[6] = xp6 * cos(eps) - xp5 * sin(eps);
