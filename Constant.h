@@ -3,27 +3,24 @@
 
 namespace SBody {
 	namespace Constant {
-		// Math
-		extern const double epsilon;
-		extern const double pi2;
 		// Physical
-		extern const double e;
-		extern const double h;
+		constexpr double e = 1.60217662e-19;
+		constexpr double h = 7.52764601e-76;
 		// Time
-		extern const double s;
-		extern const double day;
-		extern const double yr;
+		constexpr double s = 2.0302544672808e5;
+		constexpr double day = 1.75413986e10;
+		constexpr double yr = 6.40699584e12;
 		// Length
-		extern const double cm;
-		extern const double R_sun;
-		extern const double AU;
-		extern const double pc;
+		constexpr double cm = 6.77219994e-6;
+		constexpr double R_sun = 4.71141950e5;
+		constexpr double AU = 1.01310669e8;
+		constexpr double pc = 2.08968255e13;
 		// Mass
-		extern const double M_earth;
-		extern const double M_jup;
+		constexpr double M_earth = 3.00348935e-6;
+		constexpr double M_jup = 9.5459e-4;
 		// Energy
-		extern const double erg;
-		extern const double J;
+		constexpr double erg = 5.59567759e-55;
+		constexpr double J = 5.59567759e-48;
 	} // namespace Constant
 } // namespace SBody
 

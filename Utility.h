@@ -8,9 +8,9 @@
 namespace SBody {
 	extern double absAcc;
 	extern double relAcc;
-	extern const double epsilon;
-	extern const double M_2PI;
-	extern const double M_PI2;
+	constexpr double epsilon = 1e-10;
+	constexpr double M_2PI = 6.28318530717958647692528676655900576;
+	constexpr double M_PI2 = 9.86960440108935861883449099987615111;
 	struct integrator {
 		const int cartesian;
 		const gsl_odeiv2_step_type *type;
