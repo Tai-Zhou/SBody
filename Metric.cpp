@@ -384,20 +384,20 @@ namespace SBody {
 				return 0;
 			}
 			int function(double t, const double y[], double dydt[], void *params) {
-				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]), pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]), E2 = gsl_pow_2(y[4]), L2 = gsl_pow_2(y[7]);
+				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]), pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]), E2 = gsl_pow_2(y[4]), deltaE2 = (1. + y[4]) * (1. - y[4]), L2 = gsl_pow_2(y[7]);
 				const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sint), sint_2 = 1 / sint2, sint_4 = gsl_pow_2(sint_2), cost2 = gsl_pow_2(cost);
 				const double a2r2 = a2 + r2, Delta = a2r2 - 2. * m * r, rho2 = r2 + a2 * cost2;
 				const double Delta_1 = 1 / Delta, Delta_2 = gsl_pow_2(Delta_1), rho_2 = 1 / rho2, rho_4 = gsl_pow_2(rho_2);
-				const double Q = ptheta2 + cost2 * (a2 * (1. - E2) + L2 * sint_2);
-				const double R = gsl_pow_2(y[4] * a2r2 + a * y[7]) - Delta * (r2 + gsl_pow_2(y[7] + a * y[4]) + Q);
+				const double Q = ptheta2 + cost2 * (a2 * deltaE2 + L2 * sint_2);
+				const double R = gsl_pow_2(y[4] * a2r2 + a * y[7]) - Delta * (r2 + gsl_pow_2(y[7] + a * y[4]) + Q); // FIXME: Large Error, R = -a2r2 * r2 * deltaE2 + E2 * (2. * m * r * a2) + 2. * m * r3 + (2. * m * r - a2r2) * Q - (r2 - 2. * m * r) * L2 + 2. * m * r * 2. * a * y[4] * y[7];
 				//[\tau,r,\theta,\phi,p_t,p_r,p_\theta,p_\phi]
 				dydt[0] = rho2 * Delta / (-a2r2 * (y[4] * a2r2 + a * y[7]) + a * Delta * (y[7] + a * y[4] * sint2));			  //d\tau/dt
 				dydt[1] = Delta * rho_2 * y[5] * dydt[0];																		  //dr/dt
 				dydt[2] = rho_2 * y[6] * dydt[0];																				  //d\theta/dt
 				dydt[3] = -(y[4] * a * (a2r2 - Delta) + y[7] * (a2 - Delta * (1. + cost2 * sint_2))) * Delta_1 * rho_2 * dydt[0]; //d\phi/dt
 				dydt[4] = 0.;
-				dydt[5] = ((m * rho2 + r * (Delta - rho2)) * pr2 + r * ptheta2 + (2. * E2 * a2r2 + 2. * a * y[4] * y[7] - Delta) * r * rho2 * Delta_1 - (r - m) * (r2 + gsl_pow_2(y[7] + a * y[4]) + Q - ptheta2) * rho2 * Delta_1 - (R + Delta * ptheta2) * ((r - m) * rho2 + Delta * r) * Delta_2) * rho_4 * dydt[0];
-				dydt[6] = (-(Delta * pr2 + ptheta2 - (R + Delta * ptheta2) * Delta_1) * a2 * rho_2 + a2 * (1. - E2) + L2 * sint_2 + cost2 * sint_4 * L2) * sint * cost * rho_2 * dydt[0];
+				dydt[5] = ((m * rho2 + r * (a2 * sint2 - 2. * m * r)) * pr2 + ((-2. * deltaE2 * r2 - a2 * deltaE2 + 3. * m * r - L2 - Q) * r + m * (a2 * E2 + L2 + 2. * a * y[4] * y[7] + Q)) * rho2 * Delta_1 - ((r - m) * rho2 + Delta * r) * R * Delta_2) * rho_4 * dydt[0];
+				dydt[6] = (-(Delta * pr2 - R * Delta_1) * a2 * rho_2 + a2 * deltaE2 + L2 * sint_2 + cost2 * sint_4 * L2) * sint * cost * rho_2 * dydt[0];
 				dydt[7] = 0.;
 				return GSL_SUCCESS;
 			}
