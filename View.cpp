@@ -17,11 +17,11 @@ using namespace std;
 namespace SBody {
 	view::view(double r, double theta, double tFinal, size_t duration, size_t frame) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(r + 2e4 * Metric::m), duration(duration), frame(frame) {}
 	void view::traceBack(Object::star &s, int rayNO) {
-		//Metric::setMetric(2, 4e6, 1);
 		const double rs = s.pos[1], thetas = s.pos[2], phis = s.pos[3], sints = sin(thetas), costs = cos(thetas), sinps = sin(phis), cosps = cos(phis);
-		double alpha0 = GSL_POSINF, alpha1 = rs * sints * sin(phis), beta0 = GSL_POSINF, beta1 = rs * costs * sinto - rs * sints * cosps * costo, ph[9], cosph, last[9], h;
+		double alpha0 = GSL_POSINF, alpha1 = rs * sints * sin(phis), beta0 = GSL_POSINF, beta1 = rs * costs * sinto - rs * sints * cosps * costo, ph[10], cosph, last[10], h;
 		vector<double> qdq(12);
 		vector<vector<double>> rec;
+		const int kerrh = 1, record = 0;
 		while (gsl_hypot(alpha1 - alpha0, beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
 			rec.clear();
 			alpha0 = alpha1;
@@ -31,6 +31,7 @@ namespace SBody {
 			ph[4] = 1.;
 			ph[5] = -1.;
 			ph[8] = 0.;
+			ph[9] = 0.;
 			if (sinto < epsilon) {
 				const double k = gsl_hypot(alpha1, beta1);
 				if (M_PI_2 > theta) {
@@ -53,47 +54,50 @@ namespace SBody {
 			}
 			h = 1e-3;
 			Metric::lightNormalization(ph, 1.);
-			const int kerrh = 1;
 			if (kerrh)
 				Metric::KerrH::qdq2qp(ph);
 			integrator integ(kerrh ? Metric::KerrH::function : Metric::function, kerrh ? Metric::KerrH::jacobian : Metric::jacobian, 0);
 			int status = 0, fixed = 0;
-			while (status == 0 && ph[8] < tFinal) {
-				copy(ph, ph + 9, last);
+			while (status == 0 && ph[8] + ph[9] < tFinal) {
+				copy(ph, ph + 10, last);
 				if (fixed)
-					status = integ.apply_fixed(ph + 8, h, ph);
+					status = integ.apply_fixed(ph + 9, h, ph);
 				else
-					status = integ.apply(ph + 8, tFinal, &h, ph);
+					status = integ.apply(ph + 9, tFinal, &h, ph);
 				cosph = (rs * sints * cosps - ph[1] * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * cos(ph[2])) * costo;
-				if (cosph >= 0) {
-					if (cosph > rs * epsilon) {
-						copy(last, last + 9, ph);
-						h *= 0.5;
-						integ.reset();
-						fixed = 1;
-					}
-					else {
-						alpha1 += rs * sints * sinps - ph[1] * sin(ph[2]) * sin(ph[3]); //TODO:OPT!
-						beta1 += rs * costs * sinto - rs * sints * cosps * costo - ph[1] * cos(ph[2]) * sinto + ph[1] * sin(ph[2]) * cos(ph[3]) * costo;
-						break;
-					}
+				if (cosph > rs * relAcc) {
+					copy(last, last + 10, ph);
+					h *= 0.5;
+					integ.reset();
+					fixed = 1;
 				}
 				else {
+					if (ph[9] > tFinal * 1e-6) {
+						ph[8] += ph[9];
+						ph[9] = 0;
+					}
 					copy(ph, ph + 8, qdq.begin());
 					if (kerrh)
 						Metric::KerrH::qp2qdq(qdq.data());
-					qdq[8] = ph[8] / Constant::s;
+					qdq[8] = (ph[8] + ph[9]) / Constant::s;
 					qdq[9] = Metric::energy(qdq.data());
 					qdq[10] = Metric::angularMomentum(qdq.data());
 					qdq[11] = Metric::carter(qdq.data(), 0.);
-					rec.push_back(qdq);
+					if (record)
+						rec.push_back(qdq);
+					if (cosph >= 0) {
+						alpha1 += rs * sints * sinps - ph[1] * sin(ph[2]) * sin(ph[3]); //TODO:OPT!
+						beta1 += (rs * costs - ph[1] * cos(ph[2])) * sinto - (rs * sints * cosps - ph[1] * sin(ph[2]) * cos(ph[3])) * costo;
+						break;
+					}
 				}
 			}
 		}
-		screen.push_back({alpha1, beta1, s.frequency(qdq.data()), ph[8] / Constant::s});
-		IO::NumPy<double> output("Trace " + to_string(rayNO));
-		output.save(rec);
-		//Metric::setMetric(1, 4e6, 1);
+		screen.push_back({alpha1, beta1, s.frequency(qdq.data()), qdq[8]});
+		if (record) {
+			IO::NumPy<double> output("Trace " + to_string(rayNO));
+			output.save(rec);
+		}
 	}
 	void view::save(string fileName) {
 		IO::NumPy<double> output(fileName);

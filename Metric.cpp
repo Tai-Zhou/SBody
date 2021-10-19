@@ -341,8 +341,11 @@ namespace SBody {
 			int particleNormalization(double y[]) {
 				const double r = y[1], sint = sin(y[2]);
 				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
-				const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
-				const double mr_rho2 = 2. * m * r / rho2;
+				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * gsl_pow_2(cos(y[2])), a2r2 = a2 + r2;
+				const double mr_rho2 = 2. * m * r / rho2, A_1 = 1 / (gsl_pow_2(a2r2) - a2 * Delta * sint2);
+				y[5] *= Delta * sqrt(A_1);
+				y[6] *= r * sqrt(Delta * A_1);
+				y[7] = r * y[7] * rho2 * sqrt(Delta) * A_1 + 2. * m * a * r * A_1;
 				y[4] = sqrt(1. - mr_rho2 + 2. * mr_rho2 * a * sint2 * y[7] - (rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7])));
 				return std::isnan(y[4]);
 			}
@@ -364,39 +367,39 @@ namespace SBody {
 		} // namespace Kerr
 		namespace KerrH {
 			int qdq2qp(double r[]) {
-				const double dtaudt_1 = 1 / r[4], r2 = gsl_pow_2(r[1]), sint2 = gsl_pow_2(sin(r[2]));
+				const double dtdtau = 1 / r[4], r2 = gsl_pow_2(r[1]), sint2 = gsl_pow_2(sin(r[2]));
 				const double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * gsl_pow_2(cos(r[2]));
 				const double mr_rho2 = 2. * m * r[1] / rho2;
-				r[4] = (mr_rho2 - 1. - mr_rho2 * a * sint2 * r[7]) * dtaudt_1;
-				r[5] *= rho2 / Delta * dtaudt_1;
-				r[6] *= rho2 * dtaudt_1;
-				r[7] = (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 * dtaudt_1;
+				r[4] = (r[4] - 1. + mr_rho2 * (1. - a * sint2 * r[7])) * dtdtau; // 1 + p_t
+				r[5] *= rho2 / Delta * dtdtau;
+				r[6] *= rho2 * dtdtau;
+				r[7] = (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 * dtdtau;
 				return 0;
 			}
 			int qp2qdq(double r[]) {
-				const double pt = r[4], r2 = gsl_pow_2(r[1]);
+				const double pt = r[4] - 1., r2 = gsl_pow_2(r[1]);
 				const double Delta = r2 - 2. * m * r[1] + a2, rho2 = r2 + a2 * gsl_pow_2(cos(r[2]));
 				const double rho_2 = 1 / rho2, mr_rho2 = 2. * m * r[1] * rho_2;
-				r[4] = -Delta / ((Delta + mr_rho2 * (a2 + r2)) * r[4] + mr_rho2 * a * r[7]);
+				r[4] = -Delta / ((Delta + mr_rho2 * (a2 + r2)) * pt + mr_rho2 * a * r[7]);
 				r[5] *= Delta * r[4] * rho_2;
 				r[6] *= r[4] * rho_2;
 				r[7] = (-mr_rho2 * a * pt + (1. - mr_rho2) / gsl_pow_2(sin(r[2])) * r[7]) / Delta * r[4];
 				return 0;
 			}
 			int function(double t, const double y[], double dydt[], void *params) {
-				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]), pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]), E2 = gsl_pow_2(y[4]), deltaE2 = (1. + y[4]) * (1. - y[4]), L2 = gsl_pow_2(y[7]);
+				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]), pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]), E = 1. - y[4], E2 = gsl_pow_2(E), deltaE2 = (2. - y[4]) * y[4], L2 = gsl_pow_2(y[7]);
 				const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sint), sint_2 = 1 / sint2, sint_4 = gsl_pow_2(sint_2), cost2 = gsl_pow_2(cost);
 				const double a2r2 = a2 + r2, Delta = a2r2 - 2. * m * r, rho2 = r2 + a2 * cost2;
 				const double Delta_1 = 1 / Delta, Delta_2 = gsl_pow_2(Delta_1), rho_2 = 1 / rho2, rho_4 = gsl_pow_2(rho_2);
 				const double Q = ptheta2 + cost2 * (a2 * deltaE2 + L2 * sint_2);
-				const double R = gsl_pow_2(y[4] * a2r2 + a * y[7]) - Delta * (r2 + gsl_pow_2(y[7] + a * y[4]) + Q); // FIXME: Large Error, R = -a2r2 * r2 * deltaE2 + E2 * (2. * m * r * a2) + 2. * m * r3 + (2. * m * r - a2r2) * Q - (r2 - 2. * m * r) * L2 + 2. * m * r * 2. * a * y[4] * y[7];
-				//[\tau,r,\theta,\phi,p_t,p_r,p_\theta,p_\phi]
-				dydt[0] = rho2 * Delta / (-a2r2 * (y[4] * a2r2 + a * y[7]) + a * Delta * (y[7] + a * y[4] * sint2));			  //d\tau/dt
-				dydt[1] = Delta * rho_2 * y[5] * dydt[0];																		  //dr/dt
-				dydt[2] = rho_2 * y[6] * dydt[0];																				  //d\theta/dt
-				dydt[3] = -(y[4] * a * (a2r2 - Delta) + y[7] * (a2 - Delta * (1. + cost2 * sint_2))) * Delta_1 * rho_2 * dydt[0]; //d\phi/dt
+				const double R = -a2r2 * r2 * deltaE2 + E2 * (2. * m * r * a2) + 2. * m * r * r2 - Delta * Q - (r2 - 2. * m * r) * L2 - 4. * m * r * a * E * y[7]; // FIXME: Large Error, R = gsl_pow_2(E * a2r2 - a * y[7]) - Delta * (r2 + gsl_pow_2(y[7] - a * E) + Q);
+				//[\tau,r,\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
+				dydt[0] = rho2 * Delta / (a2r2 * (E * a2r2 - a * y[7]) + a * Delta * (y[7] - a * E * sint2));				  //d\tau/dt
+				dydt[1] = Delta * rho_2 * y[5] * dydt[0];																	  //dr/dt
+				dydt[2] = rho_2 * y[6] * dydt[0];																			  //d\theta/dt
+				dydt[3] = (E * a * (a2r2 - Delta) - y[7] * (a2 - Delta * (1. + cost2 * sint_2))) * Delta_1 * rho_2 * dydt[0]; //d\phi/dt
 				dydt[4] = 0.;
-				dydt[5] = ((m * rho2 + r * (a2 * sint2 - 2. * m * r)) * pr2 + ((-2. * deltaE2 * r2 - a2 * deltaE2 + 3. * m * r - L2 - Q) * r + m * (a2 * E2 + L2 + 2. * a * y[4] * y[7] + Q)) * rho2 * Delta_1 - ((r - m) * rho2 + Delta * r) * R * Delta_2) * rho_4 * dydt[0];
+				dydt[5] = ((m * rho2 + r * (a2 * sint2 - 2. * m * r)) * pr2 + ((-2. * deltaE2 * r2 - a2 * deltaE2 + 3. * m * r - L2 - Q) * r + m * (a2 * E2 + L2 - 2. * a * E * y[7] + Q)) * rho2 * Delta_1 - ((r - m) * rho2 + Delta * r) * R * Delta_2) * rho_4 * dydt[0];
 				dydt[6] = (-(Delta * pr2 - R * Delta_1) * a2 * rho_2 + a2 * deltaE2 + L2 * sint_2 + cost2 * sint_4 * L2) * sint * cost * rho_2 * dydt[0];
 				dydt[7] = 0.;
 				return GSL_SUCCESS;

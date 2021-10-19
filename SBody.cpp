@@ -87,8 +87,8 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, interruptHandler);
 	double h = 1e-3;
 	mass = 4e6;
-	spin = 0.;
-	tFinal = 1e9;
+	spin = 0.99;
+	tFinal = 3e8;
 	tRec = 1e-3 * tFinal;
 	tCal = 3600;
 	NSK = 2;
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
 		{"help", no_argument, NULL, 'h'},
 		{NULL, 0, NULL, 0}};
 	int opt;
-	double inc = 0.8, eps = 3.1;
+	double inc = 1.9, eps = 0.; //0.8, eps = 3.1;
 	while ((opt = getopt_long(argc, argv, optShort, optLong, NULL)) != -1)
 		switch (opt) {
 		case 'm':
@@ -196,16 +196,16 @@ int main(int argc, char *argv[]) {
 			//x[5] = -0.95 * sqrt(1. / 7598);
 			//x[6] = sqrt(1. - 0.95 * 0.95) * sqrt(1. / 7598) * cos(M_PI_2 / 10);
 			//x[7] = sqrt(1. - 0.95 * 0.95) * sqrt(1. / 7598) * sin(M_PI_2 / 10);
-			double a = 848. * Constant::AU, e = 0.68, an = M_PI * 175. / 180., pp = M_PI * 185. / 180., ta = M_PI * 1., in = M_PI * 151. / 180.;
-			double r = a * (1 - e * e) / (1 + e * cos(ta));
-			double tp1 = -r * cos(pp + ta), tp2 = -r * sin(pp + ta) * cos(in);
-			double xp1 = tp1 * cos(an) - tp2 * sin(an), xp2 = tp2 * cos(an) + tp1 * sin(an), xp3 = -r * sin(pp + ta) * sin(in);
+			double a = 300. * Constant::AU, e = 0.95, inclination = M_PI * 151. / 180., ascendingNode = M_PI * 175. / 180., periapsis = M_PI * 185. / 180., trueAnomaly = 3.25134498; //phi=[2.73633242 3.92974873 3.32166381 3.2093593  3.67372211 5.18824159 3.25134498]
+			double r = a * (1 - e * e) / (1 + e * cos(trueAnomaly));
+			double tp1 = -r * cos(periapsis + trueAnomaly), tp2 = -r * sin(periapsis + trueAnomaly) * cos(inclination);
+			double xp1 = tp1 * cos(ascendingNode) - tp2 * sin(ascendingNode), xp2 = tp2 * cos(ascendingNode) + tp1 * sin(ascendingNode), xp3 = -r * sin(periapsis + trueAnomaly) * sin(inclination);
 			x[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
 			x[2] = xp2 * cos(eps) - xp1 * sin(eps);
 			x[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
-			double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(ta)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
-			double tp5 = vtheta * sin(pp + ta) - vr * cos(pp + ta), tp6 = -(vtheta * cos(pp + ta) + vr * sin(pp + ta)) * cos(in);
-			double xp5 = tp5 * cos(an) - tp6 * sin(an), xp6 = tp5 * sin(an) + tp6 * cos(an), xp7 = -(vtheta * cos(pp + ta) + vr * sin(pp + ta)) * sin(in);
+			double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
+			double tp5 = vtheta * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
+			double xp5 = tp5 * cos(ascendingNode) - tp6 * sin(ascendingNode), xp6 = tp5 * sin(ascendingNode) + tp6 * cos(ascendingNode), xp7 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * sin(inclination);
 			x[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
 			x[6] = xp6 * cos(eps) - xp5 * sin(eps);
 			x[7] = xp7 * cos(inc) - (xp5 * cos(eps) + xp6 * sin(eps)) * sin(inc);
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
 	int status = 0;
 	Object::star star_0(Constant::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
-	view vie(mass * 4.17936511e7, inc, tFinal, 3000);
+	view vie(mass * 4.17936511e10, inc, tFinal, 3000);
 	camera cam(100, 4e-2, mass * 1000., inc, tFinal, 3000);
 	if (ray & 2)
 		cam.initialize();
@@ -269,14 +269,14 @@ int main(int argc, char *argv[]) {
 		indicators::show_console_cursor(true);
 	}
 	if (ray & 1) {
-		if (spin < epsilon)
+		if (abs(spin) < epsilon)
 			vie.save("view e" + to_string(eps));
 		else
 			vie.save(string("view i") + to_string(inc) + "e" + to_string(eps));
 	}
 	if (ray & 2)
 		cam.save(string("camera i") + to_string(inc) + "e" + to_string(eps));
-	IO::NumPy<double> output(Metric::name + (spin < epsilon ? " 0i" : " i") + to_string(inc) + 'e' + to_string(eps));
+	IO::NumPy<double> output(Metric::name + (abs(spin) < epsilon ? " 0i" : " i") + to_string(inc) + 'e' + to_string(eps));
 	output.save(rec);
 	return 0;
 }
