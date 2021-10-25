@@ -1,6 +1,7 @@
 #include "View.h"
 
 #include <cmath>
+#include <iostream>
 
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_odeiv2.h>
@@ -56,23 +57,19 @@ namespace SBody {
 			Metric::lightNormalization(ph, 1.);
 			if (kerrh)
 				Metric::KerrH::qdq2qp(ph);
-			integrator integ(kerrh ? Metric::KerrH::function : Metric::function, kerrh ? Metric::KerrH::jacobian : Metric::jacobian, 0);
-			int status = 0, fixed = 0;
-			while (status == 0 && ph[8] + ph[9] < tFinal) {
+			integrator integ(kerrh ? Metric::KerrH::function : Metric::function, kerrh ? Metric::KerrH::jacobian : Metric::jacobian, 2);
+			int status = 0;
+			while (status <= 0) {
 				copy(ph, ph + 10, last);
-				if (fixed)
-					status = integ.apply_fixed(ph + 9, h, ph);
-				else
-					status = integ.apply(ph + 9, tFinal, &h, ph);
-				cosph = (rs * sints * cosps - ph[1] * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * cos(ph[2])) * costo;
+				status = integ.apply(ph + 9, tFinal, &h, ph);
+				cosph = (rs * sints * cosps - ph[1] * sign(ph[2]) * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * sign(ph[2]) * cos(ph[2])) * costo;
 				if (cosph > rs * relAcc) {
 					copy(last, last + 10, ph);
 					h *= 0.5;
 					integ.reset();
-					fixed = 1;
 				}
 				else {
-					if (ph[9] > tFinal * 1e-6) {
+					if (ph[9] > tFinal * 1e-8) {
 						ph[8] += ph[9];
 						ph[9] = 0;
 					}
@@ -86,12 +83,14 @@ namespace SBody {
 					if (record)
 						rec.push_back(qdq);
 					if (cosph >= 0) {
-						alpha1 += rs * sints * sinps - ph[1] * sin(ph[2]) * sin(ph[3]); //TODO:OPT!
-						beta1 += (rs * costs - ph[1] * cos(ph[2])) * sinto - (rs * sints * cosps - ph[1] * sin(ph[2]) * cos(ph[3])) * costo;
+						alpha1 += rs * sints * sinps - ph[1] * sign(ph[2]) * sin(ph[2]) * sin(ph[3]); //TODO:OPT!
+						beta1 += (rs * costs - ph[1] * sign(ph[2]) * cos(ph[2])) * sinto - (rs * sints * cosps - ph[1] * sign(ph[2]) * sin(ph[2]) * cos(ph[3])) * costo;
 						break;
 					}
 				}
 			}
+			if (status > 0)
+				cerr << "[!] view::traceBack status = " << status << endl;
 		}
 		screen.push_back({alpha1, beta1, s.frequency(qdq.data()), qdq[8]});
 		if (record) {
@@ -132,6 +131,8 @@ namespace SBody {
 						break;
 					}
 				}
+				if (status > 0)
+					cerr << "[!] camera::initialize status = " << status << endl;
 			}
 		}
 		else
@@ -150,6 +151,8 @@ namespace SBody {
 						break;
 					}
 				}
+				if (status > 0)
+					cerr << "[!] camera::initialize status = " << status << endl;
 			}
 	}
 	void camera::traceBack() {
@@ -171,6 +174,8 @@ namespace SBody {
 				if (screen[i][j] > epsilon)
 					break;
 			}
+			if (status > 0)
+				cerr << "[!] camera::traceBack status = " << status << endl;
 		}
 	}
 } // namespace SBody

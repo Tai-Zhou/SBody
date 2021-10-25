@@ -58,20 +58,6 @@ void help() {
 	cout << "  github.com/Tai-Zhou/SBody" << endl;
 	exit(1);
 }
-/*
-int pos() {
-	double mass, a, e, an = M_PI * 1.25, pp = M_PI * 0.35, ta = 0, in = M_PI * 0.75;
-	double p[8], r = a * (1 - e * e) / (1 + e * cos(ta));
-	double tp1 = r * cos(pp + ta), tp2 = r * sin(pp + ta) * cos(in);
-	p[1] = tp1 * cos(an) - tp2 * sin(an);
-	p[2] = tp1 * sin(an) + tp2 * cos(an);
-	p[3] = -r * sin(pp + ta) * sin(in);
-	double vtheta = (1 - e * e) * sqrt(mass * a) / r, vr = sqrt(2. * mass / r - mass / a - vtheta * vtheta);
-	double tp5 = -vtheta * sin(pp + ta) + vr * cos(pp + ta), tp6 = (vtheta * cos(pp + ta) + vr * sin(pp + ta)) * cos(in);
-	p[7] = -(vtheta * cos(pp + ta) + vr * sin(pp + ta)) * sin(in);
-	p[5] = tp5 * cos(an) - tp6 * sin(an);
-	p[6] = tp5 * sin(an) + tp6 * cos(an);
-}*/
 
 int main(int argc, char *argv[]) {
 	auto start = chrono::steady_clock::now();
@@ -224,7 +210,7 @@ int main(int argc, char *argv[]) {
 		if (NSK == 3)
 			Metric::KerrH::qdq2qp(y);
 	}
-	integrator integ(Metric::function, Metric::jacobian, NSK == 0);
+	integrator integ(Metric::function, Metric::jacobian, NSK != 0);
 	int status = 0;
 	Object::star star_0(Constant::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
@@ -239,6 +225,8 @@ int main(int argc, char *argv[]) {
 		tStep = min(tStep + tRec, tFinal);
 		while (status == 0 && t < tStep)
 			status = integ.apply(&t, tStep, &h, star_0.pos);
+		if (status > 0)
+			cerr << "[!] main status = " << status << endl;
 		if (NSK == 0)
 			copy(star_0.pos, star_0.pos + 8, temp.begin());
 		else {

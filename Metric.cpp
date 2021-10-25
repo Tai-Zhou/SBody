@@ -215,9 +215,14 @@ namespace SBody {
 				return SBody::dot(c) / gsl_pow_2(y[4]);
 			}
 			int particleNormalization(double y[]) { //TODO: limit the light speed
+				if (SBody::dot(y + 3) >= 1)
+					return 1;
 				return 0;
 			}
-			int lightNormalization(double y[], double e) { //TODO: limit the light speed
+			int lightNormalization(double y[], double e) {
+				const double v_1 = 1 / SBody::norm(y + 3);
+				for (int i = 3; i < 6; ++i)
+					y[i] *= v_1;
 				return 0;
 			}
 		} // namespace Newton
@@ -392,14 +397,14 @@ namespace SBody {
 				const double a2r2 = a2 + r2, Delta = a2r2 - 2. * m * r, rho2 = r2 + a2 * cost2;
 				const double Delta_1 = 1 / Delta, Delta_2 = gsl_pow_2(Delta_1), rho_2 = 1 / rho2, rho_4 = gsl_pow_2(rho_2);
 				const double Q = ptheta2 + cost2 * (a2 * deltaE2 + L2 * sint_2);
-				const double R = -a2r2 * r2 * deltaE2 + E2 * (2. * m * r * a2) + 2. * m * r * r2 - Delta * Q - (r2 - 2. * m * r) * L2 - 4. * m * r * a * E * y[7]; // FIXME: Large Error, R = gsl_pow_2(E * a2r2 - a * y[7]) - Delta * (r2 + gsl_pow_2(y[7] - a * E) + Q);
-				//[\tau,r,\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
-				dydt[0] = rho2 * Delta / (a2r2 * (E * a2r2 - a * y[7]) + a * Delta * (y[7] - a * E * sint2));				  //d\tau/dt
-				dydt[1] = Delta * rho_2 * y[5] * dydt[0];																	  //dr/dt
-				dydt[2] = rho_2 * y[6] * dydt[0];																			  //d\theta/dt
-				dydt[3] = (E * a * (a2r2 - Delta) - y[7] * (a2 - Delta * (1. + cost2 * sint_2))) * Delta_1 * rho_2 * dydt[0]; //d\phi/dt
+				const double R = -a2r2 * r2 * deltaE2 + E2 * (2. * m * r * a2) + 2. * m * r * r2 - Delta * Q - (r2 - 2. * m * r) * L2 - 4. * m * r * a * E * y[7]; // R = gsl_pow_2(E * a2r2 - a * y[7]) - Delta * (r2 + gsl_pow_2(y[7] - a * E) + Q);
+				//[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
+				dydt[0] = rho2 * Delta / (a2r2 * (E * a2r2 - a * y[7]) + a * Delta * (y[7] - a * E * sint2));			  //d\tau/dt
+				dydt[1] = Delta * rho_2 * y[5] * dydt[0];																  //dr/dt
+				dydt[2] = rho_2 * y[6] * dydt[0];																		  //d\theta/dt
+				dydt[3] = (2. * E * a * m * r - y[7] * (a2 - Delta * (1. + cost2 * sint_2))) * Delta_1 * rho_2 * dydt[0]; //d\phi/dt
 				dydt[4] = 0.;
-				dydt[5] = ((m * rho2 + r * (a2 * sint2 - 2. * m * r)) * pr2 + ((-2. * deltaE2 * r2 - a2 * deltaE2 + 3. * m * r - L2 - Q) * r + m * (a2 * E2 + L2 - 2. * a * E * y[7] + Q)) * rho2 * Delta_1 - ((r - m) * rho2 + Delta * r) * R * Delta_2) * rho_4 * dydt[0];
+				dydt[5] = ((m * a2 * cost2 + r * a2 * sint2 - m * r2) * pr2 + ((-2. * deltaE2 * r2 - a2 * deltaE2 + 3. * m * r - L2 - Q) * r + m * (a2 * E2 + L2 - 2. * a * E * y[7] + Q)) * rho2 * Delta_1 - ((r - m) * rho2 + Delta * r) * R * Delta_2) * rho_4 * dydt[0];
 				dydt[6] = (-(Delta * pr2 - R * Delta_1) * a2 * rho_2 + a2 * deltaE2 + L2 * sint_2 + cost2 * sint_4 * L2) * sint * cost * rho_2 * dydt[0];
 				dydt[7] = 0.;
 				return GSL_SUCCESS;
@@ -408,13 +413,13 @@ namespace SBody {
 				return GSL_SUCCESS;
 			}
 			double energy(const double r[]) {
-				return -r[4];
+				return 1. - r[4];
 			}
 			double angularMomentum(const double r[]) {
 				return r[7];
 			}
 			double carter(const double y[], const double mu2) {
-				return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (a2 * (mu2 - gsl_pow_2(y[4])) + gsl_pow_2(y[7] / sin(y[2])));
+				return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (a2 * (mu2 - gsl_pow_2(1. - y[4])) + gsl_pow_2(y[7] / sin(y[2])));
 			}
 		} // namespace KerrH
 	}	  // namespace Metric

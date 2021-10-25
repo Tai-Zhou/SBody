@@ -8,7 +8,7 @@
 
 namespace SBody {
 	double absAcc = 1e-15, relAcc = 1e-15;
-	integrator::integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int cartesian, void *params, const gsl_odeiv2_step_type *type) : cartesian(cartesian), type(type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(type, 8)) {
+	integrator::integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params, const gsl_odeiv2_step_type *type) : coordinate(coordinate), type(type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(type, 8)) {
 		system = {function, jacobian, 8, params};
 	}
 	integrator::~integrator() {
@@ -16,7 +16,15 @@ namespace SBody {
 	}
 	int integrator::apply(double *t, double t1, double *h, double *y) {
 		int status = gsl_odeiv2_evolve_apply(evolve, control, step, &system, t, t1, h, y);
-		if (!cartesian) {
+		if (coordinate == 2) {
+			if (y[2] <= -M_PI_2)
+				y[2] += M_PI;
+			if (y[2] > M_PI_2)
+				y[2] -= M_PI;
+		}
+		if (coordinate > 0)
+			y[3] = mod2Pi(y[3]);
+		/*if (!cartesian) {
 			y[2] = mod2Pi(y[2]);
 			if (y[2] >= M_PI) {
 				y[2] = M_2PI - y[2];
@@ -24,12 +32,20 @@ namespace SBody {
 				y[3] += M_PI;
 			}
 			y[3] = mod2Pi(y[3]);
-		}
+		}*/
 		return status;
 	}
 	int integrator::apply_fixed(double *t, const double h, double *y) {
 		int status = gsl_odeiv2_evolve_apply_fixed_step(evolve, control, step, &system, t, h, y);
-		if (!cartesian) {
+		if (coordinate == 2) {
+			if (y[2] <= -M_PI_2)
+				y[2] += M_PI;
+			if (y[2] > M_PI_2)
+				y[2] -= M_PI;
+		}
+		if (coordinate > 0)
+			y[3] = mod2Pi(y[3]);
+		/*if (!cartesian) {
 			y[2] = mod2Pi(y[2]);
 			if (y[2] >= M_PI) {
 				y[2] = M_2PI - y[2];
@@ -37,7 +53,7 @@ namespace SBody {
 				y[3] += M_PI;
 			}
 			y[3] = mod2Pi(y[3]);
-		}
+		}*/
 		return status;
 	}
 	int integrator::reset() {
