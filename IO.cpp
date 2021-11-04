@@ -11,9 +11,8 @@ namespace SBody {
 		NumPy<T>::NumPy(string fileName) : file(fileName) {}
 		template <typename T>
 		int NumPy<T>::save(const vector<vector<T>> &data) {
-			char NumPyHead[10] = {'\x93', 'N', 'U', 'M', 'P', 'Y', '\x01', '\x00', '\x76', '\x00'};
-			ofstream NumPyFile("out/" + fileName + ".npy", ios::binary | ios::out);
-			NumPyFile.write(NumPyHead, 10);
+			ofstream NumPyFile("out/out/" + fileName + ".npy", ios::binary | ios::out);
+			NumPyFile.write("\x93NUMPY\x01\x00\x76\x00", 10);
 			NumPyFile << "{'descr': '<" << (sizeof(T) == 4 ? "i4" : "f8")
 					  << "', 'fortran_order': False, 'shape': (                                                                  \n";
 			for (const vector<T> &line : data)
@@ -25,6 +24,8 @@ namespace SBody {
 		}
 		template class NumPy<int>;
 		template class NumPy<double>;
+		template <typename T>
+		CSV<T>::CSV(string fileName) : file(fileName) {}
 		template <typename T>
 		int CSV<T>::save(const vector<vector<T>> &data) {
 			ofstream CSVFile("out/" + fileName + ".csv", ios::out);
@@ -39,6 +40,28 @@ namespace SBody {
 		}
 		template class CSV<int>;
 		template class CSV<double>;
+		template <typename T>
+		FITS<T>::FITS(string fileName) : file(fileName) {}
+		template <typename T>
+		int FITS<T>::save(const vector<vector<T>> &data) {
+			fitsfile *fptr;
+			char card[FLEN_CARD];
+			int status = 0, nkeys;
+
+			/*fits_open_file(&fptr, argv[1], READONLY, &status);
+			fits_get_hdrspace(fptr, &nkeys, NULL, &status);
+
+			for (int i = 1; i <= nkeys; i++) {
+				fits_read_record(fptr, i, card, &status);
+				printf("%s\n", card);
+			}
+			fits_close_file(fptr, &status);*/
+			if (status)
+				fits_report_error(stderr, status);
+			return (status);
+		}
+		template class FITS<int>;
+		template class FITS<double>;
 		int save() {
 			return 0;
 		}

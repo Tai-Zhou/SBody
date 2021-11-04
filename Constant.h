@@ -14,7 +14,11 @@ namespace SBody {
 		constexpr double cm = 6.77219994e-6;
 		constexpr double R_sun = 4.71141950e5;
 		constexpr double AU = 1.01310669e8;
+		constexpr double mpc = 2.08968255e10;
 		constexpr double pc = 2.08968255e13;
+		constexpr double kpc = 2.08968255e16;
+		constexpr double Mpc = 2.08968255e19;
+		constexpr double Gpc = 2.08968255e22;
 		// Mass
 		constexpr double M_earth = 3.00348935e-6;
 		constexpr double M_jup = 9.5459e-4;

@@ -19,7 +19,7 @@ namespace SBody {
 	view::view(double r, double theta, double tFinal, size_t duration, size_t frame) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(r + 2e4 * Metric::m), duration(duration), frame(frame) {}
 	void view::traceBack(Object::star &s, int rayNO) {
 		const double rs = s.pos[1], thetas = s.pos[2], phis = s.pos[3], sints = sin(thetas), costs = cos(thetas), sinps = sin(phis), cosps = cos(phis);
-		double alpha0 = GSL_POSINF, alpha1 = rs * sints * sin(phis), beta0 = GSL_POSINF, beta1 = rs * costs * sinto - rs * sints * cosps * costo, ph[10], cosph, last[10], h;
+		double alpha0 = GSL_POSINF, alpha1 = (rs + Metric::m) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + Metric::m) * (costs * sinto - sints * cosps * costo), ph[10], cosph, last[10], h;
 		vector<double> qdq(12);
 		vector<vector<double>> rec;
 		const int kerrh = 1, record = 0;
@@ -58,14 +58,22 @@ namespace SBody {
 			if (kerrh)
 				Metric::KerrH::qdq2qp(ph);
 			integrator integ(kerrh ? Metric::KerrH::function : Metric::function, kerrh ? Metric::KerrH::jacobian : Metric::jacobian, 2);
-			int status = 0;
+			int status = 0, fixed = 0;
 			while (status <= 0) {
+				if (status == -1) {
+					h *= 0.5;
+					fixed = 0;
+				}
 				copy(ph, ph + 10, last);
-				status = integ.apply(ph + 9, tFinal, &h, ph);
+				if (fixed)
+					status = integ.apply_fixed(ph + 9, h, ph);
+				else
+					status = integ.apply(ph + 9, tFinal, &h, ph);
 				cosph = (rs * sints * cosps - ph[1] * sign(ph[2]) * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * sign(ph[2]) * cos(ph[2])) * costo;
 				if (cosph > rs * relAcc) {
 					copy(last, last + 10, ph);
 					h *= 0.5;
+					fixed = 1;
 					integ.reset();
 				}
 				else {

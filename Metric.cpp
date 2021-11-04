@@ -348,9 +348,7 @@ namespace SBody {
 				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
 				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * gsl_pow_2(cos(y[2])), a2r2 = a2 + r2;
 				const double mr_rho2 = 2. * m * r / rho2, A_1 = 1 / (gsl_pow_2(a2r2) - a2 * Delta * sint2);
-				y[5] *= Delta * sqrt(A_1);
-				y[6] *= r * sqrt(Delta * A_1);
-				y[7] = r * y[7] * rho2 * sqrt(Delta) * A_1 + 2. * m * a * r * A_1;
+				y[7] += 2. * m * a * r * A_1;
 				y[4] = sqrt(1. - mr_rho2 + 2. * mr_rho2 * a * sint2 * y[7] - (rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7])));
 				return std::isnan(y[4]);
 			}

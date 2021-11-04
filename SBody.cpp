@@ -72,16 +72,16 @@ int main(int argc, char *argv[]) {
 		indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
 	signal(SIGINT, interruptHandler);
 	double h = 1e-3;
-	mass = 4e6;
-	spin = 0.99;
-	tFinal = 3e8;
+	mass = 4.15e6;
+	spin = 0.;
+	tFinal = 1e-4 * 3.15576e7;
 	tRec = 1e-3 * tFinal;
 	tCal = 3600;
 	NSK = 2;
 	PN = 1;
 	ray = 1;
 	int PL = 1;
-	int progressBar = 0;
+	int progressBar = 1;
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
 	const char *optShort = "m:s:t:o:c:n:P:R:a:r:i:e:f:lbh";
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
 		{"help", no_argument, NULL, 'h'},
 		{NULL, 0, NULL, 0}};
 	int opt;
-	double inc = 1.9, eps = 0.; //0.8, eps = 3.1;
+	double inc = 0., eps = 0.;
 	while ((opt = getopt_long(argc, argv, optShort, optLong, NULL)) != -1)
 		switch (opt) {
 		case 'm':
@@ -178,11 +178,7 @@ int main(int argc, char *argv[]) {
 		x[2] = 0;
 		x[3] = 0;
 		if (PL) {
-			//x[1] = 7598 * mass;
-			//x[5] = -0.95 * sqrt(1. / 7598);
-			//x[6] = sqrt(1. - 0.95 * 0.95) * sqrt(1. / 7598) * cos(M_PI_2 / 10);
-			//x[7] = sqrt(1. - 0.95 * 0.95) * sqrt(1. / 7598) * sin(M_PI_2 / 10);
-			double a = 300. * Constant::AU, e = 0.95, inclination = M_PI * 151. / 180., ascendingNode = M_PI * 175. / 180., periapsis = M_PI * 185. / 180., trueAnomaly = 3.25134498; //phi=[2.73633242 3.92974873 3.32166381 3.2093593  3.67372211 5.18824159 3.25134498]
+			double a = 8.3 * mass, e = 0., inclination = M_PI * 162. / 180., ascendingNode = M_PI * 25.1 / 180., periapsis = M_PI * 288.9 / 180., trueAnomaly = 0.; //phi=[2.73633242 3.92974873 3.32166381 3.2093593  3.67372211 5.18824159 3.25134498]
 			double r = a * (1 - e * e) / (1 + e * cos(trueAnomaly));
 			double tp1 = -r * cos(periapsis + trueAnomaly), tp2 = -r * sin(periapsis + trueAnomaly) * cos(inclination);
 			double xp1 = tp1 * cos(ascendingNode) - tp2 * sin(ascendingNode), xp2 = tp2 * cos(ascendingNode) + tp1 * sin(ascendingNode), xp3 = -r * sin(periapsis + trueAnomaly) * sin(inclination);
@@ -190,6 +186,8 @@ int main(int argc, char *argv[]) {
 			x[2] = xp2 * cos(eps) - xp1 * sin(eps);
 			x[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
 			double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
+			vtheta = 0.3822615764261866;
+			vr = -0.16707659553531468;
 			double tp5 = vtheta * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
 			double xp5 = tp5 * cos(ascendingNode) - tp6 * sin(ascendingNode), xp6 = tp5 * sin(ascendingNode) + tp6 * cos(ascendingNode), xp7 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * sin(inclination);
 			x[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
@@ -214,7 +212,7 @@ int main(int argc, char *argv[]) {
 	int status = 0;
 	Object::star star_0(Constant::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
-	view vie(mass * 4.17936511e10, inc, tFinal, 3000);
+	view vie(8.18 * Constant::kpc, inc, tFinal, 3000);
 	camera cam(100, 4e-2, mass * 1000., inc, tFinal, 3000);
 	if (ray & 2)
 		cam.initialize();

@@ -25,6 +25,12 @@ namespace SBody {
 			CSV(std::string fileName);
 			int save(const std::vector<std::vector<T>> &data);
 		};
+		template <typename T>
+		class FITS : public file {
+		  public:
+			FITS(std::string fileName);
+			int save(const std::vector<std::vector<T>> &data);
+		};
 		int save();
 		int load();
 	} // namespace IO
