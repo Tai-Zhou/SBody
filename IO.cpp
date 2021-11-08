@@ -11,7 +11,7 @@ namespace SBody {
 		NumPy<T>::NumPy(string fileName) : file(fileName) {}
 		template <typename T>
 		int NumPy<T>::save(const vector<vector<T>> &data) {
-			ofstream NumPyFile("out/out/" + fileName + ".npy", ios::binary | ios::out);
+			ofstream NumPyFile("out/Matsumoto/" + fileName + ".npy", ios::binary | ios::out);
 			NumPyFile.write("\x93NUMPY\x01\x00\x76\x00", 10);
 			NumPyFile << "{'descr': '<" << (sizeof(T) == 4 ? "i4" : "f8")
 					  << "', 'fortran_order': False, 'shape': (                                                                  \n";

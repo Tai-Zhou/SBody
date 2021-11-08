@@ -22,7 +22,7 @@ namespace SBody {
 		double alpha0 = GSL_POSINF, alpha1 = (rs + Metric::m) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + Metric::m) * (costs * sinto - sints * cosps * costo), ph[10], cosph, last[10], h;
 		vector<double> qdq(12);
 		vector<vector<double>> rec;
-		const int kerrh = 1, record = 0;
+		const int Hamiltonian = 1, record = 0;
 		while (gsl_hypot(alpha1 - alpha0, beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
 			rec.clear();
 			alpha0 = alpha1;
@@ -55,9 +55,9 @@ namespace SBody {
 			}
 			h = 1e-3;
 			Metric::lightNormalization(ph, 1.);
-			if (kerrh)
-				Metric::KerrH::qdq2qp(ph);
-			integrator integ(kerrh ? Metric::KerrH::function : Metric::function, kerrh ? Metric::KerrH::jacobian : Metric::jacobian, 2);
+			if (Hamiltonian)
+				Metric::qdq2qp(ph);
+			integrator integ(Hamiltonian ? Metric::Kerr::functionHamiltonian : Metric::function, Hamiltonian ? Metric::Kerr::jacobianHamiltonian : Metric::jacobian, 2);
 			int status = 0, fixed = 0;
 			while (status <= 0) {
 				if (status == -1) {
@@ -82,8 +82,8 @@ namespace SBody {
 						ph[9] = 0;
 					}
 					copy(ph, ph + 8, qdq.begin());
-					if (kerrh)
-						Metric::KerrH::qp2qdq(qdq.data());
+					if (Hamiltonian)
+						Metric::qp2qdq(qdq.data());
 					qdq[8] = (ph[8] + ph[9]) / Constant::s;
 					qdq[9] = Metric::energy(qdq.data());
 					qdq[10] = Metric::angularMomentum(qdq.data());

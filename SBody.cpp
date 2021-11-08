@@ -73,11 +73,12 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, interruptHandler);
 	double h = 1e-3;
 	mass = 4.15e6;
-	spin = 0.;
+	spin = 0.1;
 	tFinal = 1e-4 * 3.15576e7;
 	tRec = 1e-3 * tFinal;
 	tCal = 3600;
 	NSK = 2;
+	Hamiltonian = 0;
 	PN = 1;
 	ray = 1;
 	int PL = 1;
@@ -105,7 +106,7 @@ int main(int argc, char *argv[]) {
 		{"help", no_argument, NULL, 'h'},
 		{NULL, 0, NULL, 0}};
 	int opt;
-	double inc = 0., eps = 0.;
+	double inc = M_PI_4, eps = M_PI;
 	while ((opt = getopt_long(argc, argv, optShort, optLong, NULL)) != -1)
 		switch (opt) {
 		case 'm':
@@ -160,7 +161,7 @@ int main(int argc, char *argv[]) {
 		}
 	tFinal *= Constant::s;
 	tRec *= Constant::s;
-	Metric::setMetric(NSK, mass, spin);
+	Metric::setMetric(NSK, Hamiltonian, mass, spin);
 	Metric::Newton::PN = PN;
 	if (progressBar)
 		indicators::show_console_cursor(false);
@@ -178,7 +179,7 @@ int main(int argc, char *argv[]) {
 		x[2] = 0;
 		x[3] = 0;
 		if (PL) {
-			double a = 8.3 * mass, e = 0., inclination = M_PI * 162. / 180., ascendingNode = M_PI * 25.1 / 180., periapsis = M_PI * 288.9 / 180., trueAnomaly = 0.; //phi=[2.73633242 3.92974873 3.32166381 3.2093593  3.67372211 5.18824159 3.25134498]
+			double a = 8.3 * mass, e = 0., inclination = M_PI * 162. / 180., ascendingNode = M_PI * 25.1 / 180., periapsis = M_PI * 319.8 / 180., trueAnomaly = 0.; //phi=[2.73633242 3.92974873 3.32166381 3.2093593  3.67372211 5.18824159 3.25134498]
 			double r = a * (1 - e * e) / (1 + e * cos(trueAnomaly));
 			double tp1 = -r * cos(periapsis + trueAnomaly), tp2 = -r * sin(periapsis + trueAnomaly) * cos(inclination);
 			double xp1 = tp1 * cos(ascendingNode) - tp2 * sin(ascendingNode), xp2 = tp2 * cos(ascendingNode) + tp1 * sin(ascendingNode), xp3 = -r * sin(periapsis + trueAnomaly) * sin(inclination);
@@ -205,8 +206,8 @@ int main(int argc, char *argv[]) {
 			Metric::particleNormalization(y);
 		else
 			Metric::lightNormalization(y, 1.);
-		if (NSK == 3)
-			Metric::KerrH::qdq2qp(y);
+		if (Hamiltonian)
+			Metric::qdq2qp(y);
 	}
 	integrator integ(Metric::function, Metric::jacobian, NSK != 0);
 	int status = 0;
@@ -228,11 +229,12 @@ int main(int argc, char *argv[]) {
 		if (NSK == 0)
 			copy(star_0.pos, star_0.pos + 8, temp.begin());
 		else {
-			if (NSK == 3) {
+			if (Hamiltonian) {
 				copy(star_0.pos, star_0.pos + 8, temp.begin());
-				Metric::KerrH::qp2qdq(temp.data());
+				Metric::qp2qdq(temp.data()); // TODO: need s2c()
 			}
-			Metric::s2c(star_0.pos, temp.data());
+			else
+				Metric::s2c(star_0.pos, temp.data());
 		}
 		temp[8] = t / Constant::s;
 		temp[9] = Metric::energy(star_0.pos);

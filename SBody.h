@@ -10,6 +10,7 @@ double tFinal;
 double tRec;
 double tCal;
 size_t NSK;
+size_t Hamiltonian;
 size_t PN;
 size_t ray;
 std::string storeFormat;

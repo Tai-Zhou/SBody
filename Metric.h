@@ -10,6 +10,8 @@ namespace SBody {
 		extern std::string name;
 		extern double (*dot)(const double[], const double[], const double[], const size_t);
 		extern double (*ds2)(const double[], const double[], const size_t);
+		extern int (*qdq2qp)(double[]);
+		extern int (*qp2qdq)(double[]);
 		extern int (*function)(double, const double[], double[], void *);
 		extern int (*jacobian)(double, const double[], double *, double[], void *);
 		extern double (*energy)(const double[]);
@@ -19,7 +21,7 @@ namespace SBody {
 		extern int (*lightNormalization)(double[], double);
 
 		// set function pointers above
-		void setMetric(int NSK, double mass, double spin);
+		void setMetric(int NSK, int Hamiltonian, double mass, double spin);
 
 		// from cartesian to spherical
 		int c2s(const double x[], const double v[], double r[], double w[]);
@@ -44,34 +46,39 @@ namespace SBody {
 		namespace Schwarzschild {
 			double dot(const double g[], const double x[], const double y[], const size_t dimension);
 			double ds2(const double x[], const double y[], const size_t dimension);
+			int qdq2qp(double y[]);
+			int qp2qdq(double y[]);
 			int function(double t, const double y[], double dydt[], void *params);
+			int functionHamiltonian(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
+			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[]);
+			double energyHamiltonian(const double y[]);
 			double angularMomentum(const double y[]);
+			double angularMomentumHamiltonian(const double y[]);
 			double carter(const double y[], const double mu2);
+			double carterHamiltonian(const double y[], const double mu2);
 			int particleNormalization(double y[]);
 			int lightNormalization(double y[], double e);
 		} // namespace Schwarzschild
 		namespace Kerr {
 			double dot(const double g[], const double x[], const double y[], const size_t dimension);
 			double ds2(const double x[], const double y[], const size_t dimension);
+			int qdq2qp(double y[]);
+			int qp2qdq(double y[]);
 			int function(double t, const double y[], double dydt[], void *params);
+			int functionHamiltonian(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
+			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			double energy(const double y[]);
+			double energyHamiltonian(const double y[]);
 			double angularMomentum(const double y[]);
+			double angularMomentumHamiltonian(const double y[]);
 			double carter(const double y[], const double mu2);
+			double carterHamiltonian(const double y[], const double mu2);
 			int particleNormalization(double y[]);
 			int lightNormalization(double y[], double e);
 		} // namespace Kerr
-		namespace KerrH {
-			int qdq2qp(double r[]);
-			int qp2qdq(double r[]);
-			int function(double t, const double y[], double dydt[], void *params);
-			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
-			double energy(const double y[]);
-			double angularMomentum(const double y[]);
-			double carter(const double y[], const double mu2);
-		} // namespace KerrH
 	}	  // namespace Metric
 } // namespace SBody
 
