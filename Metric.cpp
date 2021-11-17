@@ -397,7 +397,7 @@ namespace SBody {
 				//d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 				dydt[6] = (2. * m * a2 * r * sint * cost - a2 * sint * cost * rho4 * Delta_1 * gsl_pow_2(y[5]) - 2. * r * rho4 * y[5] * y[6] + a2 * sint * cost * rho4 * gsl_pow_2(y[6]) - 4. * m * a * r * sint * cost * a2r2 * y[7] + sint * cost * (2. * m * a4 * r * sint4 + 4. * m * a2 * r * sint2 * rho2 + a2r2 * rho4) * gsl_pow_2(y[7])) / rho6 + dydt4 * y[6];
 				//d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-				dydt[7] = (-2. * m * a * r2rho2 * rho2 * Delta_1 * y[5] + 4. * m * a * r * cott * rho2 * y[6] - 2. * rho2 * Delta_1 * (r * rho4 - 2. * m * r2 * rho2 - r2rho2 * m * a2 * sint2) * y[5] * y[7] - 2. * cott * Delta_1 * ((rho2 - 2. * m * r) * (a2r2 * rho4 + 4. * m * a2 * r * rho2 * sint2 + 2. * m * a4 * r * sint4) + 4. * gsl_pow_2(m) * a2 * r2 * a2r2 * sint2) * y[6] * y[7]) / rho6 + dydt4 * y[7];
+				dydt[7] = (-2. * m * a * r2rho2 * Delta_1 * y[5] + 4. * m * a * r * cott * y[6] - 2. * Delta_1 * (r * rho4 - 2. * m * r2 * rho2 - r2rho2 * m * a2 * sint2) * y[5] * y[7] - 2. * cott * (rho4 + 2. * a2 * m * r * sint2) * y[6] * y[7]) / rho4 + dydt4 * y[7];
 				return GSL_SUCCESS;
 			}
 			int functionHamiltonian(double t, const double y[], double dydt[], void *params) {
