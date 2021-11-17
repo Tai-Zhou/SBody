@@ -357,11 +357,11 @@ namespace SBody {
 				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2;
 				const double mr_rho2 = 2. * m * r / rho2;
 				if (dimension == 3)
-					return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[1] * (x[2] - y[2])) + ((r2 + a2) * sint2 + 2 * m * r * a2 * gsl_pow_2(sint2) / rho2) * gsl_pow_2(d3);
-				return (mr_rho2 - 1.) * gsl_pow_2(d0) - 2. * mr_rho2 * a * sint2 * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[1] * (x[2] - y[2])) + ((r2 + a2) * sint2 + mr_rho2 * a2 * gsl_pow_2(sint2)) * gsl_pow_2(d3);
+					return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + ((r2 + a2) * sint2 + 2 * m * r * a2 * gsl_pow_2(sint2) / rho2) * gsl_pow_2(d3);
+				return (mr_rho2 - 1.) * gsl_pow_2(d0) - 2. * mr_rho2 * a * sint2 * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + ((r2 + a2) * sint2 + mr_rho2 * a2 * gsl_pow_2(sint2)) * gsl_pow_2(d3);
 			}
 			int qdq2qp(double y[]) {
-				const double dtdtau = 1 / y[4], r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2]));
+				const double dtdtau = 1. / y[4], r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2]));
 				const double Delta = r2 - 2. * m * y[1] + a2, rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
 				const double mr_rho2 = 2. * m * y[1] / rho2;
 				y[4] = (y[4] - 1. + mr_rho2 * (1. - a * sint2 * y[7])) * dtdtau; // 1 + p_t
@@ -373,7 +373,7 @@ namespace SBody {
 			int qp2qdq(double y[]) {
 				const double pt = y[4] - 1., r2 = gsl_pow_2(y[1]);
 				const double Delta = r2 - 2. * m * y[1] + a2, rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
-				const double rho_2 = 1 / rho2, mr_rho2 = 2. * m * y[1] * rho_2;
+				const double rho_2 = 1. / rho2, mr_rho2 = 2. * m * y[1] * rho_2;
 				y[4] = -Delta / ((Delta + mr_rho2 * (a2 + r2)) * pt + mr_rho2 * a * y[7]);
 				y[5] *= Delta * y[4] * rho_2;
 				y[6] *= y[4] * rho_2;
