@@ -12,6 +12,8 @@ namespace SBody {
 	namespace Metric {
 		double m = 1;
 		double a = 0, a2 = 0, a4 = 0;
+		double l = 0, l2 = 0, l4 = 0;
+		double e = 0, e2 = 0, e4 = 0;
 		std::string name = "";
 		double (*dot)(const double[], const double[], const double[], const size_t) = nullptr;
 		double (*ds2)(const double[], const double[], const size_t) = nullptr;
@@ -298,10 +300,18 @@ namespace SBody {
 				dydt[7] = 0.;
 				return GSL_SUCCESS;
 			}
+			int functionRIAF(double t, const double y[], double dydt[], void *params) {
+				const double *constants = (double *)params;
+				const double alpha = constants[0], f = constants[1], gamma = constants[2];
+				return GSL_SUCCESS;
+			}
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 				return GSL_SUCCESS;
 			}
 			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
+				return GSL_SUCCESS;
+			}
+			int jacobianRIAF(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 				return GSL_SUCCESS;
 			}
 			double energy(const double r[]) {
@@ -473,5 +483,133 @@ namespace SBody {
 				return 0;
 			}
 		} // namespace Kerr
+		namespace KerrTaubNUT {
+			double dot(const double g[], const double x[], const double y[], const size_t dimension) {
+				const double r = g[1], sint = sin(g[2]), cost = cos(g[2]);
+				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint);
+				const double Delta = r2 - 2. * m * r - l2 + a2, rho2 = r2 + gsl_pow_2(l + a * cost), chi = a * sint2 - 2. * l * cost;
+				const double rho_2 = 1. / rho2;
+				if (dimension == 3)
+					return (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + (gsl_pow_2(rho2 + a * chi) * sint2 - chi * chi * Delta) * rho_2 * x[3] * y[3];
+				return (a2 * sint2 - Delta) * rho_2 * x[0] * y[0] + (Delta * chi - a * (rho2 + a * chi) * sint2) * rho_2 * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + (gsl_pow_2(rho2 + a * chi) * sint2 - chi * chi * Delta) * rho_2 * x[3] * y[3];
+			}
+			double ds2(const double x[], const double y[], const size_t dimension) {
+				const double r = x[1], sint = sin(x[2]), cost = cos(x[2]), d0 = x[0] - y[0], d3 = mod2Pi(x[3] - y[3]);
+				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint);
+				const double Delta = r2 - 2. * m * r - l2 + a2, rho2 = r2 + gsl_pow_2(l + a * cost), chi = a * sint2 - 2. * l * cost;
+				const double rho_2 = 1. / rho2;
+				if (dimension == 3)
+					return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + (gsl_pow_2(rho2 + a * chi) * sint2 - gsl_pow_2(chi) * Delta) * rho_2 * gsl_pow_2(d3);
+				return (a2 * sint2 - Delta) * rho_2 * gsl_pow_2(d0) + 2. * (Delta * chi - a * (rho2 + a * chi) * sint2) * rho_2 * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + (gsl_pow_2(rho2 + a * chi) * sint2 - gsl_pow_2(chi) * Delta) * rho_2 * gsl_pow_2(d3);
+			}
+			int qdq2qp(double y[]) { // TODO:
+				const double dtdtau = 1. / y[4], r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2]));
+				const double Delta = r2 - 2. * m * y[1] + a2, rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
+				const double mr_rho2 = 2. * m * y[1] / rho2;
+				y[4] = (y[4] - 1. + mr_rho2 * (1. - a * sint2 * y[7])) * dtdtau; // 1 + p_t
+				y[5] *= rho2 / Delta * dtdtau;
+				y[6] *= rho2 * dtdtau;
+				y[7] = (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * y[7]) * sint2 * dtdtau;
+				return 0;
+			}
+			int qp2qdq(double y[]) { //TODO
+				const double pt = y[4] - 1., r2 = gsl_pow_2(y[1]);
+				const double Delta = r2 - 2. * m * y[1] + a2, rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
+				const double rho_2 = 1. / rho2, mr_rho2 = 2. * m * y[1] * rho_2;
+				y[4] = -Delta / ((Delta + mr_rho2 * (a2 + r2)) * pt + mr_rho2 * a * y[7]);
+				y[5] *= Delta * y[4] * rho_2;
+				y[6] *= y[4] * rho_2;
+				y[7] = (-mr_rho2 * a * pt + (1. - mr_rho2) / gsl_pow_2(sin(y[2])) * y[7]) / Delta * y[4];
+				return 0;
+			}
+			int function(double t, const double y[], double dydt[], void *params) { // TODO
+				dydt[0] = y[4];														//d\tau/dt
+				dydt[1] = y[5];														//dr/dt
+				dydt[2] = y[6];														//d\theta/dt
+				dydt[3] = y[7];														//d\phi/dt
+				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]);
+				const double r2 = gsl_pow_2(r), r4 = gsl_pow_4(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost2 = gsl_pow_2(cost), cott = cost / sint;
+				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * cost2, a2r2 = a2 + r2;
+				const double Delta_1 = 1 / Delta, rho4 = gsl_pow_2(rho2), rho6 = gsl_pow_3(rho2), r2rho2 = 2. * r2 - rho2;
+				const double dydt4 = 2. * m / (Delta * rho4) * (a2r2 * r2rho2 * y[5] - 2. * Delta * a2 * r * sint * cost * y[6] * (1. - a * sint2 * y[7]) - a * (2. * r4 + r2 * rho2 + a2 * r2rho2) * sint2 * y[5] * y[7]);
+				//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
+				//d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+				//d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+				//d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+				return GSL_SUCCESS;
+			}
+			int functionHamiltonian(double t, const double y[], double dydt[], void *params) {
+				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]), pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]), E = 1. - y[4], E2 = gsl_pow_2(E), deltaE2 = (2. - y[4]) * y[4], L2 = gsl_pow_2(y[7]);
+				const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sint), sint_2 = 1 / sint2, sint_4 = gsl_pow_2(sint_2), cost2 = gsl_pow_2(cost);
+				const double a2r2 = a2 + r2, Delta = a2r2 - 2. * m * r, rho2 = r2 + a2 * cost2;
+				const double Delta_1 = 1 / Delta, Delta_2 = gsl_pow_2(Delta_1), rho_2 = 1 / rho2, rho_4 = gsl_pow_2(rho_2);
+				const double Q = ptheta2 + cost2 * (a2 * deltaE2 + L2 * sint_2);
+				const double R = -a2r2 * r2 * deltaE2 + E2 * (2. * m * r * a2) + 2. * m * r * r2 - Delta * Q - (r2 - 2. * m * r) * L2 - 4. * m * r * a * E * y[7]; // R = gsl_pow_2(E * a2r2 - a * y[7]) - Delta * (r2 + gsl_pow_2(y[7] - a * E) + Q);
+				//[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
+				dydt[0] = rho2 * Delta / (a2r2 * (E * a2r2 - a * y[7]) + a * Delta * (y[7] - a * E * sint2));			  //d\tau/dt
+				dydt[1] = Delta * rho_2 * y[5] * dydt[0];																  //dr/dt
+				dydt[2] = rho_2 * y[6] * dydt[0];																		  //d\theta/dt
+				dydt[3] = (2. * E * a * m * r - y[7] * (a2 - Delta * (1. + cost2 * sint_2))) * Delta_1 * rho_2 * dydt[0]; //d\phi/dt
+				dydt[4] = 0.;
+				dydt[5] = ((m * a2 * cost2 + r * a2 * sint2 - m * r2) * pr2 + ((-2. * deltaE2 * r2 - a2 * deltaE2 + 3. * m * r - L2 - Q) * r + m * (a2 * E2 + L2 - 2. * a * E * y[7] + Q)) * rho2 * Delta_1 - ((r - m) * rho2 + Delta * r) * R * Delta_2) * rho_4 * dydt[0];
+				dydt[6] = (-(Delta * pr2 - R * Delta_1) * a2 * rho_2 + a2 * deltaE2 + L2 * sint_2 + cost2 * sint_4 * L2) * sint * cost * rho_2 * dydt[0];
+				dydt[7] = 0.;
+				return GSL_SUCCESS;
+			}
+			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
+				return GSL_SUCCESS;
+			}
+			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
+				return GSL_SUCCESS;
+			}
+			double energy(const double r[]) {
+				const double rho2 = gsl_pow_2(r[1]) + a2 * gsl_pow_2(cos(r[2]));
+				return (1. - 2. * m * r[1] / rho2 * (1. - a * gsl_pow_2(sin(r[2])) * r[7])) / r[4];
+			}
+			double energyHamiltonian(const double r[]) {
+				return 1. - r[4];
+			}
+			double angularMomentum(const double r[]) {
+				const double r2 = gsl_pow_2(r[1]), sint2 = gsl_pow_2(sin(r[2]));
+				const double mr_rho2 = 2. * m * r[1] / (r2 + a2 * gsl_pow_2(cos(r[2])));
+				return (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 / r[4];
+			}
+			double angularMomentumHamiltonian(const double r[]) {
+				return r[7];
+			}
+			double carter(const double y[], const double mu2) {
+				const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2])), cost2 = gsl_pow_2(cos(y[2]));
+				const double rho2 = r2 + a2 * cost2;
+				const double mr_rho2 = 2. * m * y[1] / rho2;
+				return mu2 * cost2 * a2 + (gsl_pow_2(rho2 * y[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * y[7]) * sint2 - a2 * gsl_pow_2(mr_rho2 * (1. - a * sint2 * y[7]) - 1.))) / gsl_pow_2(y[4]);
+			}
+			double carterHamiltonian(const double y[], const double mu2) {
+				return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (a2 * (mu2 - gsl_pow_2(1. - y[4])) + gsl_pow_2(y[7] / sin(y[2])));
+			}
+			int particleNormalization(double y[]) {
+				const double r = y[1], sint = sin(y[2]);
+				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
+				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * gsl_pow_2(cos(y[2])), a2r2 = a2 + r2;
+				const double mr_rho2 = 2. * m * r / rho2, A_1 = 1 / (gsl_pow_2(a2r2) - a2 * Delta * sint2);
+				y[7] += 2. * m * a * r * A_1;
+				y[4] = sqrt(1. - mr_rho2 + 2. * mr_rho2 * a * sint2 * y[7] - (rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7])));
+				return std::isnan(y[4]);
+			}
+			int lightNormalization(double y[], double e) {
+				const double r = y[1], sint = sin(y[2]);
+				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
+				const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
+				const double mr_rho2 = 2. * m * r / rho2;
+				const double effa = rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7]);
+				const double effb = -2. * mr_rho2 * a * sint2 * y[7];
+				const double effc = mr_rho2 - 1.;
+				const double eff = 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
+				y[4] = e;
+				y[5] *= eff;
+				y[6] *= eff;
+				y[7] *= eff;
+				return 0;
+			}
+		} // namespace KerrTaubNUT
 	}	  // namespace Metric
 } // namespace SBody
