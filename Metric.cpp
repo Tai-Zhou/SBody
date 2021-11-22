@@ -550,10 +550,10 @@ namespace SBody {
 				dydt[1] = y[5]; //dr/dt
 				dydt[2] = y[6]; //d\theta/dt
 				dydt[3] = y[7]; //d\phi/dt
-				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]);
-				const double r2 = gsl_pow_2(r), r4 = gsl_pow_4(r), lacost = l + a * cost, sint_1 = 1. / sint, sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost2 = gsl_pow_2(cost);
-				const double lacost2 = gsl_pow_2(lacost), Delta = r2 - 2. * m * r - l2 + a2, rho2 = r2 + lacost2, chi = a * sint2 - 2. * l * cost, a2r2 = a2 + r2;
-				const double Delta_1 = 1. / Delta, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), chi2 = gsl_pow_2(chi), r2rho2 = 2. * r2 - rho2, rho2achi = rho2 + a * chi, rho2achi2 = gsl_pow_2(rho2achi);
+				const double r = y[1], sint = abs(sin(y[2])), cost = sign(y[2]) * cos(y[2]);
+				const double r2 = gsl_pow_2(r), lacost = l + a * cost, sint_1 = 1. / sint, sint2 = gsl_pow_2(sint), cost2 = gsl_pow_2(cost);
+				const double lacost2 = gsl_pow_2(lacost), Delta = r2 - 2. * m * r - l2 + a2, rho2 = r2 + lacost2, chi = a * sint2 - 2. * l * cost;
+				const double Delta_1 = 1. / Delta, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), chi2 = gsl_pow_2(chi), rho2achi = rho2 + a * chi, rho2achi2 = gsl_pow_2(rho2achi);
 				const double dydt4 = 2. * Delta_1 * rho_4 * sint_1 * (sint * rho2achi * (rho2 * (r - m) - Delta * r + a2 * r * sint2) * y[5] + Delta * chi * ((Delta - a2 * sint2) * lacost - rho2 * a * cost) * y[6] * (1. - chi * y[7]) + sint * (Delta * rho2 * chi * r + Delta * rho2achi * chi * r - gsl_pow_2(rho2achi) * a * r * sint2 - rho2achi * rho2 * chi * (r - m)) * y[5] * y[7] - Delta * rho4 * l * (1 + cost2) * y[6] * y[7]);
 				//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 				dydt[4] = dydt4 * y[4];
