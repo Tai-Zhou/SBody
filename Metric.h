@@ -81,6 +81,24 @@ namespace SBody {
 			int particleNormalization(double y[]);
 			int lightNormalization(double y[], double e);
 		} // namespace Kerr
+		namespace KerrTaubNUT {
+			double dot(const double g[], const double x[], const double y[], const size_t dimension);
+			double ds2(const double x[], const double y[], const size_t dimension);
+			int qdq2qp(double y[]);
+			int qp2qdq(double y[]);
+			int function(double t, const double y[], double dydt[], void *params);
+			int functionHamiltonian(double t, const double y[], double dydt[], void *params);
+			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
+			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params);
+			double energy(const double y[]);
+			double energyHamiltonian(const double y[]);
+			double angularMomentum(const double y[]);
+			double angularMomentumHamiltonian(const double y[]);
+			double carter(const double y[], const double mu2);
+			double carterHamiltonian(const double y[], const double mu2);
+			int particleNormalization(double y[]);
+			int lightNormalization(double y[], double e);
+		} // namespace KerrTaubNUT
 	}	  // namespace Metric
 } // namespace SBody
 
