@@ -72,12 +72,13 @@ int main(int argc, char *argv[]) {
 		indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
 	signal(SIGINT, interruptHandler);
 	double h = 1e-3;
-	mass = 4.15e6;
-	spin = 0.1;
-	tFinal = 1e-4 * 3.15576e7;
-	tRec = 1e-3 * tFinal;
+	mass = 4e6;
+	spin = 0.;
+	l = 0.99;
+	tFinal = 3.15576e7;
+	tRec = 1e-4 * tFinal;
 	tCal = 3600;
-	NSK = 2;
+	NSK = 3;
 	Hamiltonian = 0;
 	PN = 1;
 	ray = 1;
@@ -161,7 +162,7 @@ int main(int argc, char *argv[]) {
 		}
 	tFinal *= Constant::s;
 	tRec *= Constant::s;
-	Metric::setMetric(NSK, Hamiltonian, mass, spin);
+	Metric::setMetric(NSK, Hamiltonian, mass, spin, l);
 	Metric::Newton::PN = PN;
 	if (progressBar)
 		indicators::show_console_cursor(false);

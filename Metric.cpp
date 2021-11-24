@@ -26,11 +26,14 @@ namespace SBody {
 		double (*carter)(const double[], const double) = nullptr;
 		int (*particleNormalization)(double[]) = nullptr;
 		int (*lightNormalization)(double[], double) = nullptr;
-		void setMetric(int NSK, int Hamiltonian, double mass, double spin) {
+		void setMetric(int NSK, int Hamiltonian, double mass, double spin, double _l) {
 			m = mass;
 			a = mass * spin;
 			a2 = gsl_pow_2(a);
 			a4 = gsl_pow_2(a2);
+			l = mass * _l;
+			l2 = gsl_pow_2(l);
+			l4 = gsl_pow_2(l2);
 			switch (NSK) {
 			case 0:
 				name = "Newton";
@@ -422,7 +425,7 @@ namespace SBody {
 				const double sint = sin(y[2]), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost = cos(y[2]), cost2 = gsl_pow_2(cost), cott = cost / sint;
 				const double Delta = r2 - 2. * m * r + a2, Delta_1 = 1. / Delta;
 				const double rho2 = r2 + a2 * cost2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), r2a2cost2 = r2 - a2 * cost2;
-				const double dydt4 = 2. * m * Delta_1 * rho_4 * (a2r2 * r2a2cost2 * y[5] - 2. * Delta * a2 * r * sint * cost * y[6] * (1. - a * sint2 * y[7]) - a * (2. * r4 + r2 * rho2 + a2 * r2a2cost2) * sint2 * y[5] * y[7]);
+				const double dydt4 = 2. * m * rho_4 * (Delta_1 * a2r2 * r2a2cost2 * y[5] - 2. * a2 * r * sint * cost * y[6] * (1. - a * sint2 * y[7]) - Delta_1 * a * (2. * r4 + r2 * rho2 + a2 * r2a2cost2) * sint2 * y[5] * y[7]);
 				//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 				dydt[4] = dydt4 * y[4];
 				//d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
@@ -555,9 +558,8 @@ namespace SBody {
 				const double Delta = r2 - 2. * m * r - l2 + a2, Delta_1 = 1. / Delta;
 				const double lacost = l + a * cost, lacost2 = gsl_pow_2(lacost);
 				const double rho2 = r2 + lacost2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2);
-				const double chi = a * sint2 - 2. * l * cost, chi2 = gsl_pow_2(chi);
-				const double rho2achi = r2 + l2 + a2;
-				const double dydt4 = 2. * Delta_1 * rho_4 * sint_1 * (sint * rho2achi * ((m * r + l2 - a2 * cost2 + lacost2) * r - lacost2 * m) * y[5] * (1. - chi * y[7]) + Delta * chi * ((r2 - l2 - 2. * l * a * cost) * l - 2. * m * r * lacost) * y[6] * (1. - chi * y[7]) - 2. * sint * rho2 * r * ((m * r + l2) * a * sint2 + Delta * l * cost) * y[5] * y[7] - Delta * rho4 * l * (1. + cost2) * y[6] * y[7]);
+				const double chi = a * sint2 - 2. * l * cost, rho2achi = r2 + l2 + a2;
+				const double dydt4 = 2. * rho_4 * (Delta_1 * rho2achi * ((m * r + l2 - a2 * cost2 + lacost2) * r - lacost2 * m) * y[5] * (1. - chi * y[7]) + sint_1 * chi * ((r2 - l2 - 2. * l * a * cost - a2 * cost2) * l - 2. * m * r * lacost) * y[6] * (1. - chi * y[7]) - 2. * Delta_1 * rho2 * r * ((m * r + l2) * a * sint2 + Delta * l * cost) * y[5] * y[7] - sint_1 * rho4 * l * (1. + cost2) * y[6] * y[7]);
 				//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 				dydt[4] = dydt4 * y[4];
 				//d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
