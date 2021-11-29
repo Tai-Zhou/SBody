@@ -15,14 +15,13 @@ namespace SBody {
 		const double sinto;
 		const double costo;
 		const double tFinal;
-		const size_t duration;
-		const size_t frame;
 		std::vector<std::vector<double>> screen;
 
 	  public:
-		view(double r, double theta, double tFinal, size_t duration = 300, size_t frame = 30);
-		void traceBack(Object::star &s, int rayNO);
-		void save(std::string fileName = "view");
+		view(double r, double theta);
+		int traceBack(Object::star &s, int rayNO);
+		int shadow(int n);
+		int save(std::string fileName = "view");
 	};
 	class camera : public view {
 	  protected:
@@ -31,9 +30,9 @@ namespace SBody {
 		std::vector<std::array<double, 9>> initials;
 
 	  public:
-		camera(size_t pixel, double viewAngle, double r, double theta, double tFinal, size_t duration = 300, size_t frame = 30);
-		void initialize();
-		void traceBack();
+		camera(size_t pixel, double viewAngle, double r, double theta);
+		int initialize();
+		int traceBack();
 	};
 } // namespace SBody
 

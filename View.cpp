@@ -16,8 +16,8 @@
 using namespace std;
 
 namespace SBody {
-	view::view(double r, double theta, double tFinal, size_t duration, size_t frame) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(r + 2e4 * Metric::m), duration(duration), frame(frame) {}
-	void view::traceBack(Object::star &s, int rayNO) {
+	view::view(double r, double theta) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(r + 2e4 * Metric::m) {}
+	int view::traceBack(Object::star &s, int rayNO) {
 		const double rs = s.pos[1], thetas = s.pos[2], phis = s.pos[3], sints = sin(thetas), costs = cos(thetas), sinps = sin(phis), cosps = cos(phis);
 		double alpha0 = GSL_POSINF, alpha1 = (rs + Metric::m) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + Metric::m) * (costs * sinto - sints * cosps * costo), ph[10], cosph, last[10], h;
 		vector<double> qdq(12);
@@ -35,7 +35,7 @@ namespace SBody {
 			ph[9] = 0.;
 			if (sinto < epsilon) {
 				const double k = gsl_hypot(alpha1, beta1);
-				if (M_PI_2 > theta) {
+				if (theta < M_PI_2) {
 					ph[2] = 1e-15;
 					ph[3] = alpha1 >= 0. ? acos(-beta1 / k) : M_2PI - acos(-beta1 / k);
 					ph[6] = k / gsl_pow_2(r);
@@ -97,24 +97,90 @@ namespace SBody {
 					}
 				}
 			}
-			if (status > 0)
+			if (status > 0) {
 				cerr << "[!] view::traceBack status = " << status << endl;
+				return status;
+			}
 		}
 		screen.push_back({alpha1, beta1, s.frequency(qdq.data()), qdq[8]});
 		if (record) {
 			IO::NumPy<double> output("Trace " + to_string(rayNO));
 			output.save(rec);
 		}
+		return 0;
 	}
-	void view::save(string fileName) {
+	int view::shadow(int n) {
+		const double interval = M_2PI / n;
+		vector<vector<double>> rec;
+		double h, rin = 2. * Metric::m, rout = 10. * Metric::m, rmid = 6. * Metric::m, ph[10];
+		for (int i = 0; i < n; ++i) {
+			const double angle = i * interval, sina = sin(angle), cosa = cos(angle);
+			integrator integ(Metric::function, Metric::jacobian, 2);
+			int status = 0;
+			rin -= 2. * interval * rmid;
+			rout += 1.5 * interval * rmid;
+			while (rout - rin > epsilon * (rin + rout)) {
+				rmid = 0.5 * (rin + rout);
+				ph[0] = 0.;
+				ph[1] = r;
+				ph[4] = 1.;
+				ph[5] = -1.;
+				ph[8] = 0.;
+				ph[9] = 0.;
+				if (sinto < epsilon) {
+					if (theta < M_PI_2) {
+						ph[2] = 1e-15;
+						ph[3] = M_PI_2 + angle;
+						ph[6] = rmid / gsl_pow_2(r);
+					}
+					else {
+						ph[2] = M_PI - 1e-15;
+						ph[3] = M_PI_2 - angle;
+						ph[6] = -rmid / gsl_pow_2(r);
+					}
+					ph[7] = 0.;
+				}
+				else {
+					ph[2] = theta;
+					ph[3] = 0.,
+					ph[6] = -rmid * sina / gsl_pow_2(r);
+					ph[7] = rmid * cosa / (gsl_pow_2(r) * sinto);
+				}
+				h = 1.;
+				Metric::lightNormalization(ph, 1.);
+				while (status <= 0 && ph[8] + ph[9] < tFinal) {
+					status = integ.apply(ph + 9, tFinal, &h, ph);
+					if (ph[9] > tFinal * 1e-8) {
+						ph[8] += ph[9];
+						ph[9] = 0;
+					}
+					if (ph[4] <= epsilon || ph[5] >= epsilon)
+						break;
+				}
+				if (status > 0) {
+					cerr << "[!] view::shadow status = " << status << endl;
+					return status;
+				}
+				if (ph[5] >= epsilon)
+					rout = rmid;
+				else
+					rin = rmid;
+				integ.reset();
+			}
+			rec.push_back({rmid * cosa, rmid * sina});
+		}
+		IO::NumPy<double> output("shadow");
+		return output.save(rec);
+	}
+	int view::save(string fileName) {
 		IO::NumPy<double> output(fileName);
-		output.save(screen);
+		return output.save(screen);
 	}
-	camera::camera(size_t pixel, double viewAngle, double r, double theta, double tFinal, size_t duration, size_t frame) : view(r, theta, tFinal, duration, frame), pixel(pixel), viewAngle(viewAngle) {
+	camera::camera(size_t pixel, double viewAngle, double r, double theta) : view(r, theta), pixel(pixel), viewAngle(viewAngle) {
 		screen = vector<vector<double>>(pixel, vector<double>(pixel));
 		initials = vector<array<double, 9>>(pixel * pixel);
 	}
-	void camera::initialize() {
+	int camera::initialize() {
 		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), t1 = r + 100. * Metric::m;
 		if (theta < epsilon || M_PI - theta < epsilon) {
 #pragma omp parallel for
@@ -139,8 +205,10 @@ namespace SBody {
 						break;
 					}
 				}
-				if (status > 0)
+				if (status > 0) {
 					cerr << "[!] camera::initialize status = " << status << endl;
+					return status;
+				}
 			}
 		}
 		else
@@ -159,11 +227,14 @@ namespace SBody {
 						break;
 					}
 				}
-				if (status > 0)
+				if (status > 0) {
 					cerr << "[!] camera::initialize status = " << status << endl;
+					return status;
+				}
 			}
+		return 0;
 	}
-	void camera::traceBack() {
+	int camera::traceBack() {
 		const double t1 = 1000. * Metric::m;
 #pragma omp parallel for
 		for (int p = pixel * pixel - 1; p >= 0; --p) {
@@ -182,8 +253,11 @@ namespace SBody {
 				if (screen[i][j] > epsilon)
 					break;
 			}
-			if (status > 0)
+			if (status > 0) {
 				cerr << "[!] camera::traceBack status = " << status << endl;
+				return status;
+			}
 		}
+		return 0;
 	}
 } // namespace SBody
