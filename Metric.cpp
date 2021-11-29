@@ -614,12 +614,14 @@ namespace SBody {
 			}
 			int lightNormalization(double y[], double e) {
 				const double r = y[1], r2 = gsl_pow_2(r);
-				const double sint = sin(y[2]), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
-				const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));
-				const double mr_rho2 = 2. * m * r / rho2;
-				const double effa = rho2 / (r2 - 2. * m * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7]);
-				const double effb = -2. * mr_rho2 * a * sint2 * y[7];
-				const double effc = mr_rho2 - 1.;
+				const double sint = abs(sin(y[2])), sint2 = gsl_pow_2(sint), cost = sign(y[2]) * cos(y[2]);
+				const double Delta = r2 - 2. * m * r - l2 + a2;
+				const double lacost = l + a * cost;
+				const double rho2 = r2 + gsl_pow_2(lacost), rho_2 = 1. / rho2;
+				const double chi = a * sint2 - 2. * l * cost, rho2achi = r2 + l2 + a2;
+				const double effa = rho2 / Delta * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + rho_2 * (gsl_pow_2(rho2achi) * sint2 - gsl_pow_2(chi) * Delta) * gsl_pow_2(y[7]);
+				const double effb = 2. * rho_2 * (Delta * chi - a * rho2achi * sint2) * y[7];
+				const double effc = -rho_2 * (Delta - a2 * sint2);
 				const double eff = 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
 				y[4] = e;
 				y[5] *= eff;
