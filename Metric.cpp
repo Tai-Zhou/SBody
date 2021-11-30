@@ -199,20 +199,19 @@ namespace SBody {
 				dydt[0] = y[3];
 				dydt[1] = y[4];
 				dydt[2] = y[5];
-				double A1 = 0, B1 = 0, A2 = 0, B2 = 0, A25 = 0, B25 = 0, A3 = 0, B3 = 0, A35 = 0, B35 = 0;
+				double A = 0, B = 0;
 				if (PN & 1) {
-					A1 = v2 - 4. * m_r;
-					B1 = -4. * rdot;
+					A += v2 - 4. * m_r;
+					B += -4. * rdot;
 				}
 				if (PN & 2) {
-					A2 = m_r * (-2. * rdot2 + 9. * m_r);
-					B2 = 2. * m_r * rdot;
+					A += m_r * (-2. * rdot2 + 9. * m_r);
+					B += 2. * m_r * rdot;
 				}
 				if (PN & 8) {
-					A3 = -16. * gsl_pow_3(m_r) + rdot2 * m_r2;
-					B3 = -4. * rdot * m_r2;
+					A += -16. * gsl_pow_3(m_r) + rdot2 * m_r2;
+					B += -4. * rdot * m_r2;
 				}
-				const double A = A1 + A2 + A25 + A3 + A35, B = B1 + B2 + B25 + B3 + B35;
 				dydt[3] = -F * (y[0] + A * y[0] + B * y[3] * r);
 				dydt[4] = -F * (y[1] + A * y[1] + B * y[4] * r);
 				dydt[5] = -F * (y[2] + A * y[2] + B * y[5] * r);
