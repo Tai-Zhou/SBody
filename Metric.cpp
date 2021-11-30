@@ -328,7 +328,6 @@ namespace SBody {
 			}
 			int functionRIAF(double t, const double y[], double dydt[], void *params) {
 				const double *constants = (double *)params;
-				const double alpha = constants[0], f = constants[1], gamma = constants[2];
 				return GSL_SUCCESS;
 			}
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
@@ -340,17 +339,17 @@ namespace SBody {
 			int jacobianRIAF(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 				return GSL_SUCCESS;
 			}
-			double energy(const double r[]) {
-				return (2. * m / r[1] - 1.) / r[4];
+			double energy(const double y[]) {
+				return (2. * m / y[1] - 1.) / y[4];
 			}
-			double energyHamiltonian(const double r[]) {
-				return 1. - r[4];
+			double energyHamiltonian(const double y[]) {
+				return 1. - y[4];
 			}
-			double angularMomentum(const double r[]) {
-				return gsl_pow_2(r[1]) * r[7] / r[4];
+			double angularMomentum(const double y[]) {
+				return gsl_pow_2(y[1]) * y[7] / y[4];
 			}
-			double angularMomentumHamiltonian(const double r[]) {
-				return r[7];
+			double angularMomentumHamiltonian(const double y[]) {
+				return y[7];
 			}
 			double carter(const double y[], const double mu2) {
 				return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2]))) / gsl_pow_2(y[4]);
@@ -461,19 +460,19 @@ namespace SBody {
 			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 				return GSL_SUCCESS;
 			}
-			double energy(const double r[]) {
-				return (1. - 2. * m * r[1] / (gsl_pow_2(r[1]) + a2 * gsl_pow_2(cos(r[2]))) * (1. - a * gsl_pow_2(sin(r[2])) * r[7])) / r[4];
+			double energy(const double y[]) {
+				return (1. - 2. * m * y[1] / (gsl_pow_2(y[1]) + a2 * gsl_pow_2(cos(y[2]))) * (1. - a * gsl_pow_2(sin(y[2])) * y[7])) / y[4];
 			}
-			double energyHamiltonian(const double r[]) {
-				return 1. - r[4];
+			double energyHamiltonian(const double y[]) {
+				return 1. - y[4];
 			}
-			double angularMomentum(const double r[]) {
-				const double r2 = gsl_pow_2(r[1]), sint2 = gsl_pow_2(sin(r[2]));
-				const double mr_rho2 = 2. * m * r[1] / (r2 + a2 * gsl_pow_2(cos(r[2])));
-				return (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 / r[4];
+			double angularMomentum(const double y[]) {
+				const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2]));
+				const double mr_rho2 = 2. * m * y[1] / (r2 + a2 * gsl_pow_2(cos(y[2])));
+				return (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * y[7]) * sint2 / y[4];
 			}
-			double angularMomentumHamiltonian(const double r[]) {
-				return r[7];
+			double angularMomentumHamiltonian(const double y[]) {
+				return y[7];
 			}
 			double carter(const double y[], const double mu2) {
 				const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2])), cost2 = gsl_pow_2(cos(y[2]));
@@ -579,31 +578,35 @@ namespace SBody {
 			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 				return GSL_SUCCESS;
 			}
-			double energy(const double r[]) {
-				const double rho2 = gsl_pow_2(r[1]) + a2 * gsl_pow_2(cos(r[2]));
-				return (1. - 2. * m * r[1] / rho2 * (1. - a * gsl_pow_2(sin(r[2])) * r[7])) / r[4];
+			double energy(const double y[]) {
+				const double r = y[1], r2 = gsl_pow_2(r);
+				const double sint2 = gsl_pow_2(sin(y[2])), cost = sign(y[2]) * cos(y[2]);
+				const double Delta = r2 - 2. * m * r - l2 + a2;
+				return (a2 * sint2 - Delta - 2. * ((m * r + l2) * a * sint2 + Delta * l * cost) * y[7]) / ((r2 + gsl_pow_2(l + a * cost)) * y[4]);
 			}
-			double energyHamiltonian(const double r[]) {
-				return 1. - r[4];
+			double energyHamiltonian(const double y[]) {
+				return 1. - y[4];
 			}
-			double angularMomentum(const double r[]) {
-				const double r2 = gsl_pow_2(r[1]), sint2 = gsl_pow_2(sin(r[2]));
-				const double mr_rho2 = 2. * m * r[1] / (r2 + a2 * gsl_pow_2(cos(r[2])));
-				return (-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * r[7]) * sint2 / r[4];
+			double angularMomentum(const double y[]) {
+				const double r = y[1], r2 = gsl_pow_2(r);
+				const double sint2 = gsl_pow_2(sin(y[2])), cost = sign(y[2]) * cos(y[2]);
+				const double Delta = r2 - 2. * m * r - l2 + a2;
+				const double rho2 = r2 + gsl_pow_2(l + a * cost);
+				return (-2. * ((m * r + l2) * a * sint2 + Delta * l * cost) + (gsl_pow_2(r2 + l2 + a2) * sint2 - gsl_pow_2(a * sint2 - 2. * l * cost) * Delta) * y[7]) / (rho2 * y[4]);
 			}
-			double angularMomentumHamiltonian(const double r[]) {
-				return r[7];
+			double angularMomentumHamiltonian(const double y[]) {
+				return y[7];
 			}
-			double carter(const double y[], const double mu2) {
+			double carter(const double y[], const double mu2) { //TODO:
 				const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2])), cost2 = gsl_pow_2(cos(y[2]));
 				const double rho2 = r2 + a2 * cost2;
 				const double mr_rho2 = 2. * m * y[1] / rho2;
 				return mu2 * cost2 * a2 + (gsl_pow_2(rho2 * y[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a + (a2 + r2 + mr_rho2 * a2 * sint2) * y[7]) * sint2 - a2 * gsl_pow_2(mr_rho2 * (1. - a * sint2 * y[7]) - 1.))) / gsl_pow_2(y[4]);
 			}
-			double carterHamiltonian(const double y[], const double mu2) {
+			double carterHamiltonian(const double y[], const double mu2) { //TODO:
 				return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (a2 * (mu2 - gsl_pow_2(1. - y[4])) + gsl_pow_2(y[7] / sin(y[2])));
 			}
-			int particleNormalization(double y[]) {
+			int particleNormalization(double y[]) { //TODO:
 				const double r = y[1], r2 = gsl_pow_2(r), a2r2 = a2 + r2;
 				const double sint = sin(y[2]), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
 				const double Delta = r2 - 2. * m * r + a2, rho2 = r2 + a2 * gsl_pow_2(cos(y[2]));

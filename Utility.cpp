@@ -87,7 +87,7 @@ namespace SBody {
 		return x > 0 ? 1 : -1;
 	}
 	double sign(double x) {
-		return x > 0. ? 1. : -1.;
+		return x >= 0. ? 1. : -1.;
 	}
 	int oppositeSign(double x, double y) {
 		return (x >= 0. && y <= 0.) || (x <= 0. && y >= 0.);

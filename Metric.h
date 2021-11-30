@@ -37,8 +37,8 @@ namespace SBody {
 			double ds2(const double x[], const double y[], const size_t dimension);
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
-			double energy(const double x[]);
-			double angularMomentum(const double x[]);
+			double energy(const double y[]);
+			double angularMomentum(const double y[]);
 			double carter(const double y[], const double mu2);
 			int particleNormalization(double y[]);
 			int lightNormalization(double y[], double e);
