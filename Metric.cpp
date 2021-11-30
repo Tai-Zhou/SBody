@@ -339,7 +339,7 @@ namespace SBody {
 				return GSL_SUCCESS;
 			}
 			double energy(const double y[]) {
-				return (2. * m / y[1] - 1.) / y[4];
+				return (y[1] - 2. * m) / (y[1] * y[4]);
 			}
 			double energyHamiltonian(const double y[]) {
 				return 1. - y[4];
@@ -583,7 +583,7 @@ namespace SBody {
 				const double r = y[1], r2 = gsl_pow_2(r);
 				const double sint2 = gsl_pow_2(sin(y[2])), cost = sign(y[2]) * cos(y[2]);
 				const double Delta = r2 - 2. * m * r - l2 + a2;
-				return (a2 * sint2 - Delta - 2. * ((m * r + l2) * a * sint2 + Delta * l * cost) * y[7]) / ((r2 + gsl_pow_2(l + a * cost)) * y[4]);
+				return (Delta - a2 * sint2 + 2. * ((m * r + l2) * a * sint2 + Delta * l * cost) * y[7]) / ((r2 + gsl_pow_2(l + a * cost)) * y[4]);
 			}
 			double energyHamiltonian(const double y[]) {
 				return 1. - y[4];
