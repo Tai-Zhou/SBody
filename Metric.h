@@ -13,10 +13,15 @@ namespace SBody {
 		extern int (*qdq2qp)(double[]);
 		extern int (*qp2qdq)(double[]);
 		extern int (*function)(double, const double[], double[], void *);
+		extern int (*functionHamiltonian)(double, const double[], double[], void *);
 		extern int (*jacobian)(double, const double[], double *, double[], void *);
+		extern int (*jacobianHamiltonian)(double, const double[], double *, double[], void *);
 		extern double (*energy)(const double[]);
+		extern double (*energyHamiltonian)(const double[]);
 		extern double (*angularMomentum)(const double[]);
+		extern double (*angularMomentumHamiltonian)(const double[]);
 		extern double (*carter)(const double[], const double);
+		extern double (*carterHamiltonian)(const double[], const double);
 		extern int (*particleNormalization)(double[]);
 		extern int (*lightNormalization)(double[], double);
 

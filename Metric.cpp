@@ -20,10 +20,15 @@ namespace SBody {
 		int (*qdq2qp)(double[]) = nullptr;
 		int (*qp2qdq)(double[]) = nullptr;
 		int (*function)(double, const double[], double[], void *) = nullptr;
+		int (*functionHamiltonian)(double, const double[], double[], void *) = nullptr;
 		int (*jacobian)(double, const double[], double *, double[], void *) = nullptr;
+		int (*jacobianHamiltonian)(double, const double[], double *, double[], void *) = nullptr;
 		double (*energy)(const double[]) = nullptr;
+		double (*energyHamiltonian)(const double[]) = nullptr;
 		double (*angularMomentum)(const double[]) = nullptr;
+		double (*angularMomentumHamiltonian)(const double[]) = nullptr;
 		double (*carter)(const double[], const double) = nullptr;
+		double (*carterHamiltonian)(const double[], const double) = nullptr;
 		int (*particleNormalization)(double[]) = nullptr;
 		int (*lightNormalization)(double[], double) = nullptr;
 		void setMetric(int NSK, int Hamiltonian, double mass, double spin, double _l) {
@@ -53,20 +58,16 @@ namespace SBody {
 				ds2 = Schwarzschild::ds2;
 				qdq2qp = Schwarzschild::qdq2qp;
 				qp2qdq = Schwarzschild::qp2qdq;
-				if (Hamiltonian) {
-					function = Schwarzschild::functionHamiltonian;
-					jacobian = Schwarzschild::jacobianHamiltonian;
-					energy = Schwarzschild::energyHamiltonian;
-					angularMomentum = Schwarzschild::angularMomentumHamiltonian;
-					carter = Schwarzschild::carterHamiltonian;
-				}
-				else {
-					function = Schwarzschild::function;
-					jacobian = Schwarzschild::jacobian;
-					energy = Schwarzschild::energy;
-					angularMomentum = Schwarzschild::angularMomentum;
-					carter = Schwarzschild::carter;
-				}
+				function = Schwarzschild::function;
+				functionHamiltonian = Schwarzschild::functionHamiltonian;
+				jacobian = Schwarzschild::jacobian;
+				jacobianHamiltonian = Schwarzschild::jacobianHamiltonian;
+				energy = Schwarzschild::energy;
+				energyHamiltonian = Schwarzschild::energyHamiltonian;
+				angularMomentum = Schwarzschild::angularMomentum;
+				angularMomentumHamiltonian = Schwarzschild::angularMomentumHamiltonian;
+				carter = Schwarzschild::carter;
+				carterHamiltonian = Schwarzschild::carterHamiltonian;
 				particleNormalization = Schwarzschild::particleNormalization;
 				lightNormalization = Schwarzschild::lightNormalization;
 				break;
@@ -76,20 +77,16 @@ namespace SBody {
 				ds2 = Kerr::ds2;
 				qdq2qp = Kerr::qdq2qp;
 				qp2qdq = Kerr::qp2qdq;
-				if (Hamiltonian) {
-					function = Kerr::functionHamiltonian;
-					jacobian = Kerr::jacobianHamiltonian;
-					energy = Kerr::energyHamiltonian;
-					angularMomentum = Kerr::angularMomentumHamiltonian;
-					carter = Kerr::carterHamiltonian;
-				}
-				else {
-					function = Kerr::function;
-					jacobian = Kerr::jacobian;
-					energy = Kerr::energy;
-					angularMomentum = Kerr::angularMomentum;
-					carter = Kerr::carter;
-				}
+				function = Kerr::function;
+				functionHamiltonian = Kerr::functionHamiltonian;
+				jacobian = Kerr::jacobian;
+				jacobianHamiltonian = Kerr::jacobianHamiltonian;
+				energy = Kerr::energy;
+				energyHamiltonian = Kerr::energyHamiltonian;
+				angularMomentum = Kerr::angularMomentum;
+				angularMomentumHamiltonian = Kerr::angularMomentumHamiltonian;
+				carter = Kerr::carter;
+				carterHamiltonian = Kerr::carterHamiltonian;
 				particleNormalization = Kerr::particleNormalization;
 				lightNormalization = Kerr::lightNormalization;
 				break;
@@ -99,20 +96,16 @@ namespace SBody {
 				ds2 = KerrTaubNUT::ds2;
 				qdq2qp = KerrTaubNUT::qdq2qp;
 				qp2qdq = KerrTaubNUT::qp2qdq;
-				if (Hamiltonian) {
-					function = KerrTaubNUT::functionHamiltonian;
-					jacobian = KerrTaubNUT::jacobianHamiltonian;
-					energy = KerrTaubNUT::energyHamiltonian;
-					angularMomentum = KerrTaubNUT::angularMomentumHamiltonian;
-					carter = KerrTaubNUT::carterHamiltonian;
-				}
-				else {
-					function = KerrTaubNUT::function;
-					jacobian = KerrTaubNUT::jacobian;
-					energy = KerrTaubNUT::energy;
-					angularMomentum = KerrTaubNUT::angularMomentum;
-					carter = KerrTaubNUT::carter;
-				}
+				function = KerrTaubNUT::function;
+				functionHamiltonian = KerrTaubNUT::functionHamiltonian;
+				jacobian = KerrTaubNUT::jacobian;
+				jacobianHamiltonian = KerrTaubNUT::jacobianHamiltonian;
+				energy = KerrTaubNUT::energy;
+				energyHamiltonian = KerrTaubNUT::energyHamiltonian;
+				angularMomentum = KerrTaubNUT::angularMomentum;
+				angularMomentumHamiltonian = KerrTaubNUT::angularMomentumHamiltonian;
+				carter = KerrTaubNUT::carter;
+				carterHamiltonian = KerrTaubNUT::carterHamiltonian;
 				particleNormalization = KerrTaubNUT::particleNormalization;
 				lightNormalization = KerrTaubNUT::lightNormalization;
 			}
