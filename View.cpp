@@ -170,7 +170,7 @@ namespace SBody {
 			}
 			rec.push_back({rmid * cosa, rmid * sina});
 		}
-		IO::NumPy<double> output("shadow");
+		IO::NumPy<double> output("shadow " + to_string(Metric::a / Metric::m) + "," + to_string(Metric::l / Metric::m));
 		IO::progressBar.set_progress(100.);
 		IO::progressBar.set_option(indicators::option::PrefixText{"Complete"});
 		IO::progressBar.mark_as_completed();

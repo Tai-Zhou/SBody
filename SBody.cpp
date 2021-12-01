@@ -38,6 +38,7 @@ void help() {
 	cout << "Options:" << endl;
 	cout << "  -m --mass   [f]: mass of the source [" << mass << "] (M_sun)" << endl;
 	cout << "  -s --spin   [f]: spin of the source [" << spin << "]" << endl;
+	cout << "  -l --NUT    [f]: NUT charge of the source [" << NUT << "]" << endl;
 	cout << "  -t --time   [f]: time limit [" << tFinal << "] (s)" << endl;
 	cout << "  -o --rec    [f]: record interval [" << tRec << "] (s)" << endl;
 	cout << "  -c --tcal   [f]: time limit of calculation [" << tCal << "] (s)" << endl;
@@ -48,7 +49,7 @@ void help() {
 	cout << "  -r --rel    [f]: relative accuracy [" << relAcc << "]" << endl;
 	cout << "  -f --format [s]: storage format [" << storeFormat << "]" << endl; //TODO: use int instead of str
 	cout << "  -h --hamilton  : use hamilonian instead of geodesic" << endl;
-	cout << "  -l --light     : light instead of particle" << endl;
+	cout << "  -L --light     : light instead of particle" << endl;
 	cout << "  -b --bar       : show progress bar" << endl;
 	cout << "  -h --help      : this help information" << endl;
 	cout << endl;
@@ -63,7 +64,7 @@ int main(int argc, char *argv[]) {
 	double h = 1e-3;
 	mass = 4e6;
 	spin = 0.5;
-	l = 0.5;
+	NUT = 0.5;
 	tFinal = 6.5e-4 * 3.15576e7;
 	tRec = 1e-4 * tFinal;
 	tCal = 3600;
@@ -75,10 +76,11 @@ int main(int argc, char *argv[]) {
 	int displayProgressBar = 1;
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
-	const char *optShort = "m:s:t:o:c:n:P:R:a:r:i:e:f:lbh";
+	const char *optShort = "m:s:l:t:o:c:n:P:R:a:r:i:e:f:Lbh";
 	const struct option optLong[] = {
 		{"mass", required_argument, NULL, 'm'},
 		{"spin", required_argument, NULL, 's'},
+		{"NUT", required_argument, NULL, 'l'},
 		{"time", required_argument, NULL, 't'},
 		{"rec", required_argument, NULL, 'o'},
 		{"tcal", required_argument, NULL, 'c'},
@@ -90,7 +92,7 @@ int main(int argc, char *argv[]) {
 		{"inc", required_argument, NULL, 'i'},
 		{"eps", required_argument, NULL, 'e'},
 		{"format", required_argument, NULL, 'f'},
-		{"light", no_argument, NULL, 'l'},
+		{"light", no_argument, NULL, 'L'},
 		{"ray", no_argument, NULL, 'R'},
 		{"bar", no_argument, NULL, 'b'},
 		{"help", no_argument, NULL, 'h'},
@@ -104,6 +106,9 @@ int main(int argc, char *argv[]) {
 			break;
 		case 's':
 			spin = atof(optarg);
+			break;
+		case 'l':
+			NUT = atof(optarg);
 			break;
 		case 't':
 			tFinal = atof(optarg);
@@ -140,7 +145,7 @@ int main(int argc, char *argv[]) {
 		case 'f':
 			storeFormat = atoi(optarg);
 			break;
-		case 'l':
+		case 'L':
 			PL = 0;
 			break;
 		case 'b':
@@ -151,7 +156,7 @@ int main(int argc, char *argv[]) {
 		}
 	tFinal *= Constant::s;
 	tRec *= Constant::s;
-	Metric::setMetric(NSK, Hamiltonian, mass, spin, l);
+	Metric::setMetric(NSK, Hamiltonian, mass, spin, NUT);
 	Metric::Newton::PN = PN;
 	if (displayProgressBar)
 		indicators::show_console_cursor(false);
