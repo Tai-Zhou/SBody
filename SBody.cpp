@@ -16,8 +16,6 @@
 
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_odeiv2.h>
-#include <indicators/block_progress_bar.hpp>
-#include <indicators/cursor_control.hpp>
 
 #include "Constant.h"
 #include "IO.h"
@@ -61,15 +59,6 @@ void help() {
 
 int main(int argc, char *argv[]) {
 	auto start = chrono::steady_clock::now();
-	indicators::BlockProgressBar bar{
-		indicators::option::BarWidth{80},
-		indicators::option::Start{"["},
-		indicators::option::End{"]"},
-		indicators::option::PrefixText{"Calculating..."},
-		indicators::option::ForegroundColor{indicators::Color::cyan},
-		indicators::option::ShowElapsedTime{true},
-		indicators::option::ShowRemainingTime{true},
-		indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
 	signal(SIGINT, interruptHandler);
 	double h = 1e-3;
 	mass = 4e6;
@@ -83,7 +72,7 @@ int main(int argc, char *argv[]) {
 	PN = 1;
 	ray = 2;
 	int PL = 0;
-	int progressBar = 1;
+	int displayProgressBar = 1;
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
 	const char *optShort = "m:s:t:o:c:n:P:R:a:r:i:e:f:lbh";
@@ -155,7 +144,7 @@ int main(int argc, char *argv[]) {
 			PL = 0;
 			break;
 		case 'b':
-			progressBar = 1;
+			displayProgressBar = 1;
 			break;
 		default:
 			help();
@@ -164,7 +153,7 @@ int main(int argc, char *argv[]) {
 	tRec *= Constant::s;
 	Metric::setMetric(NSK, Hamiltonian, mass, spin, l);
 	Metric::Newton::PN = PN;
-	if (progressBar)
+	if (displayProgressBar)
 		indicators::show_console_cursor(false);
 	double x[8], y[8];
 	if (NSK == 0) {
@@ -248,15 +237,15 @@ int main(int argc, char *argv[]) {
 		if (ray & 4)
 			cam.traceBack();
 		rec.push_back(temp);
-		if (progressBar)
-			bar.set_progress(100 * t / tFinal);
+		if (displayProgressBar)
+			IO::progressBar.set_progress(100 * t / tFinal);
 		auto tpass = chrono::steady_clock::now() - start; // nano seconds
 		if (tpass.count() >= tCal * 1000000000)
 			break;
 	}
-	if (progressBar) {
-		bar.set_option(indicators::option::PrefixText{string("Complete(") + to_string(inc) + "," + to_string(eps) + ")"});
-		bar.mark_as_completed();
+	if (displayProgressBar) {
+		IO::progressBar.set_option(indicators::option::PrefixText{string("Complete(") + to_string(inc) + "," + to_string(eps) + ")"});
+		IO::progressBar.mark_as_completed();
 		indicators::show_console_cursor(true);
 	}
 	if (ray & 1) {

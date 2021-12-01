@@ -114,6 +114,7 @@ namespace SBody {
 		vector<vector<double>> rec;
 		double h, rin = 2. * Metric::m, rout = 10. * Metric::m, rmid = 6. * Metric::m, ph[10];
 		for (int i = 0; i < n; ++i) {
+			IO::progressBar.set_progress(100. * i / n);
 			const double angle = i * interval, sina = sin(angle), cosa = cos(angle);
 			integrator integ(Metric::KerrTaubNUT::functionTau, Metric::jacobian, 2);
 			int status = 0;
@@ -170,6 +171,10 @@ namespace SBody {
 			rec.push_back({rmid * cosa, rmid * sina});
 		}
 		IO::NumPy<double> output("shadow");
+		IO::progressBar.set_progress(100.);
+		IO::progressBar.set_option(indicators::option::PrefixText{"Complete"});
+		IO::progressBar.mark_as_completed();
+		indicators::show_console_cursor(true);
 		return output.save(rec);
 	}
 	int view::save(string fileName) {
@@ -205,10 +210,8 @@ namespace SBody {
 						break;
 					}
 				}
-				if (status > 0) {
+				if (status > 0)
 					cerr << "[!] camera::initialize status = " << status << endl;
-					return status;
-				}
 			}
 		}
 		else
@@ -227,10 +230,8 @@ namespace SBody {
 						break;
 					}
 				}
-				if (status > 0) {
+				if (status > 0)
 					cerr << "[!] camera::initialize status = " << status << endl;
-					return status;
-				}
 			}
 		return 0;
 	}
@@ -253,10 +254,8 @@ namespace SBody {
 				if (screen[i][j] > epsilon)
 					break;
 			}
-			if (status > 0) {
+			if (status > 0)
 				cerr << "[!] camera::traceBack status = " << status << endl;
-				return status;
-			}
 		}
 		return 0;
 	}

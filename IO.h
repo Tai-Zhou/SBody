@@ -5,8 +5,12 @@
 #include <string>
 #include <vector>
 
+#include <indicators/block_progress_bar.hpp>
+#include <indicators/cursor_control.hpp>
+
 namespace SBody {
 	namespace IO {
+		extern indicators::BlockProgressBar progressBar;
 		class file {
 		  protected:
 			const std::string fileName;
