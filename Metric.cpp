@@ -12,8 +12,8 @@ namespace SBody {
 	namespace Metric {
 		double m = 1;
 		double a = 0, a2 = 0, a4 = 0;
-		double l = 0, l2 = 0, l4 = 0;
 		double e = 0, e2 = 0, e4 = 0;
+		double l = 0, l2 = 0, l4 = 0;
 		std::string name = "";
 		double (*dot)(const double[], const double[], const double[], const size_t) = nullptr;
 		double (*ds2)(const double[], const double[], const size_t) = nullptr;
@@ -31,12 +31,12 @@ namespace SBody {
 		double (*carterHamiltonian)(const double[], const double) = nullptr;
 		int (*particleNormalization)(double[]) = nullptr;
 		int (*lightNormalization)(double[], double) = nullptr;
-		void setMetric(int NSK, int Hamiltonian, double mass, double spin, double _l) {
+		void setMetric(int NSK, int Hamiltonian, double mass, double spin, double NUT) {
 			m = mass;
 			a = mass * spin;
 			a2 = gsl_pow_2(a);
 			a4 = gsl_pow_2(a2);
-			l = mass * _l;
+			l = mass * NUT;
 			l2 = gsl_pow_2(l);
 			l4 = gsl_pow_2(l2);
 			switch (NSK) {

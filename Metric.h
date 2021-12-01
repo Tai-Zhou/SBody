@@ -7,6 +7,8 @@ namespace SBody {
 	namespace Metric {
 		extern double m;
 		extern double a, a2, a4;
+		extern double e, e2, e4;
+		extern double l, l2, l4;
 		extern std::string name;
 		extern double (*dot)(const double[], const double[], const double[], const size_t);
 		extern double (*ds2)(const double[], const double[], const size_t);
@@ -26,7 +28,7 @@ namespace SBody {
 		extern int (*lightNormalization)(double[], double);
 
 		// set function pointers above
-		void setMetric(int NSK, int Hamiltonian, double mass, double spin, double _l);
+		void setMetric(int NSK, int Hamiltonian, double mass, double spin, double NUT);
 
 		// from cartesian to spherical
 		int c2s(const double x[], const double v[], double r[], double w[]);
