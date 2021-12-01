@@ -92,6 +92,7 @@ namespace SBody {
 			int qdq2qp(double y[]);
 			int qp2qdq(double y[]);
 			int function(double t, const double y[], double dydt[], void *params);
+			int functionTau(double t, const double y[], double dydt[], void *params);
 			int functionHamiltonian(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params);

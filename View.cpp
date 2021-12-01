@@ -115,7 +115,7 @@ namespace SBody {
 		double h, rin = 2. * Metric::m, rout = 10. * Metric::m, rmid = 6. * Metric::m, ph[10];
 		for (int i = 0; i < n; ++i) {
 			const double angle = i * interval, sina = sin(angle), cosa = cos(angle);
-			integrator integ(Metric::function, Metric::jacobian, 2);
+			integrator integ(Metric::KerrTaubNUT::functionTau, Metric::jacobian, 2);
 			int status = 0;
 			rin -= 2. * interval * rmid;
 			rout += 1.5 * interval * rmid;
@@ -154,7 +154,7 @@ namespace SBody {
 						ph[8] += ph[9];
 						ph[9] = 0;
 					}
-					if (ph[4] <= epsilon || ph[5] >= epsilon)
+					if (ph[4] >= 1e6 || ph[5] >= epsilon)
 						break;
 				}
 				if (status > 0) {
