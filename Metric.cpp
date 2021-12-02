@@ -31,11 +31,15 @@ namespace SBody {
 		double (*carterHamiltonian)(const double[], const double) = nullptr;
 		int (*particleNormalization)(double[]) = nullptr;
 		int (*lightNormalization)(double[], double) = nullptr;
-		void setMetric(int NSK, int Hamiltonian, double mass, double spin, double NUT) {
+		void setMetric(int NSK, int PN, double mass, double spin, double charge, double NUT) {
+			Newton::PN = PN;
 			m = mass;
 			a = mass * spin;
 			a2 = gsl_pow_2(a);
 			a4 = gsl_pow_2(a2);
+			e = mass * charge;
+			e2 = gsl_pow_2(e);
+			e4 = gsl_pow_2(e2);
 			l = mass * NUT;
 			l2 = gsl_pow_2(l);
 			l4 = gsl_pow_2(l2);

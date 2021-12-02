@@ -28,7 +28,7 @@ namespace SBody {
 		extern int (*lightNormalization)(double[], double);
 
 		// set function pointers above
-		void setMetric(int NSK, int Hamiltonian, double mass, double spin, double NUT);
+		void setMetric(int NSK, int PN, double mass, double spin, double charge, double NUT);
 
 		// from cartesian to spherical
 		int c2s(const double x[], const double v[], double r[], double w[]);
