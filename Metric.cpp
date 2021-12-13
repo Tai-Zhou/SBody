@@ -560,7 +560,7 @@ namespace SBody {
 				//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 				dydt[4] = dydt4 * y[4];
 				//d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-				dydt[5] = -Delta * rho2rm * rho_6 * (1. - chi * y[7] * (2. - chi * y[7])) + (rho2rm - a2 * sint2) * Delta_1 * rho_2 * gsl_pow_2(y[5]) + 2. * a * sint * lacost * rho_2 * y[5] * y[6] + r * Delta * rho_2 * gsl_pow_2(y[6]) + Delta * r * sint2 * rho_2 * gsl_pow_2(y[7]) + dydt4 * y[5];
+				dydt[5] = -Delta * rho2rm * rho_6 * gsl_pow_2(1. - chi * y[7]) + (rho2rm - a2 * sint2) * Delta_1 * rho_2 * gsl_pow_2(y[5]) + 2. * a * sint * lacost * rho_2 * y[5] * y[6] + r * Delta * rho_2 * gsl_pow_2(y[6]) + Delta * r * sint2 * rho_2 * gsl_pow_2(y[7]) + dydt4 * y[5];
 				//d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 				dydt[6] = rho2acost * sint * rho_6 * (a - 2. * rho2achi * y[7]) - a * sint * lacost * rho_2 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho_2 * y[5] * y[6] - (rho2 * (Delta * chi * lacost - gsl_pow_2(rho2achi) * cost) - 2. * ((m * r + l2) * a * sint2 + Delta * l * cost) * rho2achi * lacost) * sint * rho_6 * gsl_pow_2(y[7]) + dydt4 * y[6];
 				//d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
@@ -582,7 +582,7 @@ namespace SBody {
 				//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 				dydt[4] = -2. * rho_4 * (Delta_1 * rho2achi * rho2rm * y[5] * (y[4] - chi * y[7]) - sint_1 * chi * rho2acost * y[6] * (y[4] - chi * y[7]) - 2. * Delta_1 * rho2 * r * ((m * r + l2) * a * sint2 + Delta * l * cost) * y[5] * y[7] - sint_1 * rho4 * l * (1. + cost2) * y[6] * y[7]);
 				//d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-				dydt[5] = -Delta * rho2rm * rho_6 * (gsl_pow_2(y[4]) - chi * y[7] * (2. * y[4] - chi * y[7])) + (rho2rm - a2 * sint2) * Delta_1 * rho_2 * gsl_pow_2(y[5]) + 2. * a * sint * lacost * rho_2 * y[5] * y[6] + r * Delta * rho_2 * gsl_pow_2(y[6]) + Delta * r * sint2 * rho_2 * gsl_pow_2(y[7]);
+				dydt[5] = -Delta * rho2rm * rho_6 * gsl_pow_2(y[4] - chi * y[7]) + (rho2rm - a2 * sint2) * Delta_1 * rho_2 * gsl_pow_2(y[5]) + 2. * a * sint * lacost * rho_2 * y[5] * y[6] + r * Delta * rho_2 * gsl_pow_2(y[6]) + Delta * r * sint2 * rho_2 * gsl_pow_2(y[7]);
 				//d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 				dydt[6] = rho2acost * sint * rho_6 * y[4] * (a * y[4] - 2. * rho2achi * y[7]) - a * sint * lacost * rho_2 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho_2 * y[5] * y[6] - (rho2 * (Delta * chi * lacost - gsl_pow_2(rho2achi) * cost) - 2. * ((m * r + l2) * a * sint2 + Delta * l * cost) * rho2achi * lacost) * sint * rho_6 * gsl_pow_2(y[7]);
 				//d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
