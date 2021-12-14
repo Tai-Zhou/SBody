@@ -17,12 +17,13 @@ using namespace std;
 
 namespace SBody {
 	view::view(double r, double theta) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(r + 2e4 * Metric::m) {}
-	int view::traceBack(Object::star &s, int rayNO) {
+	int view::traceBack(Object::star &s, int rayNO) { //FIXME:!!!!
 		const double rs = s.pos[1], thetas = s.pos[2], phis = s.pos[3], sints = sin(thetas), costs = cos(thetas), sinps = sin(phis), cosps = cos(phis);
 		double alpha0 = GSL_POSINF, alpha1 = (rs + Metric::m) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + Metric::m) * (costs * sinto - sints * cosps * costo), ph[10], cosph, last[10], h;
+		//Metric::a *= -1.;
 		vector<double> qdq(12);
 		vector<vector<double>> rec;
-		const int Hamiltonian = 1, record = 0;
+		const int Hamiltonian = 0, record = 0;
 		while (gsl_hypot(alpha1 - alpha0, beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
 			rec.clear();
 			alpha0 = alpha1;
@@ -57,7 +58,7 @@ namespace SBody {
 			Metric::lightNormalization(ph, 1.);
 			if (Hamiltonian)
 				Metric::qdq2qp(ph);
-			integrator integ(Hamiltonian ? Metric::Kerr::functionHamiltonian : Metric::function, Hamiltonian ? Metric::Kerr::jacobianHamiltonian : Metric::jacobian, 2);
+			integrator integ(Metric::function, Metric::jacobian, 2);
 			int status = 0, fixed = 0;
 			while (status <= 0) {
 				if (status == -1) {
@@ -102,6 +103,7 @@ namespace SBody {
 				return status;
 			}
 		}
+		//Metric::a *= -1.;
 		screen.push_back({alpha1, beta1, s.frequency(qdq.data()), qdq[8]});
 		if (record) {
 			IO::NumPy<double> output("Trace " + to_string(rayNO));
@@ -111,15 +113,16 @@ namespace SBody {
 	}
 	int view::shadow(int n) {
 		const double interval = M_2PI / n;
-		vector<vector<double>> rec;
-		double h, rin = 2. * Metric::m, rout = 10. * Metric::m, rmid = 6. * Metric::m, ph[10];
-		for (int i = 0; i < n; ++i) {
+		vector<vector<double>> rec(n);
+		Metric::a *= -1.;
+		Metric::l *= -1.;
+#pragma omp parallel for
+		for (int i = n - 1; i >= 0; --i) {
 			IO::progressBar.set_progress(100. * i / n);
 			const double angle = i * interval, sina = sin(angle), cosa = cos(angle);
+			double h, rin = 2. * Metric::m, rout = 10. * Metric::m, rmid, ph[10];
 			integrator integ(Metric::KerrTaubNUT::functionTau, Metric::jacobian, 2);
 			int status = 0;
-			rin -= 2. * interval * rmid;
-			rout += 1.5 * interval * rmid;
 			while (rout - rin > epsilon * (rin + rout)) {
 				rmid = 0.5 * (rin + rout);
 				ph[0] = 0.;
@@ -168,8 +171,10 @@ namespace SBody {
 					rin = rmid;
 				integ.reset();
 			}
-			rec.push_back({rmid * cosa, rmid * sina});
+			rec[i] = {rmid * cosa, rmid * sina};
 		}
+		Metric::a *= -1.;
+		Metric::l *= -1.;
 		IO::NumPy<double> output("shadow " + to_string(Metric::a / Metric::m) + "," + to_string(Metric::l / Metric::m));
 		IO::progressBar.set_progress(100.);
 		IO::progressBar.set_option(indicators::option::PrefixText{"Complete"});

@@ -21,7 +21,8 @@ namespace SBody {
 			double pos[8]; // FIXME
 			star(double radius, const double position[], int fixed = 0);
 			int hit(const double current[], const double last[] = nullptr);
-			double frequency(const double ph[]);
+			double frequency(const double photon[]);
+			double frequencyTau(const double photon[]);
 		};
 		class disk : public object {
 		  protected:

@@ -21,9 +21,13 @@ namespace SBody {
 				return 1; // if min distance between current and last < radius, return 1;
 			return 0;
 		}
-		double star::frequency(const double ph[]) {
-			const double u[4] = {1, pos[5], pos[6], pos[7]}, v[4] = {1, -ph[5], -ph[6], -ph[7]};
-			return -Metric::dot(pos, u, v, 4) / (pos[4] * ph[4]);
+		double star::frequency(const double photon[]) {
+			const double u[4] = {1, pos[5], pos[6], pos[7]}, v[4] = {1, -photon[5], -photon[6], -photon[7]};
+			return -Metric::dot(pos, u, v, 4) / (pos[4] * photon[4]);
+		}
+		double star::frequencyTau(const double photon[]) {
+			const double u[4] = {1, pos[5], pos[6], pos[7]}, v[4] = {photon[4], -photon[5], -photon[6], -photon[7]};
+			return -Metric::dot(pos, u, v, 4) / pos[4];
 		}
 		disk::disk(double innerRadius, double outerRadius) : innerRadius(innerRadius), outerRadius(outerRadius) {}
 		int disk::hit(const double current[], const double last[]) {

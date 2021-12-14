@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(SBody VERSION 0.0.3.210520)
+project(SBody VERSION 0.0.4.211203)
 add_compile_definitions(VERSION="${PROJECT_VERSION}")
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall")
