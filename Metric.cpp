@@ -416,16 +416,16 @@ namespace SBody {
 				dydt[2] = y[6]; //d\theta/dt
 				dydt[3] = y[7]; //d\phi/dt
 				const double r = y[1], r2 = gsl_pow_2(r), r4 = gsl_pow_4(r), a2r2 = a2 + r2;
-				const double sint = sin(y[2]), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost = cos(y[2]), cost2 = gsl_pow_2(cost), cott = cost / sint;
+				const double sint = sin(y[2]), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost = cos(y[2]), cost2 = gsl_pow_2(cost), sintcost = sint * cost, cott = cost / sint;
 				const double Delta = r2 - 2. * m * r + a2, Delta_1 = 1. / Delta;
 				const double rho2 = r2 + a2 * cost2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), r2a2cost2 = r2 - a2 * cost2;
-				const double dydt4 = 2. * m * rho_4 * (Delta_1 * a2r2 * r2a2cost2 * y[5] - 2. * a2 * r * sint * cost * y[6] * (1. - a * sint2 * y[7]) - Delta_1 * a * (2. * r4 + r2 * rho2 + a2 * r2a2cost2) * sint2 * y[5] * y[7]);
+				const double dydt4 = 2. * m * rho_4 * (Delta_1 * a2r2 * r2a2cost2 * y[5] - 2. * a2 * r * sintcost * y[6] * (1. - a * sint2 * y[7]) - Delta_1 * a * (2. * r4 + r2 * rho2 + a2 * r2a2cost2) * sint2 * y[5] * y[7]);
 				//d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 				dydt[4] = dydt4 * y[4];
 				//d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-				dydt[5] = (-Delta * m * r2a2cost2 - (r * (a2 * sint2 - m * r) + m * (a2 * cost2)) * Delta_1 * rho4 * gsl_pow_2(y[5]) + 2. * a2 * sint * cost * rho4 * y[5] * y[6] + r * Delta * rho4 * gsl_pow_2(y[6]) + 2. * Delta * m * a * r2a2cost2 * sint2 * y[7] - Delta * sint2 * (m * a2 * sint2 * r2a2cost2 - r * rho4) * gsl_pow_2(y[7])) * rho_6 + dydt4 * y[5];
+				dydt[5] = (-Delta * m * r2a2cost2 - (r * (a2 * sint2 - m * r) + m * (a2 * cost2)) * Delta_1 * rho4 * gsl_pow_2(y[5]) + 2. * a2 * sintcost * rho4 * y[5] * y[6] + r * Delta * rho4 * gsl_pow_2(y[6]) + 2. * Delta * m * a * r2a2cost2 * sint2 * y[7] - Delta * sint2 * (m * a2 * sint2 * r2a2cost2 - r * rho4) * gsl_pow_2(y[7])) * rho_6 + dydt4 * y[5];
 				//d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-				dydt[6] = (2. * m * a2 * r * sint * cost - a2 * sint * cost * rho4 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho4 * y[5] * y[6] - 4. * m * a * r * sint * cost * a2r2 * y[7] + sint * cost * (2. * m * a4 * r * sint4 + 4. * m * a2 * r * sint2 * rho2 + a2r2 * rho4) * gsl_pow_2(y[7])) * rho_6 + dydt4 * y[6];
+				dydt[6] = (2. * m * a2 * r * sintcost - a2 * sintcost * rho4 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho4 * y[5] * y[6] - 4. * m * a * r * sintcost * a2r2 * y[7] + sintcost * (2. * m * a4 * r * sint4 + 4. * m * a2 * r * sint2 * rho2 + a2r2 * rho4) * gsl_pow_2(y[7])) * rho_6 + dydt4 * y[6];
 				//d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 				dydt[7] = (-2. * m * a * r2a2cost2 * Delta_1 * y[5] + 4. * m * a * r * cott * y[6] - 2. * Delta_1 * (r * rho4 - 2. * m * r2 * rho2 - r2a2cost2 * m * a2 * sint2) * y[5] * y[7] - 2. * cott * (rho4 + 2. * a2 * m * r * sint2) * y[6] * y[7]) * rho_4 + dydt4 * y[7];
 				return GSL_SUCCESS;
