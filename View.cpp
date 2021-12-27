@@ -116,13 +116,14 @@ namespace SBody {
 		vector<vector<double>> rec(n);
 		Metric::a *= -1.;
 		Metric::l *= -1.;
-#pragma omp parallel for
-		for (int i = n - 1; i >= 0; --i) {
+		double h, rin = 2. * Metric::m, rout = 10. * Metric::m, rmid = 6. * Metric::m, ph[10];
+		for (int i = 0; i < n; ++i) {
 			IO::progressBar.set_progress(100. * i / n);
 			const double angle = i * interval, sina = sin(angle), cosa = cos(angle);
-			double h, rin = 2. * Metric::m, rout = 10. * Metric::m, rmid, ph[10];
 			integrator integ(Metric::KerrTaubNUT::functionTau, Metric::jacobian, 2);
 			int status = 0;
+			rin -= 2. * interval * rmid;
+			rout += 1.5 * interval * rmid;
 			while (rout - rin > epsilon * (rin + rout)) {
 				rmid = 0.5 * (rin + rout);
 				ph[0] = 0.;

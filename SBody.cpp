@@ -63,9 +63,9 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, interruptHandler);
 	double h = 1e-3;
 	mass = 4.e6;
-	spin = 0.99;
+	spin = 1.;
 	charge = 0.;
-	NUT = 0.1;
+	NUT = 0.;
 	tFinal = 1. * 3.15576e7;
 	tRec = 1e-4 * tFinal;
 	tCal = 3600;
