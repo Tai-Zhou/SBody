@@ -631,7 +631,7 @@ namespace SBody {
 				const double Delta = r2 - 2. * m * r - l2 + a2;
 				const double rho2 = r2 + gsl_pow_2(l + a * cost);
 				y[7] += 2. * m * a * r / (gsl_pow_2(a2 + r2) - a2 * Delta * sint2);
-				y[4] = sqrt(((Delta - a2 * sint2) + 2. * ((m * r + l2) * a * sint2 + Delta * l * cost) * y[7] - (gsl_pow_2(r2 + l2 + a2) * sint2 - gsl_pow_2(a * sint2 - 2. * l * cost) * Delta) * gsl_pow_2(y[7])) / rho2 - rho2 * (gsl_pow_2(y[5]) / Delta + gsl_pow_2(y[6])));
+				y[4] = sqrt(((Delta - a2 * sint2) + 4. * ((m * r + l2) * a * sint2 + Delta * l * cost) * y[7] - (gsl_pow_2(r2 + l2 + a2) * sint2 - gsl_pow_2(a * sint2 - 2. * l * cost) * Delta) * gsl_pow_2(y[7])) / rho2 - rho2 * (gsl_pow_2(y[5]) / Delta + gsl_pow_2(y[6])));
 				return std::isnan(y[4]);
 			}
 			int lightNormalization(double y[], double e) {
