@@ -123,7 +123,7 @@ namespace SBody {
 			integrator integ(Metric::KerrTaubNUT::functionTau, Metric::jacobian, 2);
 			int status = 0;
 			rin -= 2. * interval * rmid;
-			rout += 1.5 * interval * rmid;
+			rout += 2. * interval * rmid;
 			while (rout - rin > epsilon * (rin + rout)) {
 				rmid = 0.5 * (rin + rout);
 				ph[0] = 0.;
@@ -159,14 +159,14 @@ namespace SBody {
 						ph[8] += ph[9];
 						ph[9] = 0;
 					}
-					if (ph[4] >= 1e6 || ph[5] >= epsilon)
+					if (ph[4] >= 1e6 || ph[5] >= 0 || ph[1] <= 0)
 						break;
 				}
 				if (status > 0) {
 					cerr << "[!] view::shadow status = " << status << endl;
 					return status;
 				}
-				if (ph[5] >= epsilon)
+				if (ph[5] >= 0)
 					rout = rmid;
 				else
 					rin = rmid;
