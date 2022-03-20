@@ -13,27 +13,36 @@ namespace SBody {
 		extern indicators::BlockProgressBar progressBar;
 		class file {
 		  protected:
-			const std::string fileName;
-			file(std::string fileName);
+			std::filebuf fileBuf;
+			file(std::string fileName, std::ios::openmode mode);
+			~file();
 		};
 		// T should be int or double
 		template <typename T>
 		class NumPy : public file {
+		  private:
+			const int column;
+			int row;
+
 		  public:
-			NumPy(std::string fileName);
-			int save(const std::vector<std::vector<T>> &data);
+			NumPy(std::string fileName, int columnNumber);
+			~NumPy();
+			int save(const std::vector<T> &data);
 		};
 		template <typename T>
 		class CSV : public file {
+		  private:
+			char sep;
+
 		  public:
-			CSV(std::string fileName);
-			int save(const std::vector<std::vector<T>> &data);
+			CSV(std::string fileName, char separator = ',');
+			int save(const std::vector<T> &data);
 		};
 		template <typename T>
 		class FITS : public file {
 		  public:
 			FITS(std::string fileName);
-			int save(const std::vector<std::vector<T>> &data);
+			int save(const std::vector<T> &data);
 		};
 		int save();
 		int load();

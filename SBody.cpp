@@ -41,13 +41,13 @@ void help() {
 	cout << "  -l --NUT    [f]: NUT charge of the source [" << NUT << "]" << endl;
 	cout << "  -t --time   [f]: time limit [" << tFinal << "] (s)" << endl;
 	cout << "  -o --rec    [f]: record interval [" << tRec << "] (s)" << endl;
-	cout << "  -c --tcal   [f]: time limit of calculation [" << tCal << "] (s)" << endl;
+	cout << "  -c --tcal   [f]: time limit of calculation [" << TCal << "] (s)" << endl;
 	cout << "  -n --NSK    [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrH (3) [" << NSK << "]" << endl;
 	cout << "  -P --PN     [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [" << PN << "]" << endl;
 	cout << "  -R --ray    [i]: ray tracing, view (1) + shadow (2) + camera (4) [" << ray << "]" << endl;
 	cout << "  -a --abs    [f]: absolute accuracy [" << absAcc << "]" << endl;
 	cout << "  -r --rel    [f]: relative accuracy [" << relAcc << "]" << endl;
-	cout << "  -f --format [s]: storage format [" << storeFormat << "]" << endl; //TODO: use int instead of str
+	cout << "  -f --format [s]: storage format [" << storeFormat << "]" << endl; // TODO: use int instead of str
 	cout << "  -h --hamilton  : use hamilonian instead of geodesic" << endl;
 	cout << "  -L --light     : light instead of particle" << endl;
 	cout << "  -b --bar       : show progress bar" << endl;
@@ -59,24 +59,25 @@ void help() {
 }
 
 int main(int argc, char *argv[]) {
-	auto start = chrono::steady_clock::now();
+	auto TStart = chrono::steady_clock::now();
 	signal(SIGINT, interruptHandler);
 	double h = 1e-3;
 	mass = 4.e6;
-	spin = 1.;
+	spin = 0.;
 	charge = 0.;
-	NUT = 0.;
-	tFinal = 1. * 3.15576e7;
-	tRec = 1e-4 * tFinal;
-	tCal = 3600;
-	NSK = 3;
+	NUT = 0.1;
+	tFinal = 100. * 3.15576e7;
+	tRec = 1e-3 * tFinal;
+	TCal = 36000000;
+	NSK = 1;
 	Hamiltonian = 0;
 	PN = 1;
-	ray = 2;
+	ray = 1;
 	int restMass = 1;
 	int displayProgressBar = 1;
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
+	double inc = M_PI * 45. / 180., eps = 0.;
 	const char *optShort = "m:s:l:t:o:c:n:P:R:a:r:i:e:f:Lbh";
 	const struct option optLong[] = {
 		{"mass", required_argument, NULL, 'm'},
@@ -99,7 +100,6 @@ int main(int argc, char *argv[]) {
 		{"help", no_argument, NULL, 'h'},
 		{NULL, 0, NULL, 0}};
 	int opt;
-	double inc = M_PI_4, eps = M_PI;
 	while ((opt = getopt_long(argc, argv, optShort, optLong, NULL)) != -1)
 		switch (opt) {
 		case 'm':
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
 			tRec = atof(optarg);
 			break;
 		case 'c':
-			tCal = atof(optarg);
+			TCal = atof(optarg);
 			break;
 		case 'n':
 			NSK = atoi(optarg);
@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
 	Metric::setMetric(NSK, PN, mass, spin, charge, NUT);
 	if (displayProgressBar)
 		indicators::show_console_cursor(false);
-	view vie(8.3 * Constant::kpc, inc);
+	view vie(8. * Constant::pc, inc);
 	if (ray & 2)
 		return vie.shadow(100);
 	camera cam(100, 4e-2, mass * 1000., inc);
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
 		x[2] = 0;
 		x[3] = 0;
 		if (restMass) {
-			double a = 80. * Constant::AU, e = 0.88, inclination = M_PI * 45. / 180., ascendingNode = M_PI * 0. / 180., periapsis = M_PI * 0. / 180., trueAnomaly = 3.67372211; //phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.21123153 2.690436 3.05438129]
+			double a = 3.588 * Constant::mpc, e = 0.976, inclination = M_PI * 72.76 / 180., ascendingNode = M_PI * 122.61 / 180., periapsis = M_PI * 42.62 / 180., trueAnomaly = 3.21123153; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.21123153 2.690436 3.05438129]
 			double r = a * (1 - e * e) / (1 + e * cos(trueAnomaly));
 			double tp1 = -r * cos(periapsis + trueAnomaly), tp2 = -r * sin(periapsis + trueAnomaly) * cos(inclination);
 			double xp1 = tp1 * cos(ascendingNode) - tp2 * sin(ascendingNode), xp2 = tp2 * cos(ascendingNode) + tp1 * sin(ascendingNode), xp3 = -r * sin(periapsis + trueAnomaly) * sin(inclination);
@@ -188,8 +188,8 @@ int main(int argc, char *argv[]) {
 			x[2] = xp2 * cos(eps) - xp1 * sin(eps);
 			x[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
 			double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
-			//vtheta = 0.3822615764261866;
-			//vr = -0.16707659553531468;
+			// vtheta = 0.3822615764261866;
+			// vr = -0.16707659553531468;
 			double tp5 = vtheta * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
 			double xp5 = tp5 * cos(ascendingNode) - tp6 * sin(ascendingNode), xp6 = tp5 * sin(ascendingNode) + tp6 * cos(ascendingNode), xp7 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * sin(inclination);
 			x[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
@@ -203,6 +203,13 @@ int main(int argc, char *argv[]) {
 			x[7] = 0;
 		}
 		Metric::c2s(x, y);
+		/*y[0] = 0;
+		y[1] = 3.588 * Constant::mpc;
+		y[2] = M_PI / 3;
+		y[3] = M_PI;
+		y[5] = 0;
+		y[6] = 0;
+		y[7] = sqrt(4e6 / (gsl_pow_3(y[1]) * 0.75)) * 1.000000578443; //[1.0000005784, 1.00000057845]*/
 		if (restMass)
 			Metric::particleNormalization(y);
 		else
@@ -213,10 +220,11 @@ int main(int argc, char *argv[]) {
 	integrator integ(Metric::function, Metric::jacobian, NSK != 0);
 	Object::star star_0(Constant::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
-	vector<vector<double>> rec;
+	// IO::NumPy<double> rec(Metric::name + (abs(spin) < epsilon ? " 0i" : " i") + to_string(inc) + 'e' + to_string(eps), 12);
+	IO::CSV<double> rec(Metric::name + (abs(spin) < epsilon ? " 0i" : " i") + to_string(inc) + 'e' + to_string(eps));
 	vector<double> temp(12);
-	int rayNO = 0;
-	int status = 0;
+	int status = 0, rayNO = 0, TUse, TLastUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
+	double tFinal_1 = 1 / tFinal;
 	while (tStep < tFinal) {
 		tStep = min(tStep + tRec, tFinal);
 		while (status == 0 && t < tStep)
@@ -241,15 +249,21 @@ int main(int argc, char *argv[]) {
 			vie.traceBack(star_0, rayNO++);
 		if (ray & 4)
 			cam.traceBack();
-		rec.push_back(temp);
-		if (displayProgressBar)
-			IO::progressBar.set_progress(100 * t / tFinal);
-		auto tpass = chrono::steady_clock::now() - start; // nano seconds
-		if (tpass.count() >= tCal * 1000000000)
+		rec.save(temp);
+		TUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
+		if (displayProgressBar) {
+			double percent = 100. * t * tFinal_1;
+			if (floor(percent) > floor(IO::progressBar.current()) || TUse >= TLastUse + 500) {
+				TLastUse = TUse;
+				IO::progressBar.set_progress(percent);
+			}
+		}
+		if (TUse >= TCal)
 			break;
 	}
 	if (displayProgressBar) {
 		IO::progressBar.set_option(indicators::option::PrefixText{string("Complete(") + to_string(inc) + "," + to_string(eps) + ")"});
+		IO::progressBar.set_progress(100.);
 		IO::progressBar.mark_as_completed();
 		indicators::show_console_cursor(true);
 	}
@@ -261,7 +275,5 @@ int main(int argc, char *argv[]) {
 	}
 	if (ray & 4)
 		cam.save(string("camera i") + to_string(inc) + "e" + to_string(eps));
-	IO::NumPy<double> output(Metric::name + (abs(spin) < epsilon ? " 0i" : " i") + to_string(inc) + 'e' + to_string(eps));
-	output.save(rec);
 	return 0;
 }

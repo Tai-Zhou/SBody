@@ -8,7 +8,7 @@ void help();
 double mass, spin, charge, NUT;
 double tFinal;
 double tRec;
-double tCal;
+double TCal;
 size_t NSK;
 size_t Hamiltonian;
 size_t PN;

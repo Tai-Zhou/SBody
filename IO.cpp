@@ -15,44 +15,52 @@ namespace SBody {
 			indicators::option::ShowElapsedTime{true},
 			indicators::option::ShowRemainingTime{true},
 			indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
-		file::file(string fileName) : fileName(fileName) {}
+		file::file(string fileName, ios::openmode mode) {
+			fileBuf.open("out/" + fileName, mode);
+		}
+		file::~file() {
+			fileBuf.close();
+		}
 		template <typename T>
-		NumPy<T>::NumPy(string fileName) : file(fileName) {}
+		NumPy<T>::NumPy(string fileName, int columnNumber) : file(fileName + ".npy", ios::binary | ios::out), column(columnNumber), row(0) {
+			fileBuf.sputn("\x93NUMPY\x01\x00\x76\x00", 10);
+			fileBuf.sputn("{'descr': '<", 12);
+			fileBuf.sputn(sizeof(T) == 4 ? "i4" : "f8", 2);
+			fileBuf.sputn("', 'fortran_order': False, 'shape': (                                                                  \n", 104);
+		}
 		template <typename T>
-		int NumPy<T>::save(const vector<vector<T>> &data) {
-			ofstream NumPyFile("out/" + fileName + ".npy", ios::binary | ios::out);
-			NumPyFile.write("\x93NUMPY\x01\x00\x76\x00", 10);
-			NumPyFile << "{'descr': '<" << (sizeof(T) == 4 ? "i4" : "f8")
-					  << "', 'fortran_order': False, 'shape': (                                                                  \n";
-			for (const vector<T> &line : data)
-				NumPyFile.write((char *)(&line[0]), sizeof(T) * line.size());
-			NumPyFile.seekp(61);
-			NumPyFile << data.size() << ", " << data[0].size() << "), }";
-			NumPyFile.close();
+		NumPy<T>::~NumPy() {
+			fileBuf.pubseekpos(61);
+			string rows = to_string(row), columns = to_string(column);
+			fileBuf.sputn((rows + ", " + columns + "), }").c_str(), rows.length() + columns.length() + 6);
+		}
+		template <typename T>
+		int NumPy<T>::save(const vector<T> &data) {
+			++row;
+			fileBuf.sputn(reinterpret_cast<const char *>(data.data()), sizeof(T) * column);
 			return 0;
 		}
 		template class NumPy<int>;
 		template class NumPy<double>;
 		template <typename T>
-		CSV<T>::CSV(string fileName) : file(fileName) {}
+		CSV<T>::CSV(string fileName, char separator) : file(fileName + ".csv", ios::out), sep(separator) {}
 		template <typename T>
-		int CSV<T>::save(const vector<vector<T>> &data) {
-			ofstream CSVFile("out/" + fileName + ".csv", ios::out);
-			for (const vector<T> &line : data) {
-				for (const T element : line)
-					CSVFile << element << ',';
-				CSVFile.seekp(-1, ios::cur);
-				CSVFile << endl;
+		int CSV<T>::save(const vector<T> &data) {
+			for (const T &element : data) {
+				string elements = to_string(element);
+				fileBuf.sputn(elements.c_str(), elements.length());
+				fileBuf.sputc(sep);
 			}
-			CSVFile.close();
+			fileBuf.pubseekoff(-1, ios::cur);
+			fileBuf.sputc('\n');
 			return 0;
 		}
 		template class CSV<int>;
 		template class CSV<double>;
 		template <typename T>
-		FITS<T>::FITS(string fileName) : file(fileName) {}
+		FITS<T>::FITS(string fileName) : file(fileName + ".fits", ios::binary | ios::out) {}
 		template <typename T>
-		int FITS<T>::save(const vector<vector<T>> &data) {
+		int FITS<T>::save(const vector<T> &data) {
 			fitsfile *fptr;
 			char card[FLEN_CARD];
 			int status = 0, nkeys;

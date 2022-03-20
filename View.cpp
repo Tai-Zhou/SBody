@@ -17,15 +17,16 @@ using namespace std;
 
 namespace SBody {
 	view::view(double r, double theta) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(r + 2e4 * Metric::m) {}
-	int view::traceBack(Object::star &s, int rayNO) { //FIXME:!!!!
+	int view::traceBack(Object::star &s, int rayNO) { // FIXME:!!!!
 		const double rs = s.pos[1], thetas = s.pos[2], phis = s.pos[3], sints = sin(thetas), costs = cos(thetas), sinps = sin(phis), cosps = cos(phis);
 		double alpha0 = GSL_POSINF, alpha1 = (rs + Metric::m) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + Metric::m) * (costs * sinto - sints * cosps * costo), ph[10], cosph, last[10], h;
-		//Metric::a *= -1.;
+		Metric::a *= -1.;
+		Metric::l *= -1.;
 		vector<double> qdq(12);
-		vector<vector<double>> rec;
-		const int Hamiltonian = 0, record = 0;
+#ifdef RECORD_TRACE
+		IO::NumPy<double> rec("Trace " + to_string(rayNO), 12);
+#endif
 		while (gsl_hypot(alpha1 - alpha0, beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
-			rec.clear();
 			alpha0 = alpha1;
 			beta0 = beta1;
 			ph[0] = 0.;
@@ -56,9 +57,14 @@ namespace SBody {
 			}
 			h = 1e-3;
 			Metric::lightNormalization(ph, 1.);
-			if (Hamiltonian)
-				Metric::qdq2qp(ph);
+#ifdef VIEW_HAMILTONIAN
+			Metric::qdq2qp(ph);
+#endif
+#ifdef VIEW_TAU
+			integrator integ(Metric::KerrTaubNUT::functionTau, Metric::jacobian, 2);
+#else
 			integrator integ(Metric::function, Metric::jacobian, 2);
+#endif
 			int status = 0, fixed = 0;
 			while (status <= 0) {
 				if (status == -1) {
@@ -83,16 +89,18 @@ namespace SBody {
 						ph[9] = 0;
 					}
 					copy(ph, ph + 8, qdq.begin());
-					if (Hamiltonian)
-						Metric::qp2qdq(qdq.data());
+#ifdef VIEW_HAMILTONIAN
+					Metric::qp2qdq(qdq.data());
+#endif
 					qdq[8] = (ph[8] + ph[9]) / Constant::s;
 					qdq[9] = Metric::energy(qdq.data());
 					qdq[10] = Metric::angularMomentum(qdq.data());
 					qdq[11] = Metric::carter(qdq.data(), 0.);
-					if (record)
-						rec.push_back(qdq);
+#ifdef RECORD_TRACE
+					rec.save(qdq);
+#endif
 					if (cosph >= 0) {
-						alpha1 += rs * sints * sinps - ph[1] * sign(ph[2]) * sin(ph[2]) * sin(ph[3]); //TODO:OPT!
+						alpha1 += rs * sints * sinps - ph[1] * sign(ph[2]) * sin(ph[2]) * sin(ph[3]); // TODO:OPT!
 						beta1 += (rs * costs - ph[1] * sign(ph[2]) * cos(ph[2])) * sinto - (rs * sints * cosps - ph[1] * sign(ph[2]) * sin(ph[2]) * cos(ph[3])) * costo;
 						break;
 					}
@@ -103,17 +111,18 @@ namespace SBody {
 				return status;
 			}
 		}
-		//Metric::a *= -1.;
+		Metric::a *= -1.;
+		Metric::l *= -1.;
+#ifdef VIEW_TAU
+		screen.push_back({alpha1, beta1, s.frequencyTau(qdq.data()), qdq[8]});
+#else
 		screen.push_back({alpha1, beta1, s.frequency(qdq.data()), qdq[8]});
-		if (record) {
-			IO::NumPy<double> output("Trace " + to_string(rayNO));
-			output.save(rec);
-		}
+#endif
 		return 0;
 	}
 	int view::shadow(int n) {
 		const double interval = M_2PI / n;
-		vector<vector<double>> rec(n);
+		IO::NumPy<double> rec("shadow " + to_string(Metric::a / Metric::m) + "," + to_string(Metric::l / Metric::m), 2);
 		Metric::a *= -1.;
 		Metric::l *= -1.;
 		double h, rin = 2. * Metric::m, rout = 10. * Metric::m, rmid = 6. * Metric::m, ph[10];
@@ -172,20 +181,18 @@ namespace SBody {
 					rin = rmid;
 				integ.reset();
 			}
-			rec[i] = {rmid * cosa, rmid * sina};
+			rec.save({rmid * cosa, rmid * sina});
 		}
 		Metric::a *= -1.;
 		Metric::l *= -1.;
-		IO::NumPy<double> output("shadow " + to_string(Metric::a / Metric::m) + "," + to_string(Metric::l / Metric::m));
 		IO::progressBar.set_progress(100.);
 		IO::progressBar.set_option(indicators::option::PrefixText{"Complete"});
 		IO::progressBar.mark_as_completed();
 		indicators::show_console_cursor(true);
-		return output.save(rec);
+		return 0;
 	}
 	int view::save(string fileName) {
-		IO::NumPy<double> output(fileName);
-		return output.save(screen);
+		return 0;
 	}
 	camera::camera(size_t pixel, double viewAngle, double r, double theta) : view(r, theta), pixel(pixel), viewAngle(viewAngle) {
 		screen = vector<vector<double>>(pixel, vector<double>(pixel));
@@ -256,7 +263,7 @@ namespace SBody {
 				status = integ.apply(&t, t1, &h, ph);
 				for (auto objP : Object::objectList)
 					if (objP->hit(ph, last))
-						screen[i][j] = objP->frequency(ph); //FIXME: if multi objects
+						screen[i][j] = objP->frequency(ph); // FIXME: if multi objects
 				if (screen[i][j] > epsilon)
 					break;
 			}
