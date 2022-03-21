@@ -12,7 +12,9 @@ namespace SBody {
 		system = {function, jacobian, 8, params};
 	}
 	integrator::~integrator() {
+		gsl_odeiv2_control_free(control);
 		gsl_odeiv2_evolve_free(evolve);
+		gsl_odeiv2_step_free(step);
 	}
 	int integrator::apply(double *t, double t1, double *h, double *y) {
 		int status = gsl_odeiv2_evolve_apply(evolve, control, step, &system, t, t1, h, y);
