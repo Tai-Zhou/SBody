@@ -16,7 +16,7 @@
 using namespace std;
 
 namespace SBody {
-	view::view(double r, double theta) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(r + 2e4 * Metric::m) {}
+	view::view(double r, double theta, string filename) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(r + 2e4 * Metric::m), output(std::make_unique<IO::NumPy>(filename, 4)) {}
 	int view::traceBack(Object::star &s, int rayNO) { // FIXME:!!!!
 		const double rs = s.pos[1], thetas = s.pos[2], phis = s.pos[3], sints = sin(thetas), costs = cos(thetas), sinps = sin(phis), cosps = cos(phis);
 		double alpha0 = GSL_POSINF, alpha1 = (rs + Metric::m) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + Metric::m) * (costs * sinto - sints * cosps * costo), ph[10], cosph, last[10], h;
@@ -114,15 +114,15 @@ namespace SBody {
 		Metric::a *= -1.;
 		Metric::l *= -1.;
 #ifdef VIEW_TAU
-		screen.push_back({alpha1, beta1, s.frequencyTau(qdq.data()), qdq[8]});
+		output->save({alpha1, beta1, s.frequencyTau(qdq.data()), qdq[8]});
 #else
-		screen.push_back({alpha1, beta1, s.frequency(qdq.data()), qdq[8]});
+		output->save({alpha1, beta1, s.frequency(qdq.data()), qdq[8]});
 #endif
 		return 0;
 	}
 	int view::shadow(int n) {
 		const double interval = M_2PI / n;
-		IO::NumPy<double> rec("shadow " + to_string(Metric::a / Metric::m) + "," + to_string(Metric::l / Metric::m), 2);
+		IO::NumPy rec("shadow " + to_string(Metric::a / Metric::m) + "," + to_string(Metric::l / Metric::m), 2);
 		Metric::a *= -1.;
 		Metric::l *= -1.;
 		double h, rin = 2. * Metric::m, rout = 10. * Metric::m, rmid = 6. * Metric::m, ph[10];
@@ -185,20 +185,12 @@ namespace SBody {
 		}
 		Metric::a *= -1.;
 		Metric::l *= -1.;
-		IO::progressBar.set_progress(100.);
-		IO::progressBar.set_option(indicators::option::PrefixText{"Complete"});
-		IO::progressBar.mark_as_completed();
-		indicators::show_console_cursor(true);
+		IO::progressBarComplete("Complete");
 		return 0;
 	}
-	int view::save(string fileName) {
-		return 0;
-	}
-	camera::camera(size_t pixel, double viewAngle, double r, double theta) : view(r, theta), pixel(pixel), viewAngle(viewAngle) {
+	camera::camera(size_t pixel, double viewAngle, double r, double theta, string fileName) : view(r, theta, fileName), pixel(pixel), viewAngle(viewAngle) {
 		screen = vector<vector<double>>(pixel, vector<double>(pixel));
 		initials = vector<array<double, 9>>(pixel * pixel);
-	}
-	int camera::initialize() {
 		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), t1 = r + 100. * Metric::m;
 		if (theta < epsilon || M_PI - theta < epsilon) {
 #pragma omp parallel for
@@ -246,7 +238,6 @@ namespace SBody {
 				if (status > 0)
 					cerr << "[!] camera::initialize status = " << status << endl;
 			}
-		return 0;
 	}
 	int camera::traceBack() {
 		const double t1 = 1000. * Metric::m;
@@ -270,6 +261,11 @@ namespace SBody {
 			if (status > 0)
 				cerr << "[!] camera::traceBack status = " << status << endl;
 		}
+		return 0;
+	}
+	int camera::save() {
+		for (const vector<double> &line : screen)
+			output->save(line);
 		return 0;
 	}
 } // namespace SBody

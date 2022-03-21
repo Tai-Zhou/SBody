@@ -67,9 +67,9 @@ int main(int argc, char *argv[]) {
 	charge = 0.;
 	NUT = 0.1;
 	tFinal = 100. * 3.15576e7;
-	tRec = 1e-3 * tFinal;
+	tRec = 1e-7 * tFinal;
 	TCal = 36000000;
-	NSK = 1;
+	NSK = 3;
 	Hamiltonian = 0;
 	PN = 1;
 	ray = 1;
@@ -78,6 +78,8 @@ int main(int argc, char *argv[]) {
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
 	double inc = M_PI * 45. / 180., eps = 0.;
+	unique_ptr<view> vi;
+	unique_ptr<camera> cam;
 	const char *optShort = "m:s:l:t:o:c:n:P:R:a:r:i:e:f:Lbh";
 	const struct option optLong[] = {
 		{"mass", required_argument, NULL, 'm'},
@@ -160,12 +162,16 @@ int main(int argc, char *argv[]) {
 	Metric::setMetric(NSK, PN, mass, spin, charge, NUT);
 	if (displayProgressBar)
 		indicators::show_console_cursor(false);
-	view vie(8. * Constant::pc, inc);
-	if (ray & 2)
-		return vie.shadow(100);
-	camera cam(100, 4e-2, mass * 1000., inc);
-	if (ray & 4)
-		cam.initialize();
+	char strFormat[1024]; // TODO: waiting for C++20
+	snprintf(strFormat, 1024, " (%.1f,%.1f,%.1f)[%f,%f]", spin, charge, NUT, inc, eps);
+	if (ray & 3) {
+		vi = make_unique<view>(8. * Constant::pc, inc, string("view") + strFormat);
+		if (ray & 2)
+			return vi->shadow(100);
+	}
+	if (ray & 4) {
+		cam = make_unique<camera>(100, 4e-2, mass * 1000., inc, string("camera") + strFormat);
+	}
 	double x[8], y[8];
 	if (NSK == 0) {
 		y[0] = Constant::AU / 100;
@@ -220,8 +226,7 @@ int main(int argc, char *argv[]) {
 	integrator integ(Metric::function, Metric::jacobian, NSK != 0);
 	Object::star star_0(Constant::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
-	// IO::NumPy<double> rec(Metric::name + (abs(spin) < epsilon ? " 0i" : " i") + to_string(inc) + 'e' + to_string(eps), 12);
-	IO::CSV<double> rec(Metric::name + (abs(spin) < epsilon ? " 0i" : " i") + to_string(inc) + 'e' + to_string(eps));
+	IO::NumPy rec(Metric::name + strFormat, 12);
 	vector<double> temp(12);
 	int status = 0, rayNO = 0, TUse, TLastUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
 	double tFinal_1 = 1 / tFinal;
@@ -246,9 +251,9 @@ int main(int argc, char *argv[]) {
 		temp[10] = Metric::angularMomentum(star_0.pos);
 		temp[11] = Metric::carter(star_0.pos, 1.);
 		if (ray & 1)
-			vie.traceBack(star_0, rayNO++);
+			vi->traceBack(star_0, rayNO++);
 		if (ray & 4)
-			cam.traceBack();
+			cam->traceBack();
 		rec.save(temp);
 		TUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
 		if (displayProgressBar) {
@@ -261,19 +266,7 @@ int main(int argc, char *argv[]) {
 		if (TUse >= TCal)
 			break;
 	}
-	if (displayProgressBar) {
-		IO::progressBar.set_option(indicators::option::PrefixText{string("Complete(") + to_string(inc) + "," + to_string(eps) + ")"});
-		IO::progressBar.set_progress(100.);
-		IO::progressBar.mark_as_completed();
-		indicators::show_console_cursor(true);
-	}
-	if (ray & 1) {
-		if (abs(spin) < epsilon)
-			vie.save("view e" + to_string(eps));
-		else
-			vie.save(string("view i") + to_string(inc) + "e" + to_string(eps));
-	}
-	if (ray & 4)
-		cam.save(string("camera i") + to_string(inc) + "e" + to_string(eps));
+	if (displayProgressBar)
+		IO::progressBarComplete(string("Complete (") + to_string(inc) + "," + to_string(eps) + ")");
 	return 0;
 }
