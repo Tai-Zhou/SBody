@@ -23,6 +23,10 @@ namespace SBody {
 		}
 		file::file(string fileName, ios::openmode mode) {
 			fileBuf.open("out/" + fileName, mode);
+			if (!fileBuf.is_open()) {
+				cerr << "[!] IO file not open" << endl;
+				exit(1);
+			}
 		}
 		file::~file() {
 			fileBuf.close();
