@@ -34,6 +34,7 @@ namespace SBody {
 	  public:
 		camera(size_t pixel, double viewAngle, double r, double theta, std::string fileName);
 		int traceBack();
+		int lens();
 		int save();
 	};
 } // namespace SBody

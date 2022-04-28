@@ -26,6 +26,11 @@ namespace SBody {
 #ifdef RECORD_TRACE
 		IO::NumPy<double> rec("Trace " + to_string(rayNO), 12);
 #endif
+#ifdef VIEW_TAU
+		integrator integ(Metric::functionTau, Metric::jacobian, 2);
+#else
+		integrator integ(Metric::function, Metric::jacobian, 2);
+#endif
 		while (gsl_hypot(alpha1 - alpha0, beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
 			alpha0 = alpha1;
 			beta0 = beta1;
@@ -60,12 +65,8 @@ namespace SBody {
 #ifdef VIEW_HAMILTONIAN
 			Metric::qdq2qp(ph);
 #endif
-#ifdef VIEW_TAU
-			integrator integ(Metric::KerrTaubNUT::functionTau, Metric::jacobian, 2);
-#else
-			integrator integ(Metric::function, Metric::jacobian, 2);
-#endif
 			int status = 0, fixed = 0;
+			integ.reset();
 			while (status <= 0) {
 				if (status == -1) {
 					h *= 0.5;
@@ -92,11 +93,11 @@ namespace SBody {
 #ifdef VIEW_HAMILTONIAN
 					Metric::qp2qdq(qdq.data());
 #endif
-					qdq[8] = (ph[8] + ph[9]) / Constant::s;
+					qdq[8] = ph[8] + ph[9];
+#ifdef RECORD_TRACE
 					qdq[9] = Metric::energy(qdq.data());
 					qdq[10] = Metric::angularMomentum(qdq.data());
 					qdq[11] = Metric::carter(qdq.data(), 0.);
-#ifdef RECORD_TRACE
 					rec.save(qdq);
 #endif
 					if (cosph >= 0) {
@@ -114,9 +115,9 @@ namespace SBody {
 		Metric::a *= -1.;
 		Metric::l *= -1.;
 #ifdef VIEW_TAU
-		output->save({alpha1, beta1, s.frequencyTau(qdq.data()), qdq[8]});
+		output->save({alpha1, beta1, s.frequencyTau(qdq.data()), qdq[0] / Constant::s});
 #else
-		output->save({alpha1, beta1, s.frequency(qdq.data()), qdq[8]});
+		output->save({alpha1, beta1, s.frequency(qdq.data()), qdq[8] / Constant::s});
 #endif
 		return 0;
 	}
@@ -193,51 +194,38 @@ namespace SBody {
 		initials = vector<array<double, 9>>(pixel * pixel);
 		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), t1 = r + 100. * Metric::m;
 		if (theta < epsilon || M_PI - theta < epsilon) {
-#pragma omp parallel for
-			for (int p = pixel * pixel - 1; p >= 0; --p) {
-				int i = p / pixel;
-				int j = p - i * pixel;
-				const double k = gsl_hypot(i - 0.5 * pixel + 0.5, j - 0.5 * pixel + 0.5);
-				double ph[8] = {0., r, theta < M_PI_2 ? 0. : M_PI, 0., 1., -1., sign(M_PI_2 - theta) * tana_pix * k, 0.}, t = 0., h = 1e-3;
-				int status = 0;
-				integrator integ(Metric::function, Metric::jacobian, 0);
-				if (k >= epsilon) {
-					if (2 * i <= pixel)
-						ph[3] = (theta < M_PI_2 ? 1. : -1.) * acos((j - 0.5 * pixel + 0.5) / k);
-					else
-						ph[3] = (theta < M_PI_2 ? 1. : -1.) * (2. * M_PI - acos((j - 0.5 * pixel + 0.5) / k));
-				}
-				Metric::lightNormalization(ph, 1.);
-				while (status == 0 && t < t1) {
-					status = integ.apply(&t, t1, &h, ph);
-					if (ph[1] < 100 * Metric::m) {
-						initials[p] = {ph[0], ph[1], ph[2], ph[3], ph[4], ph[5], ph[6], ph[7], t};
-						break;
+			for (int i = 0; i < pixel; ++i)
+				for (int j = 0; j < pixel; ++j) {
+					const double k = gsl_hypot(i - 0.5 * pixel + 0.5, j - 0.5 * pixel + 0.5);
+					initials[i * pixel + j] = {0., r, theta < M_PI_2 ? 0. : M_PI, 0., 1., -1., sign(M_PI_2 - theta) * tana_pix * k, 0., 0.};
+					if (k >= epsilon) {
+						if (2 * i <= pixel)
+							initials[i * pixel + j][3] = (theta < M_PI_2 ? 1. : -1.) * acos((j - 0.5 * pixel + 0.5) / k);
+						else
+							initials[i * pixel + j][3] = (theta < M_PI_2 ? 1. : -1.) * (2. * M_PI - acos((j - 0.5 * pixel + 0.5) / k));
 					}
 				}
-				if (status > 0)
-					cerr << "[!] camera::initialize status = " << status << endl;
-			}
 		}
 		else
+			for (int i = 0; i < pixel; ++i)
+				for (int j = 0; j < pixel; ++j)
+					initials[i * pixel + j] = {0., r, theta, 0., 1., -1., tana_pix * (i - 0.5 * pixel + 0.5), tana_pix * (j - 0.5 * pixel + 0.5) / sint, 0.};
 #pragma omp parallel for
-			for (int p = pixel * pixel - 1; p >= 0; --p) {
-				int i = p / pixel;
-				int j = p - i * pixel;
-				double ph[8] = {0., r, theta, 0., 1., -1., tana_pix * (i - 0.5 * pixel + 0.5), tana_pix * (j - 0.5 * pixel + 0.5) / sint}, t = 0., h = 1e-3;
-				int status = 0;
-				integrator integ(Metric::function, Metric::jacobian, 0);
-				Metric::lightNormalization(ph, 1.);
-				while (status == 0 && t < t1) {
-					status = integ.apply(&t, t1, &h, ph);
-					if (ph[1] < 100 * Metric::m) {
-						initials[p] = {ph[0], ph[1], ph[2], ph[3], ph[4], ph[5], ph[6], ph[7], t};
-						break;
-					}
-				}
-				if (status > 0)
-					cerr << "[!] camera::initialize status = " << status << endl;
+		for (int p = pixel * pixel - 1; p >= 0; --p) {
+			int i = p / pixel;
+			int j = p - i * pixel;
+			int status = 0;
+			double h = 1e-3;
+			integrator integ(Metric::function, Metric::jacobian, 0);
+			Metric::lightNormalization(initials[p].data(), 1.);
+			while (status <= 0 && initials[p][8] < t1) {
+				status = integ.apply(initials[p].data() + 8, t1, &h, initials[p].data());
+				if (initials[p][1] < 100 * Metric::m)
+					break;
 			}
+			if (status > 0)
+				cerr << "[!] camera::initialize status = " << status << endl;
+		}
 	}
 	int camera::traceBack() {
 		const double t1 = 1000. * Metric::m;
@@ -245,13 +233,13 @@ namespace SBody {
 		for (int p = pixel * pixel - 1; p >= 0; --p) {
 			int i = p / pixel;
 			int j = p - i * pixel;
-			double ph[8], last[8], t = 0., h = 1e-3; // TODO: should add t_0 (initials[8]) here
+			double ph[9], last[9], h = 1e-3; // TODO: should add t_0 (initials[8]) here
 			int status = 0;
 			integrator integ(Metric::function, Metric::jacobian, 0);
-			copy(initials[p].data(), initials[p].data() + 8, ph);
-			while (status == 0 && t < t1) {
+			copy(initials[p].begin(), initials[p].end(), ph);
+			while (status <= 0 && ph[9] < t1) {
 				copy(ph, ph + 3, last);
-				status = integ.apply(&t, t1, &h, ph);
+				status = integ.apply(ph + 9, t1, &h, ph);
 				for (auto objP : Object::objectList)
 					if (objP->hit(ph, last))
 						screen[i][j] = objP->frequency(ph); // FIXME: if multi objects
@@ -261,6 +249,9 @@ namespace SBody {
 			if (status > 0)
 				cerr << "[!] camera::traceBack status = " << status << endl;
 		}
+		return 0;
+	}
+	int camera::lens() {
 		return 0;
 	}
 	int camera::save() {
