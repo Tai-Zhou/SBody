@@ -160,10 +160,13 @@ int main(int argc, char *argv[]) {
 	tFinal *= Constant::s;
 	tRec *= Constant::s;
 	Metric::setMetric(NSK, PN, mass, spin, charge, NUT);
-	if (displayProgressBar)
-		indicators::show_console_cursor(false);
 	char strFormat[1024]; // TODO: waiting for C++20
 	snprintf(strFormat, 1024, " (%.1f,%.1f,%.1f)[%f,%f]", spin, charge, NUT, inc, eps);
+	if (displayProgressBar) {
+		indicators::show_console_cursor(false);
+		IO::progressBar.set_option(indicators::option::PrefixText{string("?") + strFormat});
+		IO::progressBar.set_option(indicators::option::ForegroundColor{indicators::Color(NSK)});
+	}
 	if (ray & 3) {
 		vi = make_unique<view>(8. * Constant::pc, inc, string("view") + strFormat);
 		if (ray & 2)
@@ -267,6 +270,6 @@ int main(int argc, char *argv[]) {
 			break;
 	}
 	if (displayProgressBar)
-		IO::progressBarComplete(string("Complete (") + to_string(inc) + "," + to_string(eps) + ")");
+		IO::progressBarComplete(string("!") + strFormat);
 	return 0;
 }

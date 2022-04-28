@@ -7,11 +7,6 @@ using namespace std;
 namespace SBody {
 	namespace IO {
 		indicators::BlockProgressBar progressBar{
-			indicators::option::BarWidth{80},
-			indicators::option::Start{"["},
-			indicators::option::End{"]"},
-			indicators::option::PrefixText{"Calculating..."},
-			indicators::option::ForegroundColor{indicators::Color::cyan},
 			indicators::option::ShowElapsedTime{true},
 			indicators::option::ShowRemainingTime{true},
 			indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
