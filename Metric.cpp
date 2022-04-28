@@ -20,6 +20,7 @@ namespace SBody {
 		int (*qdq2qp)(double[]) = nullptr;
 		int (*qp2qdq)(double[]) = nullptr;
 		int (*function)(double, const double[], double[], void *) = nullptr;
+		int (*functionTau)(double, const double[], double[], void *) = nullptr;
 		int (*functionHamiltonian)(double, const double[], double[], void *) = nullptr;
 		int (*jacobian)(double, const double[], double *, double[], void *) = nullptr;
 		int (*jacobianHamiltonian)(double, const double[], double *, double[], void *) = nullptr;
@@ -63,6 +64,7 @@ namespace SBody {
 				qdq2qp = Schwarzschild::qdq2qp;
 				qp2qdq = Schwarzschild::qp2qdq;
 				function = Schwarzschild::function;
+				functionTau = Schwarzschild::functionTau;
 				functionHamiltonian = Schwarzschild::functionHamiltonian;
 				jacobian = Schwarzschild::jacobian;
 				jacobianHamiltonian = Schwarzschild::jacobianHamiltonian;
@@ -82,6 +84,7 @@ namespace SBody {
 				qdq2qp = Kerr::qdq2qp;
 				qp2qdq = Kerr::qp2qdq;
 				function = Kerr::function;
+				functionTau = Kerr::functionTau;
 				functionHamiltonian = Kerr::functionHamiltonian;
 				jacobian = Kerr::jacobian;
 				jacobianHamiltonian = Kerr::jacobianHamiltonian;
@@ -101,6 +104,7 @@ namespace SBody {
 				qdq2qp = KerrTaubNUT::qdq2qp;
 				qp2qdq = KerrTaubNUT::qp2qdq;
 				function = KerrTaubNUT::function;
+				functionTau = KerrTaubNUT::functionTau;
 				functionHamiltonian = KerrTaubNUT::functionHamiltonian;
 				jacobian = KerrTaubNUT::jacobian;
 				jacobianHamiltonian = KerrTaubNUT::jacobianHamiltonian;
@@ -308,6 +312,24 @@ namespace SBody {
 				dydt[7] = -2. * (r3m * r2mr_1 * y[5] + cost / sint * y[6]) * y[7];
 				return GSL_SUCCESS;
 			}
+			int functionTau(double t, const double y[], double dydt[], void *params) {
+				dydt[0] = y[4]; // dt/d\tau
+				dydt[1] = y[5]; // dr/d\tau
+				dydt[2] = y[6]; // d\theta/d\tau
+				dydt[3] = y[7]; // d\phi/d\tau
+				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]);
+				const double r2m = r - 2. * m, r_1 = 1. / r;
+				const double r2mr_1 = 1. / (r2m * r);
+				// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
+				dydt[4] = -2. * m * y[5] * r2mr_1 * y[4];
+				// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+				dydt[5] = -m * r2m * gsl_pow_3(r_1) * gsl_pow_2(y[4]) + m * r2mr_1 * gsl_pow_2(y[5]) + r2m * (gsl_pow_2(y[6]) + gsl_pow_2(sint * y[7]));
+				// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+				dydt[6] = -2. * r_1 * y[5] * y[6] + sint * cost * gsl_pow_2(y[7]);
+				// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+				dydt[7] = -2. * (r_1 * y[5] + cost / sint * y[6]) * y[7];
+				return GSL_SUCCESS;
+			}
 			int functionHamiltonian(double t, const double y[], double dydt[], void *params) {
 				const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), g00 = 1. - 2. * m * r_1, E = 1. - y[4], L2 = gsl_pow_2(y[7]);
 				const double sint_1 = 1. / sin(y[2]), sint_2 = gsl_pow_2(sint_1);
@@ -428,6 +450,24 @@ namespace SBody {
 				dydt[6] = (2. * m * a2 * r * sintcost - a2 * sintcost * rho4 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho4 * y[5] * y[6] - 4. * m * a * r * sintcost * a2r2 * y[7] + sintcost * (2. * m * a4 * r * sint4 + 4. * m * a2 * r * sint2 * rho2 + a2r2 * rho4) * gsl_pow_2(y[7])) * rho_6 + dydt4 * y[6];
 				// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 				dydt[7] = (-2. * m * a * r2a2cost2 * Delta_1 * y[5] + 4. * m * a * r * cott * y[6] - 2. * Delta_1 * (r * rho4 - 2. * m * r2 * rho2 - r2a2cost2 * m * a2 * sint2) * y[5] * y[7] - 2. * cott * (rho4 + 2. * a2 * m * r * sint2) * y[6] * y[7]) * rho_4 + dydt4 * y[7];
+				return GSL_SUCCESS;
+			}
+			int functionTau(double t, const double y[], double dydt[], void *params) {
+				dydt[0] = y[4]; // dt/d\tau
+				dydt[1] = y[5]; // dr/d\tau
+				dydt[2] = y[6]; // d\theta/d\tau
+				dydt[3] = y[7]; // d\phi/d\tau
+				const double r = y[1], r2 = gsl_pow_2(r), a2r2 = a2 + r2;
+				const double sint = sin(y[2]), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost = cos(y[2]), cost2 = gsl_pow_2(cost), sintcost = sint * cost, cott = cost / sint;
+				const double Delta = r2 - 2. * m * r + a2, Delta_1 = 1. / Delta;
+				const double rho2 = r2 + a2 * cost2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), r2a2cost2 = r2 - a2 * cost2;
+				dydt[4] = -2. * m * rho_4 * (Delta_1 * a2r2 * r2a2cost2 * y[5] * (y[4] - a * sint2 * y[7]) - 2. * a2 * r * sintcost * y[6] * (y[4] - a * sint2 * y[7]) - 2. * Delta_1 * r2 * rho2 * a * sint2 * y[5] * y[7]);
+				// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+				dydt[5] = (-Delta * m * r2a2cost2 * gsl_pow_2(y[4] - a * sint2 * y[7]) - (r * (a2 * sint2 - m * r) + m * (a2 * cost2)) * Delta_1 * rho4 * gsl_pow_2(y[5]) + 2. * a2 * sintcost * rho4 * y[5] * y[6] + r * Delta * rho4 * gsl_pow_2(y[6]) + Delta * sint2 * r * rho4 * gsl_pow_2(y[7])) * rho_6;
+				// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+				dydt[6] = (2. * m * a2 * r * sintcost * gsl_pow_2(y[4]) - a2 * sintcost * rho4 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho4 * y[5] * y[6] - 4. * m * a * r * sintcost * a2r2 * y[4] * y[7] + sintcost * (2. * m * a4 * r * sint4 + 4. * m * a2 * r * sint2 * rho2 + a2r2 * rho4) * gsl_pow_2(y[7])) * rho_6;
+				// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+				dydt[7] = (-2. * m * a * r2a2cost2 * Delta_1 * y[4] * y[5] + 4. * m * a * r * cott * y[4] * y[6] - 2. * Delta_1 * (r * rho4 - 2. * m * r2 * rho2 - r2a2cost2 * m * a2 * sint2) * y[5] * y[7] - 2. * cott * (rho4 + 2. * a2 * m * r * sint2) * y[6] * y[7]) * rho_4;
 				return GSL_SUCCESS;
 			}
 			int functionHamiltonian(double t, const double y[], double dydt[], void *params) {

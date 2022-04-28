@@ -15,6 +15,7 @@ namespace SBody {
 		extern int (*qdq2qp)(double[]);
 		extern int (*qp2qdq)(double[]);
 		extern int (*function)(double, const double[], double[], void *);
+		extern int (*functionTau)(double, const double[], double[], void *);
 		extern int (*functionHamiltonian)(double, const double[], double[], void *);
 		extern int (*jacobian)(double, const double[], double *, double[], void *);
 		extern int (*jacobianHamiltonian)(double, const double[], double *, double[], void *);
@@ -56,6 +57,7 @@ namespace SBody {
 			int qdq2qp(double y[]);
 			int qp2qdq(double y[]);
 			int function(double t, const double y[], double dydt[], void *params);
+			int functionTau(double t, const double y[], double dydt[], void *params);
 			int functionHamiltonian(double t, const double y[], double dydt[], void *params);
 			int functionRIAF(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
@@ -76,6 +78,7 @@ namespace SBody {
 			int qdq2qp(double y[]);
 			int qp2qdq(double y[]);
 			int function(double t, const double y[], double dydt[], void *params);
+			int functionTau(double t, const double y[], double dydt[], void *params);
 			int functionHamiltonian(double t, const double y[], double dydt[], void *params);
 			int functionHamiltonianTau(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
