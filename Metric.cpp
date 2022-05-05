@@ -194,12 +194,12 @@ namespace SBody {
 				return -gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[2] - y[2]) + gsl_pow_2(x[3] - y[3]);
 			}
 			int function(double t, const double y[], double dydt[], void *params) {
-				const double r = norm(y), r_1 = 1. / r, v2 = SBody::dot(y + 3);
-				const double m_r = m * r_1, rdot = SBody::dot(y, y + 3) * r_1;
+				const double r = norm(y + 1), r_1 = 1. / r, v2 = SBody::dot(y + 5);
+				const double m_r = m * r_1, rdot = SBody::dot(y + 1, y + 5) * r_1;
 				const double F = m_r * gsl_pow_2(r_1), m_r2 = gsl_pow_2(m_r), rdot2 = gsl_pow_2(rdot);
-				dydt[0] = y[3];
-				dydt[1] = y[4];
-				dydt[2] = y[5];
+				dydt[1] = y[5];
+				dydt[2] = y[6];
+				dydt[3] = y[7];
 				double A = 0, B = 0;
 				if (PN & 1) {
 					A += v2 - 4. * m_r;
@@ -213,17 +213,17 @@ namespace SBody {
 					A += -16. * gsl_pow_3(m_r) + rdot2 * m_r2;
 					B += -4. * rdot * m_r2;
 				}
-				dydt[3] = -F * (y[0] + A * y[0] + B * y[3] * r);
-				dydt[4] = -F * (y[1] + A * y[1] + B * y[4] * r);
-				dydt[5] = -F * (y[2] + A * y[2] + B * y[5] * r);
+				dydt[5] = -F * (y[1] + A * y[1] + B * y[5] * r);
+				dydt[6] = -F * (y[2] + A * y[2] + B * y[6] * r);
+				dydt[7] = -F * (y[3] + A * y[3] + B * y[7] * r);
 				return GSL_SUCCESS;
 			}
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 				return GSL_SUCCESS;
 			}
 			double energy(const double y[]) {
-				const double r = norm(y), v2 = SBody::dot(y + 3);
-				const double m_r = m / r, rdot = SBody::dot(y, y + 3) / r, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2), v8 = gsl_pow_2(v4);
+				const double r = norm(y + 1), r_1 = 1. / r, v2 = SBody::dot(y + 5);
+				const double m_r = m * r_1, rdot = SBody::dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2), v8 = gsl_pow_2(v4);
 				const double m_r2 = gsl_pow_2(m_r), m_r3 = gsl_pow_3(m_r), m_r4 = gsl_pow_4(m_r), rdot2 = gsl_pow_2(rdot);
 				double E = 0.5 * v2 - m_r;
 				if (PN & 1)
@@ -235,8 +235,8 @@ namespace SBody {
 				return E;
 			}
 			double angularMomentum(const double y[]) {
-				const double r = norm(y), r_1 = 1. / r, v2 = SBody::dot(y + 3);
-				const double m_r = m * r_1, rdot = SBody::dot(y, y + 3) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2);
+				const double r = norm(y + 1), r_1 = 1. / r, v2 = SBody::dot(y + 5);
+				const double m_r = m * r_1, rdot = SBody::dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2);
 				const double m_r2 = gsl_pow_2(m_r), m_r3 = gsl_pow_3(m_r), rdot2 = gsl_pow_2(rdot);
 				double J[3], eff = 0;
 				cross(y, y + 3, J);
@@ -256,13 +256,13 @@ namespace SBody {
 				return SBody::dot(c) / gsl_pow_2(y[4]);
 			}
 			int particleNormalization(double y[]) { // TODO: limit the light speed
-				if (SBody::dot(y + 3) >= 1)
+				if (SBody::dot(y + 5) >= 1)
 					return 1;
 				return 0;
 			}
 			int lightNormalization(double y[], double e) {
-				const double v_1 = 1. / SBody::norm(y + 3);
-				for (int i = 3; i < 6; ++i)
+				const double v_1 = 1. / SBody::norm(y + 5);
+				for (int i = 5; i < 8; ++i)
 					y[i] *= v_1;
 				return 0;
 			}
