@@ -138,7 +138,11 @@ namespace SBody {
 			if (IO::displayProgressBar)
 				IO::progressBars[progressBarIndex].set_progress(100. * i / n);
 			const double angle = i * interval, sina = sin(angle), cosa = cos(angle);
-			integrator integ(Metric::KerrTaubNUT::functionTau, Metric::jacobian, 2);
+#ifdef VIEW_TAU
+			integrator integ(Metric::functionTau, Metric::jacobian, 2);
+#else
+			integrator integ(Metric::function, Metric::jacobian, 2);
+#endif
 			int status = 0;
 			while (rout - rin > epsilon * (rin + rout)) {
 				rmid = 0.5 * (rin + rout);
@@ -221,8 +225,6 @@ namespace SBody {
 					initials[i * pixel + j] = {0., r, theta, 0., 1., -1., tana_pix * (i - 0.5 * pixel + 0.5), tana_pix * (j - 0.5 * pixel + 0.5) / sint, 0.};
 #pragma omp parallel for
 		for (int p = pixel * pixel - 1; p >= 0; --p) {
-			int i = p / pixel;
-			int j = p - i * pixel;
 			int status = 0;
 			double h = 1e-3;
 			integrator integ(Metric::function, Metric::jacobian, 0);
@@ -246,9 +248,9 @@ namespace SBody {
 			int status = 0;
 			integrator integ(Metric::function, Metric::jacobian, 0);
 			copy(initials[p].begin(), initials[p].end(), ph);
-			while (status <= 0 && ph[9] < t1) {
-				copy(ph, ph + 3, last);
-				status = integ.apply(ph + 9, t1, &h, ph);
+			while (status <= 0 && ph[8] < t1) {
+				copy(ph, ph + 9, last);
+				status = integ.apply(ph + 8, t1, &h, ph);
 				for (auto objP : Object::objectList)
 					if (objP->hit(ph, last))
 						screen[i][j] = objP->frequency(ph); // FIXME: if multi objects
