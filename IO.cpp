@@ -3,18 +3,20 @@
 #include <fitsio.h>
 
 using namespace std;
+using namespace indicators;
 
 namespace SBody {
 	namespace IO {
-		indicators::BlockProgressBar progressBar{
-			indicators::option::ShowElapsedTime{true},
-			indicators::option::ShowRemainingTime{true},
-			indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
-		void progressBarComplete(string prefix) {
-			progressBar.set_option(indicators::option::PrefixText{prefix});
-			progressBar.set_progress(100.);
-			progressBar.mark_as_completed();
-			indicators::show_console_cursor(true);
+		int displayProgressBar = 0;
+		BlockProgressBar mainProgressBar{
+			option::ShowElapsedTime{true},
+			option::ShowRemainingTime{true},
+			option::FontStyles{vector<FontStyle>{FontStyle::bold}}};
+		DynamicProgress<BlockProgressBar> progressBars(mainProgressBar);
+		void progressBarComplete(int index, string prefix) {
+			progressBars[index].set_option(option::PrefixText{prefix});
+			progressBars[index].set_progress(100.);
+			progressBars[index].mark_as_completed();
 		}
 		file::file(string fileName, ios::openmode mode) {
 			fileBuf.open("out/" + fileName, mode);

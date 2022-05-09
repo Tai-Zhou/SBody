@@ -127,13 +127,19 @@ namespace SBody {
 		Metric::a *= -1.;
 		Metric::l *= -1.;
 		double h, rin = 2. * Metric::m, rout = 10. * Metric::m, rmid = 6. * Metric::m, ph[10];
+		indicators::BlockProgressBar shadowProgressBar{
+			indicators::option::ShowElapsedTime{true},
+			indicators::option::ShowRemainingTime{true},
+			indicators::option::PrefixText{"? Shadow "},
+			indicators::option::ForegroundColor{indicators::Color(4)},
+			indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
+		int progressBarIndex = IO::progressBars.push_back(shadowProgressBar);
 		for (int i = 0; i < n; ++i) {
-			IO::progressBar.set_progress(100. * i / n);
+			if (IO::displayProgressBar)
+				IO::progressBars[progressBarIndex].set_progress(100. * i / n);
 			const double angle = i * interval, sina = sin(angle), cosa = cos(angle);
 			integrator integ(Metric::KerrTaubNUT::functionTau, Metric::jacobian, 2);
 			int status = 0;
-			rin -= 2. * interval * rmid;
-			rout += 2. * interval * rmid;
 			while (rout - rin > epsilon * (rin + rout)) {
 				rmid = 0.5 * (rin + rout);
 				ph[0] = 0.;
@@ -182,11 +188,14 @@ namespace SBody {
 					rin = rmid;
 				integ.reset();
 			}
+			rin -= 2. * interval * rmid;
+			rout += 2. * interval * rmid;
 			rec.save({rmid * cosa, rmid * sina});
 		}
 		Metric::a *= -1.;
 		Metric::l *= -1.;
-		IO::progressBarComplete("Complete");
+		if (IO::displayProgressBar)
+			IO::progressBarComplete(progressBarIndex, "! Shadow");
 		return 0;
 	}
 	camera::camera(size_t pixel, double viewAngle, double r, double theta, string fileName) : view(r, theta, fileName), pixel(pixel), viewAngle(viewAngle) {

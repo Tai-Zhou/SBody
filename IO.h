@@ -7,11 +7,13 @@
 
 #include <indicators/block_progress_bar.hpp>
 #include <indicators/cursor_control.hpp>
+#include <indicators/dynamic_progress.hpp>
 
 namespace SBody {
 	namespace IO {
-		extern indicators::BlockProgressBar progressBar;
-		void progressBarComplete(std::string prefix);
+		extern int displayProgressBar;
+		extern indicators::DynamicProgress<indicators::BlockProgressBar> progressBars;
+		void progressBarComplete(int index, std::string prefix);
 		class file {
 		  protected:
 			std::filebuf fileBuf;

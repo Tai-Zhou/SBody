@@ -77,9 +77,10 @@ int main(int argc, char *argv[]) {
 	int displayProgressBar = 1;
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
-	double inc = M_PI * 45. / 180., eps = 0.;
-	unique_ptr<view> vi;
-	unique_ptr<camera> cam;
+	double inc = M_PI * 0. / 180., eps = 0.;
+	unique_ptr<view> viewPtr;
+	unique_ptr<thread> shadowPtr;
+	unique_ptr<camera> cameraPtr;
 	const char *optShort = "m:s:l:t:o:c:n:P:R:a:r:i:e:f:Lbh";
 	const struct option optLong[] = {
 		{"mass", required_argument, NULL, 'm'},
@@ -162,18 +163,18 @@ int main(int argc, char *argv[]) {
 	Metric::setMetric(NSK, PN, mass, spin, charge, NUT);
 	char strFormat[1024]; // TODO: waiting for C++20
 	snprintf(strFormat, 1024, " (%.1f,%.1f,%.1f)[%f,%f]", spin, charge, NUT, inc, eps);
-	if (displayProgressBar) {
+	if (IO::displayProgressBar) {
 		indicators::show_console_cursor(false);
-		IO::progressBar.set_option(indicators::option::PrefixText{string("?") + strFormat});
-		IO::progressBar.set_option(indicators::option::ForegroundColor{indicators::Color(NSK)});
+		IO::progressBars[0].set_option(indicators::option::PrefixText{string("?") + strFormat});
+		IO::progressBars[0].set_option(indicators::option::ForegroundColor{indicators::Color(metric)});
 	}
-	if (ray & 3) {
-		vi = make_unique<view>(8. * Constant::pc, inc, string("view") + strFormat);
-		if (ray & 2)
-			return vi->shadow(100);
+	if (ray & 5) {
+		viewPtr = make_unique<view>(8. * Constant::kpc, inc, string("view") + strFormat);
+		if (ray & 4)
+			shadowPtr = make_unique<thread>(&view::shadow, viewPtr.get(), 100);
 	}
-	if (ray & 4) {
-		cam = make_unique<camera>(100, 4e-2, mass * 1000., inc, string("camera") + strFormat);
+	if (ray & 2) {
+		cameraPtr = make_unique<camera>(100, 4e-2, mass * 1000., inc, string("camera") + strFormat);
 	}
 	double x[8], y[8];
 	if (NSK == 0) {
@@ -254,22 +255,26 @@ int main(int argc, char *argv[]) {
 		temp[10] = Metric::angularMomentum(star_0.pos);
 		temp[11] = Metric::carter(star_0.pos, 1.);
 		if (ray & 1)
-			vi->traceBack(star_0, rayNO++);
-		if (ray & 4)
-			cam->traceBack();
+			viewPtr->traceBack(star_0, rayNO++);
+		if (ray & 2)
+			cameraPtr->traceBack();
 		rec.save(temp);
 		TUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
-		if (displayProgressBar) {
+		if (IO::displayProgressBar) {
 			double percent = 100. * t * tFinal_1;
-			if (floor(percent) > floor(IO::progressBar.current()) || TUse >= TLastUse + 500) {
+			if (floor(percent) > floor(IO::progressBars[0].current()) || TUse >= TLastUse + 500) {
 				TLastUse = TUse;
-				IO::progressBar.set_progress(percent);
+				IO::progressBars[0].set_progress(percent);
 			}
 		}
 		if (TUse >= TCal)
 			break;
 	}
-	if (displayProgressBar)
-		IO::progressBarComplete(string("!") + strFormat);
+	if (IO::displayProgressBar)
+		IO::progressBarComplete(0, string("!") + strFormat);
+	if (ray & 2)
+		cameraPtr->save();
+	if (ray & 4)
+		shadowPtr->join();
 	return 0;
 }
