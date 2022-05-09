@@ -9,7 +9,7 @@ double mass, spin, charge, NUT;
 double tFinal;
 double tRec;
 double TCal;
-size_t NSK;
+size_t metric;
 size_t Hamiltonian;
 size_t PN;
 size_t ray;

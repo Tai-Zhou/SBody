@@ -32,7 +32,7 @@ namespace SBody {
 		double (*carterHamiltonian)(const double[], const double) = nullptr;
 		int (*particleNormalization)(double[]) = nullptr;
 		int (*lightNormalization)(double[], double) = nullptr;
-		void setMetric(int NSK, int PN, double mass, double spin, double charge, double NUT) {
+		void setMetric(int metric, int PN, double mass, double spin, double charge, double NUT) {
 			Newton::PN = PN;
 			m = mass;
 			a = mass * spin;
@@ -44,7 +44,7 @@ namespace SBody {
 			l = mass * NUT;
 			l2 = gsl_pow_2(l);
 			l4 = gsl_pow_2(l2);
-			switch (NSK) {
+			switch (metric) {
 			case 0:
 				name = "Newton";
 				dot = Newton::dot;
@@ -256,11 +256,13 @@ namespace SBody {
 				return SBody::dot(c) / gsl_pow_2(y[4]);
 			}
 			int particleNormalization(double y[]) { // TODO: limit the light speed
+				y[4] = 1;
 				if (SBody::dot(y + 5) >= 1)
 					return 1;
 				return 0;
 			}
 			int lightNormalization(double y[], double e) {
+				y[4] = 1;
 				const double v_1 = 1. / SBody::norm(y + 5);
 				for (int i = 5; i < 8; ++i)
 					y[i] *= v_1;

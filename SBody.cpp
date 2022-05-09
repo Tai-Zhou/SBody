@@ -42,9 +42,9 @@ void help() {
 	cout << "  -t --time   [f]: time limit [" << tFinal << "] (s)" << endl;
 	cout << "  -o --rec    [f]: record interval [" << tRec << "] (s)" << endl;
 	cout << "  -c --tcal   [f]: time limit of calculation [" << TCal << "] (s)" << endl;
-	cout << "  -n --NSK    [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrH (3) [" << NSK << "]" << endl;
+	cout << "  -n --metric [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrTaubNUT (3) [" << metric << "]" << endl;
 	cout << "  -P --PN     [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [" << PN << "]" << endl;
-	cout << "  -R --ray    [i]: ray tracing, view (1) + shadow (2) + camera (4) [" << ray << "]" << endl;
+	cout << "  -R --ray    [i]: ray tracing, view (1) + shadow (4) + camera (2) [" << ray << "]" << endl;
 	cout << "  -a --abs    [f]: absolute accuracy [" << absAcc << "]" << endl;
 	cout << "  -r --rel    [f]: relative accuracy [" << relAcc << "]" << endl;
 	cout << "  -f --format [s]: storage format [" << storeFormat << "]" << endl; // TODO: use int instead of str
@@ -62,19 +62,19 @@ int main(int argc, char *argv[]) {
 	auto TStart = chrono::steady_clock::now();
 	signal(SIGINT, interruptHandler);
 	double h = 1e-3;
-	mass = 4.e6;
+	mass = 4.261e6;
 	spin = 0.;
 	charge = 0.;
-	NUT = 0.1;
-	tFinal = 100. * 3.15576e7;
-	tRec = 1e-7 * tFinal;
+	NUT = 0.;
+	tFinal = 60. * 3.15576e7;
+	tRec = 1e-5 * tFinal;
 	TCal = 36000000;
-	NSK = 3;
+	metric = 1;
 	Hamiltonian = 0;
 	PN = 1;
-	ray = 1;
+	ray = 5;
 	int restMass = 1;
-	int displayProgressBar = 1;
+	IO::displayProgressBar = 1;
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
 	double inc = M_PI * 0. / 180., eps = 0.;
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
 		{"time", required_argument, NULL, 't'},
 		{"rec", required_argument, NULL, 'o'},
 		{"tcal", required_argument, NULL, 'c'},
-		{"NSK", required_argument, NULL, 'n'},
+		{"metric", required_argument, NULL, 'n'},
 		{"PN", required_argument, NULL, 'P'},
 		{"ray", required_argument, NULL, 'R'},
 		{"abs", required_argument, NULL, 'a'},
@@ -98,7 +98,6 @@ int main(int argc, char *argv[]) {
 		{"eps", required_argument, NULL, 'e'},
 		{"format", required_argument, NULL, 'f'},
 		{"light", no_argument, NULL, 'L'},
-		{"ray", no_argument, NULL, 'R'},
 		{"bar", no_argument, NULL, 'b'},
 		{"help", no_argument, NULL, 'h'},
 		{NULL, 0, NULL, 0}};
@@ -124,8 +123,8 @@ int main(int argc, char *argv[]) {
 			TCal = atof(optarg);
 			break;
 		case 'n':
-			NSK = atoi(optarg);
-			if (NSK > 3)
+			metric = atoi(optarg);
+			if (metric > 3)
 				help();
 			break;
 		case 'P':
@@ -153,14 +152,14 @@ int main(int argc, char *argv[]) {
 			restMass = 0;
 			break;
 		case 'b':
-			displayProgressBar = 1;
+			IO::displayProgressBar = 1;
 			break;
 		default:
 			help();
 		}
 	tFinal *= Constant::s;
 	tRec *= Constant::s;
-	Metric::setMetric(NSK, PN, mass, spin, charge, NUT);
+	Metric::setMetric(metric, PN, mass, spin, charge, NUT);
 	char strFormat[1024]; // TODO: waiting for C++20
 	snprintf(strFormat, 1024, " (%.1f,%.1f,%.1f)[%f,%f]", spin, charge, NUT, inc, eps);
 	if (IO::displayProgressBar) {
@@ -177,20 +176,28 @@ int main(int argc, char *argv[]) {
 		cameraPtr = make_unique<camera>(100, 4e-2, mass * 1000., inc, string("camera") + strFormat);
 	}
 	double x[8], y[8];
-	if (NSK == 0) {
-		y[0] = Constant::AU / 100;
-		y[1] = 0;
-		y[2] = 0;
-		y[3] = -sqrt(100 * mass / Constant::AU) * cos(M_PI / 10);
-		y[4] = sqrt(100 * mass / Constant::AU) * sin(M_PI / 10);
-		y[5] = 0;
+	if (metric == 0) {
+		y[0] = 0;
+		double a = 5. * Constant::mpc, e = 0.884649, inclination = M_PI * 134.567 / 180., ascendingNode = M_PI * 228.171 / 180., periapsis = M_PI * 66.263 / 180., trueAnomaly = M_PI; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
+		double r = a * (1 - e * e) / (1 + e * cos(trueAnomaly));
+		double tp1 = -r * cos(periapsis + trueAnomaly), tp2 = -r * sin(periapsis + trueAnomaly) * cos(inclination);
+		double xp1 = tp1 * cos(ascendingNode) - tp2 * sin(ascendingNode), xp2 = tp2 * cos(ascendingNode) + tp1 * sin(ascendingNode), xp3 = -r * sin(periapsis + trueAnomaly) * sin(inclination);
+		y[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
+		y[2] = xp2 * cos(eps) - xp1 * sin(eps);
+		y[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
+		double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
+		// vtheta = 0.3822615764261866;
+		// vr = -0.16707659553531468;
+		double tp5 = vtheta * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
+		double xp5 = tp5 * cos(ascendingNode) - tp6 * sin(ascendingNode), xp6 = tp5 * sin(ascendingNode) + tp6 * cos(ascendingNode), xp7 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * sin(inclination);
+		y[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
+		y[6] = xp6 * cos(eps) - xp5 * sin(eps);
+		y[7] = xp7 * cos(inc) - (xp5 * cos(eps) + xp6 * sin(eps)) * sin(inc);
 	}
 	else {
 		x[0] = 0;
-		x[2] = 0;
-		x[3] = 0;
 		if (restMass) {
-			double a = 3.588 * Constant::mpc, e = 0.976, inclination = M_PI * 72.76 / 180., ascendingNode = M_PI * 122.61 / 180., periapsis = M_PI * 42.62 / 180., trueAnomaly = 3.21123153; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.21123153 2.690436 3.05438129]
+			double a = 5. * Constant::mpc, e = 0.884649, inclination = M_PI * 134.567 / 180., ascendingNode = M_PI * 228.171 / 180., periapsis = M_PI * 66.263 / 180., trueAnomaly = M_PI; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
 			double r = a * (1 - e * e) / (1 + e * cos(trueAnomaly));
 			double tp1 = -r * cos(periapsis + trueAnomaly), tp2 = -r * sin(periapsis + trueAnomaly) * cos(inclination);
 			double xp1 = tp1 * cos(ascendingNode) - tp2 * sin(ascendingNode), xp2 = tp2 * cos(ascendingNode) + tp1 * sin(ascendingNode), xp3 = -r * sin(periapsis + trueAnomaly) * sin(inclination);
@@ -227,7 +234,7 @@ int main(int argc, char *argv[]) {
 		if (Hamiltonian)
 			Metric::qdq2qp(y);
 	}
-	integrator integ(Metric::function, Metric::jacobian, NSK != 0);
+	integrator integ(Metric::function, Metric::jacobian, metric != 0);
 	Object::star star_0(Constant::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
 	IO::NumPy rec(Metric::name + strFormat, 12);
@@ -236,11 +243,11 @@ int main(int argc, char *argv[]) {
 	double tFinal_1 = 1 / tFinal;
 	while (tStep < tFinal) {
 		tStep = min(tStep + tRec, tFinal);
-		while (status == 0 && t < tStep)
+		while (status <= 0 && t < tStep)
 			status = integ.apply(&t, tStep, &h, star_0.pos);
 		if (status > 0)
 			cerr << "[!] main status = " << status << endl;
-		if (NSK == 0)
+		if (metric == 0)
 			copy(star_0.pos, star_0.pos + 8, temp.begin());
 		else {
 			if (Hamiltonian) {
