@@ -27,12 +27,12 @@ namespace SBody {
 	class camera : public view {
 	  protected:
 		const size_t pixel;
-		const double viewAngle;
-		std::vector<std::array<double, 9>> initials;
+		const double halfAngle;
+		std::vector<std::array<double, 10>> initials;
 		std::vector<std::vector<double>> screen;
 
 	  public:
-		camera(size_t pixel, double viewAngle, double r, double theta, std::string fileName);
+		camera(size_t pixel, double halfAngle, double r, double theta, std::string fileName);
 		int traceBack();
 		int lens();
 		int save();

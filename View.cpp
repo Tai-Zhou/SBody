@@ -127,22 +127,21 @@ namespace SBody {
 		Metric::a *= -1.;
 		Metric::l *= -1.;
 		double h, rin = 2. * Metric::m, rout = 10. * Metric::m, rmid = 6. * Metric::m, ph[10];
+#ifdef VIEW_TAU
+		integrator integ(Metric::functionTau, Metric::jacobian, 2);
+#else
+		integrator integ(Metric::function, Metric::jacobian, 2);
+#endif
 		indicators::BlockProgressBar shadowProgressBar{
 			indicators::option::ShowElapsedTime{true},
 			indicators::option::ShowRemainingTime{true},
-			indicators::option::PrefixText{"? Shadow "},
+			indicators::option::PrefixText{"? Shadow"},
 			indicators::option::ForegroundColor{indicators::Color(4)},
+			indicators::option::MaxProgress{n},
 			indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
 		int progressBarIndex = IO::progressBars.push_back(shadowProgressBar);
 		for (int i = 0; i < n; ++i) {
-			if (IO::displayProgressBar)
-				IO::progressBars[progressBarIndex].set_progress(100. * i / n);
 			const double angle = i * interval, sina = sin(angle), cosa = cos(angle);
-#ifdef VIEW_TAU
-			integrator integ(Metric::functionTau, Metric::jacobian, 2);
-#else
-			integrator integ(Metric::function, Metric::jacobian, 2);
-#endif
 			int status = 0;
 			while (rout - rin > epsilon * (rin + rout)) {
 				rmid = 0.5 * (rin + rout);
@@ -195,6 +194,8 @@ namespace SBody {
 			rin -= 2. * interval * rmid;
 			rout += 2. * interval * rmid;
 			rec.save({rmid * cosa, rmid * sina});
+			if (IO::displayProgressBar)
+				IO::progressBars[progressBarIndex].tick();
 		}
 		Metric::a *= -1.;
 		Metric::l *= -1.;
@@ -202,15 +203,15 @@ namespace SBody {
 			IO::progressBarComplete(progressBarIndex, "! Shadow");
 		return 0;
 	}
-	camera::camera(size_t pixel, double viewAngle, double r, double theta, string fileName) : view(r, theta, fileName), pixel(pixel), viewAngle(viewAngle) {
+	camera::camera(size_t pixel, double halfAngle, double r, double theta, string fileName) : view(r, theta, fileName), pixel(pixel), halfAngle(halfAngle) {
 		screen = vector<vector<double>>(pixel, vector<double>(pixel));
-		initials = vector<array<double, 9>>(pixel * pixel);
-		const double sint = sin(theta), tana_pix = 2. * tan(0.5 * viewAngle) / (r * pixel), t1 = r + 100. * Metric::m;
+		initials = vector<array<double, 10>>(pixel * pixel);
+		const double sint = sin(theta), tana_pix = 2. * tan(halfAngle) / (r * pixel), t1 = r + 100. * Metric::m;
 		if (theta < epsilon || M_PI - theta < epsilon) {
 			for (int i = 0; i < pixel; ++i)
 				for (int j = 0; j < pixel; ++j) {
 					const double k = gsl_hypot(i - 0.5 * pixel + 0.5, j - 0.5 * pixel + 0.5);
-					initials[i * pixel + j] = {0., r, theta < M_PI_2 ? 0. : M_PI, 0., 1., -1., sign(M_PI_2 - theta) * tana_pix * k, 0., 0.};
+					initials[i * pixel + j] = {0., r, theta < M_PI_2 ? 1e-15 : M_PI - 1e-15, 0., 1., -1., sign(M_PI_2 - theta) * tana_pix * k, 0., 0.};
 					if (k >= epsilon) {
 						if (2 * i <= pixel)
 							initials[i * pixel + j][3] = (theta < M_PI_2 ? 1. : -1.) * acos((j - 0.5 * pixel + 0.5) / k);
@@ -226,14 +227,16 @@ namespace SBody {
 #pragma omp parallel for
 		for (int p = pixel * pixel - 1; p >= 0; --p) {
 			int status = 0;
-			double h = 1e-3;
-			integrator integ(Metric::function, Metric::jacobian, 0);
+			initials[p][9] = 1.e-3;
+#ifdef VIEW_TAU
+			integrator integ(Metric::functionTau, Metric::jacobian, 2);
+#else
+			integrator integ(Metric::functionHamiltonian, Metric::jacobian, 2);
+#endif
 			Metric::lightNormalization(initials[p].data(), 1.);
-			while (status <= 0 && initials[p][8] < t1) {
-				status = integ.apply(initials[p].data() + 8, t1, &h, initials[p].data());
-				if (initials[p][1] < 100 * Metric::m)
-					break;
-			}
+			Metric::qdq2qp(initials[p].data());
+			while (status <= 0 && initials[p][8] < t1 && initials[p][1] > 100 * Metric::m)
+				status = integ.apply(initials[p].data() + 8, t1, initials[p].data() + 9, initials[p].data());
 			if (status > 0)
 				cerr << "[!] camera::initialize status = " << status << endl;
 		}
@@ -244,13 +247,17 @@ namespace SBody {
 		for (int p = pixel * pixel - 1; p >= 0; --p) {
 			int i = p / pixel;
 			int j = p - i * pixel;
-			double ph[9], last[9], h = 1e-3; // TODO: should add t_0 (initials[8]) here
+			double ph[10], last[10]; // TODO: should add t_0 (initials[8]) here
 			int status = 0;
-			integrator integ(Metric::function, Metric::jacobian, 0);
+#ifdef VIEW_TAU
+			integrator integ(Metric::functionTau, Metric::jacobian, 2);
+#else
+			integrator integ(Metric::function, Metric::jacobian, 2);
+#endif
 			copy(initials[p].begin(), initials[p].end(), ph);
 			while (status <= 0 && ph[8] < t1) {
-				copy(ph, ph + 9, last);
-				status = integ.apply(ph + 8, t1, &h, ph);
+				copy(ph, ph + 10, last);
+				status = integ.apply(ph + 8, t1, ph + 9, ph);
 				for (auto objP : Object::objectList)
 					if (objP->hit(ph, last))
 						screen[i][j] = objP->frequency(ph); // FIXME: if multi objects
@@ -263,6 +270,44 @@ namespace SBody {
 		return 0;
 	}
 	int camera::lens() {
+		const double t1 = 1000. * r, pixelPerAngle = 0.5 * pixel / halfAngle;
+		IO::NumPy rec("lens", 2);
+#ifdef VIEW_TAU
+		integrator integ(Metric::functionTau, Metric::jacobian, 2);
+#else
+		integrator integ(Metric::functionHamiltonian, Metric::jacobian, 2);
+#endif
+		indicators::BlockProgressBar lensProgressBar{
+			indicators::option::ShowElapsedTime{true},
+			indicators::option::ShowRemainingTime{true},
+			indicators::option::ForegroundColor{indicators::Color(5)},
+			indicators::option::PrefixText{"? lens"},
+			indicators::option::MaxProgress{pixel * pixel},
+			indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
+		int progressBarIndex = IO::progressBars.push_back(lensProgressBar);
+		for (int i = 0; i < pixel; ++i)
+			for (int j = 0; j < pixel; ++j) {
+				double ph[10], phc[10];
+				int status = 0;
+				copy(initials[i * pixel + j].begin(), initials[i * pixel + j].end(), ph);
+				while (status <= 0 && ph[8] < t1 && ph[1] > 3. * Metric::m && ph[1] < 3.e2 * Metric::m)
+					status = integ.apply(ph + 8, t1, ph + 9, ph);
+				if (status > 0)
+					cerr << "[!] camera::lens status = " << status << endl;
+				if (ph[1] <= 3. * Metric::m)
+					rec.save({NAN, NAN});
+				else {
+					Metric::qp2qdq(ph);
+					if (ph[2] < 0)
+						ph[2] += M_PI;
+					Metric::s2c(ph, phc);
+					rec.save({phc[6] * pixelPerAngle, (phc[7] * sinto - phc[5] * costo) * pixelPerAngle});
+				}
+				if (IO::displayProgressBar)
+					IO::progressBars[progressBarIndex].tick();
+			}
+		if (IO::displayProgressBar)
+			IO::progressBarComplete(progressBarIndex, "! lens");
 		return 0;
 	}
 	int camera::save() {

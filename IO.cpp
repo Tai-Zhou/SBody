@@ -15,7 +15,6 @@ namespace SBody {
 		DynamicProgress<BlockProgressBar> progressBars(mainProgressBar);
 		void progressBarComplete(int index, string prefix) {
 			progressBars[index].set_option(option::PrefixText{prefix});
-			progressBars[index].set_progress(100.);
 			progressBars[index].mark_as_completed();
 		}
 		file::file(string fileName, ios::openmode mode) {
