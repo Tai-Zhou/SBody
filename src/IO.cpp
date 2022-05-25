@@ -18,7 +18,7 @@ namespace SBody {
 			progressBars[index].mark_as_completed();
 		}
 		file::file(string fileName, ios::openmode mode) {
-			fileBuf.open("out/" + fileName, mode);
+			fileBuf.open("../data" + fileName, mode);
 			if (!fileBuf.is_open()) {
 				cerr << "[!] IO file not open" << endl;
 				exit(1);
