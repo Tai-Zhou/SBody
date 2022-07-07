@@ -1,5 +1,5 @@
-#ifndef _IO_H
-#define _IO_H
+#ifndef SBODY_IO_H
+#define SBODY_IO_H
 
 #include <fstream>
 #include <string>
@@ -25,11 +25,12 @@ namespace SBody {
 		};
 		class NumPy : public file {
 		  private:
-			const int column;
-			int row;
+			const std::vector<int> dim;
+			int dimSize;
+			int fileSize;
 
 		  public:
-			NumPy(std::string fileName, int columnNumber);
+			NumPy(std::string fileName, std::vector<int> dimension);
 			~NumPy();
 			int save(const std::vector<double> &data);
 		};
@@ -41,11 +42,13 @@ namespace SBody {
 			CSV(std::string fileName, char separator = ',');
 			int save(const std::vector<double> &data);
 		};
+#ifdef WITH_CFITSIO
 		class FITS : public file {
 		  public:
 			FITS(std::string fileName);
 			int save(const std::vector<double> &data);
 		};
+#endif
 		int save();
 		int load();
 	} // namespace IO

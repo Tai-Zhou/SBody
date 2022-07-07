@@ -1,5 +1,5 @@
-#ifndef _METRIC_H
-#define _METRIC_H
+#ifndef SBODY_METRIC_H
+#define SBODY_METRIC_H
 
 #include <string>
 

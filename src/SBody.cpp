@@ -14,9 +14,6 @@
 
 #include <getopt.h>
 
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_odeiv2.h>
-
 #include "Constant.h"
 #include "IO.h"
 #include "Metric.h"
@@ -68,23 +65,77 @@ void help() {
 int main(int argc, char *argv[]) {
 	auto TStart = chrono::steady_clock::now();
 	signal(SIGINT, interruptHandler);
-	double h = 1e-3;
 	mass = 4.261e6;
 	spin = 0.;
 	charge = 0.;
 	NUT = 0.;
-	tFinal = 9.35062553 * 3.15576e7;
+	// tFinal = 9.35062553 * 3.15576e7;
 	tRec = 1e-4 * tFinal;
 	TCal = 36000000;
-	metric = 1;
+	metric = 0;
 	Hamiltonian = 0;
 	PN = 1;
 	ray = 1;
 	int restMass = 1;
-	IO::displayProgressBar = 0;
+	IO::displayProgressBar = 1;
 	storeFormat = "NumPy";
 	double t = 0, tStep = 0;
-	vector<double> tList = {6.04849, 6.37375096, 6.88865714, 6.93599, 7.15188827, 7.1949, 7.25058198, 7.36494, 7.87132, 7.89689906, 7.97475, 7.98839852, 8.05972, 8.06032271, 8.13286067, 8.18875, 8.21318556, 8.27677, 8.30356695, 8.92066262, 8.97185, 9.07827, 9.15513637, 9.26903257, 9.35062553};
+	vector<double> tList = {1992.224, 1994.314, 1995.534, 1996.253,
+							1996.427, 1997.544, 1998.373, 1999.465,
+							2000.472, 2000.487, 2000.523, 2001.502,
+							2002.25, 2002.335, 2002.393, 2002.409,
+							2002.412, 2002.414, 2002.41438188, 2002.418,
+							2002.421, 2002.488, 2002.578, 2002.66,
+							2002.66, 2003.214, 2003.271, 2003.34419768,
+							2003.351, 2003.353, 2003.356, 2003.446,
+							2003.446, 2003.451, 2003.452, 2003.454,
+							2003.454, 2003.55, 2003.676, 2003.678,
+							2003.761, 2004.24, 2004.325, 2004.347,
+							2004.443, 2004.511, 2004.513, 2004.516,
+							2004.516, 2004.535, 2004.537, 2004.574,
+							2004.574, 2004.632, 2004.664, 2004.67,
+							2004.73, 2004.73, 2005.15264675, 2005.158,
+							2005.212, 2005.215, 2005.27, 2005.366,
+							2005.371, 2005.374, 2005.455, 2005.461,
+							2005.467, 2005.57, 2005.576, 2005.677,
+							2005.769, 2006.204, 2006.305, 2006.324,
+							2006.624, 2007.21700843, 2007.23, 2007.304,
+							2007.545, 2007.55, 2007.55, 2007.686,
+							2007.687, 2007.73, 2008.148, 2008.197,
+							2008.262, 2008.268, 2008.431, 2008.456,
+							2008.472, 2008.473, 2008.593, 2008.601,
+							2008.708, 2009.185, 2009.273, 2009.3,
+							2009.303, 2009.336, 2009.336, 2009.371,
+							2009.38373515, 2009.385, 2009.502, 2009.505,
+							2009.557, 2009.557, 2009.606, 2009.718,
+							2009.776, 2010.234, 2010.239, 2010.239,
+							2010.245, 2010.351, 2010.354, 2010.444,
+							2010.455, 2010.455, 2010.455, 2010.46,
+							2010.616, 2010.619, 2010.622, 2010.624,
+							2010.627, 2010.676, 2010.679, 2011.238,
+							2011.241, 2011.244, 2011.249, 2011.312,
+							2011.313, 2011.315, 2011.317, 2011.31739855,
+							2011.337, 2011.443, 2011.553, 2011.567,
+							2011.613, 2011.689, 2011.695, 2011.695,
+							2011.698, 2011.722, 2012.202, 2012.21,
+							2012.339, 2012.342, 2012.494, 2012.497,
+							2012.513, 2012.533, 2012.544, 2012.552,
+							2012.552, 2012.604, 2012.7, 2012.70150083,
+							2012.705, 2013.161, 2013.24, 2013.262,
+							2013.317, 2013.366, 2013.42, 2013.437,
+							2013.494, 2013.502, 2013.587, 2013.59,
+							2013.617, 2013.655, 2013.726, 2014.185,
+							2014.263, 2014.51917732, 2014.521, 2015.299,
+							2015.432, 2015.517, 2015.706, 2015.706,
+							2015.747, 2016.221, 2016.284, 2016.287,
+							2016.325, 2016.369, 2016.39849, 2016.519,
+							2016.525, 2016.53, 2016.72579643, 2017.2394057,
+							2017.28599, 2017.50222741, 2017.5449, 2017.60102297,
+							2017.71494, 2018.22132, 2018.24783858, 2018.32475,
+							2018.33844779, 2018.40972, 2018.41130907, 2018.483251,
+							2018.53875, 2018.56407834, 2018.62677, 2018.65422043,
+							2019.27084392, 2019.32185, 2019.42827, 2019.50532956,
+							2019.62025885, 2019.69998329};
 	double inc = M_PI * 0. / 180., eps = 0.;
 	double a = 5. * Constant::mpc, e = 0.884649, inclination = M_PI * 134.567 / 180., periapsis = M_PI * 66.263 / 180., ascendingNode = M_PI * 228.171 / 180., trueAnomaly = M_PI; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
 	unique_ptr<view> viewPtr;
@@ -212,6 +263,7 @@ int main(int argc, char *argv[]) {
 	double x[8], y[8];
 	if (metric == 0) {
 		y[0] = 0;
+		y[4] = 1;
 		double r = a * (1 - e * e) / (1 + e * cos(trueAnomaly));
 		double tp1 = -r * cos(periapsis + trueAnomaly), tp2 = -r * sin(periapsis + trueAnomaly) * cos(inclination);
 		double xp1 = tp1 * cos(ascendingNode) - tp2 * sin(ascendingNode), xp2 = tp2 * cos(ascendingNode) + tp1 * sin(ascendingNode), xp3 = -r * sin(periapsis + trueAnomaly) * sin(inclination);
@@ -266,18 +318,24 @@ int main(int argc, char *argv[]) {
 		if (Hamiltonian)
 			Metric::qdq2qp(y);
 	}
-	integrator integ(Metric::function, Metric::jacobian, metric != 0);
+	integrator integ(Metric::function, Metric::jacobian, metric != 0, -1.);
 	Object::star star_0(Constant::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
-	IO::NumPy rec(Metric::name + strFormat, 12);
+	IO::NumPy rec(Metric::name + strFormat, {12});
 	vector<double> temp(12);
 	int status = 0, rayNO = 0, TUse, TLastUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
 	double tFinal_1 = 1 / tFinal;
-	for (auto tPoint : tList) {
+	double tPoint = tList[0] * Constant::yr;
+	t = 2010.3566473381456 * Constant::yr;
+	integ.resetHstart(-1.);
+	while (t > tPoint)
+		status = integ.apply(&t, tPoint, star_0.pos);
+	integ.resetHstart(1.);
+	for (double tPoint : tList) {
 		// tStep = min(tStep + tRec, tFinal);
-		tPoint *= Constant::yr;
+		tPoint = tPoint * Constant::yr;
 		while (status <= 0 && t < tPoint)
-			status = integ.apply(&t, tPoint, &h, star_0.pos);
+			status = integ.apply(&t, tPoint, star_0.pos);
 		if (status > 0)
 			cerr << "[!] main status = " << status << endl;
 		if (metric == 0)

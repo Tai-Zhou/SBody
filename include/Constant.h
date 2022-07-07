@@ -1,7 +1,10 @@
-#ifndef _CONSTANT_H
-#define _CONSTANT_H
+#ifndef SBODY_CONSTANT_H
+#define SBODY_CONSTANT_H
 
 namespace SBody {
+	// Math
+	constexpr double M_2PI = 6.28318530717958647692528676655900576; // 2*pi
+	constexpr double M_PI2 = 9.86960440108935861883449099987615111; // pi^2
 	namespace Constant {
 		// Physical
 		constexpr double e = 1.60217662e-19;

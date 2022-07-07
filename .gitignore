@@ -4,6 +4,10 @@
 # Data
 data
 
+# Tex
+*.pdf
+*.gz
+
 # CMake
 build
 

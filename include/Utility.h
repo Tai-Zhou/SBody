@@ -1,5 +1,5 @@
-#ifndef _UTILITY_H
-#define _UTILITY_H
+#ifndef SBODY_UTILITY_H
+#define SBODY_UTILITY_H
 
 #include <string>
 
@@ -9,20 +9,20 @@ namespace SBody {
 	extern double absAcc;
 	extern double relAcc;
 	constexpr double epsilon = 1e-10;
-	constexpr double M_2PI = 6.28318530717958647692528676655900576;
-	constexpr double M_PI2 = 9.86960440108935861883449099987615111;
-	struct integrator {
+	class integrator {
+	  private:
 		const int coordinate;
-		const gsl_odeiv2_step_type *type;
-		gsl_odeiv2_control *control;
-		gsl_odeiv2_evolve *evolve;
-		gsl_odeiv2_step *step;
 		gsl_odeiv2_system system;
-		integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
+		gsl_odeiv2_driver *driver;
+
+	  public:
+		integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, double hstart, void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
 		~integrator();
-		int apply(double *t, double t1, double *h, double *y);
-		int apply_fixed(double *t, const double h, double *y);
+		int apply(double *t, double t1, double *y);
+		int apply_fixed(double *t, const double h, double *y, const unsigned long int n = 1);
 		int reset();
+		int resetHstart(const double hstart);
+		double getH();
 		int checkCoordinate(double *y);
 	};
 

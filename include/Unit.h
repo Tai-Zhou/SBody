@@ -1,5 +1,5 @@
-#ifndef _UNIT_H
-#define _UNIT_H
+#ifndef SBODY_UNIT_H
+#define SBODY_UNIT_H
 
 #include "Constant.h"
 

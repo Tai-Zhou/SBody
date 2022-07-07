@@ -9,8 +9,7 @@ namespace SBody {
 	namespace Object {
 		std::vector<object *> objectList;
 		star::star(double radius, const double position[], int fixed) : fixed(fixed), radius(radius), r2(gsl_pow_2(radius)) {
-			for (int i = 0; i < 8; ++i)
-				pos[i] = position[i];
+			std::copy(position, position + 8, pos);
 		}
 		int star::hit(const double current[], const double last[]) {
 			double a2 = Metric::ds2(pos, current, 3);
@@ -40,7 +39,7 @@ namespace SBody {
 			return 1.;
 		}
 		thickDisk::thickDisk(double innerRadius, double outerRadius, double halfAngle) : disk(innerRadius, outerRadius), halfAngle(halfAngle) {}
-		int thickDisk::hit(const double current[], const double last[]) { //TODO: need update
+		int thickDisk::hit(const double current[], const double last[]) { // TODO: need update
 			if (innerRadius <= current[1] && current[1] <= outerRadius && oppositeSign(current[2] - M_PI_2, last[2] - M_PI_2))
 				return 1;
 			// if min distance between current and last < radius, return 1;
@@ -52,7 +51,7 @@ namespace SBody {
 		torus::torus(double majorRadius, double minorRadius) : majorRadius(majorRadius), minorRadius(minorRadius) {}
 		int torus::hit(const double current[], const double last[]) {
 			const double rc[4] = {0, majorRadius, M_PI_2, current[3]};
-			if (Metric::ds2(rc, current, 3) <= minorRadius) //FIXME:not accurate if minorRadius not << majorRadius
+			if (Metric::ds2(rc, current, 3) <= minorRadius) // FIXME:not accurate if minorRadius not << majorRadius
 				return 1;
 			// if min distance between current and last < radius, return 1;
 			return 0;

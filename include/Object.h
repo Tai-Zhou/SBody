@@ -1,5 +1,5 @@
-#ifndef _OBJECT_H
-#define _OBJECT_H
+#ifndef SBODY_OBJECT_H
+#define SBODY_OBJECT_H
 
 #include <vector>
 

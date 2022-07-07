@@ -1,6 +1,8 @@
 #include "IO.h"
 
+#ifdef WITH_CFITSIO
 #include <fitsio.h>
+#endif
 
 using namespace std;
 using namespace indicators;
@@ -18,7 +20,10 @@ namespace SBody {
 			progressBars[index].mark_as_completed();
 		}
 		file::file(string fileName, ios::openmode mode) {
-			fileBuf.open("../data" + fileName, mode);
+			if (fileName.empty())
+				fileBuf.open("/dev/null", mode);
+			else
+				fileBuf.open("../data/" + fileName, mode);
 			if (!fileBuf.is_open()) {
 				cerr << "[!] IO file not open" << endl;
 				exit(1);
@@ -27,17 +32,34 @@ namespace SBody {
 		file::~file() {
 			fileBuf.close();
 		}
-		NumPy::NumPy(string fileName, int columnNumber) : file(fileName + ".npy", ios::binary | ios::out), column(columnNumber), row(0) {
+		NumPy::NumPy(string fileName, vector<int> dimension) : file(fileName + ".npy", ios::binary | ios::out), dim(dimension), fileSize(0) {
+			dimSize = 1;
+			for (int i : dim)
+				if (i < 1)
+					cerr << "[?] NumPy file dimension warning (smaller than 1)" << endl;
+				else
+					dimSize *= i;
 			fileBuf.sputn("\x93NUMPY\x01\x00\x76\x00{'descr': '<f8', 'fortran_order': False, 'shape': (                                                                  \n", 128);
 		}
 		NumPy::~NumPy() {
+			int dimNum = ceil(fileSize / dimSize);
+			for (int i = dimNum * dimSize; i > fileSize; --i)
+				fileBuf.sputn("\0\0\0\0\0\0\0\0", 8);
 			fileBuf.pubseekpos(61);
-			string rows = to_string(row), columns = to_string(column);
-			fileBuf.sputn((rows + ", " + columns + "), }").c_str(), rows.length() + columns.length() + 6);
+			string dimNumS = to_string(dimNum);
+			fileBuf.sputn(dimNumS.c_str(), dimNumS.length());
+			for (int i : dim)
+				if (i < 1)
+					fileBuf.sputn(", 1", 3);
+				else {
+					dimNumS = ", " + to_string(i);
+					fileBuf.sputn(dimNumS.c_str(), dimNumS.length());
+				}
+			fileBuf.sputn("), }", 4);
 		}
 		int NumPy::save(const vector<double> &data) {
-			++row;
-			fileBuf.sputn(reinterpret_cast<const char *>(data.data()), 8 * column);
+			fileSize += data.size();
+			fileBuf.sputn(reinterpret_cast<const char *>(data.data()), 8 * data.size());
 			return 0;
 		}
 		CSV::CSV(string fileName, char separator) : file(fileName + ".csv", ios::out), sep(separator) {}
@@ -51,6 +73,7 @@ namespace SBody {
 			fileBuf.sputc('\n');
 			return 0;
 		}
+#ifdef WITH_CFITSIO
 		FITS::FITS(string fileName) : file(fileName + ".fits", ios::binary | ios::out) {}
 		int FITS::save(const vector<double> &data) {
 			fitsfile *fptr;
@@ -69,6 +92,7 @@ namespace SBody {
 				fits_report_error(stderr, status);
 			return (status);
 		}
+#endif
 		int save() {
 			return 0;
 		}

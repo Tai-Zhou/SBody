@@ -197,13 +197,19 @@ namespace SBody {
 				const double r = norm(y + 1), r_1 = 1. / r, v2 = SBody::dot(y + 5);
 				const double m_r = m * r_1, rdot = SBody::dot(y + 1, y + 5) * r_1;
 				const double F = m_r * gsl_pow_2(r_1), m_r2 = gsl_pow_2(m_r), rdot2 = gsl_pow_2(rdot);
+				dydt[0] = y[4];
 				dydt[1] = y[5];
 				dydt[2] = y[6];
 				dydt[3] = y[7];
+				dydt[4] = 0.;
 				double A = 0, B = 0;
 				if (PN & 1) {
-					A += v2 - 4. * m_r;
-					B += -4. * rdot;
+					A += (v2 - 4. * m_r);
+					B += (-4. * rdot);
+					if (params != nullptr) {
+						A *= *(static_cast<double *>(params));
+						B *= *(static_cast<double *>(params));
+					}
 				}
 				if (PN & 2) {
 					A += m_r * (-2. * rdot2 + 9. * m_r);

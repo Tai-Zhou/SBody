@@ -1,5 +1,5 @@
-#ifndef _VIEW_H
-#define _VIEW_H
+#ifndef SBODY_VIEW_H
+#define SBODY_VIEW_H
 
 #include <array>
 #include <memory>

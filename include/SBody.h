@@ -1,5 +1,5 @@
-#ifndef _SBODY_H
-#define _SBODY_H
+#ifndef SBODY_H
+#define SBODY_H
 
 #include <string>
 
