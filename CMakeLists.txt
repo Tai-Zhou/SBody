@@ -2,8 +2,13 @@ cmake_minimum_required(VERSION 3.12)
 project(SBody VERSION 0.0.6.220525)
 add_compile_definitions(VERSION="${PROJECT_VERSION}" HAVE_INLINE)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall -pthread")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -pthread")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+    add_compile_options(-pthread)
+endif()
+
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
