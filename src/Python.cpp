@@ -150,19 +150,20 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 		Metric::c2s(x, y);
 		Metric::particleNormalization(y);
 	}
-	integrator integ(Metric::function, Metric::jacobian, metric != 0, -1., &PN);
+	integrator integ(Metric::function, Metric::jacobian, metric != 0, &PN);
 	Object::star star_0(Constant::R_sun, y, 0);
 	auto result = py::array_t<double>(tList.size() * 8);
 	double *result_ptr = (double *)result.request().ptr;
 	int status = 0, rayNO = 0;
-	double tPoint = tList[0] * Constant::yr;
-	while (t < tPoint)
-		status = integ.apply(&t, tPoint, star_0.pos);
-	integ.resetHstart(1.);
+	double h = -1., tPoint = tList[0] * Constant::yr;
+	while (t > tPoint)
+		status = integ.apply(&t, tPoint, &h, star_0.pos);
+	h = 1.;
+	integ.reset();
 	for (double tPoint : tList) {
 		tPoint = tPoint * Constant::yr;
 		while (status <= 0 && t < tPoint)
-			status = integ.apply(&t, tPoint, star_0.pos);
+			status = integ.apply(&t, tPoint, &h, star_0.pos);
 		if (status > 0)
 			py::print("[!] status =", status);
 		if (metric == 0)

@@ -2,19 +2,22 @@
 
 #include <cmath>
 
+#include <gsl/gsl_errno.h>
+
 #include "Constant.h"
 
 namespace SBody {
 	double absAcc = 1e-15, relAcc = 1e-15;
-	integrator::integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, double hstart, void *params, const gsl_odeiv2_step_type *type) : coordinate(coordinate) {
+	integrator::integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params, const gsl_odeiv2_step_type *type) : coordinate(coordinate), type(type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(type, 8)) {
 		system = gsl_odeiv2_system{function, jacobian, 8UL, params};
-		driver = gsl_odeiv2_driver_alloc_y_new(&system, type, hstart, absAcc, relAcc);
 	}
 	integrator::~integrator() {
-		gsl_odeiv2_driver_free(driver);
+		gsl_odeiv2_control_free(control);
+		gsl_odeiv2_evolve_free(evolve);
+		gsl_odeiv2_step_free(step);
 	}
-	int integrator::apply(double *t, double t1, double *y) {
-		int status = gsl_odeiv2_driver_apply(driver, t, t1, y);
+	int integrator::apply(double *t, double t1, double *h, double *y) {
+		int status = gsl_odeiv2_evolve_apply(evolve, control, step, &system, t, t1, h, y);
 		if (coordinate == 2) {
 			if (y[2] <= -M_PI_2)
 				y[2] += M_PI;
@@ -34,8 +37,8 @@ namespace SBody {
 		}*/
 		return status;
 	}
-	int integrator::apply_fixed(double *t, const double h, double *y, const unsigned long int n) {
-		int status = gsl_odeiv2_driver_apply_fixed_step(driver, t, h, n, y);
+	int integrator::apply_fixed(double *t, const double h, double *y) {
+		int status = gsl_odeiv2_evolve_apply_fixed_step(evolve, control, step, &system, t, h, y);
 		if (coordinate == 2) {
 			if (y[2] <= -M_PI_2)
 				y[2] += M_PI;
@@ -56,15 +59,11 @@ namespace SBody {
 		return status;
 	}
 	int integrator::reset() {
-		gsl_odeiv2_driver_reset(driver);
-		return 0;
-	}
-	int integrator::resetHstart(const double hstart) {
-		gsl_odeiv2_driver_reset_hstart(driver, hstart);
-		return 0;
-	}
-	double integrator::getH() {
-		return driver->h;
+		if (int s = gsl_odeiv2_evolve_reset(evolve); s)
+			return s;
+		if (int s = gsl_odeiv2_step_reset(step); s)
+			return s;
+		return GSL_SUCCESS;
 	}
 	double dot(const double x[], const double y[], size_t dimension) {
 		if (dimension == 3) {

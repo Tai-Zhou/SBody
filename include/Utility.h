@@ -12,17 +12,18 @@ namespace SBody {
 	class integrator {
 	  private:
 		const int coordinate;
+		const gsl_odeiv2_step_type *type;
+		gsl_odeiv2_control *control;
+		gsl_odeiv2_evolve *evolve;
+		gsl_odeiv2_step *step;
 		gsl_odeiv2_system system;
-		gsl_odeiv2_driver *driver;
 
 	  public:
-		integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, double hstart, void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
+		integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
 		~integrator();
-		int apply(double *t, double t1, double *y);
-		int apply_fixed(double *t, const double h, double *y, const unsigned long int n = 1);
+		int apply(double *t, double t1, double *h, double *y);
+		int apply_fixed(double *t, const double h, double *y);
 		int reset();
-		int resetHstart(const double hstart);
-		double getH();
 		int checkCoordinate(double *y);
 	};
 
