@@ -18,6 +18,7 @@
 #include "IO.h"
 #include "Metric.h"
 #include "Object.h"
+#include "Unit.h"
 #include "Utility.h"
 #include "View.h"
 
@@ -36,7 +37,7 @@ void help(double mass, double spin, double NUT, double tFinal, size_t tStepNumbe
 	cout << "  -m --mass   [f]: mass of the source [" << mass << "] (M_sun)" << endl;
 	cout << "  -s --spin   [f]: spin of the source [" << spin << "]" << endl;
 	cout << "  -l --NUT    [f]: NUT charge of the source [" << NUT << "]" << endl;
-	cout << "  -A --sm     [f]: semimajor axis of the star (mpc)" << endl;
+	cout << "  -A --sm     [f]: semimajor axis of the star (r_g)" << endl;
 	cout << "  -E --ec     [f]: eccentricity of the star" << endl;
 	cout << "  -I --in     [f]: inclination of the star (deg)" << endl;
 	cout << "  -o --pe     [f]: position angle of periapsis of the star (deg)" << endl;
@@ -77,7 +78,7 @@ int main(int argc, char *argv[]) {
 	IO::displayProgressBar = 1;
 	string storeFormat = "NumPy";
 	double inc = M_PI * 0. / 180., eps = 0.;
-	double a = 8.3 * mass, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180., ascendingNode = M_PI * 25.1 / 180., trueAnomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
+	double a = 8.3, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180., ascendingNode = M_PI * 25.1 / 180., trueAnomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
 	unique_ptr<view> viewPtr;
 	unique_ptr<thread> shadowPtr;
 	unique_ptr<camera> cameraPtr;
@@ -120,7 +121,7 @@ int main(int argc, char *argv[]) {
 			NUT = atof(optarg);
 			break;
 		case 'A':
-			a = atof(optarg) * Constant::mpc;
+			a = atof(optarg);
 			break;
 		case 'E':
 			e = atof(optarg);
@@ -178,7 +179,8 @@ int main(int argc, char *argv[]) {
 		default:
 			help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absAcc, relAcc, storeFormat);
 		}
-	tFinal *= Constant::s;
+	Unit::init(mass);
+	tFinal *= Unit::s;
 	double t = 0, tStep = 0, tRec = tFinal / tStepNumber;
 	if (metric == 0)
 		ray = 0;
@@ -191,7 +193,7 @@ int main(int argc, char *argv[]) {
 		IO::progressBars[0].set_option(indicators::option::PrefixText{string("?") + strFormat});
 	}
 	if (ray & 5) {
-		viewPtr = make_unique<view>(8180. * Constant::pc, inc, string("view") + strFormat);
+		viewPtr = make_unique<view>(8180. * Unit::pc, inc, string("view") + strFormat);
 		if (ray & 4)
 			shadowPtr = make_unique<thread>(&view::shadow, viewPtr.get(), 100);
 	}
@@ -252,7 +254,7 @@ int main(int argc, char *argv[]) {
 			Metric::qdq2qp(y);
 	}
 	integrator integ(Metric::function, Metric::jacobian, metric != 0);
-	Object::star star_0(Constant::R_sun, y, 0);
+	Object::star star_0(Unit::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
 	IO::NumPy rec(Metric::name + strFormat, {12});
 	vector<double> temp(12);
@@ -274,7 +276,7 @@ int main(int argc, char *argv[]) {
 			else
 				Metric::s2c(star_0.pos, temp.data());
 		}
-		temp[8] = t / Constant::s;
+		temp[8] = t / Unit::s;
 		temp[9] = Metric::energy(star_0.pos);
 		temp[10] = Metric::angularMomentum(star_0.pos);
 		temp[11] = Metric::carter(star_0.pos, 1.);

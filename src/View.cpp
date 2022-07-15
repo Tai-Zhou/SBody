@@ -13,15 +13,16 @@
 #include "IO.h"
 #include "Metric.h"
 #include "Object.h"
+#include "Unit.h"
 #include "Utility.h"
 
 using namespace std;
 
 namespace SBody {
-	view::view(double r, double theta, string filename) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(r + 2e4 * Metric::m), output(make_unique<IO::NumPy>(filename, vector<int>({4}))) {}
+	view::view(double r, double theta, string filename) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(r + 2e4 * 1.), output(make_unique<IO::NumPy>(filename, vector<int>({4}))) {}
 	int view::traceBack(Object::star &s, int rayNO) { // FIXME:!!!!
 		const double rs = s.pos[1], thetas = s.pos[2], phis = s.pos[3], sints = sin(thetas), costs = cos(thetas), sinps = sin(phis), cosps = cos(phis);
-		double alpha0 = GSL_POSINF, alpha1 = (rs + Metric::m) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + Metric::m) * (costs * sinto - sints * cosps * costo), ph[10], cosph, last[10], h;
+		double alpha0 = GSL_POSINF, alpha1 = (rs + 1.) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + 1.) * (costs * sinto - sints * cosps * costo), ph[10], cosph, last[10], h;
 		Metric::a *= -1.;
 		Metric::l *= -1.;
 #ifdef RECORD_TRACE
@@ -121,18 +122,18 @@ namespace SBody {
 		Metric::a *= -1.;
 		Metric::l *= -1.;
 #ifdef VIEW_TAU
-		output->save({alpha1, beta1, s.frequencyTau(ph), (ph[8] + ph[9]) / Constant::s});
+		output->save({alpha1, beta1, s.frequencyTau(ph), (ph[8] + ph[9]) / Unit::s});
 #else
-		output->save({alpha1, beta1, s.frequency(ph), (ph[8] + ph[9]) / Constant::s});
+		output->save({alpha1, beta1, s.frequency(ph), (ph[8] + ph[9]) / Unit::s});
 #endif
 		return 0;
 	}
 	int view::shadow(int n) {
 		const double interval = M_2PI / n;
-		IO::NumPy rec("shadow " + to_string(Metric::a / Metric::m) + "," + to_string(Metric::l / Metric::m), {2});
+		IO::NumPy rec("shadow " + to_string(Metric::a) + "," + to_string(Metric::l), {2});
 		Metric::a *= -1.;
 		Metric::l *= -1.;
-		double h, rin = 2. * Metric::m, rout = 10. * Metric::m, rmid = 6. * Metric::m, ph[10];
+		double h, rin = 2., rout = 10., rmid = 6., ph[10];
 #ifdef VIEW_TAU
 		integrator integ(Metric::functionTau, Metric::jacobian, 2);
 #else
@@ -212,7 +213,7 @@ namespace SBody {
 	camera::camera(size_t pixel, double halfAngle, double r, double theta, string fileName) : view(r, theta, fileName), pixel(pixel), halfAngle(halfAngle) {
 		screen = vector<vector<double>>(pixel, vector<double>(pixel));
 		initials = vector<array<double, 10>>(pixel * pixel);
-		const double sint = sin(theta), tana_pix = 2. * tan(halfAngle) / (r * pixel), t1 = r + 100. * Metric::m;
+		const double sint = sin(theta), tana_pix = 2. * tan(halfAngle) / (r * pixel), t1 = r + 100.;
 		if (theta < epsilon || M_PI - theta < epsilon) {
 			for (int i = 0; i < pixel; ++i)
 				for (int j = 0; j < pixel; ++j) {
@@ -241,14 +242,14 @@ namespace SBody {
 #endif
 			Metric::lightNormalization(initials[p].data(), 1.);
 			Metric::qdq2qp(initials[p].data());
-			while (status <= 0 && initials[p][8] < t1 && initials[p][1] > 100 * Metric::m)
+			while (status <= 0 && initials[p][8] < t1 && initials[p][1] > 100)
 				status = integ.apply(initials[p].data() + 8, t1, initials[p].data() + 9, initials[p].data());
 			if (status > 0)
 				cerr << "[!] camera::initialize status = " << status << endl;
 		}
 	}
 	int camera::traceBack() {
-		const double t1 = 1000. * Metric::m;
+		const double t1 = 1000.;
 #pragma omp parallel for
 		for (int p = pixel * pixel - 1; p >= 0; --p) {
 			int i = p / pixel;
@@ -296,11 +297,11 @@ namespace SBody {
 #else
 				integrator integ(Metric::functionHamiltonian, Metric::jacobian, 2);
 #endif
-				while (status <= 0 && ph[8] < t1 && ph[1] > 3. * Metric::m && ph[1] < 3.e2 * Metric::m)
+				while (status <= 0 && ph[8] < t1 && ph[1] > 3. && ph[1] < 3.e2)
 					status = integ.apply(ph + 8, t1, ph + 9, ph);
 				if (status > 0)
 					cerr << "[!] camera::lens status = " << status << endl;
-				if (ph[1] <= 3. * Metric::m)
+				if (ph[1] <= 3.)
 					rec.save({NAN, NAN});
 				else {
 					Metric::qp2qdq(ph);

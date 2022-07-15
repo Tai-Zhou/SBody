@@ -17,6 +17,7 @@
 #include "IO.h"
 #include "Metric.h"
 #include "Object.h"
+#include "Unit.h"
 #include "Utility.h"
 #include "View.h"
 
@@ -104,18 +105,19 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 							2019.27084392, 2019.32185, 2019.42827, 2019.50532956,
 							2019.62025885, 2019.69998329};
 	double inc = M_PI * 0. / 180., eps = 0.;
-	a *= 4.84813681109536e-09 * R * Constant::pc;
+	Unit::init(mass);
+	a *= 4.84813681109536e-09 * R * Unit::pc;
 	inclination *= M_PI / 180.;
 	ascendingNode *= M_PI / 180.;
 	periapsis *= M_PI / 180.;
 	double trueAnomaly = M_PI;
-	double t = tp - sqrt(gsl_pow_3(a / Constant::AU) / mass) * 0.5;
+	double t = tp - sqrt(gsl_pow_3(a / Unit::AU) / mass) * 0.5;
 	unique_ptr<view> viewPtr;
 	Metric::setMetric(metric, PN != 0 ? 1 : 0, mass, 0, 0, 0);
 	char strFormat[1024]; // TODO: waiting for C++20
 	snprintf(strFormat, 1024, " (%.1f,%.1f,%.1f)[%f,%f]", spin, 0., 0., inc, eps);
 	if (metric == 1)
-		viewPtr = make_unique<view>(8246.7 * Constant::pc, inc, string("view") + strFormat);
+		viewPtr = make_unique<view>(8246.7 * Unit::pc, inc, string("view") + strFormat);
 	double x[8], y[8];
 	if (metric == 0) {
 		y[0] = 0.;
@@ -151,17 +153,17 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 		Metric::particleNormalization(y);
 	}
 	integrator integ(Metric::function, Metric::jacobian, metric != 0, &PN);
-	Object::star star_0(Constant::R_sun, y, 0);
+	Object::star star_0(Unit::R_sun, y, 0);
 	auto result = py::array_t<double>(tList.size() * 8);
 	double *result_ptr = (double *)result.request().ptr;
 	int status = 0, rayNO = 0;
-	double h = -1., tPoint = tList[0] * Constant::yr;
+	double h = -1., tPoint = tList[0] * Unit::yr;
 	while (t > tPoint)
 		status = integ.apply(&t, tPoint, &h, star_0.pos);
 	h = 1.;
 	integ.reset();
 	for (double tPoint : tList) {
-		tPoint = tPoint * Constant::yr;
+		tPoint = tPoint * Unit::yr;
 		while (status <= 0 && t < tPoint)
 			status = integ.apply(&t, tPoint, &h, star_0.pos);
 		if (status > 0)
@@ -204,8 +206,8 @@ PYBIND11_MODULE(SBoPy, m) {
 	m.def("MCMC", &MCMC, R"pbdoc(
 		MCMC function
 	)pbdoc");
-	m.attr("s") = Constant::s;
-	m.attr("day") = Constant::day;
-	m.attr("yr") = Constant::yr;
+	m.attr("s") = Unit::s;
+	m.attr("day") = Unit::day;
+	m.attr("yr") = Unit::yr;
 	m.attr("__version__") = VERSION;
 }

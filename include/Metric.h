@@ -5,7 +5,6 @@
 
 namespace SBody {
 	namespace Metric {
-		extern double m;
 		extern double a, a2, a4;
 		extern double e, e2, e4;
 		extern double l, l2, l4;
