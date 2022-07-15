@@ -6,7 +6,7 @@
 namespace SBody {
 	class Unit {
 	  public:
-		static void init(double mass);
+		static int init(double mass);
 		static double M_sun;
 		// Time
 		static double s;
