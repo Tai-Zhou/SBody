@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
 	auto TStart = chrono::steady_clock::now();
 	signal(SIGINT, interruptHandler);
 	double mass = 4.15e6, spin = 0., charge = 0., NUT = 0.;
-	double tFinal = 9.35062553 * 3.15576e7;
+	double tFinal = 2000.;
 	size_t tStepNumber = 10000UL;
 	double TCal = 36000000;
 	size_t metric = 1;
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 	IO::displayProgressBar = 1;
 	string storeFormat = "NumPy";
 	double inc = M_PI * 0. / 180., eps = 0.;
-	double a = 7. * mass, e = 0., inclination = M_PI * 160. / 180., periapsis = M_PI * 0. / 180., ascendingNode = M_PI * 160. / 180., trueAnomaly = M_PI; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
+	double a = 8.3 * mass, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180., ascendingNode = M_PI * 25.1 / 180., trueAnomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
 	unique_ptr<view> viewPtr;
 	unique_ptr<thread> shadowPtr;
 	unique_ptr<camera> cameraPtr;
@@ -210,11 +210,11 @@ int main(int argc, char *argv[]) {
 		y[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
 		y[2] = xp2 * cos(eps) - xp1 * sin(eps);
 		y[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
-		double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
-		// vtheta = 0.3822615764261866;
+		double vphi = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vphi * vphi));
+		// vphi = 0.3822615764261866;
 		// vr = -0.16707659553531468;
-		double tp5 = vtheta * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
-		double xp5 = tp5 * cos(ascendingNode) - tp6 * sin(ascendingNode), xp6 = tp5 * sin(ascendingNode) + tp6 * cos(ascendingNode), xp7 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * sin(inclination);
+		double tp5 = vphi * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vphi * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
+		double xp5 = tp5 * cos(ascendingNode) - tp6 * sin(ascendingNode), xp6 = tp5 * sin(ascendingNode) + tp6 * cos(ascendingNode), xp7 = -(vphi * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * sin(inclination);
 		y[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
 		y[6] = xp6 * cos(eps) - xp5 * sin(eps);
 		y[7] = xp7 * cos(inc) - (xp5 * cos(eps) + xp6 * sin(eps)) * sin(inc);
@@ -228,11 +228,11 @@ int main(int argc, char *argv[]) {
 			x[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
 			x[2] = xp2 * cos(eps) - xp1 * sin(eps);
 			x[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
-			double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
-			// vtheta = 0.3822615764261866;
-			// vr = -0.16707659553531468;
-			double tp5 = vtheta * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
-			double xp5 = tp5 * cos(ascendingNode) - tp6 * sin(ascendingNode), xp6 = tp5 * sin(ascendingNode) + tp6 * cos(ascendingNode), xp7 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * sin(inclination);
+			double vphi = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vphi * vphi));
+			vphi = 0.3822615764261866; // 0.3840905791842067; // 0.3822615764261866;
+			vr = -0.16707659553531468; // 0.16386176496281388; // 0.16707659553531468;
+			double tp5 = vphi * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vphi * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
+			double xp5 = tp5 * cos(ascendingNode) - tp6 * sin(ascendingNode), xp6 = tp5 * sin(ascendingNode) + tp6 * cos(ascendingNode), xp7 = -(vphi * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * sin(inclination);
 			x[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
 			x[6] = xp6 * cos(eps) - xp5 * sin(eps);
 			x[7] = xp7 * cos(inc) - (xp5 * cos(eps) + xp6 * sin(eps)) * sin(inc);
@@ -244,13 +244,6 @@ int main(int argc, char *argv[]) {
 			x[7] = 0;
 		}
 		Metric::c2s(x, y);
-		/*y[0] = 0;
-		y[1] = 3.588 * Constant::mpc;
-		y[2] = M_PI / 3;
-		y[3] = M_PI;
-		y[5] = 0;
-		y[6] = 0;
-		y[7] = sqrt(4e6 / (gsl_pow_3(y[1]) * 0.75)) * 1.000000578443; //[1.0000005784, 1.00000057845]*/
 		if (restMass)
 			Metric::particleNormalization(y);
 		else
@@ -293,7 +286,7 @@ int main(int argc, char *argv[]) {
 		TUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
 		if (IO::displayProgressBar) {
 			double percent = i * stepPercent;
-			if (floor(percent) > floor(IO::progressBars[0].current()) || TUse >= TLastUse + 500) {
+			if (percent > IO::progressBars[0].current() + 0.3 || TUse >= TLastUse + 300) {
 				TLastUse = TUse;
 				IO::progressBars[0].set_progress(percent);
 			}

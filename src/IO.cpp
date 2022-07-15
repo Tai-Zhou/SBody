@@ -16,6 +16,7 @@ namespace SBody {
 			option::FontStyles{vector<FontStyle>{FontStyle::bold}}};
 		DynamicProgress<BlockProgressBar> progressBars(mainProgressBar);
 		void progressBarComplete(int index, string prefix) {
+			progressBars[index].set_progress(100.);
 			progressBars[index].set_option(option::PrefixText{prefix});
 			progressBars[index].mark_as_completed();
 		}

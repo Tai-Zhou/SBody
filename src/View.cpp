@@ -24,12 +24,14 @@ namespace SBody {
 		double alpha0 = GSL_POSINF, alpha1 = (rs + Metric::m) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + Metric::m) * (costs * sinto - sints * cosps * costo), ph[10], cosph, last[10], h;
 		Metric::a *= -1.;
 		Metric::l *= -1.;
-		vector<double> qdq(12);
 #ifdef RECORD_TRACE
+		vector<double> qdq(12);
 		IO::NumPy rec("Trace " + to_string(rayNO), 12);
 #endif
 #ifdef VIEW_TAU
 		integrator integ(Metric::functionTau, Metric::jacobian, 2);
+#elif VIEW_HAMILTONIAN
+		integrator integ(Metric::functionHamiltonian, Metric::jacobian, 2);
 #else
 		integrator integ(Metric::function, Metric::jacobian, 2);
 #endif
@@ -67,7 +69,7 @@ namespace SBody {
 			Metric::qdq2qp(ph);
 #endif
 			int status = 0, fixed = 0;
-			h = 1e-3;
+			h = 1.;
 			while (status <= 0) {
 				if (status == -1) {
 					h *= 0.5;
@@ -90,12 +92,12 @@ namespace SBody {
 						ph[8] += ph[9];
 						ph[9] = 0;
 					}
+#ifdef RECORD_TRACE
 					copy(ph, ph + 8, qdq.begin());
 #ifdef VIEW_HAMILTONIAN
 					Metric::qp2qdq(qdq.data());
 #endif
 					qdq[8] = ph[8] + ph[9];
-#ifdef RECORD_TRACE
 					qdq[9] = Metric::energy(qdq.data());
 					qdq[10] = Metric::angularMomentum(qdq.data());
 					qdq[11] = Metric::carter(qdq.data(), 0.);
@@ -104,6 +106,9 @@ namespace SBody {
 					if (cosph >= 0) {
 						alpha1 += rs * sints * sinps - ph[1] * sign(ph[2]) * sin(ph[2]) * sin(ph[3]); // TODO:OPT!
 						beta1 += (rs * costs - ph[1] * sign(ph[2]) * cos(ph[2])) * sinto - (rs * sints * cosps - ph[1] * sign(ph[2]) * sin(ph[2]) * cos(ph[3])) * costo;
+#ifdef VIEW_HAMILTONIAN
+						Metric::qp2qdq(ph);
+#endif
 						break;
 					}
 				}
@@ -116,9 +121,9 @@ namespace SBody {
 		Metric::a *= -1.;
 		Metric::l *= -1.;
 #ifdef VIEW_TAU
-		output->save({alpha1, beta1, s.frequencyTau(qdq.data()), qdq[0] / Constant::s});
+		output->save({alpha1, beta1, s.frequencyTau(ph), (ph[8] + ph[9]) / Constant::s});
 #else
-		output->save({alpha1, beta1, s.frequency(qdq.data()), qdq[8] / Constant::s});
+		output->save({alpha1, beta1, s.frequency(ph), (ph[8] + ph[9]) / Constant::s});
 #endif
 		return 0;
 	}
