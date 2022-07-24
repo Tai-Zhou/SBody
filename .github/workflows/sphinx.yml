@@ -48,7 +48,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install sphinx breathe
+        run: pip install sphinx breathe sphinx_rtd_theme
 
       - name: Build Sphinx docs
         run: sphinx-build docs sphinx
