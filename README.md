@@ -12,7 +12,7 @@ The "S" in the name of SBody stands for "Small", "Some", and "Speed".
   * [Python Packages](#python-packages)
     * [NumPy](#numpy)
 * [Changelog](#changelog)
-* [Lisence](#lisence)
+* [License](#license)
 
 ## Library & Tool
 ### CMake
@@ -41,5 +41,5 @@ SBody output can be saved in [NPY format version 2.0](https://numpy.org/devdocs/
 ## Changelog
 Changelog can be found [here](CHANGELOG.md).
 
-## Lisence
+## License
 This program uses [GNU Scientific Library](https://www.gnu.org/software/gsl/) (GSL), so the program can only be distributed under the terms of the [GNU General Public License](https://www.gnu.org/licenses/gpl-3.0.html) (GPL).
