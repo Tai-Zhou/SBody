@@ -30,3 +30,12 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/include indicators/include)
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)
 add_executable(${PROJECT_NAME} src/SBody.cpp)
 target_link_libraries(${PROJECT_NAME} SBodyLibStatic)
+
+find_package(Doxygen REQUIRED)
+
+set(DOXYGEN_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/doxygen")
+set(DOXYGEN_GENERATE_HTML NO)
+set(DOXYGEN_GENERATE_LATEX NO)
+set(DOXYGEN_GENERATE_XML YES)
+set(DOXYGEN_XML_OUTPUT .)
+doxygen_add_docs(docs "${PROJECT_SOURCE_DIR}/src")
