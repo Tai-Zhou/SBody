@@ -4,8 +4,6 @@
 
 #include <gsl/gsl_errno.h>
 
-#include "Constant.h"
-
 namespace SBody {
 	double absAcc = 1e-15, relAcc = 1e-15;
 	integrator::integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params, const gsl_odeiv2_step_type *type) : coordinate(coordinate), type(type), control(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve(gsl_odeiv2_evolve_alloc(8)), step(gsl_odeiv2_step_alloc(type, 8)) {

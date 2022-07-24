@@ -14,7 +14,6 @@
 
 #include <getopt.h>
 
-#include "Constant.h"
 #include "IO.h"
 #include "Metric.h"
 #include "Object.h"
@@ -259,7 +258,7 @@ int main(int argc, char *argv[]) {
 	IO::NumPy rec(Metric::name + strFormat, {12});
 	vector<double> temp(12);
 	int status = 0, TUse, TLastUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
-	double h = 1e-3, stepPercent = 100. / tStepNumber;
+	double h = 1., stepPercent = 100. / tStepNumber;
 	for (int i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
 		while (status <= 0 && t < tStep)
@@ -281,9 +280,9 @@ int main(int argc, char *argv[]) {
 		temp[10] = Metric::angularMomentum(star_0.pos);
 		temp[11] = Metric::carter(star_0.pos, 1.);
 		if (ray & 1)
-			viewPtr->traceBack(star_0, i);
+			viewPtr->traceStar(star_0, i);
 		if (ray & 2)
-			cameraPtr->traceBack();
+			cameraPtr->traceStar();
 		rec.save(temp);
 		TUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
 		if (IO::displayProgressBar) {

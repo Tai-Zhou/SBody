@@ -1,13 +1,15 @@
 #ifndef SBODY_UNIT_H
 #define SBODY_UNIT_H
 
-#include "Constant.h"
-
 namespace SBody {
 	class Unit {
 	  public:
 		static int init(double mass);
-		static double M_sun;
+		static constexpr double deg = 1.7453292519943295e-2;
+		static constexpr double min = 2.908882086657216e-4;
+		static constexpr double sec = 4.84813681109536e-6;
+		static constexpr double mas = 4.84813681109536e-9;
+		static constexpr double uas = 4.84813681109536e-12;
 		// Time
 		static double s;
 		static double day;
@@ -23,6 +25,7 @@ namespace SBody {
 		static double Mpc;
 		static double Gpc;
 		// Mass
+		static double M_sun;
 		static double M_earth;
 		static double M_jup;
 		// Energy

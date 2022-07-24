@@ -13,7 +13,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl_bind.h>
 
-#include "Constant.h"
 #include "IO.h"
 #include "Metric.h"
 #include "Object.h"
@@ -171,7 +170,7 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 		if (metric == 0)
 			copy(star_0.pos, star_0.pos + 8, result_ptr + (rayNO++) * 8);
 		else
-			viewPtr->traceBack(star_0, rayNO++);
+			viewPtr->traceStar(star_0, rayNO++);
 	}
 	return result.reshape({tList.size(), 8UL});
 }

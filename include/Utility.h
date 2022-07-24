@@ -9,6 +9,8 @@ namespace SBody {
 	extern double absAcc;
 	extern double relAcc;
 	constexpr double epsilon = 1e-10;
+	constexpr double M_2PI = 6.28318530717958647692528676655900576; // 2*pi
+	constexpr double M_PI2 = 9.86960440108935861883449099987615111; // pi^2
 	class integrator {
 	  private:
 		const int coordinate;

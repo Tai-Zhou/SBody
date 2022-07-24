@@ -9,7 +9,6 @@
 #include <omp.h>
 #endif
 
-#include "Constant.h"
 #include "IO.h"
 #include "Metric.h"
 #include "Object.h"
@@ -19,8 +18,8 @@
 using namespace std;
 
 namespace SBody {
-	view::view(double r, double theta, string filename) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(-r - 2e4 * 1.), output(make_unique<IO::NumPy>(filename, vector<int>({4}))) {}
-	int view::traceBack(Object::star &s, int rayNO) { // FIXME:!!!!
+	view::view(double r, double theta, string filename) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(-r - 2e4 * 1.), output(make_unique<IO::NumPy>(filename, vector<int>({28}))) {}
+	int view::traceStar(Object::star &s, int rayNO) { // FIXME:!!!!
 		const double rs = s.pos[1], thetas = s.pos[2], phis = s.pos[3], sints = sin(thetas), costs = cos(thetas), sinps = sin(phis), cosps = cos(phis);
 		double alpha0 = GSL_POSINF, alpha1 = (rs + 1.) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + 1.) * (costs * sinto - sints * cosps * costo), ph[10], cosph, last[10], h;
 #ifdef RECORD_TRACE
@@ -82,7 +81,7 @@ namespace SBody {
 				cosph = (rs * sints * cosps - ph[1] * sign(ph[2]) * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * sign(ph[2]) * cos(ph[2])) * costo;
 				if (cosph > rs * relAcc) {
 					copy(last, last + 10, ph);
-					h *= 0.5;
+					h *= 0.3;
 					fixed = 1;
 					integ.reset();
 				}
@@ -113,14 +112,98 @@ namespace SBody {
 				}
 			}
 			if (status > 0) {
-				cerr << "[!] view::traceBack status = " << status << endl;
+				cerr << "[!] view::traceStar status = " << status << endl;
+				return status;
+			}
+		}
+		double diffAlphaBeta[4][2] = {{1.e-6, 0.}, {-1.e-6, 0.}, {0., 1.e-6}, {0., -1.e-6}};
+		double res[4][8];
+		for (int i = 0; i < 4; ++i) {
+			alpha0 = alpha1 + diffAlphaBeta[i][0];
+			beta0 = beta1 + diffAlphaBeta[i][1];
+			ph[0] = 0.;
+			ph[1] = r;
+			ph[4] = 1.;
+			ph[5] = 1.;
+			ph[8] = 0.;
+			ph[9] = 0.;
+			if (sinto < epsilon) {
+				const double k = gsl_hypot(alpha0, beta0);
+				if (theta < M_PI_2) {
+					ph[2] = 1e-15;
+					ph[3] = alpha0 >= 0. ? acos(-beta0 / k) : M_2PI - acos(-beta0 / k);
+					ph[6] = -k / gsl_pow_2(r);
+				}
+				else {
+					ph[2] = M_PI - 1e-15;
+					ph[3] = alpha0 >= 0. ? -acos(-beta0 / k) : M_2PI + acos(-beta0 / k);
+					ph[6] = k / gsl_pow_2(r);
+				}
+				ph[7] = 0.;
+			}
+			else {
+				ph[2] = theta;
+				ph[3] = 0.,
+				ph[6] = beta0 / gsl_pow_2(r);
+				ph[7] = -alpha0 / (gsl_pow_2(r) * sinto);
+			}
+			Metric::lightNormalization(ph, 1.);
+#ifdef VIEW_HAMILTONIAN
+			Metric::qdq2qp(ph);
+#endif
+			int status = 0, fixed = 0;
+			h = -1.;
+			while (status <= 0) {
+				if (status == -1) {
+					h *= 0.5;
+					fixed = 0;
+				}
+				copy(ph, ph + 10, last);
+				if (fixed)
+					status = integ.apply_fixed(ph + 9, h, ph);
+				else
+					status = integ.apply(ph + 9, tFinal, &h, ph);
+				cosph = (rs * sints * cosps - ph[1] * sign(ph[2]) * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * sign(ph[2]) * cos(ph[2])) * costo;
+				if (cosph > rs * relAcc) {
+					copy(last, last + 10, ph);
+					h *= 0.3;
+					fixed = 1;
+					integ.reset();
+				}
+				else {
+					if (ph[9] < tFinal * 1e-8) {
+						ph[8] += ph[9];
+						ph[9] = 0;
+					}
+#ifdef RECORD_TRACE
+					copy(ph, ph + 8, qdq.begin());
+#ifdef VIEW_HAMILTONIAN
+					Metric::qp2qdq(qdq.data());
+#endif
+					qdq[8] = ph[8] + ph[9];
+					qdq[9] = Metric::energy(qdq.data());
+					qdq[10] = Metric::angularMomentum(qdq.data());
+					qdq[11] = Metric::carter(qdq.data(), 0.);
+					rec.save(qdq);
+#endif
+					if (cosph >= 0) {
+#ifdef VIEW_HAMILTONIAN
+						Metric::qp2qdq(ph);
+#endif
+						copy(ph, ph + 8, res[i]);
+						break;
+					}
+				}
+			}
+			if (status > 0) {
+				cerr << "[!] view::traceStar status = " << status << endl;
 				return status;
 			}
 		}
 #ifdef VIEW_TAU
 		output->save({alpha1, beta1, s.frequencyTau(ph), (ph[8] + ph[9]) / Unit::s});
 #else
-		output->save({alpha1, beta1, s.frequency(ph), (ph[8] + ph[9]) / Unit::s});
+		output->save({alpha1, beta1, s.frequency(ph), (ph[8] + ph[9]) / Unit::s, res[0][1], res[0][2], res[0][3], res[0][5], res[0][6], res[0][7], res[1][1], res[1][2], res[1][3], res[1][5], res[1][6], res[1][7], res[2][1], res[2][2], res[2][3], res[2][5], res[2][6], res[2][7], res[3][1], res[3][2], res[3][3], res[3][5], res[3][6], res[3][7]});
 #endif
 		return 0;
 	}
@@ -240,7 +323,7 @@ namespace SBody {
 				cerr << "[!] camera::initialize status = " << status << endl;
 		}
 	}
-	int camera::traceBack() {
+	int camera::traceStar() {
 		const double t1 = -1000.;
 #pragma omp parallel for
 		for (int p = pixel * pixel - 1; p >= 0; --p) {
@@ -264,7 +347,7 @@ namespace SBody {
 					break;
 			}
 			if (status > 0)
-				cerr << "[!] camera::traceBack status = " << status << endl;
+				cerr << "[!] camera::traceStar status = " << status << endl;
 		}
 		return 0;
 	}

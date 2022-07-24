@@ -21,7 +21,9 @@ namespace SBody {
 
 	  public:
 		view(double r, double theta, std::string fileName);
-		int traceBack(Object::star &s, int rayNO);
+		int rayInit();
+		int rayTrace();
+		int traceStar(Object::star &s, int rayNO);
 		int shadow(int n);
 	};
 	class camera : public view {
@@ -33,7 +35,7 @@ namespace SBody {
 
 	  public:
 		camera(size_t pixel, double halfAngle, double r, double theta, std::string fileName);
-		int traceBack();
+		int traceStar();
 		int lens();
 		int save();
 	};

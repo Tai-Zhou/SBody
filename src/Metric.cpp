@@ -5,7 +5,6 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_math.h>
 
-#include "Constant.h"
 #include "Utility.h"
 
 namespace SBody {
