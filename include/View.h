@@ -1,3 +1,14 @@
+/**
+ * @file View.h
+ * @author Tai Zhou
+ * @brief
+ * @version 0.1
+ * @date 2022-07-25
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
+
 #ifndef SBODY_VIEW_H
 #define SBODY_VIEW_H
 
@@ -20,10 +31,40 @@ namespace SBody {
 		std::unique_ptr<IO::file> output;
 
 	  public:
+		/**
+		 * @brief Construct a new view object
+		 *
+		 * @param r
+		 * @param theta
+		 * @param fileName
+		 */
 		view(double r, double theta, std::string fileName);
+		/**
+		 * @brief
+		 *
+		 * @return int
+		 */
 		int rayInit();
+		/**
+		 * @brief
+		 *
+		 * @return int
+		 */
 		int rayTrace();
+		/**
+		 * @brief
+		 *
+		 * @param s
+		 * @param rayNO
+		 * @return int
+		 */
 		int traceStar(Object::star &s, int rayNO);
+		/**
+		 * @brief
+		 *
+		 * @param n
+		 * @return int
+		 */
 		int shadow(int n);
 	};
 	class camera : public view {
@@ -34,9 +75,33 @@ namespace SBody {
 		std::vector<std::vector<double>> screen;
 
 	  public:
+		/**
+		 * @brief Construct a new camera object
+		 *
+		 * @param pixel
+		 * @param halfAngle
+		 * @param r
+		 * @param theta
+		 * @param fileName
+		 */
 		camera(size_t pixel, double halfAngle, double r, double theta, std::string fileName);
+		/**
+		 * @brief
+		 *
+		 * @return int
+		 */
 		int traceStar();
+		/**
+		 * @brief
+		 *
+		 * @return int
+		 */
 		int lens();
+		/**
+		 * @brief
+		 *
+		 * @return int
+		 */
 		int save();
 	};
 } // namespace SBody

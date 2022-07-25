@@ -3,18 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to SBody's documentation!
+SBody
 =================================
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
-
-
-Indices and tables
-==================
+   intro
+   io
+   metric
+   object
+   unit
+   utility
+   view
 
 * :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

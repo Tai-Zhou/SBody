@@ -1,3 +1,14 @@
+/**
+ * @file IO.cpp
+ * @author Tai Zhou
+ * @brief
+ * @version 0.1
+ * @date 2022-07-25
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
+
 #include "IO.h"
 
 #ifdef WITH_CFITSIO
@@ -15,7 +26,7 @@ namespace SBody {
 			option::ShowRemainingTime{true},
 			option::FontStyles{vector<FontStyle>{FontStyle::bold}}};
 		DynamicProgress<BlockProgressBar> progressBars(mainProgressBar);
-		void progressBarComplete(int index, string prefix) {
+		void progressBarComplete(int index, std::string prefix) {
 			progressBars[index].set_progress(100.);
 			progressBars[index].set_option(option::PrefixText{prefix});
 			progressBars[index].mark_as_completed();

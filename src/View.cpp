@@ -1,3 +1,14 @@
+/**
+ * @file View.cpp
+ * @author Tai Zhou
+ * @brief This is the file setting the view of a distant observer.
+ * @version 0.1
+ * @date 2022-07-25
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
+
 #include "View.h"
 
 #include <cmath>

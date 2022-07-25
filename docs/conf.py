@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "SBody"
-copyright = "2022, Tai Zhou"
+copyright = "2021-2022, Tai Zhou"
 author = "Tai Zhou"
 
 
@@ -27,10 +27,16 @@ author = "Tai Zhou"
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.imgmath", "sphinx.ext.todo", "breathe"]
+extensions = [
+    "sphinx.ext.githubpages",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.todo",
+    "sphinx_mdinclude",
+    "breathe",
+]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ["docs/templates"]
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -48,8 +54,10 @@ html_theme = "sphinx_rtd_theme"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["docs/static"]
+html_static_path = ["_static"]
 
-breathe_projects = {"SBody": "doxygen"}
+html_show_sourcelink = False
+
+breathe_projects = {"SBody": "../doxygen"}
 
 breathe_default_project = "SBody"

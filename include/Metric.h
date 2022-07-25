@@ -1,3 +1,14 @@
+/**
+ * @file Metric.h
+ * @author Tai Zhou
+ * @brief
+ * @version 0.1
+ * @date 2022-07-25
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
+
 #ifndef SBODY_METRIC_H
 #define SBODY_METRIC_H
 
@@ -40,6 +51,15 @@ namespace SBody {
 
 		namespace Newton {
 			extern int PN;
+			/**
+			 * @brief This calculate the dot product of 2 vectors.
+			 *
+			 * @param g the tetrad position in the spacetime.
+			 * @param x vector x.
+			 * @param y vector y.
+			 * @param dimension 3 if calculate space part only; 4 if the time added.
+			 * @return double
+			 */
 			double dot(const double g[], const double x[], const double y[], const size_t dimension);
 			double ds2(const double x[], const double y[], const size_t dimension);
 			int function(double t, const double y[], double dydt[], void *params);

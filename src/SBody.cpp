@@ -1,4 +1,13 @@
-// Main program
+/**
+ * @file SBody.cpp
+ * @author Tai Zhou
+ * @brief
+ * @version 0.1
+ * @date 2022-07-25
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 
 #include "SBody.h"
 
@@ -63,6 +72,7 @@ void help(double mass, double spin, double NUT, double tFinal, size_t tStepNumbe
 }
 
 int main(int argc, char *argv[]) {
+	// Application Entry
 	auto TStart = chrono::steady_clock::now();
 	signal(SIGINT, interruptHandler);
 	double mass = 4.15e6, spin = 0., charge = 0., NUT = 0.;

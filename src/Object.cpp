@@ -1,3 +1,14 @@
+/**
+ * @file Object.cpp
+ * @author Tai Zhou
+ * @brief
+ * @version 0.1
+ * @date 2022-07-25
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
+
 #include "Object.h"
 
 #include <gsl/gsl_math.h>
