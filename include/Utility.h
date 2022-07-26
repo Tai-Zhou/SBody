@@ -131,10 +131,6 @@ namespace SBody {
 	 */
 	void cross(const double x[], const double y[], double z[]);
 
-	// return sign of x
-	int sign(int x);
-	double sign(double x);
-
 	/**
 	 * @brief return 1 if x, y have opposite signs
 	 *

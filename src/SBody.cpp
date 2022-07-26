@@ -23,6 +23,8 @@
 
 #include <getopt.h>
 
+#include <gsl/gsl_math.h>
+
 #include "IO.h"
 #include "Metric.h"
 #include "Object.h"
@@ -221,7 +223,7 @@ int main(int argc, char *argv[]) {
 		y[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
 		y[2] = xp2 * cos(eps) - xp1 * sin(eps);
 		y[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
-		double vphi = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vphi * vphi));
+		double vphi = sqrt((1 - e * e) * mass * a) / r, vr = GSL_SIGN(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vphi * vphi));
 		// vphi = 0.3822615764261866;
 		// vr = -0.16707659553531468;
 		double tp5 = vphi * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vphi * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
@@ -239,7 +241,7 @@ int main(int argc, char *argv[]) {
 			x[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
 			x[2] = xp2 * cos(eps) - xp1 * sin(eps);
 			x[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
-			double vphi = sqrt((1 - e * e) * mass * a) / r, vr = sign(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vphi * vphi));
+			double vphi = sqrt((1 - e * e) * mass * a) / r, vr = GSL_SIGN(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vphi * vphi));
 			vphi = 0.3822615764261866; // 0.3840905791842067; // 0.3822615764261866;
 			vr = -0.16707659553531468; // 0.16386176496281388; // 0.16707659553531468;
 			double tp5 = vphi * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vphi * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);

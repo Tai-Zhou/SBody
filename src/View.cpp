@@ -89,7 +89,7 @@ namespace SBody {
 					status = integ.apply_fixed(ph + 9, h, ph);
 				else
 					status = integ.apply(ph + 9, tFinal, &h, ph);
-				cosph = (rs * sints * cosps - ph[1] * sign(ph[2]) * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * sign(ph[2]) * cos(ph[2])) * costo;
+				cosph = (rs * sints * cosps - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * GSL_SIGN(ph[2]) * cos(ph[2])) * costo;
 				if (cosph > rs * relAcc) {
 					copy(last, last + 10, ph);
 					h *= 0.3;
@@ -113,8 +113,8 @@ namespace SBody {
 					rec.save(qdq);
 #endif
 					if (cosph >= 0) {
-						alpha1 += rs * sints * sinps - ph[1] * sign(ph[2]) * sin(ph[2]) * sin(ph[3]); // TODO:OPT!
-						beta1 += (rs * costs - ph[1] * sign(ph[2]) * cos(ph[2])) * sinto - (rs * sints * cosps - ph[1] * sign(ph[2]) * sin(ph[2]) * cos(ph[3])) * costo;
+						alpha1 += rs * sints * sinps - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * sin(ph[3]); // TODO:OPT!
+						beta1 += (rs * costs - ph[1] * GSL_SIGN(ph[2]) * cos(ph[2])) * sinto - (rs * sints * cosps - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * cos(ph[3])) * costo;
 #ifdef VIEW_HAMILTONIAN
 						Metric::qp2qdq(ph);
 #endif
@@ -174,7 +174,7 @@ namespace SBody {
 					status = integ.apply_fixed(ph + 9, h, ph);
 				else
 					status = integ.apply(ph + 9, tFinal, &h, ph);
-				cosph = (rs * sints * cosps - ph[1] * sign(ph[2]) * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * sign(ph[2]) * cos(ph[2])) * costo;
+				cosph = (rs * sints * cosps - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * GSL_SIGN(ph[2]) * cos(ph[2])) * costo;
 				if (cosph > rs * relAcc) {
 					copy(last, last + 10, ph);
 					h *= 0.3;
@@ -304,7 +304,7 @@ namespace SBody {
 			for (int i = 0; i < pixel; ++i)
 				for (int j = 0; j < pixel; ++j) {
 					const double k = gsl_hypot(i - 0.5 * pixel + 0.5, j - 0.5 * pixel + 0.5);
-					initials[i * pixel + j] = {0., r, theta < M_PI_2 ? 1e-15 : M_PI - 1e-15, 0., 1., 1., sign(theta - M_PI_2) * tana_pix * k, 0., 0.};
+					initials[i * pixel + j] = {0., r, theta < M_PI_2 ? 1e-15 : M_PI - 1e-15, 0., 1., 1., GSL_SIGN(theta - M_PI_2) * tana_pix * k, 0., 0.};
 					if (k >= epsilon) {
 						if (2 * i <= pixel)
 							initials[i * pixel + j][3] = (theta < M_PI_2 ? 1. : -1.) * acos((j - 0.5 * pixel + 0.5) / k);

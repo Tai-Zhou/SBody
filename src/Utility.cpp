@@ -98,12 +98,6 @@ namespace SBody {
 		z[1] = x[2] * y[0] - x[0] * y[2];
 		z[2] = x[0] * y[1] - x[1] * y[0];
 	}
-	int sign(int x) {
-		return x > 0 ? 1 : -1;
-	}
-	double sign(double x) {
-		return x >= 0. ? 1. : -1.;
-	}
 	int oppositeSign(double x, double y) {
 		return (x >= 0. && y <= 0.) || (x <= 0. && y >= 0.);
 	}

@@ -599,7 +599,7 @@ namespace SBody {
 			}
 			int qdq2qp(double y[]) {
 				const double dtdtau = 1. / y[4], r = y[1], r2 = gsl_pow_2(r);
-				const double sint2 = gsl_pow_2(sin(y[2])), cost = sign(y[2]) * cos(y[2]);
+				const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
 				const double Delta = r2 - 2. * r - l2 + a2;
 				const double rho2 = r2 + gsl_pow_2(l + a * cost), rho_2 = 1. / rho2;
 				y[4] = (y[4] * rho2 - Delta + a2 * sint2 - 2. * ((r + l2) * a * sint2 + Delta * l * cost) * y[7]) * rho_2 * dtdtau; // 1 + p_t
@@ -610,7 +610,7 @@ namespace SBody {
 			}
 			int qp2qdq(double y[]) {
 				const double pt = y[4] - 1., r = y[1], r2 = gsl_pow_2(r);
-				const double sint2 = gsl_pow_2(sin(y[2])), cost = sign(y[2]) * cos(y[2]);
+				const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
 				const double Delta = r2 - 2. * r - l2 + a2;
 				const double rho2 = r2 + gsl_pow_2(l + a * cost), rho_2 = 1. / rho2;
 				y[4] = Delta * rho2 * sint2 / ((Delta * gsl_pow_2(a * sint2 - 2. * l * cost) - gsl_pow_2(r2 + l2 + a2) * sint2) * pt - 2. * ((r + l2) * a * sint2 + Delta * l * cost) * y[7]);
@@ -625,7 +625,7 @@ namespace SBody {
 				dydt[2] = y[6]; // d\theta/dt
 				dydt[3] = y[7]; // d\phi/dt
 				const double r = y[1], r2 = gsl_pow_2(r);
-				const double sint = abs(sin(y[2])), sint_1 = 1. / sint, sint2 = gsl_pow_2(sint), cost = sign(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost);
+				const double sint = abs(sin(y[2])), sint_1 = 1. / sint, sint2 = gsl_pow_2(sint), cost = GSL_SIGN(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost);
 				const double Delta = r2 - 2. * r - l2 + a2, Delta_1 = 1. / Delta;
 				const double lacost = l + a * cost, lacost2 = gsl_pow_2(lacost);
 				const double rho2 = r2 + lacost2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2);
@@ -648,7 +648,7 @@ namespace SBody {
 				dydt[2] = y[6]; // d\theta/d\tau
 				dydt[3] = y[7]; // d\phi/d\tau
 				const double r = y[1], r2 = gsl_pow_2(r);
-				const double sint = abs(sin(y[2])), sint_1 = 1. / sint, sint2 = gsl_pow_2(sint), cost = sign(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost);
+				const double sint = abs(sin(y[2])), sint_1 = 1. / sint, sint2 = gsl_pow_2(sint), cost = GSL_SIGN(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost);
 				const double Delta = r2 - 2. * r - l2 + a2, Delta_1 = 1. / Delta;
 				const double lacost = l + a * cost, lacost2 = gsl_pow_2(lacost);
 				const double rho2 = r2 + lacost2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2);
@@ -675,7 +675,7 @@ namespace SBody {
 			}
 			double energy(const double y[]) {
 				const double r = y[1], r2 = gsl_pow_2(r);
-				const double sint2 = gsl_pow_2(sin(y[2])), cost = sign(y[2]) * cos(y[2]);
+				const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
 				const double Delta = r2 - 2. * r - l2 + a2;
 				return (Delta - a2 * sint2 + 2. * ((r + l2) * a * sint2 + Delta * l * cost) * y[7]) / ((r2 + gsl_pow_2(l + a * cost)) * y[4]);
 			}
@@ -684,7 +684,7 @@ namespace SBody {
 			}
 			double angularMomentum(const double y[]) {
 				const double r = y[1], r2 = gsl_pow_2(r);
-				const double sint2 = gsl_pow_2(sin(y[2])), cost = sign(y[2]) * cos(y[2]);
+				const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
 				const double Delta = r2 - 2. * r - l2 + a2;
 				return (-2. * ((r + l2) * a * sint2 + Delta * l * cost) + (gsl_pow_2(r2 + l2 + a2) * sint2 - gsl_pow_2(a * sint2 - 2. * l * cost) * Delta) * y[7]) / ((r2 + gsl_pow_2(l + a * cost)) * y[4]);
 			}
@@ -702,7 +702,7 @@ namespace SBody {
 			}
 			int particleNormalization(double y[]) {
 				const double r = y[1], r2 = gsl_pow_2(r);
-				const double sint2 = gsl_pow_2(sin(y[2])), cost = sign(y[2]) * cos(y[2]);
+				const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
 				const double Delta = r2 - 2. * r - l2 + a2;
 				const double rho2 = r2 + gsl_pow_2(l + a * cost);
 				y[7] += 2. * a * r / (gsl_pow_2(a2 + r2) - a2 * Delta * sint2);
@@ -711,7 +711,7 @@ namespace SBody {
 			}
 			int lightNormalization(double y[], double e) {
 				const double r = y[1], r2 = gsl_pow_2(r);
-				const double sint = abs(sin(y[2])), sint2 = gsl_pow_2(sint), cost = sign(y[2]) * cos(y[2]);
+				const double sint = abs(sin(y[2])), sint2 = gsl_pow_2(sint), cost = GSL_SIGN(y[2]) * cos(y[2]);
 				const double Delta = r2 - 2. * r - l2 + a2;
 				const double lacost = l + a * cost;
 				const double rho2 = r2 + gsl_pow_2(lacost), rho_2 = 1. / rho2;
