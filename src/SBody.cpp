@@ -23,6 +23,7 @@
 
 #include <getopt.h>
 
+#include <fmt/core.h>
 #include <gsl/gsl_math.h>
 
 #include "IO.h"

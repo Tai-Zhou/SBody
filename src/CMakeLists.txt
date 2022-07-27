@@ -36,12 +36,12 @@ endif()
 
 add_library(SBodyLibStatic STATIC IO.cpp Metric.cpp Object.cpp Unit.cpp Utility.cpp View.cpp)
 set_target_properties(SBodyLibStatic PROPERTIES OUTPUT_NAME "SBody")
-target_link_libraries(SBodyLibStatic GSL::gsl ${OPTIONAL_LIBS})
+target_link_libraries(SBodyLibStatic GSL::gsl fmt::fmt ${OPTIONAL_LIBS})
 
 if(SBODY_LIB_SHARED)
     add_library(SBodyLibShared SHARED $<TARGET_OBJECTS:SBodyLibStatic>)
     set_target_properties(SBodyLibShared PROPERTIES OUTPUT_NAME "SBody")
-    target_link_libraries(SBodyLibShared GSL::gsl ${OPTIONAL_LIBS})
+    target_link_libraries(SBodyLibShared GSL::gsl fmt::fmt ${OPTIONAL_LIBS})
 endif()
 
 if(WITH_PYTHON)
@@ -49,7 +49,7 @@ if(WITH_PYTHON)
 
     if(pybind11_FOUND)
         pybind11_add_module(SBoPy MODULE Python.cpp $<TARGET_OBJECTS:SBodyLibStatic>)
-        target_link_libraries(SBoPy PUBLIC GSL::gsl ${OPTIONAL_LIBS})
+        target_link_libraries(SBoPy PUBLIC GSL::gsl fmt::fmt ${OPTIONAL_LIBS})
     else()
         set(WITH_PYTHON OFF)
     endif()
