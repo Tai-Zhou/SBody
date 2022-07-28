@@ -46,7 +46,7 @@ int Fibo(int n) {
 }
 
 void saveFibo(int n) {
-	SBody::IO::NumPy record("Fibo", {1});
+	SBody::NumPy record("Fibo", {1});
 	int i = 0, j = 1, k;
 	while (n--) {
 		k = j;
@@ -144,8 +144,7 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 		y[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
 		y[6] = xp6 * cos(eps) - xp5 * sin(eps);
 		y[7] = xp7 * cos(inc) - (xp5 * cos(eps) + xp6 * sin(eps)) * sin(inc);
-	}
-	else {
+	} else {
 		x[0] = 0.;
 		double r = a * (1 - e * e) / (1 + e * cos(trueAnomaly));
 		double tp1 = -r * cos(periapsis + trueAnomaly), tp2 = -r * sin(periapsis + trueAnomaly) * cos(inclination);

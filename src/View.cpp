@@ -30,7 +30,7 @@
 using namespace std;
 
 namespace SBody {
-	view::view(double r, double theta, string filename) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(-r - 2e4 * 1.), output(make_unique<IO::NumPy>(filename, vector<int>({28}))) {}
+	view::view(double r, double theta, string filename) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(-r - 2e4 * 1.), output(make_unique<NumPy>(filename, vector<int>({28}))) {}
 	int view::traceStar(Object::star &s, int rayNO) { // FIXME:!!!!
 		const double rs = s.pos[1], thetas = s.pos[2], phis = s.pos[3], sints = sin(thetas), costs = cos(thetas), sinps = sin(phis), cosps = cos(phis);
 		double alpha0 = GSL_POSINF, alpha1 = (rs + 1.) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + 1.) * (costs * sinto - sints * cosps * costo), ph[10], cosph, last[10], h;
@@ -215,7 +215,7 @@ namespace SBody {
 	}
 	int view::shadow(int n) {
 		const double interval = M_2PI / n;
-		IO::NumPy rec("shadow " + to_string(Metric::a) + "," + to_string(Metric::l), {2});
+		NumPy rec("shadow " + to_string(Metric::a) + "," + to_string(Metric::l), {2});
 		double h, rin = 2., rout = 10., rmid = 6., ph[10];
 #ifdef VIEW_TAU
 		integrator integ(Metric::functionTau, Metric::jacobian, 2);
@@ -229,7 +229,7 @@ namespace SBody {
 			indicators::option::ForegroundColor{indicators::Color(4)},
 			indicators::option::MaxProgress{n},
 			indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
-		int progressBarIndex = IO::progressBars.push_back(shadowProgressBar);
+		int progressBarIndex = ProgressBar::bars_.push_back(shadowProgressBar);
 		for (int i = 0; i < n; ++i) {
 			const double angle = i * interval, sina = sin(angle), cosa = cos(angle);
 			int status = 0;
@@ -282,11 +282,11 @@ namespace SBody {
 			rin -= 2. * interval * rmid;
 			rout += 2. * interval * rmid;
 			rec.save({rmid * cosa, rmid * sina});
-			if (IO::displayProgressBar)
-				IO::progressBars[progressBarIndex].tick();
+			if (ProgressBar::display_)
+				ProgressBar::bars_[progressBarIndex].tick();
 		}
-		if (IO::displayProgressBar)
-			IO::progressBarComplete(progressBarIndex, "! Shadow");
+		if (ProgressBar::display_)
+			ProgressBar::SetComplete(progressBarIndex, "! Shadow");
 		return 0;
 	}
 	camera::camera(size_t pixel, double halfAngle, double r, double theta, string fileName) : view(r, theta, fileName), pixel(pixel), halfAngle(halfAngle) {
@@ -356,7 +356,7 @@ namespace SBody {
 	}
 	int camera::lens() {
 		const double t1 = -1000. * r, pixelPerAngle = 0.5 * pixel / halfAngle;
-		IO::NumPy rec("lens", {2});
+		NumPy rec("lens", {2});
 		indicators::BlockProgressBar lensProgressBar{
 			indicators::option::ShowElapsedTime{true},
 			indicators::option::ShowRemainingTime{true},
@@ -364,7 +364,7 @@ namespace SBody {
 			indicators::option::PrefixText{"? lens"},
 			indicators::option::MaxProgress{pixel * pixel},
 			indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
-		int progressBarIndex = IO::progressBars.push_back(lensProgressBar);
+		int progressBarIndex = ProgressBar::bars_.push_back(lensProgressBar);
 		for (int i = 0; i < pixel; ++i)
 			for (int j = 0; j < pixel; ++j) {
 				double ph[10], phc[10];
@@ -388,11 +388,11 @@ namespace SBody {
 					Metric::s2c(ph, phc);
 					rec.save({phc[6] * pixelPerAngle, (phc[7] * sinto - phc[5] * costo) * pixelPerAngle});
 				}
-				if (IO::displayProgressBar)
-					IO::progressBars[progressBarIndex].tick();
+				if (ProgressBar::display_)
+					ProgressBar::bars_[progressBarIndex].tick();
 			}
-		if (IO::displayProgressBar)
-			IO::progressBarComplete(progressBarIndex, "! lens");
+		if (ProgressBar::display_)
+			ProgressBar::SetComplete(progressBarIndex, "! lens");
 		return 0;
 	}
 	int camera::save() {

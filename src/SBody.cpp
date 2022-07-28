@@ -72,7 +72,6 @@ void help(double mass, double spin, double NUT, double tFinal, size_t tStepNumbe
 int main(int argc, char *argv[]) {
 	// Application Entry
 	auto TStart = chrono::steady_clock::now();
-	signal(SIGINT, interruptHandler);
 	double mass = 4.15e6, spin = 0., charge = 0., NUT = 0.;
 	double tFinal = 2000.;
 	size_t tStepNumber = 10000UL;
@@ -82,7 +81,7 @@ int main(int argc, char *argv[]) {
 	size_t PN = 1;
 	size_t ray = 1;
 	int restMass = 1;
-	IO::displayProgressBar = 1;
+	ProgressBar::display_ = true;
 	string storeFormat = "NumPy";
 	double inc = M_PI * 0. / 180., eps = 0.;
 	double a = 8.3, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180., ascendingNode = M_PI * 25.1 / 180., trueAnomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
@@ -181,7 +180,7 @@ int main(int argc, char *argv[]) {
 			restMass = 0;
 			break;
 		case 'b':
-			IO::displayProgressBar = 1;
+			ProgressBar::display_ = true;
 			break;
 		default:
 			help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absAcc, relAcc, storeFormat);
@@ -193,10 +192,10 @@ int main(int argc, char *argv[]) {
 		ray = 0;
 	Metric::setMetric(metric, PN, mass, spin, charge, NUT);
 	string strFormat = fmt::format(" ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps);
-	if (IO::displayProgressBar) {
+	if (ProgressBar::display_) {
 		indicators::show_console_cursor(false);
-		IO::progressBars[0].set_option(indicators::option::ForegroundColor{indicators::Color(metric)});
-		IO::progressBars[0].set_option(indicators::option::PrefixText{string("?") + strFormat});
+		ProgressBar::bars_[0].set_option(indicators::option::ForegroundColor{indicators::Color(metric)});
+		ProgressBar::bars_[0].set_option(indicators::option::PrefixText{string("?") + strFormat});
 	}
 	if (ray & 5) {
 		viewPtr = make_unique<view>(8180. * Unit::pc, inc, string("view") + strFormat);
@@ -260,7 +259,7 @@ int main(int argc, char *argv[]) {
 	integrator integ(Metric::function, Metric::jacobian, metric != 0);
 	Object::star star_0(Unit::R_sun, y, 0);
 	Object::objectList.push_back(&star_0);
-	IO::NumPy rec(Metric::name + strFormat, {12});
+	NumPy rec(Metric::name + strFormat, {12});
 	vector<double> temp(12);
 	int status = 0, TUse, TLastUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
 	double h = 1., stepPercent = 100. / tStepNumber;
@@ -289,18 +288,18 @@ int main(int argc, char *argv[]) {
 			cameraPtr->traceStar();
 		rec.save(temp);
 		TUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
-		if (IO::displayProgressBar) {
+		if (ProgressBar::display_) {
 			double percent = i * stepPercent;
-			if (percent > IO::progressBars[0].current() + 0.3 || TUse >= TLastUse + 300) {
+			if (percent > ProgressBar::bars_[0].current() + 0.3 || TUse >= TLastUse + 300) {
 				TLastUse = TUse;
-				IO::progressBars[0].set_progress(percent);
+				ProgressBar::bars_[0].set_progress(percent);
 			}
 		}
 		if (TUse >= TCal)
 			break;
 	}
-	if (IO::displayProgressBar)
-		IO::progressBarComplete(0, string("!") + strFormat);
+	if (ProgressBar::display_)
+		ProgressBar::SetComplete(0, string("!") + strFormat);
 	if (ray & 2)
 		cameraPtr->save();
 	if (ray & 4)
