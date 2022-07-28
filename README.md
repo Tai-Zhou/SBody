@@ -16,23 +16,40 @@ The "S" in the name of SBody stands for "Small", "Some", and "Speed".
 
 ## Library & Tool
 ### CMake
+
+**Required**
+
 [CMake](https://cmake.org) is an open-source, cross-platform family of tools designed to build, test and package software. SBody use CMake to get built on different platforms.
 * Linux: run `apt install cmake` or download and install from [homepage](https://cmake.org).
 * macOS: Install CMake via [Homebrew](https://brew.sh), with command `brew install cmake`.
 
 ### GSL
+
+**Required**
+
 The GNU Scientific Library ([GSL](https://www.gnu.org/software/gsl/)) is a numerical library for C and C++ programmers.
 * Linux: run `apt install libgsl-dev` or download and install from [homepage](https://www.gnu.org/software/gsl/).
 * macOS: Install GSL via [Homebrew](https://brew.sh), with command `brew install gsl`.
 
 ### CFITSIO
 
+**Optional**
+
 [CFITSIO](https://heasarc.gsfc.nasa.gov/fitsio/) is a library of C and Fortran subroutines for reading and writing data files in FITS (Flexible Image Transport System) data format. SBody use CFITSIO to produce output files in FITS.
 * Linux: run `apt install libcfitsio-dev` or download and install from [homepage](https://heasarc.gsfc.nasa.gov/docs/software/fitsio/).
 * macOS: Install CFITSIO via [Homebrew](https://brew.sh), with command `brew install cfitsio`, you may need to add the library directory to `CPLUS_INCLUDE_PATH`.
 
 ### indicators
+
+**Submodule**
+
 SBody uses [indicators](https://github.com/p-ranav/indicators) to show the progress.
+
+### fmt
+
+**Submodule**
+
+SBody uses [fmt](https://github.com/fmtlib/fmt) to print.
 
 ### Python Packages
 #### NumPy

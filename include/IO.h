@@ -90,7 +90,7 @@ namespace SBody {
 
 		  public:
 			/**
-			 * @brief Construct a new CSV object
+			 * @brief Construct a new CSV object.
 			 *
 			 * @param fileName
 			 * @param separator Separator of the file. If `sep == '\t'`, the file would be a Tab-Separated Values (TSV).

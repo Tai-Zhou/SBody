@@ -14,6 +14,7 @@
 #include <cmath>
 #include <iostream>
 
+#include <fmt/core.h>
 #include <gsl/gsl_math.h>
 
 #ifdef WITH_OPENMP
@@ -59,15 +60,13 @@ namespace SBody {
 					ph[2] = 1e-15;
 					ph[3] = alpha1 >= 0. ? acos(-beta1 / k) : M_2PI - acos(-beta1 / k);
 					ph[6] = -k / gsl_pow_2(r);
-				}
-				else {
+				} else {
 					ph[2] = M_PI - 1e-15;
 					ph[3] = alpha1 >= 0. ? -acos(-beta1 / k) : M_2PI + acos(-beta1 / k);
 					ph[6] = k / gsl_pow_2(r);
 				}
 				ph[7] = 0.;
-			}
-			else {
+			} else {
 				ph[2] = theta;
 				ph[3] = 0.,
 				ph[6] = beta1 / gsl_pow_2(r);
@@ -95,8 +94,7 @@ namespace SBody {
 					h *= 0.3;
 					fixed = 1;
 					integ.reset();
-				}
-				else {
+				} else {
 					if (ph[9] < tFinal * 1e-8) {
 						ph[8] += ph[9];
 						ph[9] = 0;
@@ -123,7 +121,7 @@ namespace SBody {
 				}
 			}
 			if (status > 0) {
-				cerr << "[!] view::traceStar status = " << status << endl;
+				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 				return status;
 			}
 		}
@@ -144,15 +142,13 @@ namespace SBody {
 					ph[2] = 1e-15;
 					ph[3] = alpha0 >= 0. ? acos(-beta0 / k) : M_2PI - acos(-beta0 / k);
 					ph[6] = -k / gsl_pow_2(r);
-				}
-				else {
+				} else {
 					ph[2] = M_PI - 1e-15;
 					ph[3] = alpha0 >= 0. ? -acos(-beta0 / k) : M_2PI + acos(-beta0 / k);
 					ph[6] = k / gsl_pow_2(r);
 				}
 				ph[7] = 0.;
-			}
-			else {
+			} else {
 				ph[2] = theta;
 				ph[3] = 0.,
 				ph[6] = beta0 / gsl_pow_2(r);
@@ -180,8 +176,7 @@ namespace SBody {
 					h *= 0.3;
 					fixed = 1;
 					integ.reset();
-				}
-				else {
+				} else {
 					if (ph[9] < tFinal * 1e-8) {
 						ph[8] += ph[9];
 						ph[9] = 0;
@@ -207,7 +202,7 @@ namespace SBody {
 				}
 			}
 			if (status > 0) {
-				cerr << "[!] view::traceStar status = " << status << endl;
+				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 				return status;
 			}
 		}
@@ -251,15 +246,13 @@ namespace SBody {
 						ph[2] = 1e-15;
 						ph[3] = M_PI_2 + angle;
 						ph[6] = -rmid / gsl_pow_2(r);
-					}
-					else {
+					} else {
 						ph[2] = M_PI - 1e-15;
 						ph[3] = M_PI_2 - angle;
 						ph[6] = rmid / gsl_pow_2(r);
 					}
 					ph[7] = 0.;
-				}
-				else {
+				} else {
 					ph[2] = theta;
 					ph[3] = 0.,
 					ph[6] = rmid * sina / gsl_pow_2(r);
@@ -277,7 +270,7 @@ namespace SBody {
 						break;
 				}
 				if (status > 0) {
-					cerr << "[!] view::shadow status = " << status << endl;
+					fmt::print(stderr, "[!] view::shadow status = {}\n", status);
 					return status;
 				}
 				if (ph[5] <= 0)
@@ -312,8 +305,7 @@ namespace SBody {
 							initials[i * pixel + j][3] = (theta < M_PI_2 ? 1. : -1.) * (2. * M_PI - acos((j - 0.5 * pixel + 0.5) / k));
 					}
 				}
-		}
-		else
+		} else
 			for (int i = 0; i < pixel; ++i)
 				for (int j = 0; j < pixel; ++j)
 					initials[i * pixel + j] = {0., r, theta, 0., 1., 1., -tana_pix * (i - 0.5 * pixel + 0.5), -tana_pix * (j - 0.5 * pixel + 0.5) / sint, 0.};
@@ -331,7 +323,7 @@ namespace SBody {
 			while (status <= 0 && initials[p][8] > t1 && initials[p][1] > 100)
 				status = integ.apply(initials[p].data() + 8, t1, initials[p].data() + 9, initials[p].data());
 			if (status > 0)
-				cerr << "[!] camera::initialize status = " << status << endl;
+				fmt::print(stderr, "[!] camera::initialize status = {}\n", status);
 		}
 	}
 	int camera::traceStar() {
@@ -358,7 +350,7 @@ namespace SBody {
 					break;
 			}
 			if (status > 0)
-				cerr << "[!] camera::traceStar status = " << status << endl;
+				fmt::print(stderr, "[!] camera::traceStar status = {}\n", status);
 		}
 		return 0;
 	}
@@ -386,7 +378,7 @@ namespace SBody {
 				while (status <= 0 && ph[8] > t1 && ph[1] > 3. && ph[1] < 3.e2)
 					status = integ.apply(ph + 8, t1, ph + 9, ph);
 				if (status > 0)
-					cerr << "[!] camera::lens status = " << status << endl;
+					fmt::print(stderr, "[!] camera::lens status = {}\n", status);
 				if (ph[1] <= 3.)
 					rec.save({NAN, NAN});
 				else {

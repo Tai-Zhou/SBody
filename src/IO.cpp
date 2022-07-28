@@ -9,6 +9,8 @@
  *
  */
 
+#include <fmt/core.h>
+
 #include "IO.h"
 
 #ifdef WITH_CFITSIO
@@ -37,7 +39,7 @@ namespace SBody {
 			else
 				fileBuf.open("../data/" + fileName, mode);
 			if (!fileBuf.is_open()) {
-				cerr << "[!] IO file not open" << endl;
+				fmt::print(stderr, "[!] IO file not open\n");
 				exit(1);
 			}
 		}
@@ -48,7 +50,7 @@ namespace SBody {
 			dimSize = 1;
 			for (int i : dim)
 				if (i < 1)
-					cerr << "[?] NumPy file dimension warning (smaller than 1)" << endl;
+					fmt::print(stderr, "[?] NumPy file dimension warning (smaller than 1)\n");
 				else
 					dimSize *= i;
 			fileBuf.sputn("\x93NUMPY\x01\x00\x76\x00{'descr': '<f8', 'fortran_order': False, 'shape': (                                                                  \n", 128);

@@ -123,7 +123,7 @@ namespace SBody {
 	double norm(const double x[], size_t dimension = 3);
 
 	/**
-	 * @brief Cross product of vector x \times y, stored in z
+	 * @brief Cross product of vector \f$x\timesy\f$, stored in z
 	 *
 	 * @param x
 	 * @param y

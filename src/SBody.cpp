@@ -42,35 +42,30 @@ void interruptHandler(int signum) {
 }
 
 void help(double mass, double spin, double NUT, double tFinal, size_t tStepNumber, double TCal, int metric, int PN, int ray, double absAcc, double relAcc, string storeFormat) {
-	cout << "SBody (" << VERSION << ")" << endl;
-	cout << endl;
-	cout << "Options:" << endl;
-	cout << "  -m --mass   [f]: mass of the source [" << mass << "] (M_sun)" << endl;
-	cout << "  -s --spin   [f]: spin of the source [" << spin << "]" << endl;
-	cout << "  -l --NUT    [f]: NUT charge of the source [" << NUT << "]" << endl;
-	cout << "  -A --sm     [f]: semimajor axis of the star (r_g)" << endl;
-	cout << "  -E --ec     [f]: eccentricity of the star" << endl;
-	cout << "  -I --in     [f]: inclination of the star (deg)" << endl;
-	cout << "  -o --pe     [f]: position angle of periapsis of the star (deg)" << endl;
-	cout << "  -O --an     [f]: ascending node of the star (deg)" << endl;
-	cout << "  -t --time   [f]: time limit [" << tFinal << "] (s)" << endl;
-	cout << "  -k --rec    [i]: record number [" << tStepNumber << "]" << endl;
-	cout << "  -c --tcal   [f]: time limit of calculation [" << TCal << "] (s)" << endl;
-	cout << "  -n --metric [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrTaubNUT (3) [" << metric << "]" << endl;
-	cout << "  -P --PN     [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [" << PN << "]" << endl;
-	cout << "  -R --ray    [i]: ray tracing, view (1) + shadow (4) + camera (2) [" << ray << "]" << endl;
-	cout << "  -a --abs    [f]: absolute accuracy [" << absAcc << "]" << endl;
-	cout << "  -r --rel    [f]: relative accuracy [" << relAcc << "]" << endl;
-	cout << "  -i --inc    [f]: inclination of the BH" << endl;
-	cout << "  -e --eps    [f]: epsilon of the BH" << endl;
-	cout << "  -f --format [s]: storage format [" << storeFormat << "]" << endl; // TODO: use int instead of str
-	cout << "  -h --hamilton  : use hamilonian instead of geodesic" << endl;
-	cout << "  -L --light     : light instead of particle" << endl;
-	cout << "  -b --bar       : show progress bar" << endl;
-	cout << "  -h --help      : this help information" << endl;
-	cout << endl;
-	cout << "Support:" << endl;
-	cout << "  github.com/Tai-Zhou/SBody" << endl;
+	fmt::print("SBody ({})\n\nOptions:\n", VERSION);
+	fmt::print("  -m --mass   [f]: mass of the source [{}] (M_sun)\n", mass);
+	fmt::print("  -s --spin   [f]: spin of the source [{}]\n", spin);
+	fmt::print("  -l --NUT    [f]: NUT charge of the source [{}]\n", NUT);
+	fmt::print("  -A --sm     [f]: semimajor axis of the star (r_g)\n");
+	fmt::print("  -E --ec     [f]: eccentricity of the star\n");
+	fmt::print("  -I --in     [f]: inclination of the star (deg)\n");
+	fmt::print("  -o --pe     [f]: position angle of periapsis of the star (deg)\n");
+	fmt::print("  -O --an     [f]: ascending node of the star (deg)\n");
+	fmt::print("  -t --time   [f]: time limit [{}] (s)\n", tFinal);
+	fmt::print("  -k --rec    [i]: record number [{}] (s)\n", tStepNumber);
+	fmt::print("  -c --tcal   [f]: time limit of calculation [{}] (s)\n", TCal);
+	fmt::print("  -n --metric [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrTaubNUT (3) [{}]\n", metric);
+	fmt::print("  -P --PN     [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [{}]\n", PN);
+	fmt::print("  -R --ray    [i]: ray tracing, view (1) + shadow (4) + camera (2) [{}]\n", ray);
+	fmt::print("  -a --abs    [f]: absolute accuracy [{}]\n", absAcc);
+	fmt::print("  -r --rel    [f]: relative accuracy [{}]\n", relAcc);
+	fmt::print("  -i --inc    [f]: inclination of the BH\n");
+	fmt::print("  -e --eps    [f]: epsilon of the BH\n");
+	fmt::print("  -f --format [s]: storage format [{}]\n", storeFormat);
+	fmt::print("  -L --light     : light instead of particle\n");
+	fmt::print("  -b --bar       : show progress bar\n");
+	fmt::print("  -h --help      : this help information\n");
+	fmt::print("\nSupport:\n  github.com/Tai-Zhou/SBody");
 	exit(1);
 }
 
@@ -197,8 +192,7 @@ int main(int argc, char *argv[]) {
 	if (metric == 0)
 		ray = 0;
 	Metric::setMetric(metric, PN, mass, spin, charge, NUT);
-	char strFormat[1024]; // TODO: waiting for C++20
-	snprintf(strFormat, 1024, " (%.1f,%.1f,%.1f)[%f,%f]", spin, charge, NUT, inc, eps);
+	string strFormat = fmt::format(" ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps);
 	if (IO::displayProgressBar) {
 		indicators::show_console_cursor(false);
 		IO::progressBars[0].set_option(indicators::option::ForegroundColor{indicators::Color(metric)});
@@ -232,8 +226,7 @@ int main(int argc, char *argv[]) {
 		y[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
 		y[6] = xp6 * cos(eps) - xp5 * sin(eps);
 		y[7] = xp7 * cos(inc) - (xp5 * cos(eps) + xp6 * sin(eps)) * sin(inc);
-	}
-	else {
+	} else {
 		x[0] = 0;
 		if (restMass) {
 			double r = a * (1 - e * e) / (1 + e * cos(trueAnomaly));
@@ -250,8 +243,7 @@ int main(int argc, char *argv[]) {
 			x[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
 			x[6] = xp6 * cos(eps) - xp5 * sin(eps);
 			x[7] = xp7 * cos(inc) - (xp5 * cos(eps) + xp6 * sin(eps)) * sin(inc);
-		}
-		else {
+		} else {
 			x[1] = mass * 1000;
 			x[5] = -1.;
 			x[6] = 0;
@@ -277,15 +269,14 @@ int main(int argc, char *argv[]) {
 		while (status <= 0 && t < tStep)
 			status = integ.apply(&t, tStep, &h, star_0.pos);
 		if (status > 0)
-			cerr << "[!] main status = " << status << endl;
+			fmt::print(stderr, "[!] main status = {}\n", status);
 		if (metric == 0)
 			copy(star_0.pos, star_0.pos + 8, temp.begin());
 		else {
 			if (Hamiltonian) {
 				copy(star_0.pos, star_0.pos + 8, temp.begin());
 				Metric::qp2qdq(temp.data()); // TODO: need s2c()
-			}
-			else
+			} else
 				Metric::s2c(star_0.pos, temp.data());
 		}
 		temp[8] = t / Unit::s;
