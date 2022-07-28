@@ -9,20 +9,26 @@ Object
 Object
 ------
 
-.. doxygenclass:: SBody::Object::object
+.. doxygenclass:: SBody::Object
    :members:
    :no-link:
 
 Star
 ----
 
-.. doxygenclass:: SBody::Object::star
+.. index::
+   Star
+
+.. doxygenclass:: SBody::Star
    :members:
    :no-link:
 
 Disk
 ----
 
-.. doxygenclass:: SBody::Object::disk
+.. index::
+   Disk
+
+.. doxygenclass:: SBody::Disk
    :members:
    :no-link:

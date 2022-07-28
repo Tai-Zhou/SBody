@@ -13,7 +13,7 @@ Camera
 ------
 
 .. index::
-   View
+   Camera
 
 .. doxygenclass:: SBody::camera
    :members:

@@ -58,7 +58,7 @@ namespace SBody {
 		 * @param rayNO
 		 * @return int
 		 */
-		int traceStar(Object::star &s, int rayNO);
+		int traceStar(Star &s, int rayNO);
 		/**
 		 * @brief
 		 *

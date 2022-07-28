@@ -20,26 +20,26 @@ Utility
 Integrator
 ----------
 
-.. doxygenclass:: SBody::integrator
+.. doxygenclass:: SBody::Integrator
    :members:
    :no-link:
 
 Math
 ----
 
-.. doxygenfunction:: SBody::dot
+.. doxygenfunction:: SBody::Dot
    :no-link:
 
-.. doxygenfunction:: SBody::norm
+.. doxygenfunction:: SBody::Norm
    :no-link:
 
-.. doxygenfunction:: SBody::cross
+.. doxygenfunction:: SBody::Cross
    :no-link:
 
-.. doxygenfunction:: SBody::oppositeSign
+.. doxygenfunction:: SBody::OppositeSign
    :no-link:
 
-.. doxygenfunction:: SBody::mod2Pi
+.. doxygenfunction:: SBody::ModBy2Pi
    :no-link:
 
 .. doxygenfunction:: SBody::_0x

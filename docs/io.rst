@@ -8,11 +8,11 @@ Input & Output
 Progress Bar
 ------------
 
-.. doxygenvariable:: displayProgressBar
-   :no-link:
-.. doxygenvariable:: progressBars
-   :no-link:
-.. doxygenfunction:: progressBarComplete
+.. index::
+   Progress Bar
+
+.. doxygenclass:: ProgressBar
+   :members:
    :no-link:
 
 File
@@ -21,7 +21,7 @@ File
 .. index::
    File
 
-.. doxygenclass:: SBody::IO::file
+.. doxygenclass:: SBody::File
    :members:
    :no-link:
 
@@ -31,7 +31,7 @@ NumPy
 .. index::
    NumPy
 
-.. doxygenclass:: SBody::IO::NumPy
+.. doxygenclass:: SBody::NumPy
    :members:
    :no-link:
 
@@ -41,6 +41,6 @@ Comma-Separated Values
 .. index::
    CSV
 
-.. doxygenclass:: SBody::IO::CSV
+.. doxygenclass:: SBody::CSV
    :members:
    :no-link:

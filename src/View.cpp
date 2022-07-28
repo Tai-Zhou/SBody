@@ -31,7 +31,7 @@ using namespace std;
 
 namespace SBody {
 	view::view(double r, double theta, string filename) : r(r), theta(theta), sinto(sin(theta)), costo(cos(theta)), tFinal(-r - 2e4 * 1.), output(make_unique<NumPy>(filename, vector<int>({28}))) {}
-	int view::traceStar(Object::star &s, int rayNO) { // FIXME:!!!!
+	int view::traceStar(Star &s, int rayNO) { // FIXME:!!!!
 		const double rs = s.pos[1], thetas = s.pos[2], phis = s.pos[3], sints = sin(thetas), costs = cos(thetas), sinps = sin(phis), cosps = cos(phis);
 		double alpha0 = GSL_POSINF, alpha1 = (rs + 1.) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + 1.) * (costs * sinto - sints * cosps * costo), ph[10], cosph, last[10], h;
 #ifdef RECORD_TRACE
@@ -207,9 +207,9 @@ namespace SBody {
 			}
 		}
 #ifdef VIEW_TAU
-		output->save({alpha1, beta1, s.frequencyTau(ph), (ph[8] + ph[9]) / Unit::s});
+		output->save({alpha1, beta1, s.FrequencyTau(ph), (ph[8] + ph[9]) / Unit::s});
 #else
-		output->save({alpha1, beta1, s.frequency(ph), (ph[8] + ph[9]) / Unit::s, res[0][1], res[0][2], res[0][3], res[0][5], res[0][6], res[0][7], res[1][1], res[1][2], res[1][3], res[1][5], res[1][6], res[1][7], res[2][1], res[2][2], res[2][3], res[2][5], res[2][6], res[2][7], res[3][1], res[3][2], res[3][3], res[3][5], res[3][6], res[3][7]});
+		output->save({alpha1, beta1, s.Frequency(ph), (ph[8] + ph[9]) / Unit::s, res[0][1], res[0][2], res[0][3], res[0][5], res[0][6], res[0][7], res[1][1], res[1][2], res[1][3], res[1][5], res[1][6], res[1][7], res[2][1], res[2][2], res[2][3], res[2][5], res[2][6], res[2][7], res[3][1], res[3][2], res[3][3], res[3][5], res[3][6], res[3][7]});
 #endif
 		return 0;
 	}
@@ -343,9 +343,9 @@ namespace SBody {
 			while (status <= 0 && ph[8] > t1) {
 				copy(ph, ph + 10, last);
 				status = integ.Apply(ph + 8, t1, ph + 9, ph);
-				for (auto objP : Object::objectList)
-					if (objP->hit(ph, last))
-						screen[i][j] = objP->frequency(ph); // FIXME: if multi objects
+				for (auto objP : Object::object_list_)
+					if (objP->Hit(ph, last))
+						screen[i][j] = objP->Frequency(ph); // FIXME: if multi objects
 				if (screen[i][j] > epsilon)
 					break;
 			}

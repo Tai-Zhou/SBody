@@ -257,8 +257,8 @@ int main(int argc, char *argv[]) {
 			Metric::qdq2qp(y);
 	}
 	Integrator integ(Metric::function, Metric::jacobian, metric != 0);
-	Object::star star_0(Unit::R_sun, y, 0);
-	Object::objectList.push_back(&star_0);
+	Star star_0(Unit::R_sun, y, 0);
+	Object::object_list_.push_back(&star_0);
 	NumPy rec(Metric::name + strFormat, {12});
 	vector<double> temp(12);
 	int status = 0, TUse, TLastUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();

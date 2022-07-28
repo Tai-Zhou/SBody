@@ -162,7 +162,7 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 		Metric::particleNormalization(y);
 	}
 	Integrator integ(Metric::function, Metric::jacobian, metric != 0, &PN);
-	Object::star star_0(Unit::R_sun, y, 0);
+	Star star_0(Unit::R_sun, y, 0);
 	auto result = py::array_t<double>(tList.size() * 8);
 	double *result_ptr = (double *)result.request().ptr;
 	int status = 0, rayNO = 0;
