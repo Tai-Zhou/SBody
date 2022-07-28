@@ -43,21 +43,21 @@ namespace SBody {
 	 * @brief
 	 *
 	 */
-	class file {
+	class File {
 	  protected:
 		/// File buffer to the file
-		std::filebuf fileBuf;
+		std::filebuf file_buffer_;
 		/**
 		 * @brief Construct a new file object
 		 *
-		 * @param fileName
+		 * @param file_name
 		 * @param mode
 		 */
-		file(std::string fileName, std::ios::openmode mode);
+		File(std::string file_name, std::ios::openmode mode);
 
 	  public:
 		/// Destroy the file object
-		virtual ~file();
+		virtual ~File();
 		/**
 		 * @brief Save the coming data.
 		 *
@@ -70,23 +70,23 @@ namespace SBody {
 	 * @brief
 	 *
 	 */
-	class NumPy : public file {
+	class NumPy : public File {
 	  private:
 		/// Dimension of the NumPy file.
-		const std::vector<int> dim;
+		const std::vector<int> dimension_;
 		/// Size of a row
-		int dimSize;
+		int row_size_;
 		/// Total size of all saved bytes
-		int fileSize;
+		int file_size_;
 
 	  public:
 		/**
 		 * @brief Construct a new NumPy object
 		 *
-		 * @param fileName
+		 * @param file_name
 		 * @param dimension
 		 */
-		NumPy(std::string fileName, std::vector<int> dimension);
+		NumPy(std::string file_name, std::vector<int> dimension);
 		/// Destroy the NumPy object
 		~NumPy();
 		/**
@@ -101,19 +101,19 @@ namespace SBody {
 	 * @brief
 	 *
 	 */
-	class CSV : public file {
+	class CSV : public File {
 	  private:
 		/// Separator of the file.
-		char sep;
+		char separator_;
 
 	  public:
 		/**
 		 * @brief Construct a new CSV object.
 		 *
-		 * @param fileName
-		 * @param separator Separator of the file. If `sep == '\t'`, the file would be a Tab-Separated Values (TSV).
+		 * @param file_name
+		 * @param separator Separator of the file. If `separator == '\t'`, the file would be a Tab-Separated Values (TSV).
 		 */
-		CSV(std::string fileName, char separator = ',');
+		CSV(std::string file_name, char separator = ',');
 		/**
 		 * @brief Save the coming data.
 		 *
@@ -132,9 +132,9 @@ namespace SBody {
 		/**
 		 * @brief Construct a new FITS object
 		 *
-		 * @param fileName
+		 * @param file_name
 		 */
-		FITS(std::string fileName);
+		FITS(std::string file_name);
 		/**
 		 * @brief Save the coming data.
 		 *

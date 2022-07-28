@@ -28,7 +28,7 @@ namespace SBody {
 		const double sinto;
 		const double costo;
 		const double tFinal;
-		std::unique_ptr<file> output;
+		std::unique_ptr<File> output;
 
 	  public:
 		/**

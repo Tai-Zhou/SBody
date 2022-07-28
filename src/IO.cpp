@@ -32,62 +32,62 @@ namespace SBody {
 		bars_[index].set_option(indicators::option::PrefixText{prefix});
 		bars_[index].mark_as_completed();
 	}
-	file::file(string fileName, ios::openmode mode) {
-		if (fileName.empty())
-			fileBuf.open("/dev/null", mode);
+	File::File(string file_name, ios::openmode mode) {
+		if (file_name.empty())
+			file_buffer_.open("/dev/null", mode);
 		else
-			fileBuf.open("../data/" + fileName, mode);
-		if (!fileBuf.is_open()) {
+			file_buffer_.open("../data/" + file_name, mode);
+		if (!file_buffer_.is_open()) {
 			fmt::print(stderr, "[!] IO file not open\n");
 			exit(1);
 		}
 	}
-	file::~file() {
-		fileBuf.close();
+	File::~File() {
+		file_buffer_.close();
 	}
-	NumPy::NumPy(string fileName, vector<int> dimension) : file(fileName + ".npy", ios::binary | ios::out), dim(dimension), fileSize(0) {
-		dimSize = 1;
-		for (int i : dim)
+	NumPy::NumPy(string file_name, vector<int> dimension) : File(file_name + ".npy", ios::binary | ios::out), dimension_(dimension), file_size_(0) {
+		row_size_ = 1;
+		for (int i : dimension)
 			if (i < 1)
 				fmt::print(stderr, "[?] NumPy file dimension warning (smaller than 1)\n");
 			else
-				dimSize *= i;
-		fileBuf.sputn("\x93NUMPY\x01\x00\x76\x00{'descr': '<f8', 'fortran_order': False, 'shape': (                                                                  \n", 128);
+				row_size_ *= i;
+		file_buffer_.sputn("\x93NUMPY\x01\x00\x76\x00{'descr': '<f8', 'fortran_order': False, 'shape': (                                                                  \n", 128);
 	}
 	NumPy::~NumPy() {
-		int dimNum = ceil(fileSize / dimSize);
-		for (int i = dimNum * dimSize; i > fileSize; --i)
-			fileBuf.sputn("\0\0\0\0\0\0\0\0", 8);
-		fileBuf.pubseekpos(61);
-		string dimNumS = to_string(dimNum);
-		fileBuf.sputn(dimNumS.c_str(), dimNumS.length());
-		for (int i : dim)
+		int row_number = ceil(file_size_ / row_size_);
+		for (int i = row_number * row_size_; i > file_size_; --i)
+			file_buffer_.sputn("\0\0\0\0\0\0\0\0", 8);
+		file_buffer_.pubseekpos(61);
+		string row_number_string = to_string(row_number);
+		file_buffer_.sputn(row_number_string.c_str(), row_number_string.length());
+		for (int i : dimension_)
 			if (i < 1)
-				fileBuf.sputn(", 1", 3);
+				file_buffer_.sputn(", 1", 3);
 			else {
-				dimNumS = ", " + to_string(i);
-				fileBuf.sputn(dimNumS.c_str(), dimNumS.length());
+				row_number_string = ", " + to_string(i);
+				file_buffer_.sputn(row_number_string.c_str(), row_number_string.length());
 			}
-		fileBuf.sputn("), }", 4);
+		file_buffer_.sputn("), }", 4);
 	}
 	int NumPy::save(const vector<double> &data) {
-		fileSize += data.size();
-		fileBuf.sputn(reinterpret_cast<const char *>(data.data()), 8 * data.size());
+		file_size_ += data.size();
+		file_buffer_.sputn(reinterpret_cast<const char *>(data.data()), 8 * data.size());
 		return 0;
 	}
-	CSV::CSV(string fileName, char separator) : file(fileName + ".csv", ios::out), sep(separator) {}
+	CSV::CSV(string file_name, char separator) : File(file_name + ".csv", ios::out), separator_(separator) {}
 	int CSV::save(const vector<double> &data) {
 		for (const double &element : data) {
 			string elements = to_string(element);
-			fileBuf.sputn(elements.c_str(), elements.length());
-			fileBuf.sputc(sep);
+			file_buffer_.sputn(elements.c_str(), elements.length());
+			file_buffer_.sputc(separator_);
 		}
-		fileBuf.pubseekoff(-1, ios::cur);
-		fileBuf.sputc('\n');
+		file_buffer_.pubseekoff(-1, ios::cur);
+		file_buffer_.sputc('\n');
 		return 0;
 	}
 #ifdef WITH_CFITSIO
-	FITS::FITS(string fileName) : file(fileName + ".fits", ios::binary | ios::out) {}
+	FITS::FITS(string file_name) : file(file_name + ".fits", ios::binary | ios::out) {}
 	int FITS::save(const vector<double> &data) {
 		fitsfile *fptr;
 		char card[FLEN_CARD];
