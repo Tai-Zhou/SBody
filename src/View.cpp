@@ -39,11 +39,11 @@ namespace SBody {
 		IO::NumPy rec("Trace " + to_string(rayNO), 12);
 #endif
 #ifdef VIEW_TAU
-		integrator integ(Metric::functionTau, Metric::jacobian, 2);
+		Integrator integ(Metric::functionTau, Metric::jacobian, 2);
 #elif VIEW_HAMILTONIAN
-		integrator integ(Metric::functionHamiltonian, Metric::jacobian, 2);
+		Integrator integ(Metric::functionHamiltonian, Metric::jacobian, 2);
 #else
-		integrator integ(Metric::function, Metric::jacobian, 2);
+		Integrator integ(Metric::function, Metric::jacobian, 2);
 #endif
 		while (gsl_hypot(alpha1 - alpha0, beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
 			alpha0 = alpha1;
@@ -85,15 +85,15 @@ namespace SBody {
 				}
 				copy(ph, ph + 10, last);
 				if (fixed)
-					status = integ.apply_fixed(ph + 9, h, ph);
+					status = integ.ApplyFixedStep(ph + 9, h, ph);
 				else
-					status = integ.apply(ph + 9, tFinal, &h, ph);
+					status = integ.Apply(ph + 9, tFinal, &h, ph);
 				cosph = (rs * sints * cosps - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * GSL_SIGN(ph[2]) * cos(ph[2])) * costo;
 				if (cosph > rs * relAcc) {
 					copy(last, last + 10, ph);
 					h *= 0.3;
 					fixed = 1;
-					integ.reset();
+					integ.Reset();
 				} else {
 					if (ph[9] < tFinal * 1e-8) {
 						ph[8] += ph[9];
@@ -167,15 +167,15 @@ namespace SBody {
 				}
 				copy(ph, ph + 10, last);
 				if (fixed)
-					status = integ.apply_fixed(ph + 9, h, ph);
+					status = integ.ApplyFixedStep(ph + 9, h, ph);
 				else
-					status = integ.apply(ph + 9, tFinal, &h, ph);
+					status = integ.Apply(ph + 9, tFinal, &h, ph);
 				cosph = (rs * sints * cosps - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * cos(ph[3])) * sinto + (rs * costs - ph[1] * GSL_SIGN(ph[2]) * cos(ph[2])) * costo;
 				if (cosph > rs * relAcc) {
 					copy(last, last + 10, ph);
 					h *= 0.3;
 					fixed = 1;
-					integ.reset();
+					integ.Reset();
 				} else {
 					if (ph[9] < tFinal * 1e-8) {
 						ph[8] += ph[9];
@@ -218,9 +218,9 @@ namespace SBody {
 		NumPy rec("shadow " + to_string(Metric::a) + "," + to_string(Metric::l), {2});
 		double h, rin = 2., rout = 10., rmid = 6., ph[10];
 #ifdef VIEW_TAU
-		integrator integ(Metric::functionTau, Metric::jacobian, 2);
+		Integrator integ(Metric::functionTau, Metric::jacobian, 2);
 #else
-		integrator integ(Metric::function, Metric::jacobian, 2);
+		Integrator integ(Metric::function, Metric::jacobian, 2);
 #endif
 		indicators::BlockProgressBar shadowProgressBar{
 			indicators::option::ShowElapsedTime{true},
@@ -261,7 +261,7 @@ namespace SBody {
 				h = -1.;
 				Metric::lightNormalization(ph, 1.);
 				while (status <= 0 && ph[8] + ph[9] > tFinal) {
-					status = integ.apply(ph + 9, tFinal, &h, ph);
+					status = integ.Apply(ph + 9, tFinal, &h, ph);
 					if (ph[9] < tFinal * 1e-8) {
 						ph[8] += ph[9];
 						ph[9] = 0.;
@@ -277,7 +277,7 @@ namespace SBody {
 					rout = rmid;
 				else
 					rin = rmid;
-				integ.reset();
+				integ.Reset();
 			}
 			rin -= 2. * interval * rmid;
 			rout += 2. * interval * rmid;
@@ -314,14 +314,14 @@ namespace SBody {
 			int status = 0;
 			initials[p][9] = -1.;
 #ifdef VIEW_TAU
-			integrator integ(Metric::functionTau, Metric::jacobian, 2);
+			Integrator integ(Metric::functionTau, Metric::jacobian, 2);
 #else
-			integrator integ(Metric::functionHamiltonian, Metric::jacobian, 2);
+			Integrator integ(Metric::functionHamiltonian, Metric::jacobian, 2);
 #endif
 			Metric::lightNormalization(initials[p].data(), 1.);
 			Metric::qdq2qp(initials[p].data());
 			while (status <= 0 && initials[p][8] > t1 && initials[p][1] > 100)
-				status = integ.apply(initials[p].data() + 8, t1, initials[p].data() + 9, initials[p].data());
+				status = integ.Apply(initials[p].data() + 8, t1, initials[p].data() + 9, initials[p].data());
 			if (status > 0)
 				fmt::print(stderr, "[!] camera::initialize status = {}\n", status);
 		}
@@ -336,13 +336,13 @@ namespace SBody {
 			int status = 0;
 			copy(initials[p].begin(), initials[p].end(), ph);
 #ifdef VIEW_TAU
-			integrator integ(Metric::functionTau, Metric::jacobian, 2);
+			Integrator integ(Metric::functionTau, Metric::jacobian, 2);
 #else
-			integrator integ(Metric::function, Metric::jacobian, 2);
+			Integrator integ(Metric::function, Metric::jacobian, 2);
 #endif
 			while (status <= 0 && ph[8] > t1) {
 				copy(ph, ph + 10, last);
-				status = integ.apply(ph + 8, t1, ph + 9, ph);
+				status = integ.Apply(ph + 8, t1, ph + 9, ph);
 				for (auto objP : Object::objectList)
 					if (objP->hit(ph, last))
 						screen[i][j] = objP->frequency(ph); // FIXME: if multi objects
@@ -371,12 +371,12 @@ namespace SBody {
 				int status = 0;
 				copy(initials[i * pixel + j].begin(), initials[i * pixel + j].end(), ph);
 #ifdef VIEW_TAU
-				integrator integ(Metric::functionTau, Metric::jacobian, 2);
+				Integrator integ(Metric::functionTau, Metric::jacobian, 2);
 #else
-				integrator integ(Metric::functionHamiltonian, Metric::jacobian, 2);
+				Integrator integ(Metric::functionHamiltonian, Metric::jacobian, 2);
 #endif
 				while (status <= 0 && ph[8] > t1 && ph[1] > 3. && ph[1] < 3.e2)
-					status = integ.apply(ph + 8, t1, ph + 9, ph);
+					status = integ.Apply(ph + 8, t1, ph + 9, ph);
 				if (status > 0)
 					fmt::print(stderr, "[!] camera::lens status = {}\n", status);
 				if (ph[1] <= 3.)

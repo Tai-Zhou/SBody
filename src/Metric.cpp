@@ -131,19 +131,18 @@ namespace SBody {
 			// v = {v_x, v_y, v_z}
 			// r = {r, \theta, \phi}
 			// w = {v_r, v_\theta, v_\phi}
-			r[0] = norm(x);
+			r[0] = Norm(x);
 			if (r[0] < epsilon)
 				return 1;
 			r[1] = acos(x[2] / r[0]);
-			w[0] = SBody::dot(x, v) / r[0];
-			const double normXY = norm(x, 2);
+			w[0] = SBody::Dot(x, v) / r[0];
+			const double normXY = Norm(x, 2);
 			if (normXY < epsilon) {
-				double normVXY = norm(v, 2);
+				double normVXY = Norm(v, 2);
 				if (normVXY < epsilon) {
 					r[2] = 0;
 					w[1] = 0;
-				}
-				else {
+				} else {
 					if (v[1] >= 0)
 						r[2] = acos(v[0] / normVXY);
 					else
@@ -154,8 +153,7 @@ namespace SBody {
 						w[1] = -normVXY / r[0];
 				}
 				w[2] = 0;
-			}
-			else {
+			} else {
 				if (x[1] >= 0)
 					r[2] = acos(x[0] / normXY);
 				else
@@ -202,8 +200,8 @@ namespace SBody {
 				return -gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[2] - y[2]) + gsl_pow_2(x[3] - y[3]);
 			}
 			int function(double t, const double y[], double dydt[], void *params) {
-				const double r = norm(y + 1), r_1 = 1. / r, v2 = SBody::dot(y + 5);
-				const double m_r = r_1, rdot = SBody::dot(y + 1, y + 5) * r_1;
+				const double r = Norm(y + 1), r_1 = 1. / r, v2 = SBody::Dot(y + 5);
+				const double m_r = r_1, rdot = SBody::Dot(y + 1, y + 5) * r_1;
 				const double F = m_r * gsl_pow_2(r_1), m_r2 = gsl_pow_2(m_r), rdot2 = gsl_pow_2(rdot);
 				dydt[0] = y[4];
 				dydt[1] = y[5];
@@ -236,8 +234,8 @@ namespace SBody {
 				return GSL_SUCCESS;
 			}
 			double energy(const double y[]) {
-				const double r = norm(y + 1), r_1 = 1. / r, v2 = SBody::dot(y + 5);
-				const double m_r = r_1, rdot = SBody::dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2), v8 = gsl_pow_2(v4);
+				const double r = Norm(y + 1), r_1 = 1. / r, v2 = SBody::Dot(y + 5);
+				const double m_r = r_1, rdot = SBody::Dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2), v8 = gsl_pow_2(v4);
 				const double m_r2 = gsl_pow_2(m_r), m_r3 = gsl_pow_3(m_r), m_r4 = gsl_pow_4(m_r), rdot2 = gsl_pow_2(rdot);
 				double E = 0.5 * v2 - m_r;
 				if (PN & 1)
@@ -249,11 +247,11 @@ namespace SBody {
 				return E;
 			}
 			double angularMomentum(const double y[]) {
-				const double r = norm(y + 1), r_1 = 1. / r, v2 = SBody::dot(y + 5);
-				const double m_r = r_1, rdot = SBody::dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2);
+				const double r = Norm(y + 1), r_1 = 1. / r, v2 = SBody::Dot(y + 5);
+				const double m_r = r_1, rdot = SBody::Dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2);
 				const double m_r2 = gsl_pow_2(m_r), m_r3 = gsl_pow_3(m_r), rdot2 = gsl_pow_2(rdot);
 				double J[3], eff = 0;
-				cross(y, y + 3, J);
+				Cross(y, y + 3, J);
 				if (PN & 1)
 					eff += 3. * m_r + 0.5 * v2;
 				if (PN & 2)
@@ -262,22 +260,22 @@ namespace SBody {
 					eff += 2.5 * m_r3 + 0.3125 * v6 + 11.25 * m_r2 * v2 + 0.5 * m_r2 * rdot2 + 4.125 * m_r * v4;
 				for (int i = 0; i < 3; ++i)
 					J[i] += J[i] * eff;
-				return norm(J);
+				return Norm(J);
 			}
 			double carter(const double y[], const double mu2) { // FIXME: not verified!
 				double c[3];
-				cross(y + 1, y + 5, c);
-				return SBody::dot(c) / gsl_pow_2(y[4]);
+				Cross(y + 1, y + 5, c);
+				return SBody::Dot(c) / gsl_pow_2(y[4]);
 			}
 			int particleNormalization(double y[]) { // TODO: limit the light speed
 				y[4] = 1;
-				if (SBody::dot(y + 5) >= 1)
+				if (SBody::Dot(y + 5) >= 1)
 					return 1;
 				return 0;
 			}
 			int lightNormalization(double y[], double e) {
 				y[4] = 1;
-				const double v_1 = 1. / SBody::norm(y + 5);
+				const double v_1 = 1. / SBody::Norm(y + 5);
 				for (int i = 5; i < 8; ++i)
 					y[i] *= v_1;
 				return 0;
@@ -291,8 +289,8 @@ namespace SBody {
 			}
 			double ds2(const double x[], const double y[], const size_t dimension) {
 				if (dimension == 3)
-					return x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2.) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * mod2Pi(x[3] - y[3]));
-				return -(1. - 2. / x[1]) * gsl_pow_2(x[0] - y[0]) + x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2.) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * mod2Pi(x[3] - y[3]));
+					return x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2.) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * ModBy2Pi(x[3] - y[3]));
+				return -(1. - 2. / x[1]) * gsl_pow_2(x[0] - y[0]) + x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2.) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * ModBy2Pi(x[3] - y[3]));
 			}
 			int qdq2qp(double y[]) {
 				const double dtdtau = 1. / y[4], r2 = gsl_pow_2(y[1]);
@@ -420,7 +418,7 @@ namespace SBody {
 				return (mr_rho2 - 1.) * x[0] * y[0] - mr_rho2 * a * sint2 * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2) * sint2 + mr_rho2 * a2 * gsl_pow_2(sint2)) * x[3] * y[3];
 			}
 			double ds2(const double x[], const double y[], const size_t dimension) {
-				const double r = x[1], r2 = gsl_pow_2(r), d0 = x[0] - y[0], d3 = mod2Pi(x[3] - y[3]);
+				const double r = x[1], r2 = gsl_pow_2(r), d0 = x[0] - y[0], d3 = ModBy2Pi(x[3] - y[3]);
 				const double sint = sin(x[2]), sint2 = gsl_pow_2(sint), cost = cos(x[2]), cost2 = gsl_pow_2(cost);
 				const double Delta = r2 - 2. * r + a2, rho2 = r2 + a2 * cost2;
 				const double mr_rho2 = 2. * r / rho2;
@@ -589,7 +587,7 @@ namespace SBody {
 				return (a2 * sint2 - Delta) * rho_2 * x[0] * y[0] - 2. * ((r + l2) * a * sint2 + Delta * l * cost) * rho_2 * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + (gsl_pow_2(rho2 + a * chi) * sint2 - chi * chi * Delta) * rho_2 * x[3] * y[3];
 			}
 			double ds2(const double x[], const double y[], const size_t dimension) {
-				const double r = x[1], sint = sin(x[2]), cost = cos(x[2]), d0 = x[0] - y[0], d3 = mod2Pi(x[3] - y[3]);
+				const double r = x[1], sint = sin(x[2]), cost = cos(x[2]), d0 = x[0] - y[0], d3 = ModBy2Pi(x[3] - y[3]);
 				const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint);
 				const double Delta = r2 - 2. * r - l2 + a2, rho2 = r2 + gsl_pow_2(l + a * cost), chi = a * sint2 - 2. * l * cost;
 				const double rho_2 = 1. / rho2;

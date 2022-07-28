@@ -13,6 +13,10 @@
 #define SBODY_UNIT_H
 
 namespace SBody {
+	/**
+	 * @brief SBody uses the Geometrized units, in which \f$c=G=1\f$. In addition, the central black hole mass is set to 1.
+	 *
+	 */
 	class Unit {
 	  public:
 		/**
@@ -64,7 +68,7 @@ namespace SBody {
 		static double M_sun;
 		/// Mass of Earth, \f$M_\oplus\f$
 		static double M_earth;
-		/// Mass of Jupiter, \f$M_{jup}\f$
+		/// Mass of Jupiter, \f$M_\mathrm{jup}\f$
 		static double M_jup;
 		/// Erg
 		static double erg;

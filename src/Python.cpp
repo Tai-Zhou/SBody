@@ -138,7 +138,7 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 		y[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
 		y[2] = xp2 * cos(eps) - xp1 * sin(eps);
 		y[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
-		double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = GSL_SIGN(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
+		double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = GSL_SIGN(M_PI - ModBy2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
 		double tp5 = vtheta * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
 		double xp5 = tp5 * cos(ascendingNode) - tp6 * sin(ascendingNode), xp6 = tp5 * sin(ascendingNode) + tp6 * cos(ascendingNode), xp7 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * sin(inclination);
 		y[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
@@ -152,7 +152,7 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 		x[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
 		x[2] = xp2 * cos(eps) - xp1 * sin(eps);
 		x[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
-		double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = GSL_SIGN(M_PI - mod2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
+		double vtheta = sqrt((1 - e * e) * mass * a) / r, vr = GSL_SIGN(M_PI - ModBy2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vtheta * vtheta));
 		double tp5 = vtheta * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
 		double xp5 = tp5 * cos(ascendingNode) - tp6 * sin(ascendingNode), xp6 = tp5 * sin(ascendingNode) + tp6 * cos(ascendingNode), xp7 = -(vtheta * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * sin(inclination);
 		x[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
@@ -161,20 +161,20 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 		Metric::c2s(x, y);
 		Metric::particleNormalization(y);
 	}
-	integrator integ(Metric::function, Metric::jacobian, metric != 0, &PN);
+	Integrator integ(Metric::function, Metric::jacobian, metric != 0, &PN);
 	Object::star star_0(Unit::R_sun, y, 0);
 	auto result = py::array_t<double>(tList.size() * 8);
 	double *result_ptr = (double *)result.request().ptr;
 	int status = 0, rayNO = 0;
 	double h = -1., tPoint = tList[0] * Unit::yr;
 	while (t > tPoint)
-		status = integ.apply(&t, tPoint, &h, star_0.pos);
+		status = integ.Apply(&t, tPoint, &h, star_0.pos);
 	h = 1.;
-	integ.reset();
+	integ.Reset();
 	for (double tPoint : tList) {
 		tPoint = tPoint * Unit::yr;
 		while (status <= 0 && t < tPoint)
-			status = integ.apply(&t, tPoint, &h, star_0.pos);
+			status = integ.Apply(&t, tPoint, &h, star_0.pos);
 		if (status > 0)
 			py::print("[!] status =", status);
 		if (metric == 0)

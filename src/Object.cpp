@@ -41,7 +41,7 @@ namespace SBody {
 		}
 		disk::disk(double innerRadius, double outerRadius) : innerRadius(innerRadius), outerRadius(outerRadius) {}
 		int disk::hit(const double current[], const double last[]) {
-			if (innerRadius <= current[1] && current[1] <= outerRadius && oppositeSign(current[2] - M_PI_2, last[2] - M_PI_2))
+			if (innerRadius <= current[1] && current[1] <= outerRadius && OppositeSign(current[2] - M_PI_2, last[2] - M_PI_2))
 				return 1;
 			// if min distance between current and last < radius, return 1;
 			return 0;
@@ -51,7 +51,7 @@ namespace SBody {
 		}
 		thickDisk::thickDisk(double innerRadius, double outerRadius, double halfAngle) : disk(innerRadius, outerRadius), halfAngle(halfAngle) {}
 		int thickDisk::hit(const double current[], const double last[]) { // TODO: need update
-			if (innerRadius <= current[1] && current[1] <= outerRadius && oppositeSign(current[2] - M_PI_2, last[2] - M_PI_2))
+			if (innerRadius <= current[1] && current[1] <= outerRadius && OppositeSign(current[2] - M_PI_2, last[2] - M_PI_2))
 				return 1;
 			// if min distance between current and last < radius, return 1;
 			return 0;

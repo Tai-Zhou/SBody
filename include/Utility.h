@@ -36,24 +36,22 @@ namespace SBody {
 	 * @brief
 	 *
 	 */
-	class integrator {
+	class Integrator {
 	  private:
 		///
-		const int coordinate;
+		const int coordinate_;
 		///
-		const gsl_odeiv2_step_type *type;
+		gsl_odeiv2_control *control_;
 		///
-		gsl_odeiv2_control *control;
+		gsl_odeiv2_evolve *evolve_;
 		///
-		gsl_odeiv2_evolve *evolve;
+		gsl_odeiv2_step *step_;
 		///
-		gsl_odeiv2_step *step;
-		///
-		gsl_odeiv2_system system;
+		gsl_odeiv2_system system_;
 
 	  public:
 		/**
-		 * @brief Construct a new integrator object
+		 * @brief Construct a new Integrator object
 		 *
 		 * @param function
 		 * @param jacobian
@@ -61,10 +59,10 @@ namespace SBody {
 		 * @param params
 		 * @param type
 		 */
-		integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
+		Integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
 
-		/// Destroy the integrator object
-		~integrator();
+		/// Destroy the Integrator object
+		~Integrator();
 
 		/**
 		 * @brief
@@ -75,7 +73,7 @@ namespace SBody {
 		 * @param y
 		 * @return int
 		 */
-		int apply(double *t, double t1, double *h, double *y);
+		int Apply(double *t, double t1, double *h, double *y);
 
 		/**
 		 * @brief
@@ -85,14 +83,14 @@ namespace SBody {
 		 * @param y
 		 * @return int
 		 */
-		int apply_fixed(double *t, const double h, double *y);
+		int ApplyFixedStep(double *t, const double h, double *y);
 
 		/**
 		 * @brief
 		 *
 		 * @return int
 		 */
-		int reset();
+		int Reset();
 
 		/**
 		 * @brief
@@ -100,7 +98,7 @@ namespace SBody {
 		 * @param y
 		 * @return int
 		 */
-		int checkCoordinate(double *y);
+		int CheckCoordinate(double *y);
 	};
 
 	/**
@@ -111,7 +109,7 @@ namespace SBody {
 	 * @param dimension
 	 * @return double
 	 */
-	double dot(const double x[], const double y[] = nullptr, size_t dimension = 3);
+	double Dot(const double x[], const double y[] = nullptr, size_t dimension = 3);
 
 	/**
 	 * @brief Length of vector x, with 3 dimensions set by default
@@ -120,7 +118,7 @@ namespace SBody {
 	 * @param dimension
 	 * @return double
 	 */
-	double norm(const double x[], size_t dimension = 3);
+	double Norm(const double x[], size_t dimension = 3);
 
 	/**
 	 * @brief Cross product of vector \f$x\timesy\f$, stored in z
@@ -129,7 +127,7 @@ namespace SBody {
 	 * @param y
 	 * @param z
 	 */
-	void cross(const double x[], const double y[], double z[]);
+	void Cross(const double x[], const double y[], double z[]);
 
 	/**
 	 * @brief return 1 if x, y have opposite signs
@@ -138,7 +136,7 @@ namespace SBody {
 	 * @param y
 	 * @return int
 	 */
-	int oppositeSign(double x, double y);
+	int OppositeSign(double x, double y);
 
 	/**
 	 * @brief return x in [0, 2*pi)
@@ -146,7 +144,7 @@ namespace SBody {
 	 * @param x
 	 * @return double
 	 */
-	double mod2Pi(double x);
+	double ModBy2Pi(double x);
 
 	/**
 	 * @brief
