@@ -52,8 +52,9 @@ namespace SBody {
 	};
 	class Star : public Object {
 	  protected:
-		///
+		/// if the position of star fixed
 		const bool fixed_;
+		/// radius of star
 		const double radius_;
 		/// square of radius
 		const double radius_square_;

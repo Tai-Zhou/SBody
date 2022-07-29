@@ -11,7 +11,7 @@ Progress Bar
 .. index::
    Progress Bar
 
-.. doxygenclass:: ProgressBar
+.. doxygenclass:: SBody::ProgressBar
    :members:
    :no-link:
 

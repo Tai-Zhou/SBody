@@ -25,7 +25,7 @@ namespace SBody {
 		 * @param mass mass of the central black hole, in unit of \f$M_\odot\f$
 		 * @return int
 		 */
-		static int init(double mass);
+		static int Initialize(double mass);
 		/// Degree, in unit of rad
 		static constexpr double deg = 1.7453292519943295e-2;
 		/// Minute of arc, in unit of rad

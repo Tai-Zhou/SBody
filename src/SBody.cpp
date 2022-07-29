@@ -85,9 +85,9 @@ int main(int argc, char *argv[]) {
 	string storeFormat = "NumPy";
 	double inc = M_PI * 0. / 180., eps = 0.;
 	double a = 8.3, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180., ascendingNode = M_PI * 25.1 / 180., trueAnomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
-	unique_ptr<view> viewPtr;
+	unique_ptr<View> viewPtr;
 	unique_ptr<thread> shadowPtr;
-	unique_ptr<camera> cameraPtr;
+	unique_ptr<Camera> cameraPtr;
 	unique_ptr<thread> lensPtr;
 	const char *optShort = "m:s:l:A:E:I:o:O:t:k:c:n:P:R:a:r:i:e:f:Lbh";
 	const struct option optLong[] = {
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
 		default:
 			help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absAcc, relAcc, storeFormat);
 		}
-	Unit::init(mass);
+	Unit::Initialize(mass);
 	tFinal *= Unit::s;
 	double t = 0, tStep = 0, tRec = tFinal / tStepNumber;
 	if (metric == 0)
@@ -198,14 +198,14 @@ int main(int argc, char *argv[]) {
 		ProgressBar::bars_[0].set_option(indicators::option::PrefixText{string("?") + strFormat});
 	}
 	if (ray & 5) {
-		viewPtr = make_unique<view>(8180. * Unit::pc, inc, string("view") + strFormat);
+		viewPtr = make_unique<View>(8180. * Unit::pc, inc, string("view") + strFormat);
 		if (ray & 4)
-			shadowPtr = make_unique<thread>(&view::shadow, viewPtr.get(), 100);
+			shadowPtr = make_unique<thread>(&View::Shadow, viewPtr.get(), 100);
 	}
 	if (ray & 10) {
-		cameraPtr = make_unique<camera>(1000, 5e-2, mass * 1.e3, inc, string("camera") + strFormat);
+		cameraPtr = make_unique<Camera>(1000, 5e-2, mass * 1.e3, inc, string("camera") + strFormat);
 		if (ray & 8)
-			lensPtr = make_unique<thread>(&camera::lens, cameraPtr.get());
+			lensPtr = make_unique<thread>(&Camera::Lens, cameraPtr.get());
 	}
 	double x[8], y[8];
 	if (metric == 0) {
@@ -283,9 +283,9 @@ int main(int argc, char *argv[]) {
 		temp[10] = Metric::angularMomentum(star_0.pos);
 		temp[11] = Metric::carter(star_0.pos, 1.);
 		if (ray & 1)
-			viewPtr->traceStar(star_0, i);
+			viewPtr->TraceStar(star_0, i);
 		if (ray & 2)
-			cameraPtr->traceStar();
+			cameraPtr->TraceStar();
 		rec.save(temp);
 		TUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
 		if (ProgressBar::display_) {
@@ -301,7 +301,7 @@ int main(int argc, char *argv[]) {
 	if (ProgressBar::display_)
 		ProgressBar::SetComplete(0, string("!") + strFormat);
 	if (ray & 2)
-		cameraPtr->save();
+		cameraPtr->Save();
 	if (ray & 4)
 		shadowPtr->join();
 	if (ray & 8)

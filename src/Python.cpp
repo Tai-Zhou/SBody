@@ -115,19 +115,19 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 							2019.27084392, 2019.32185, 2019.42827, 2019.50532956,
 							2019.62025885, 2019.69998329};
 	double inc = M_PI * 0. / 180., eps = 0.;
-	Unit::init(mass);
+	Unit::Initialize(mass);
 	a *= 4.84813681109536e-09 * R * Unit::pc;
 	inclination *= M_PI / 180.;
 	ascendingNode *= M_PI / 180.;
 	periapsis *= M_PI / 180.;
 	double trueAnomaly = M_PI;
 	double t = tp - sqrt(gsl_pow_3(a / Unit::AU) / mass) * 0.5;
-	unique_ptr<view> viewPtr;
+	unique_ptr<View> viewPtr;
 	Metric::setMetric(metric, PN != 0 ? 1 : 0, mass, 0, 0, 0);
 	char strFormat[1024]; // TODO: waiting for C++20
 	snprintf(strFormat, 1024, " (%.1f,%.1f,%.1f)[%f,%f]", spin, 0., 0., inc, eps);
 	if (metric == 1)
-		viewPtr = make_unique<view>(8246.7 * Unit::pc, inc, string("view") + strFormat);
+		viewPtr = make_unique<View>(8246.7 * Unit::pc, inc, string("view") + strFormat);
 	double x[8], y[8];
 	if (metric == 0) {
 		y[0] = 0.;
@@ -180,7 +180,7 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 		if (metric == 0)
 			copy(star_0.pos, star_0.pos + 8, result_ptr + (rayNO++) * 8);
 		else
-			viewPtr->traceStar(star_0, rayNO++);
+			viewPtr->TraceStar(star_0, rayNO++);
 	}
 	return result.reshape({tList.size(), 8UL});
 }

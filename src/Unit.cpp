@@ -31,7 +31,7 @@ namespace SBody {
 	double Unit::Gpc = 2.0896825544594498e22;
 	double Unit::erg = 5.595677593689533e-55;
 	double Unit::J = 5.595677593689533e-48;
-	int Unit::init(double mass) {
+	int Unit::Initialize(double mass) {
 		if (mass <= 0)
 			return 1;
 		M_sun = 1. / mass;

@@ -21,14 +21,14 @@
 #include "Object.h"
 
 namespace SBody {
-	class view {
+	class View {
 	  protected:
-		const double r;
-		const double theta;
-		const double sinto;
-		const double costo;
-		const double tFinal;
-		std::unique_ptr<File> output;
+		const double r_;
+		const double theta_;
+		const double sin_theta_observer_;
+		const double cos_theta_observer_;
+		const double t_final_;
+		std::unique_ptr<File> output_;
 
 	  public:
 		/**
@@ -36,73 +36,73 @@ namespace SBody {
 		 *
 		 * @param r
 		 * @param theta
-		 * @param fileName
+		 * @param file_name
 		 */
-		view(double r, double theta, std::string fileName);
+		View(double r, double theta, std::string file_name);
 		/**
 		 * @brief
 		 *
 		 * @return int
 		 */
-		int rayInit();
+		int RayInit();
 		/**
 		 * @brief
 		 *
 		 * @return int
 		 */
-		int rayTrace();
+		int RayTrace();
 		/**
 		 * @brief
 		 *
-		 * @param s
-		 * @param rayNO
+		 * @param star
+		 * @param ray_number
 		 * @return int
 		 */
-		int traceStar(Star &s, int rayNO);
+		int TraceStar(Star &star, int ray_number);
 		/**
 		 * @brief
 		 *
 		 * @param n
 		 * @return int
 		 */
-		int shadow(int n);
+		int Shadow(int n);
 	};
-	class camera : public view {
+	class Camera : public View {
 	  protected:
-		const size_t pixel;
-		const double halfAngle;
-		std::vector<std::array<double, 10>> initials;
-		std::vector<std::vector<double>> screen;
+		const size_t pixel_;
+		const double half_angle_;
+		std::vector<std::array<double, 10>> initials_;
+		std::vector<std::vector<double>> screen_;
 
 	  public:
 		/**
 		 * @brief Construct a new camera object
 		 *
 		 * @param pixel
-		 * @param halfAngle
+		 * @param half_angle
 		 * @param r
 		 * @param theta
-		 * @param fileName
+		 * @param file_name
 		 */
-		camera(size_t pixel, double halfAngle, double r, double theta, std::string fileName);
+		Camera(size_t pixel, double half_angle, double r, double theta, std::string file_name);
 		/**
 		 * @brief
 		 *
 		 * @return int
 		 */
-		int traceStar();
+		int TraceStar();
 		/**
 		 * @brief
 		 *
 		 * @return int
 		 */
-		int lens();
+		int Lens();
 		/**
 		 * @brief
 		 *
 		 * @return int
 		 */
-		int save();
+		int Save();
 	};
 } // namespace SBody
 
