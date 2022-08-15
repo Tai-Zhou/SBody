@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
 	double t = 0, tStep = 0, tRec = tFinal / tStepNumber;
 	if (metric == 0)
 		ray = 0;
-	Metric::setMetric(metric, PN, mass, spin, charge, NUT);
+	metric::setMetric(metric, PN, mass, spin, charge, NUT);
 	string strFormat = fmt::format(" ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps);
 	if (ProgressBar::display_) {
 		indicators::show_console_cursor(false);
@@ -248,25 +248,27 @@ int main(int argc, char *argv[]) {
 			x[6] = 0;
 			x[7] = 0;
 		}
-		Metric::c2s(x, y);
+		metric::c2s(x, y);
 		if (restMass)
-			Metric::particleNormalization(y);
+			metric::particleNormalization(y);
 		else
-			Metric::lightNormalization(y, 1.);
+			metric::lightNormalization(y, 1.);
 		if (Hamiltonian)
-			Metric::qdq2qp(y);
+			metric::qdq2qp(y);
 	}
-	Integrator integ(Metric::function, Metric::jacobian, metric != 0);
+	// Integrator integ(metric::function, metric::jacobian, metric != 0);
+	class Metric tempMetric("Schwarzschild");
+	Integrator integrator = tempMetric.SetIntegrator(metric != 0);
 	Star star_0(Unit::R_sun, y, 0);
 	Object::object_list_.push_back(&star_0);
-	NumPy rec(Metric::name + strFormat, {12});
+	NumPy rec(metric::name + strFormat, {12});
 	vector<double> temp(12);
 	int status = 0, TUse, TLastUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
 	double h = 1., stepPercent = 100. / tStepNumber;
 	for (int i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
 		while (status <= 0 && t < tStep)
-			status = integ.Apply(&t, tStep, &h, star_0.pos);
+			status = integrator.Apply(&t, tStep, &h, star_0.pos);
 		if (status > 0)
 			fmt::print(stderr, "[!] main status = {}\n", status);
 		if (metric == 0)
@@ -274,14 +276,14 @@ int main(int argc, char *argv[]) {
 		else {
 			if (Hamiltonian) {
 				copy(star_0.pos, star_0.pos + 8, temp.begin());
-				Metric::qp2qdq(temp.data()); // TODO: need s2c()
+				metric::qp2qdq(temp.data()); // TODO: need s2c()
 			} else
-				Metric::s2c(star_0.pos, temp.data());
+				metric::s2c(star_0.pos, temp.data());
 		}
 		temp[8] = t / Unit::s;
-		temp[9] = Metric::energy(star_0.pos);
-		temp[10] = Metric::angularMomentum(star_0.pos);
-		temp[11] = Metric::carter(star_0.pos, 1.);
+		temp[9] = metric::energy(star_0.pos);
+		temp[10] = metric::angularMomentum(star_0.pos);
+		temp[11] = metric::carter(star_0.pos, 1.);
 		if (ray & 1)
 			viewPtr->TraceStar(star_0, i);
 		if (ray & 2)

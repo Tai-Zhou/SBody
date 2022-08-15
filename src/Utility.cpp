@@ -17,6 +17,8 @@
 
 namespace SBody {
 	double absAcc = 1e-15, relAcc = 1e-15;
+	const double sin_epsilon = sin(epsilon);
+	const double cos_epsilon = cos(epsilon);
 	Integrator::Integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params, const gsl_odeiv2_step_type *type) : coordinate_(coordinate), control_(gsl_odeiv2_control_y_new(absAcc, relAcc)), evolve_(gsl_odeiv2_evolve_alloc(8)), step_(gsl_odeiv2_step_alloc(type, 8)) {
 		system_ = gsl_odeiv2_system{function, jacobian, 8UL, params};
 	}

@@ -13,13 +13,20 @@
 
 #include <cmath>
 
+#include <gsl/gsl_cblas.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_math.h>
 
 #include "Utility.h"
 
 namespace SBody {
-	namespace Metric {
+	Metric::Metric(std::string name) : name_(name) {}
+	Integrator Metric::SetIntegrator(int coordinate, void *params) {
+		Integrator integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian, coordinate, params);
+		return integrator;
+	}
+
+	namespace metric {
 		double a = 0, a2 = 0, a4 = 0;
 		double e = 0, e2 = 0, e4 = 0;
 		double l = 0, l2 = 0, l4 = 0;
@@ -60,7 +67,7 @@ namespace SBody {
 				function = Newton::function;
 				jacobian = Newton::jacobian;
 				energy = Newton::energy;
-				angularMomentum = Newton::angularMomentum;
+				angularMomentum = Newton::AngularMomentum;
 				carter = Newton::carter;
 				particleNormalization = Newton::particleNormalization;
 				lightNormalization = Newton::lightNormalization;
@@ -246,7 +253,7 @@ namespace SBody {
 					E += 0.375 * m_r4 + 1.25 * m_r3 * v2 + 1.5 * m_r3 * rdot2 + 0.2734375 * v8 + 8.4375 * m_r2 * v4 + 0.75 * m_r2 * v2 * rdot2 + 3.4375 * m_r * v6;
 				return E;
 			}
-			double angularMomentum(const double y[]) {
+			double AngularMomentum(const double y[]) {
 				const double r = Norm(y + 1), r_1 = 1. / r, v2 = SBody::Dot(y + 5);
 				const double m_r = r_1, rdot = SBody::Dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2);
 				const double m_r2 = gsl_pow_2(m_r), m_r3 = gsl_pow_3(m_r), rdot2 = gsl_pow_2(rdot);
@@ -275,13 +282,21 @@ namespace SBody {
 			}
 			int lightNormalization(double y[], double e) {
 				y[4] = 1;
-				const double v_1 = 1. / SBody::Norm(y + 5);
+				const double v_1 = GSL_SIGN(y[4]) / SBody::Norm(y + 5);
 				for (int i = 5; i < 8; ++i)
 					y[i] *= v_1;
 				return 0;
 			}
 		} // namespace Newton
 		namespace Schwarzschild {
+			int gmunu(const double pos[], double gmunu[]) {
+				memset(gmunu, 0, sizeof(double) * 16);
+				gmunu[0] = -(1. - 2. / pos[1]);
+				gmunu[5] = pos[1] / (pos[1] - 2.);
+				gmunu[10] = gsl_pow_2(pos[1]);
+				gmunu[15] = gsl_pow_2(pos[1] * sin(pos[2]));
+				return 0;
+			}
 			double dot(const double g[], const double x[], const double y[], const size_t dimension) {
 				if (dimension == 3)
 					return g[1] * x[1] * y[1] / (g[1] - 2.) + gsl_pow_2(g[1]) * x[2] * y[2] + gsl_pow_2(g[1] * sin(g[2])) * x[3] * y[3];
@@ -399,11 +414,78 @@ namespace SBody {
 				const double g00 = 1. - 2. / y[1];
 				if (g00 <= 0)
 					return 1;
-				const double eff = g00 / sqrt(gsl_pow_2(y[5]) + g00 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+				const double eff = GSL_SIGN(y[4]) * g00 / sqrt(gsl_pow_2(y[5]) + g00 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
 				y[4] = e;
 				y[5] *= eff;
 				y[6] *= eff;
 				y[7] *= eff;
+				return 0;
+			}
+			int LocalInertialFrame(const double pos[], double coordinate[]) {
+				coordinate[0] = 1. / pos[4];
+				coordinate[1] = pos[5] * coordinate[0];
+				coordinate[2] = pos[6] * coordinate[0];
+				coordinate[3] = pos[7] * coordinate[0];
+				const double temporal[4] = {-(1. - 2. / pos[1]) * coordinate[0],
+											pos[1] / (pos[1] - 2.) * coordinate[1],
+											gsl_pow_2(pos[1]) * coordinate[2],
+											gsl_pow_2(pos[1] * sin(pos[2])) * coordinate[3]};
+				// coordinate[5] = pos[5];
+				// coordinate[6] = pos[6];
+				// coordinate[7] = pos[7];
+				// coordinate[4] = metric::dot(pos, coordinate + 4, coordinate, 3) / (pos[1] - 2.) * pos[1] * pos[4];
+				coordinate[5] = 1.;
+				coordinate[6] = 0.;
+				coordinate[7] = 0.;
+				coordinate[4] = -temporal[1] / temporal[0];
+				const double norm1 = sqrt(metric::dot(pos, coordinate + 4, coordinate + 4, 4));
+				coordinate[4] /= norm1;
+				coordinate[5] /= norm1;
+				const double spatial1[4] = {-(1. - 2. / pos[1]) * coordinate[4],
+											pos[1] / (pos[1] - 2.) * coordinate[5],
+											gsl_pow_2(pos[1]) * coordinate[6],
+											gsl_pow_2(pos[1] * sin(pos[2])) * coordinate[7]};
+				coordinate[10] = 1.;
+				coordinate[11] = 0.;
+				coordinate[8] = -(temporal[2] * spatial1[1] - spatial1[2] * temporal[1]) / (temporal[0] * spatial1[1] - spatial1[0] * temporal[1]);
+				coordinate[9] = -(temporal[2] + temporal[0] * coordinate[8]) / temporal[1];
+				const double norm2 = sqrt(metric::dot(pos, coordinate + 8, coordinate + 8, 4));
+				coordinate[8] /= norm2;
+				coordinate[9] /= norm2;
+				coordinate[10] /= norm2;
+				coordinate[11] /= norm2;
+				const double spatial2[4] = {-(1. - 2. / pos[1]) * coordinate[8],
+											pos[1] / (pos[1] - 2.) * coordinate[9],
+											gsl_pow_2(pos[1]) * coordinate[10],
+											gsl_pow_2(pos[1] * sin(pos[2])) * coordinate[11]};
+				coordinate[15] = 1.;
+
+				// coordinate[12] * temporal[0] + coordinate[13] * temporal[1] + coordinate[14] * temporal[2] + temporal[3] = 0;
+				// coordinate[12] * spatial1[0] + coordinate[13] * spatial1[1] + coordinate[14] * spatial1[2] + spatial1[3] = 0;
+				// coordinate[12] * spatial2[0] + coordinate[13] * spatial2[1] + coordinate[14] * spatial2[2] + spatial2[3] = 0;
+
+				// spatial1[2] * (coordinate[12] * temporal[0] + coordinate[13] * temporal[1] + coordinate[14] * temporal[2] + temporal[3]) = 0;
+				// temporal[2] * (coordinate[12] * spatial1[0] + coordinate[13] * spatial1[1] + coordinate[14] * spatial1[2] + spatial1[3]) = 0;
+
+				// spatial2[2] * (coordinate[12] * temporal[0] + coordinate[13] * temporal[1] + coordinate[14] * temporal[2] + temporal[3]) = 0;
+				// temporal[2] * (coordinate[12] * spatial2[0] + coordinate[13] * spatial2[1] + coordinate[14] * spatial2[2] + spatial2[3]) = 0;
+
+				// coordiante[12] * (temporal[0] * spatial1[2] - spatial1[0] * temporal[2]) + coordinate[13] * (temporal[1] * spatial1[2] - spatial1[1] * temporal[2]) + temporal[3] * spatial1[2] - spatial1[3] * temporal[2] = 0;
+				// coordinate[12] * (temporal[0] * spatial2[2] - spatial2[0] * temporal[2]) + coordinate[13] * (temporal[1] * spatial2[2] - spatial2[1] * temporal[2]) + temporal[3] * spatial2[2] - spatial2[3] * temporal[2] = 0;
+
+				// coordinate[12] = -((temporal[3] * spatial1[1] - spatial1[3] * temporal[1]) * (temporal[2] * spatial2[1] - spatial2[2] * temporal[1]) - (temporal[3] * spatial2[1] - spatial2[3] * temporal[1]) * (temporal[2] * spatial1[1] - spatial1[2] * temporal[1])) / ((temporal[0] * spatial1[1] - spatial1[0] * temporal[1]) * (temporal[2] * spatial2[1] - spatial2[2] * temporal[1]) - (temporal[0] * spatial2[1] - spatial2[0] * temporal[1]) * (temporal[2] * spatial1[1] - spatial1[2] * temporal[1]));
+				coordinate[12] = -((temporal[3] * spatial1[2] - spatial1[3] * temporal[2]) * (temporal[1] * spatial2[2] - spatial2[1] * temporal[2]) - (temporal[3] * spatial2[2] - spatial2[3] * temporal[2]) * (temporal[1] * spatial1[2] - spatial1[1] * temporal[2])) / ((temporal[0] * spatial1[2] - spatial1[0] * temporal[2]) * (temporal[1] * spatial2[2] - spatial2[1] * temporal[2]) - (temporal[0] * spatial2[2] - spatial2[0] * temporal[2]) * (temporal[1] * spatial1[2] - spatial1[1] * temporal[2]));
+				coordinate[13] = -(coordinate[12] * (temporal[0] * spatial1[2] - spatial1[0] * temporal[2]) + temporal[3] * spatial1[2] - spatial1[3] * temporal[2]) / (temporal[1] * spatial1[2] - spatial1[1] * temporal[2]);
+				coordinate[14] = -(coordinate[12] * temporal[0] + coordinate[13] * temporal[1] + temporal[3]) / temporal[2];
+				double norm3 = sqrt(metric::dot(pos, coordinate + 12, coordinate + 12, 4));
+				coordinate[12] /= norm3;
+				coordinate[13] /= norm3;
+				coordinate[14] /= norm3;
+				coordinate[15] /= norm3;
+				for (int i = 1; i < 4; ++i)
+					for (int j = 0; j < i; ++j)
+						if (abs(metric::dot(pos, coordinate + j * 4, coordinate + i * 4, 4)) > epsilon)
+							return 1;
 				return 0;
 			}
 		} // namespace Schwarzschild
@@ -568,7 +650,7 @@ namespace SBody {
 				const double effa = rho2 / (r2 - 2. * r + a2) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2 + r2) * sint2 + mr_rho2 * a2 * sint4) * gsl_pow_2(y[7]);
 				const double effb = -2. * mr_rho2 * a * sint2 * y[7];
 				const double effc = mr_rho2 - 1.;
-				const double eff = 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
+				const double eff = GSL_SIGN(y[4]) * 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
 				y[4] = e;
 				y[5] *= eff;
 				y[6] *= eff;
@@ -717,7 +799,7 @@ namespace SBody {
 				const double effa = rho2 / Delta * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + rho_2 * (gsl_pow_2(rho2achi) * sint2 - gsl_pow_2(chi) * Delta) * gsl_pow_2(y[7]);
 				const double effb = -4. * rho_2 * ((r + l2) * chi + l * cost * rho2achi) * y[7];
 				const double effc = -rho_2 * (Delta - a2 * sint2);
-				const double eff = 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
+				const double eff = GSL_SIGN(y[4]) * 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
 				y[4] = e;
 				y[5] *= eff;
 				y[6] *= eff;
@@ -725,5 +807,5 @@ namespace SBody {
 				return 0;
 			}
 		} // namespace KerrTaubNUT
-	}	  // namespace Metric
+	}	  // namespace metric
 } // namespace SBody

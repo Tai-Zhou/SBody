@@ -15,6 +15,10 @@
 #include <vector>
 
 namespace SBody {
+	/**
+	 * @brief
+	 *
+	 */
 	class Object {
 	  public:
 		static std::vector<Object *> object_list_;
@@ -48,8 +52,12 @@ namespace SBody {
 		 * @param photon 8 dimensional information of photon
 		 * @return double
 		 */
-		virtual double Frequency(const double photon[]) = 0;
+		virtual double Redshift(const double photon[]) = 0;
 	};
+	/**
+	 * @brief
+	 *
+	 */
 	class Star : public Object {
 	  protected:
 		/// if the position of star fixed
@@ -84,43 +92,76 @@ namespace SBody {
 		 * @param photon
 		 * @return double
 		 */
-		double Frequency(const double photon[]);
+		double Redshift(const double photon[]);
 		/**
 		 * @brief return frequency
 		 *
 		 * @param photon
 		 * @return double
 		 */
-		double FrequencyTau(const double photon[]);
+		double RedshiftTau(const double photon[]);
 	};
+	/**
+	 * @brief
+	 *
+	 */
 	class Disk : public Object {
 	  protected:
+		/// inner radius
 		const double inner_radius_;
+		/// outer radius
 		const double outer_radius_;
 
 	  public:
+		/**
+		 * @brief Construct a new Disk object
+		 *
+		 * @param inner_radius
+		 * @param outer_radius
+		 */
 		Disk(double inner_radius, double outer_radius);
 		int Hit(const double current[], const double last[] = nullptr);
-		double Frequency(const double ph[]);
+		double Redshift(const double ph[]);
 	};
+	/**
+	 * @brief
+	 *
+	 */
 	class ThickDisk : public Disk {
 	  protected:
 		const double half_angle_;
 
 	  public:
+		/**
+		 * @brief Construct a new Thick Disk object
+		 *
+		 * @param inner_radius
+		 * @param outer_radius
+		 * @param half_angle
+		 */
 		ThickDisk(double inner_radius, double outer_radius, double half_angle);
 		int Hit(const double current[], const double last[] = nullptr);
-		double Frequency(const double ph[]);
+		double Redshift(const double ph[]);
 	};
+	/**
+	 * @brief
+	 *
+	 */
 	class Torus : public Object {
 	  protected:
 		const double major_radius_;
 		const double minor_radius_;
 
 	  public:
+		/**
+		 * @brief Construct a new Torus object
+		 *
+		 * @param major_radius
+		 * @param minor_radius
+		 */
 		Torus(double major_radius, double minor_radius);
 		int Hit(const double current[], const double last[] = nullptr);
-		double Frequency(const double ph[]);
+		double Redshift(const double ph[]);
 	};
 } // namespace SBody
 

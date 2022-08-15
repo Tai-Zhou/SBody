@@ -23,8 +23,14 @@ namespace SBody {
 	/// Relative accuracy
 	extern double relAcc;
 
-	/// Epsilon
+	/// Epsilon, \f$\epsilon\f$
 	constexpr double epsilon = 1e-10;
+
+	/// \f$\sin\epsilon\f$
+	extern const double sin_epsilon;
+
+	/// \f$\cos\epsilon\f$
+	extern const double cos_epsilon;
 
 	/// \f$2\pi\f$
 	constexpr double M_2PI = 6.28318530717958647692528676655900576;
