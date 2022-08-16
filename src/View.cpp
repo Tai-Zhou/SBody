@@ -15,7 +15,7 @@
 #include <iostream>
 
 #include <fmt/core.h>
-#include <gsl/gsl_cblas.h>
+#include <gsl/gsl_blas.h>
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_vector.h>
@@ -129,7 +129,7 @@ namespace SBody {
 			}
 		}
 		int n = 100;
-		double coordinate[16], ph2[9], rec2[100][8], recph[8], interval = M_2PI / n, time_limit;
+		double ph2[9], rec2[100][8], recph[8], interval = M_2PI / n, time_limit;
 		copy(ph, ph + 8, ph2);
 		ph2[8] = 0.;
 		metric::lightNormalization(ph2, 1.);
@@ -150,13 +150,16 @@ namespace SBody {
 #ifdef VIEW_HAMILTONIAN
 		metric::qp2qdq(recph);
 #endif
-		metric::Schwarzschild::LocalInertialFrame(star.pos, coordinate);
+		gsl_matrix *coordinate = gsl_matrix_alloc(4, 4), *gmunu = gsl_matrix_alloc(4, 4), *coordinate_gmunu = gsl_matrix_alloc(4, 4);
+		gsl_permutation *perm = gsl_permutation_alloc(4);
+		metric::Schwarzschild::get_gmunu(star.pos, gmunu);
+		metric::Schwarzschild::LocalInertialFrame(star.pos, coordinate->data);
 		const double ph_reg[4] = {1. / ph[4], ph[5] / ph[4], ph[6] / ph[4], ph[7] / ph[4]};
 		double ph_coor[4] = {
-			metric::Schwarzschild::dot(star.pos, ph_reg, coordinate, 4),
-			metric::Schwarzschild::dot(star.pos, ph_reg, coordinate + 4, 4),
-			metric::Schwarzschild::dot(star.pos, ph_reg, coordinate + 8, 4),
-			metric::Schwarzschild::dot(star.pos, ph_reg, coordinate + 12, 4)};
+			metric::Schwarzschild::dot(star.pos, ph_reg, coordinate->data, 4),
+			metric::Schwarzschild::dot(star.pos, ph_reg, coordinate->data + 4, 4),
+			metric::Schwarzschild::dot(star.pos, ph_reg, coordinate->data + 8, 4),
+			metric::Schwarzschild::dot(star.pos, ph_reg, coordinate->data + 12, 4)};
 		for (int i = 1; i < 4; ++i)
 			ph_coor[i] /= ph_coor[0];
 		const double ph_coor_sph[2] = {acos(ph_coor[3]), atan2(ph_coor[2], ph_coor[1])};
@@ -181,15 +184,8 @@ namespace SBody {
 			ph2[7] = ph2_coor_theta[2];
 			gsl_vector_view ph2_view = gsl_vector_view_array(ph2 + 4, 4);
 			// coordinate * gmunu * ph2 = ph_coor_phi
-			gsl_matrix *coordinate_gmunu = gsl_matrix_alloc(4, 4);
 			gsl_matrix_set_zero(coordinate_gmunu);
-			double gmunu[16];
-			metric::Schwarzschild::gmunu(star.pos, gmunu);
-			for (int i = 0; i < 4; ++i)
-				for (int j = 0; j < 4; ++j)
-					for (int k = 0; k < 4; ++k)
-						coordinate_gmunu->data[i * 4 + j] += coordinate[i * 4 + k] * gmunu[k * 4 + j];
-			gsl_permutation *perm = gsl_permutation_alloc(4);
+			gsl_blas_dsymm(CblasLeft, CblasUpper, 1., coordinate, gmunu, 0., coordinate_gmunu);
 			int signum;
 			gsl_linalg_LU_decomp(coordinate_gmunu, perm, &signum);
 			gsl_linalg_LU_svx(coordinate_gmunu, perm, &ph2_view.vector);
@@ -245,6 +241,10 @@ namespace SBody {
 #else
 		output_->save({alpha1, beta1, star.Redshift(ph), (ph[8] + ph[9]) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon))});
 #endif
+		gsl_matrix_free(coordinate);
+		gsl_matrix_free(gmunu);
+		gsl_matrix_free(coordinate_gmunu);
+		gsl_permutation_free(perm);
 		return 0;
 	}
 	int View::Shadow(int n) {

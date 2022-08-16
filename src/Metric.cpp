@@ -289,12 +289,12 @@ namespace SBody {
 			}
 		} // namespace Newton
 		namespace Schwarzschild {
-			int gmunu(const double pos[], double gmunu[]) {
-				memset(gmunu, 0, sizeof(double) * 16);
-				gmunu[0] = -(1. - 2. / pos[1]);
-				gmunu[5] = pos[1] / (pos[1] - 2.);
-				gmunu[10] = gsl_pow_2(pos[1]);
-				gmunu[15] = gsl_pow_2(pos[1] * sin(pos[2]));
+			int get_gmunu(const double pos[], gsl_matrix *gmunu) {
+				gsl_matrix_set_zero(gmunu);
+				gsl_matrix_set(gmunu, 0, 0, -(1. - 2. / pos[1]));
+				gsl_matrix_set(gmunu, 1, 1, pos[1] / (pos[1] - 2.));
+				gsl_matrix_set(gmunu, 2, 2, gsl_pow_2(pos[1]));
+				gsl_matrix_set(gmunu, 3, 3, gsl_pow_2(pos[1] * sin(pos[2])));
 				return 0;
 			}
 			double dot(const double g[], const double x[], const double y[], const size_t dimension) {

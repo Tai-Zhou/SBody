@@ -14,6 +14,8 @@
 
 #include <string>
 
+#include <gsl/gsl_matrix.h>
+
 #include "Utility.h"
 
 namespace SBody {
@@ -116,7 +118,7 @@ namespace SBody {
 			int lightNormalization(double y[], double e);
 		} // namespace Newton
 		namespace Schwarzschild {
-			int gmunu(const double pos[], double gmunu[]);
+			int get_gmunu(const double pos[], gsl_matrix *gmunu);
 			double dot(const double g[], const double x[], const double y[], const size_t dimension);
 			double ds2(const double x[], const double y[], const size_t dimension);
 			int qdq2qp(double y[]);
