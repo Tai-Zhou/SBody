@@ -129,7 +129,27 @@ namespace SBody {
 			}
 		}
 		int n = 100;
-		double coordinate[16], ph2[10], rec2[100][8], recph[8], interval = M_2PI / n;
+		double coordinate[16], ph2[9], rec2[100][8], recph[8], interval = M_2PI / n, time_limit;
+		copy(ph, ph + 8, ph2);
+		ph2[8] = 0.;
+		metric::lightNormalization(ph2, 1.);
+#ifdef VIEW_HAMILTONIAN
+		metric::qdq2qp(ph2);
+#endif
+		h = 1.;
+		int status = 0;
+		integrator.Reset();
+		while (status <= 0 && ph2[1] < 1.e3)
+			status = integrator.Apply(ph2 + 8, -t_final_, &h, ph2);
+		if (status > 0) {
+			fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
+			return status;
+		}
+		copy(ph2, ph2 + 8, recph);
+		time_limit = ph2[8];
+#ifdef VIEW_HAMILTONIAN
+		metric::qp2qdq(recph);
+#endif
 		metric::Schwarzschild::LocalInertialFrame(star.pos, coordinate);
 		const double ph_reg[4] = {1. / ph[4], ph[5] / ph[4], ph[6] / ph[4], ph[7] / ph[4]};
 		double ph_coor[4] = {
@@ -178,7 +198,6 @@ namespace SBody {
 			// ph2[6] = ph2[4] * (coordinate[2] + coordinate[6] * ph2_coor_phi[0] + coordinate[10] * ph2_coor_phi[1] + coordinate[14] * ph2_coor_phi[2]);
 			// ph2[7] = ph2[4] * (coordinate[3] + coordinate[7] * ph2_coor_phi[0] + coordinate[11] * ph2_coor_phi[1] + coordinate[15] * ph2_coor_phi[2]);
 			ph2[8] = 0.;
-			ph2[9] = 0.;
 			metric::lightNormalization(ph2, 1.);
 #ifdef VIEW_HAMILTONIAN
 			metric::qdq2qp(ph2);
@@ -186,13 +205,8 @@ namespace SBody {
 			h = 1.;
 			int status = 0;
 			integrator.Reset();
-			while (status <= 0 && ph2[1] < 1000.) {
-				status = integrator.Apply(ph2 + 9, -t_final_, &h, ph2);
-				if (ph2[9] > t_final_ * -1e-8) {
-					ph2[8] += ph[9];
-					ph2[9] = 0;
-				}
-			}
+			while (status <= 0 && ph2[8] < time_limit)
+				status = integrator.Apply(ph2 + 8, time_limit, &h, ph2);
 			if (status > 0) {
 				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 				return status;
@@ -202,31 +216,6 @@ namespace SBody {
 			metric::qp2qdq(rec2[i]);
 #endif
 		}
-		copy(ph, ph + 8, ph2);
-		ph2[8] = 0.;
-		ph2[9] = 0.;
-		metric::lightNormalization(ph2, 1.);
-#ifdef VIEW_HAMILTONIAN
-		metric::qdq2qp(ph2);
-#endif
-		h = 1.;
-		int status = 0;
-		integrator.Reset();
-		while (status <= 0 && ph2[1] < 1e15) {
-			status = integrator.Apply(ph2 + 9, -t_final_, &h, ph2);
-			if (ph2[9] > t_final_ * -1e-8) {
-				ph2[8] += ph[9];
-				ph2[9] = 0;
-			}
-		}
-		if (status > 0) {
-			fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
-			return status;
-		}
-		copy(ph2, ph2 + 8, recph);
-#ifdef VIEW_HAMILTONIAN
-		metric::qp2qdq(recph);
-#endif
 		const double sin_theta = sin(recph[2]), cos_theta = cos(recph[2]), sin_phi = sin(recph[3]), cos_phi = cos(recph[3]);
 		double vphph[3] = {recph[5] * sin_theta * cos_phi + recph[1] * (cos_theta * cos_phi * recph[6] - sin_theta * sin_phi * recph[7]),
 						   recph[5] * sin_theta * sin_phi + recph[1] * (cos_theta * sin_phi * recph[6] + sin_theta * cos_phi * recph[7]),
@@ -234,27 +223,27 @@ namespace SBody {
 		const double vphph_norm = Norm(vphph);
 		for (int j = 0; j < 3; ++j)
 			vphph[j] /= vphph_norm;
-		double final_angle[100];
+		double rec3[100][3];
 		for (int i = 0; i < n; ++i) {
 			const double sin_theta = sin(rec2[i][2]), cos_theta = cos(rec2[i][2]), sin_phi = sin(rec2[i][3]), cos_phi = cos(rec2[i][3]);
-			double vph[3] = {rec2[i][5] * sin_theta * cos_phi + rec2[i][1] * (cos_theta * cos_phi * rec2[i][6] - sin_theta * sin_phi * rec2[i][7]),
-							 rec2[i][5] * sin_theta * sin_phi + rec2[i][1] * (cos_theta * sin_phi * rec2[i][6] + sin_theta * cos_phi * rec2[i][7]),
-							 rec2[i][5] * cos_theta - rec2[i][1] * sin_theta * rec2[i][6]};
-			const double vph_norm = Norm(vph);
+			rec3[i][0] = rec2[i][5] * sin_theta * cos_phi + rec2[i][1] * (cos_theta * cos_phi * rec2[i][6] - sin_theta * sin_phi * rec2[i][7]);
+			rec3[i][1] = rec2[i][5] * sin_theta * sin_phi + rec2[i][1] * (cos_theta * sin_phi * rec2[i][6] + sin_theta * cos_phi * rec2[i][7]);
+			rec3[i][2] = rec2[i][5] * cos_theta - rec2[i][1] * sin_theta * rec2[i][6];
+			const double vph_norm = Norm(rec3[i]);
 			for (int j = 0; j < 3; ++j)
-				vph[j] /= vph_norm;
-			double cross_product[3];
-			Cross(vph, vphph, cross_product);
-			final_angle[i] = Norm(cross_product);
+				rec3[i][j] /= vph_norm;
 		}
-		double area = final_angle[0] * final_angle[99];
-		for (int i = 1; i < n; ++i)
-			area += final_angle[i] * final_angle[i - 1];
-		area /= n;
+		double cross_product[3];
+		Cross(rec3[0], rec3[n - 1], cross_product);
+		double area = Dot(cross_product, vphph);
+		for (int i = 1; i < n; ++i) {
+			Cross(rec3[i], rec3[i - 1], cross_product);
+			area += Dot(cross_product, vphph);
+		}
 #ifdef VIEW_TAU
-		output->save({alpha1, beta1, star.RedshiftTau(ph), (ph[8] + ph[9]) / Unit::s, area / gsl_pow_2(epsilon)});
+		output->save({alpha1, beta1, star.RedshiftTau(ph), (ph[8] + ph[9]) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon))});
 #else
-		output_->save({alpha1, beta1, star.Redshift(ph), (ph[8] + ph[9]) / Unit::s, area / gsl_pow_2(epsilon)});
+		output_->save({alpha1, beta1, star.Redshift(ph), (ph[8] + ph[9]) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon))});
 #endif
 		return 0;
 	}
