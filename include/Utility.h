@@ -23,6 +23,9 @@ namespace SBody {
 	/// Relative accuracy
 	extern double relAcc;
 
+	/// Sample number
+	constexpr int sample_number = 100;
+
 	/// Epsilon, \f$\epsilon\f$
 	constexpr double epsilon = 1e-10;
 

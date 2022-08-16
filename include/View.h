@@ -62,10 +62,9 @@ namespace SBody {
 		/**
 		 * @brief
 		 *
-		 * @param n
 		 * @return int
 		 */
-		int Shadow(int n);
+		int Shadow();
 	};
 	class Camera : public View {
 	  protected:

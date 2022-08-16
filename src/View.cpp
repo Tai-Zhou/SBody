@@ -35,8 +35,8 @@ using namespace std;
 namespace SBody {
 	View::View(double r, double theta, string file_name) : r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({5}))) {}
 	int View::TraceStar(Star &star, int ray_number) { // FIXME:!!!!
-		const double rs = star.pos[1], thetas = star.pos[2], phis = star.pos[3], sints = sin(thetas), costs = cos(thetas), sinps = sin(phis), cosps = cos(phis);
-		double alpha0 = GSL_POSINF, alpha1 = (rs + 1.) * sints * sin(phis), beta0 = GSL_POSINF, beta1 = (rs + 1.) * (costs * sin_theta_observer_ - sints * cosps * cos_theta_observer_), ph[10], cosph, last[10], h;
+		const double r_star = star.pos[1], sin_theta_star = sin(star.pos[2]), cos_theta_star = cos(star.pos[2]), sin_phi_star = sin(star.pos[3]), cos_phi_star = cos(star.pos[3]);
+		double alpha0 = GSL_POSINF, alpha1 = (r_star + 1.) * sin_theta_star * sin_phi_star, beta0 = GSL_POSINF, beta1 = (r_star + 1.) * (cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_), ph[10], cosph, last[10], h;
 #ifdef RECORD_TRACE
 		vector<double> qdq(12);
 		IO::NumPy rec("Trace " + to_string(ray_number), 12);
@@ -91,8 +91,8 @@ namespace SBody {
 					status = integrator.ApplyFixedStep(ph + 9, h, ph);
 				else
 					status = integrator.Apply(ph + 9, t_final_, &h, ph);
-				cosph = (rs * sints * cosps - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * cos(ph[3])) * sin_theta_observer_ + (rs * costs - ph[1] * GSL_SIGN(ph[2]) * cos(ph[2])) * cos_theta_observer_;
-				if (cosph > rs * relAcc) {
+				cosph = (r_star * sin_theta_star * cos_phi_star - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * cos(ph[3])) * sin_theta_observer_ + (r_star * cos_theta_star - ph[1] * GSL_SIGN(ph[2]) * cos(ph[2])) * cos_theta_observer_;
+				if (cosph > r_star * relAcc) {
 					copy(last, last + 10, ph);
 					h *= 0.3;
 					fixed = 1;
@@ -114,8 +114,8 @@ namespace SBody {
 					rec.save(qdq);
 #endif
 					if (cosph >= 0) {
-						alpha1 += rs * sints * sinps - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * sin(ph[3]); // TODO:OPT!
-						beta1 += (rs * costs - ph[1] * GSL_SIGN(ph[2]) * cos(ph[2])) * sin_theta_observer_ - (rs * sints * cosps - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * cos(ph[3])) * cos_theta_observer_;
+						alpha1 += r_star * sin_theta_star * sin_phi_star - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * sin(ph[3]); // TODO:OPT!
+						beta1 += (r_star * cos_theta_star - ph[1] * GSL_SIGN(ph[2]) * cos(ph[2])) * sin_theta_observer_ - (r_star * sin_theta_star * cos_phi_star - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * cos(ph[3])) * cos_theta_observer_;
 #ifdef VIEW_HAMILTONIAN
 						metric::qp2qdq(ph);
 #endif
@@ -128,8 +128,7 @@ namespace SBody {
 				return status;
 			}
 		}
-		int n = 100;
-		double ph2[9], rec2[100][8], recph[8], interval = M_2PI / n, time_limit;
+		double ph2[9], rec2[sample_number][8], recph[8], interval = M_2PI / sample_number, time_limit;
 		copy(ph, ph + 8, ph2);
 		ph2[8] = 0.;
 		metric::lightNormalization(ph2, 1.);
@@ -163,7 +162,7 @@ namespace SBody {
 		for (int i = 1; i < 4; ++i)
 			ph_coor[i] /= ph_coor[0];
 		const double ph_coor_sph[2] = {acos(ph_coor[3]), atan2(ph_coor[2], ph_coor[1])};
-		for (int i = 0; i < n; ++i) {
+		for (int i = 0; i < sample_number; ++i) {
 			const double angle = i * interval, sin_angle = sin(angle), cos_angle = cos(angle);
 			const double ph2_coor[3] = {
 				cos_angle * sin_epsilon,
@@ -220,7 +219,7 @@ namespace SBody {
 		for (int j = 0; j < 3; ++j)
 			vphph[j] /= vphph_norm;
 		double rec3[100][3];
-		for (int i = 0; i < n; ++i) {
+		for (int i = 0; i < sample_number; ++i) {
 			const double sin_theta = sin(rec2[i][2]), cos_theta = cos(rec2[i][2]), sin_phi = sin(rec2[i][3]), cos_phi = cos(rec2[i][3]);
 			rec3[i][0] = rec2[i][5] * sin_theta * cos_phi + rec2[i][1] * (cos_theta * cos_phi * rec2[i][6] - sin_theta * sin_phi * rec2[i][7]);
 			rec3[i][1] = rec2[i][5] * sin_theta * sin_phi + rec2[i][1] * (cos_theta * sin_phi * rec2[i][6] + sin_theta * cos_phi * rec2[i][7]);
@@ -230,9 +229,9 @@ namespace SBody {
 				rec3[i][j] /= vph_norm;
 		}
 		double cross_product[3];
-		Cross(rec3[0], rec3[n - 1], cross_product);
+		Cross(rec3[0], rec3[sample_number - 1], cross_product);
 		double area = Dot(cross_product, vphph);
-		for (int i = 1; i < n; ++i) {
+		for (int i = 1; i < sample_number; ++i) {
 			Cross(rec3[i], rec3[i - 1], cross_product);
 			area += Dot(cross_product, vphph);
 		}
@@ -247,8 +246,8 @@ namespace SBody {
 		gsl_permutation_free(perm);
 		return 0;
 	}
-	int View::Shadow(int n) {
-		const double interval = M_2PI / n;
+	int View::Shadow() {
+		const double interval = M_2PI / sample_number;
 		NumPy rec("shadow " + to_string(metric::a) + "," + to_string(metric::l), {2});
 		double h, rin = 2., rout = 10., rmid = 6., ph[10];
 #ifdef VIEW_TAU
@@ -261,10 +260,10 @@ namespace SBody {
 			indicators::option::ShowRemainingTime{true},
 			indicators::option::PrefixText{"? Shadow"},
 			indicators::option::ForegroundColor{indicators::Color(4)},
-			indicators::option::MaxProgress{n},
+			indicators::option::MaxProgress{sample_number},
 			indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
 		int progressBarIndex = ProgressBar::bars_.push_back(shadowProgressBar);
-		for (int i = 0; i < n; ++i) {
+		for (int i = 0; i < sample_number; ++i) {
 			const double angle = i * interval, sina = sin(angle), cosa = cos(angle);
 			int status = 0;
 			while (rout - rin > epsilon * (rin + rout)) {

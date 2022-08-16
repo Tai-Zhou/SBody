@@ -200,7 +200,7 @@ int main(int argc, char *argv[]) {
 	if (ray & 5) {
 		viewPtr = make_unique<View>(8180. * Unit::pc, inc, string("view") + strFormat);
 		if (ray & 4)
-			shadowPtr = make_unique<thread>(&View::Shadow, viewPtr.get(), 100);
+			shadowPtr = make_unique<thread>(&View::Shadow, viewPtr.get());
 	}
 	if (ray & 10) {
 		cameraPtr = make_unique<Camera>(1000, 5e-2, mass * 1.e3, inc, string("camera") + strFormat);
