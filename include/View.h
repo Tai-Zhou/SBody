@@ -13,7 +13,6 @@
 #define SBODY_VIEW_H
 
 #include <array>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -39,18 +38,17 @@ namespace SBody {
 		 * @param file_name
 		 */
 		View(double r, double theta, std::string file_name);
+
 		/**
 		 * @brief
 		 *
+		 * @param photon
+		 * @param alpha
+		 * @param beta
 		 * @return int
 		 */
-		int RayInit();
-		/**
-		 * @brief
-		 *
-		 * @return int
-		 */
-		int RayTrace();
+		int RayInitialize(double *photon, double alpha, double beta);
+
 		/**
 		 * @brief
 		 *
@@ -58,7 +56,9 @@ namespace SBody {
 		 * @param ray_number
 		 * @return int
 		 */
+
 		int TraceStar(Star &star, int ray_number);
+
 		/**
 		 * @brief
 		 *
@@ -84,18 +84,21 @@ namespace SBody {
 		 * @param file_name
 		 */
 		Camera(size_t pixel, double half_angle, double r, double theta, std::string file_name);
+
 		/**
 		 * @brief
 		 *
 		 * @return int
 		 */
 		int TraceStar();
+
 		/**
 		 * @brief
 		 *
 		 * @return int
 		 */
 		int Lens();
+
 		/**
 		 * @brief
 		 *

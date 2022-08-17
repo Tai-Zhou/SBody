@@ -34,6 +34,32 @@ using namespace std;
 
 namespace SBody {
 	View::View(double r, double theta, string file_name) : r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({5}))) {}
+	int View::RayInitialize(double *photon, double alpha, double beta) {
+		photon[0] = 0.;
+		photon[1] = r_;
+		photon[5] = 1.;
+		photon[8] = 0.;
+		photon[9] = 0.;
+		if (sin_theta_observer_ < epsilon) {
+			const double k = gsl_hypot(alpha, beta);
+			if (theta_ < M_PI_2) {
+				photon[2] = 1e-15;
+				photon[3] = ModBy2Pi(atan2(alpha, -beta));
+				photon[6] = -k / gsl_pow_2(r_);
+			} else {
+				photon[2] = M_PI - 1e-15;
+				photon[3] = ModBy2Pi(atan2(alpha, beta));
+				photon[6] = k / gsl_pow_2(r_);
+			}
+			photon[7] = 0.;
+		} else {
+			photon[2] = theta_;
+			photon[3] = 0.,
+			photon[6] = beta / gsl_pow_2(r_);
+			photon[7] = -alpha / (gsl_pow_2(r_) * sin_theta_observer_);
+		}
+		return metric::lightNormalization(photon, 1.);
+	}
 	int View::TraceStar(Star &star, int ray_number) { // FIXME:!!!!
 		const double r_star = star.pos[1], sin_theta_star = sin(star.pos[2]), cos_theta_star = cos(star.pos[2]), sin_phi_star = sin(star.pos[3]), cos_phi_star = cos(star.pos[3]);
 		double alpha0 = GSL_POSINF, alpha1 = (r_star + 1.) * sin_theta_star * sin_phi_star, beta0 = GSL_POSINF, beta1 = (r_star + 1.) * (cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_), ph[10], cosph, last[10], h;
@@ -51,31 +77,7 @@ namespace SBody {
 		while (gsl_hypot(alpha1 - alpha0, beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
 			alpha0 = alpha1;
 			beta0 = beta1;
-			ph[0] = 0.;
-			ph[1] = r_;
-			ph[4] = 1.;
-			ph[5] = 1.;
-			ph[8] = 0.;
-			ph[9] = 0.;
-			if (sin_theta_observer_ < epsilon) {
-				const double k = gsl_hypot(alpha1, beta1);
-				if (theta_ < M_PI_2) {
-					ph[2] = 1e-15;
-					ph[3] = alpha1 >= 0. ? acos(-beta1 / k) : M_2PI - acos(-beta1 / k);
-					ph[6] = -k / gsl_pow_2(r_);
-				} else {
-					ph[2] = M_PI - 1e-15;
-					ph[3] = alpha1 >= 0. ? -acos(-beta1 / k) : M_2PI + acos(-beta1 / k);
-					ph[6] = k / gsl_pow_2(r_);
-				}
-				ph[7] = 0.;
-			} else {
-				ph[2] = theta_;
-				ph[3] = 0.,
-				ph[6] = beta1 / gsl_pow_2(r_);
-				ph[7] = -alpha1 / (gsl_pow_2(r_) * sin_theta_observer_);
-			}
-			metric::lightNormalization(ph, 1.);
+			RayInitialize(ph, alpha0, beta0);
 #ifdef VIEW_HAMILTONIAN
 			metric::qdq2qp(ph);
 #endif
@@ -249,7 +251,7 @@ namespace SBody {
 	int View::Shadow() {
 		const double interval = M_2PI / sample_number;
 		NumPy rec("shadow " + to_string(metric::a) + "," + to_string(metric::l), {2});
-		double h, rin = 2., rout = 10., rmid = 6., ph[10];
+		double h, rin = 2., rout = 10., rmid = 6., photon[10];
 #ifdef VIEW_TAU
 		Integrator integrator(metric::functionTau, metric::jacobian, 2);
 #else
@@ -268,45 +270,22 @@ namespace SBody {
 			int status = 0;
 			while (rout - rin > epsilon * (rin + rout)) {
 				rmid = 0.5 * (rin + rout);
-				ph[0] = 0.;
-				ph[1] = r_;
-				ph[4] = 1.;
-				ph[5] = 1.;
-				ph[8] = 0.;
-				ph[9] = 0.;
-				if (sin_theta_observer_ < epsilon) {
-					if (theta_ < M_PI_2) {
-						ph[2] = 1e-15;
-						ph[3] = M_PI_2 + angle;
-						ph[6] = -rmid / gsl_pow_2(r_);
-					} else {
-						ph[2] = M_PI - 1e-15;
-						ph[3] = M_PI_2 - angle;
-						ph[6] = rmid / gsl_pow_2(r_);
-					}
-					ph[7] = 0.;
-				} else {
-					ph[2] = theta_;
-					ph[3] = 0.,
-					ph[6] = rmid * sina / gsl_pow_2(r_);
-					ph[7] = -rmid * cosa / (gsl_pow_2(r_) * sin_theta_observer_);
-				}
+				RayInitialize(photon, rmid * cosa, rmid * sina);
 				h = -1.;
-				metric::lightNormalization(ph, 1.);
-				while (status <= 0 && ph[8] + ph[9] > t_final_) {
-					status = integrator.Apply(ph + 9, t_final_, &h, ph);
-					if (ph[9] < t_final_ * 1e-8) {
-						ph[8] += ph[9];
-						ph[9] = 0.;
+				while (status <= 0 && photon[8] + photon[9] > t_final_) {
+					status = integrator.Apply(photon + 9, t_final_, &h, photon);
+					if (photon[9] < t_final_ * 1e-8) {
+						photon[8] += photon[9];
+						photon[9] = 0.;
 					}
-					if (ph[4] >= 1e6 || ph[5] <= 0 || ph[1] <= 0)
+					if (photon[4] >= 1e6 || photon[5] <= 0 || photon[1] <= 0)
 						break;
 				}
 				if (status > 0) {
 					fmt::print(stderr, "[!] view::shadow status = {}\n", status);
 					return status;
 				}
-				if (ph[5] <= 0)
+				if (photon[5] <= 0)
 					rout = rmid;
 				else
 					rin = rmid;
@@ -325,23 +304,10 @@ namespace SBody {
 	Camera::Camera(size_t pixel, double half_angle, double r, double theta, string file_name) : View(r, theta, file_name), pixel_(pixel), half_angle_(half_angle) {
 		screen_ = vector<vector<double>>(pixel, vector<double>(pixel));
 		initials_ = vector<array<double, 10>>(pixel * pixel);
-		const double sint = sin(theta), tana_pix = 2. * tan(half_angle_) / (r * pixel), t1 = r + 100.;
-		if (theta < epsilon || M_PI - theta < epsilon) {
-			for (int i = 0; i < pixel; ++i)
-				for (int j = 0; j < pixel; ++j) {
-					const double k = gsl_hypot(i - 0.5 * pixel + 0.5, j - 0.5 * pixel + 0.5);
-					initials_[i * pixel + j] = {0., r, theta < M_PI_2 ? 1e-15 : M_PI - 1e-15, 0., 1., 1., GSL_SIGN(theta - M_PI_2) * tana_pix * k, 0., 0.};
-					if (k >= epsilon) {
-						if (2 * i <= pixel)
-							initials_[i * pixel + j][3] = (theta < M_PI_2 ? 1. : -1.) * acos((j - 0.5 * pixel + 0.5) / k);
-						else
-							initials_[i * pixel + j][3] = (theta < M_PI_2 ? 1. : -1.) * (2. * M_PI - acos((j - 0.5 * pixel + 0.5) / k));
-					}
-				}
-		} else
-			for (int i = 0; i < pixel; ++i)
-				for (int j = 0; j < pixel; ++j)
-					initials_[i * pixel + j] = {0., r, theta, 0., 1., 1., -tana_pix * (i - 0.5 * pixel + 0.5), -tana_pix * (j - 0.5 * pixel + 0.5) / sint, 0.};
+		const double pixel_size = 2. * half_angle * r / pixel, t1 = r + 100.;
+		for (int i = 0; i < pixel; ++i)
+			for (int j = 0; j < pixel; ++j)
+				RayInitialize(initials_[i * pixel + j].data(), pixel_size * (i - 0.5 * pixel + 0.5), pixel_size * (j - 0.5 * pixel + 0.5));
 #pragma omp parallel for
 		for (int p = pixel * pixel - 1; p >= 0; --p) {
 			int status = 0;
@@ -365,7 +331,7 @@ namespace SBody {
 		for (int p = pixel_ * pixel_ - 1; p >= 0; --p) {
 			int i = p / pixel_;
 			int j = p - i * pixel_;
-			double ph[10], last[10]; // TODO: should add t_0 (initials[8]) here
+			double ph[10], last[10];
 			int status = 0;
 			copy(initials_[p].begin(), initials_[p].end(), ph);
 #ifdef VIEW_TAU
