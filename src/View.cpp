@@ -230,9 +230,9 @@ namespace SBody {
 			area += Dot(cross_product, vphph);
 		}
 #ifdef VIEW_TAU
-		output->save({alpha1, beta1, star.RedshiftTau(ph), (ph[8] + ph[9]) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon))});
+		output->Save({alpha1, beta1, star.RedshiftTau(ph), (ph[8] + ph[9]) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon))});
 #else
-		output_->save({alpha1, beta1, star.Redshift(ph), (ph[8] + ph[9]) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon))});
+		output_->Save({alpha1, beta1, star.Redshift(ph), (ph[8] + ph[9]) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon))});
 #endif
 		gsl_matrix_free(coordinate);
 		gsl_matrix_free(gmunu);
@@ -281,7 +281,7 @@ namespace SBody {
 			}
 			rin -= 2. * interval * rmid;
 			rout += 2. * interval * rmid;
-			rec.save({rmid * cosa, rmid * sina});
+			rec.Save({rmid * cosa, rmid * sina});
 			if (ProgressBar::display_)
 				ProgressBar::bars_[progressBarIndex].tick();
 		}
@@ -355,13 +355,13 @@ namespace SBody {
 				if (status > 0)
 					fmt::print(stderr, "[!] camera::lens status = {}\n", status);
 				if (ph[1] <= 3.)
-					rec.save({NAN, NAN});
+					rec.Save({NAN, NAN});
 				else {
 					metric_->HamiltonianToLagrangian(ph);
 					if (ph[2] < 0)
 						ph[2] += M_PI;
 					metric::s2c(ph, phc);
-					rec.save({phc[6] * pixelPerAngle, (phc[7] * sin_theta_observer_ - phc[5] * cos_theta_observer_) * pixelPerAngle});
+					rec.Save({phc[6] * pixelPerAngle, (phc[7] * sin_theta_observer_ - phc[5] * cos_theta_observer_) * pixelPerAngle});
 				}
 				if (ProgressBar::display_)
 					ProgressBar::bars_[progressBarIndex].tick();
@@ -372,7 +372,7 @@ namespace SBody {
 	}
 	int Camera::Save() {
 		for (const vector<double> &line : screen_)
-			output_->save(line);
+			output_->Save(line);
 		return 0;
 	}
 } // namespace SBody

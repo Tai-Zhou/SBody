@@ -64,7 +64,7 @@ namespace SBody {
 		 * @param data
 		 * @return int
 		 */
-		virtual int save(const std::vector<double> &data) = 0;
+		virtual int Save(const std::vector<double> &data) = 0;
 	};
 	/**
 	 * @brief
@@ -95,7 +95,7 @@ namespace SBody {
 		 * @param data
 		 * @return int
 		 */
-		int save(const std::vector<double> &data);
+		int Save(const std::vector<double> &data);
 	};
 	/**
 	 * @brief
@@ -120,7 +120,7 @@ namespace SBody {
 		 * @param data
 		 * @return int
 		 */
-		int save(const std::vector<double> &data);
+		int Save(const std::vector<double> &data);
 	};
 #ifdef WITH_CFITSIO
 	/**
@@ -141,7 +141,7 @@ namespace SBody {
 		 * @param data
 		 * @return int
 		 */
-		int save(const std::vector<double> &data);
+		int Save(const std::vector<double> &data);
 	};
 #endif
 } // namespace SBody

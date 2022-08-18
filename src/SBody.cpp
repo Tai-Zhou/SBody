@@ -288,7 +288,7 @@ int main(int argc, char *argv[]) {
 			viewPtr->TraceStar(star_0, i);
 		if (ray & 2)
 			cameraPtr->TraceStar();
-		rec.save(temp);
+		rec.Save(temp);
 		TUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
 		if (ProgressBar::display_) {
 			double percent = i * stepPercent;

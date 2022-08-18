@@ -70,13 +70,13 @@ namespace SBody {
 			}
 		file_buffer_.sputn("), }", 4);
 	}
-	int NumPy::save(const vector<double> &data) {
+	int NumPy::Save(const vector<double> &data) {
 		file_size_ += data.size();
 		file_buffer_.sputn(reinterpret_cast<const char *>(data.data()), 8 * data.size());
 		return 0;
 	}
 	CSV::CSV(string file_name, char separator) : File(file_name + ".csv", ios::out), separator_(separator) {}
-	int CSV::save(const vector<double> &data) {
+	int CSV::Save(const vector<double> &data) {
 		for (const double &element : data) {
 			string elements = to_string(element);
 			file_buffer_.sputn(elements.c_str(), elements.length());
@@ -88,7 +88,7 @@ namespace SBody {
 	}
 #ifdef WITH_CFITSIO
 	FITS::FITS(string file_name) : file(file_name + ".fits", ios::binary | ios::out) {}
-	int FITS::save(const vector<double> &data) {
+	int FITS::Save(const vector<double> &data) {
 		fitsfile *fptr;
 		char card[FLEN_CARD];
 		int status = 0, nkeys;

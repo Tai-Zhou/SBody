@@ -52,7 +52,7 @@ void saveFibo(int n) {
 		k = j;
 		j = (i + j) % 1000000007;
 		i = k;
-		record.save({sqrt(i)});
+		record.Save({sqrt(i)});
 	}
 }
 
