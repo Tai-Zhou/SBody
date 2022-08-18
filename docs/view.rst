@@ -5,7 +5,7 @@
 View
 ====
 
-.. doxygenclass:: SBody::view
+.. doxygenclass:: SBody::View
    :members:
    :no-link:
 
@@ -15,6 +15,6 @@ Camera
 .. index::
    Camera
 
-.. doxygenclass:: SBody::camera
+.. doxygenclass:: SBody::Camera
    :members:
    :no-link:

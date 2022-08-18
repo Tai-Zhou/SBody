@@ -5,11 +5,17 @@
 Utility
 =======
 
-.. doxygenvariable:: SBody::absAcc
+.. doxygenvariable:: SBody::absolute_accuracy
    :no-link:
-.. doxygenvariable:: SBody::relAcc
+.. doxygenvariable:: SBody::relative_accuracy
+   :no-link:
+.. doxygenvariable:: SBody::sample_number
    :no-link:
 .. doxygenvariable:: SBody::epsilon
+   :no-link:
+.. doxygenvariable:: SBody::sin_epsilon
+   :no-link:
+.. doxygenvariable:: SBody::cos_epsilon
    :no-link:
 .. doxygenvariable:: SBody::M_2PI
    :no-link:
