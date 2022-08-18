@@ -24,11 +24,11 @@ namespace SBody {
 	 */
 	class Object {
 	  protected:
-		std::unique_ptr<Metric> metric_;
+		std::shared_ptr<Metric> metric_;
 
 	  public:
 		static std::vector<Object *> object_list_;
-		Object(std::unique_ptr<Metric> metric);
+		Object(std::shared_ptr<Metric> metric);
 		/**
 		 * @brief
 		 *
@@ -67,7 +67,6 @@ namespace SBody {
 	 */
 	class Star : public Object {
 	  protected:
-		std::unique_ptr<Metric> metric_;
 		/// if the position of star fixed
 		const bool fixed_;
 		/// radius of star
@@ -77,16 +76,16 @@ namespace SBody {
 
 	  public:
 		/// 8 dimensional information of the star
-		double pos[8]; // FIXME
+		double position_[8]; // FIXME
 
 		/**
 		 * @brief Construct a new star object
 		 *
 		 * @param radius radius
-		 * @param position initial position and velocity
 		 * @param fixed whether the position of the star is fixed
 		 */
-		Star(std::unique_ptr<Metric> metric, double radius, const double position[], bool fixed = false);
+		Star(std::shared_ptr<Metric> metric, double radius = 0, bool fixed = false);
+		Star(std::shared_ptr<Metric> metric, double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination = 0., double observer_rotation = 0., double radius = 0., bool fixed = false);
 
 		/**
 		 * @brief Check if the star hit by the photon
@@ -112,6 +111,9 @@ namespace SBody {
 		 * @return double
 		 */
 		double RedshiftTau(const double photon[]);
+		int GetMetricTensor(gsl_matrix *metric);
+		double DotProduct(const double x[], const double y[], const size_t dimension);
+		int LocalInertialFrame(double coordinate[]);
 	};
 	/**
 	 * @brief
@@ -131,7 +133,7 @@ namespace SBody {
 		 * @param inner_radius
 		 * @param outer_radius
 		 */
-		Disk(std::unique_ptr<Metric> metric, double inner_radius, double outer_radius);
+		Disk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius);
 		int Hit(const double current[], const double last[] = nullptr);
 		double Redshift(const double ph[]);
 	};
@@ -151,7 +153,7 @@ namespace SBody {
 		 * @param outer_radius
 		 * @param half_angle
 		 */
-		ThickDisk(std::unique_ptr<Metric> metric, double inner_radius, double outer_radius, double half_angle);
+		ThickDisk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius, double half_angle);
 		int Hit(const double current[], const double last[] = nullptr);
 		double Redshift(const double ph[]);
 	};
@@ -171,7 +173,7 @@ namespace SBody {
 		 * @param major_radius
 		 * @param minor_radius
 		 */
-		Torus(std::unique_ptr<Metric> metric, double major_radius, double minor_radius);
+		Torus(std::shared_ptr<Metric> metric, double major_radius, double minor_radius);
 		int Hit(const double current[], const double last[] = nullptr);
 		double Redshift(const double ph[]);
 	};

@@ -25,26 +25,74 @@ namespace SBody {
 		return name_;
 	}
 	int Metric::GetMetricTensor(const double position[], gsl_matrix *metric) {
+		gsl_matrix_set_zero(metric);
+		gsl_matrix_set(metric, 0, 0, -1.);
+		gsl_matrix_set(metric, 1, 1, 1.);
+		gsl_matrix_set(metric, 2, 2, gsl_pow_2(position[1]));
+		gsl_matrix_set(metric, 3, 3, gsl_pow_2(position[1] * sin(position[2])));
+		return 0;
 	}
 	double Metric::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
+		if (dimension == 3)
+			return x[1] * y[1] + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
+		return -x[0] * y[0] + x[1] * y[1] + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
 	}
 	double Metric::Distance(const double x[], const double y[], const size_t dimension) {
+		if (dimension == 3)
+			return gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * ModBy2Pi(x[3] - y[3]));
+		return -gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * ModBy2Pi(x[3] - y[3]));
 	}
 	int Metric::LagrangianToHamiltonian(double y[]) {
+		if (mode_ != HAMILTONIAN)
+			return 1;
+		return 1;
 	}
 	int Metric::HamiltonianToLagrangian(double y[]) {
+		if (mode_ != HAMILTONIAN)
+			return 1;
+		return 1;
 	}
 	double Metric::Energy(const double y[]) {
+		if (mode_ == T)
+			return -y[4];
+		else if (mode_ == TAU)
+			return 1.; // TODO:
+		else
+			return 1. - y[4];
 	}
 	double Metric::AngularMomentum(const double y[]) {
+		if (mode_ == T)
+			return gsl_pow_2(y[1]) * y[7] / y[4];
+		else if (mode_ == TAU)
+			return 1.; // TODO:
+		else
+			return y[7];
 	}
 	double Metric::CarterConstant(const double y[], const double mu2) {
+		if (mode_ == T)
+			return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2]))) / gsl_pow_2(y[4]);
+		else if (mode_ == TAU)
+			return 1.; // TODO:
+		else
+			return gsl_pow_2(y[6]) + gsl_pow_2(y[7] / tan(y[2]));
 	}
 	int Metric::NormalizeTimelikeGeodesic(double y[]) {
+		const double g00 = 1. - 2. / y[1];
+		if (g00 <= 0)
+			return 1;
+		y[4] = sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+		return std::isnan(y[4]);
 	}
 	int Metric::NormalizeNullGeodesic(double y[], double frequency) {
+		const double coefficient = GSL_SIGN(y[4]) / sqrt(gsl_pow_2(y[5]) + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7]));
+		y[4] = frequency;
+		y[5] *= coefficient;
+		y[6] *= coefficient;
+		y[7] *= coefficient;
+		return 0;
 	}
-	int Metric::LocalInertialFrame(const double y[], double coordinate[]) {
+	int Metric::LocalInertialFrame(const double position[], double coordinate[]) {
+		return 1;
 	}
 	Integrator Metric::GetIntegrator(int coordinate) {
 		Integrator integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian, coordinate);
@@ -122,7 +170,7 @@ namespace SBody {
 			y[i] *= v_1;
 		return 0;
 	}
-	int Newton::LocalInertialFrame(const double y[], double coordinate[]) {
+	int Newton::LocalInertialFrame(const double position[], double coordinate[]) {
 		return 1;
 	}
 	Integrator Newton::GetIntegrator(int coordinate) {
@@ -204,11 +252,11 @@ namespace SBody {
 		const double g00 = 1. - 2. / y[1];
 		if (g00 <= 0)
 			return 1;
-		const double eff = GSL_SIGN(y[4]) * g00 / sqrt(gsl_pow_2(y[5]) + g00 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+		const double coefficient = GSL_SIGN(y[4]) * g00 / sqrt(gsl_pow_2(y[5]) + g00 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
 		y[4] = frequency;
-		y[5] *= eff;
-		y[6] *= eff;
-		y[7] *= eff;
+		y[5] *= coefficient;
+		y[6] *= coefficient;
+		y[7] *= coefficient;
 		return 0;
 	}
 	int Schwarzschild::LocalInertialFrame(const double position[], double coordinate[]) {
@@ -386,7 +434,7 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	int Kerr::LocalInertialFrame(const double y[], double coordinate[]) {
+	int Kerr::LocalInertialFrame(const double position[], double coordinate[]) {
 		return 1;
 	}
 	Integrator Kerr::GetIntegrator(int coordinate) {
@@ -505,7 +553,8 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	int KerrTaubNUT::LocalInertialFrame(const double y[], double coordinate[]) {
+	int KerrTaubNUT::LocalInertialFrame(const double position[], double coordinate[]) {
+		return 1;
 	}
 	Integrator KerrTaubNUT::GetIntegrator(int coordinate) {
 		if (mode_ == T)
@@ -517,67 +566,6 @@ namespace SBody {
 	}
 
 	namespace metric {
-		int c2s(const double x[], const double v[], double r[], double w[]) {
-			// x = {x, y, z}
-			// v = {v_x, v_y, v_z}
-			// r = {r, \theta, \phi}
-			// w = {v_r, v_\theta, v_\phi}
-			r[0] = Norm(x);
-			if (r[0] < epsilon)
-				return 1;
-			r[1] = acos(x[2] / r[0]);
-			w[0] = SBody::Dot(x, v) / r[0];
-			const double normXY = Norm(x, 2);
-			if (normXY < epsilon) {
-				double normVXY = Norm(v, 2);
-				if (normVXY < epsilon) {
-					r[2] = 0;
-					w[1] = 0;
-				} else {
-					if (v[1] >= 0)
-						r[2] = acos(v[0] / normVXY);
-					else
-						r[2] = 2. * M_PI - acos(v[0] / normVXY);
-					if (x[2] >= 0)
-						w[1] = normVXY / r[0];
-					else
-						w[1] = -normVXY / r[0];
-				}
-				w[2] = 0;
-			} else {
-				if (x[1] >= 0)
-					r[2] = acos(x[0] / normXY);
-				else
-					r[2] = 2. * M_PI - acos(x[0] / normXY);
-				w[1] = (-v[2] + x[2] / r[0] * w[0]) / normXY;
-				w[2] = (v[1] * x[0] - v[0] * x[1]) / gsl_pow_2(normXY);
-			}
-			return 0;
-		}
-		int c2s(const double x[], double r[]) {
-			r[0] = x[0];
-			r[4] = x[4];
-			return c2s(x + 1, x + 5, r + 1, r + 5);
-		}
-		int s2c(const double r[], const double w[], double x[], double v[]) {
-			// r = {r, \theta, \phi}
-			// w = {v_r, v_\theta, v_\phi}
-			// x = {x, y, z}
-			// v = {v_x, v_y, v_z}
-			const double sint = sin(r[1]), cost = cos(r[1]), sinp = sin(r[2]), cosp = cos(r[2]);
-			x[0] = r[0] * sint * cosp;
-			x[1] = r[0] * sint * sinp;
-			x[2] = r[0] * cost;
-			v[0] = w[0] * sint * cosp + r[0] * cost * cosp * w[1] - r[0] * sint * sinp * w[2];
-			v[1] = w[0] * sint * sinp + r[0] * cost * sinp * w[1] + r[0] * sint * cosp * w[2];
-			v[2] = w[0] * cost - r[0] * sint * w[1];
-			return 0;
-		}
-		int s2c(const double r[], double x[]) {
-			x[0] = r[0];
-			x[4] = r[4];
-			return s2c(r + 1, r + 5, x + 1, x + 5);
-		}
 		namespace Newton {
 			int function(double t, const double y[], double dydt[], void *params) {
 				class Newton *newton = reinterpret_cast<class Newton *>(params);

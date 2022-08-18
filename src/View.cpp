@@ -33,7 +33,7 @@
 using namespace std;
 
 namespace SBody {
-	View::View(unique_ptr<Metric> metric, double r, double theta, string file_name) : metric_(move(metric)), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({5}))) {}
+	View::View(shared_ptr<Metric> metric, double r, double theta, string file_name) : metric_(move(metric)), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({5}))) {}
 	int View::InitializePhoton(double *photon, double alpha, double beta) {
 		photon[0] = 0.;
 		photon[1] = r_;
@@ -61,7 +61,7 @@ namespace SBody {
 		return metric_->NormalizeNullGeodesic(photon, 1.);
 	}
 	int View::TraceStar(Star &star, int ray_number) { // FIXME:!!!!
-		const double r_star = star.pos[1], sin_theta_star = sin(star.pos[2]), cos_theta_star = cos(star.pos[2]), sin_phi_star = sin(star.pos[3]), cos_phi_star = cos(star.pos[3]);
+		const double r_star = star.position_[1], sin_theta_star = sin(star.position_[2]), cos_theta_star = cos(star.position_[2]), sin_phi_star = sin(star.position_[3]), cos_phi_star = cos(star.position_[3]);
 		double alpha0 = GSL_POSINF, alpha1 = (r_star + 1.) * sin_theta_star * sin_phi_star, beta0 = GSL_POSINF, beta1 = (r_star + 1.) * (cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_), ph[10], cosph, last[10], h;
 #ifdef RECORD_TRACE
 		vector<double> qdq(12);
@@ -145,14 +145,14 @@ namespace SBody {
 #endif
 		gsl_matrix *coordinate = gsl_matrix_alloc(4, 4), *gmunu = gsl_matrix_alloc(4, 4), *coordinate_gmunu = gsl_matrix_alloc(4, 4);
 		gsl_permutation *perm = gsl_permutation_alloc(4);
-		metric_->GetMetricTensor(star.pos, gmunu);
-		metric_->LocalInertialFrame(star.pos, coordinate->data);
+		star.GetMetricTensor(gmunu);
+		star.LocalInertialFrame(coordinate->data);
 		const double ph_reg[4] = {1. / ph[4], ph[5] / ph[4], ph[6] / ph[4], ph[7] / ph[4]};
 		double ph_coor[4] = {
-			metric_->DotProduct(star.pos, ph_reg, coordinate->data, 4),
-			metric_->DotProduct(star.pos, ph_reg, coordinate->data + 4, 4),
-			metric_->DotProduct(star.pos, ph_reg, coordinate->data + 8, 4),
-			metric_->DotProduct(star.pos, ph_reg, coordinate->data + 12, 4)};
+			star.DotProduct(ph_reg, coordinate->data, 4),
+			star.DotProduct(ph_reg, coordinate->data + 4, 4),
+			star.DotProduct(ph_reg, coordinate->data + 8, 4),
+			star.DotProduct(ph_reg, coordinate->data + 12, 4)};
 		for (int i = 1; i < 4; ++i)
 			ph_coor[i] /= ph_coor[0];
 		const double ph_coor_sph[2] = {acos(ph_coor[3]), atan2(ph_coor[2], ph_coor[1])};
@@ -289,7 +289,7 @@ namespace SBody {
 			ProgressBar::SetComplete(progressBarIndex, "! Shadow");
 		return 0;
 	}
-	Camera::Camera(unique_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta, string file_name) : View(move(metric), r, theta, file_name), pixel_(pixel), half_angle_(half_angle) {
+	Camera::Camera(shared_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta, string file_name) : View(move(metric), r, theta, file_name), pixel_(pixel), half_angle_(half_angle) {
 		screen_ = vector<vector<double>>(pixel, vector<double>(pixel));
 		initials_ = vector<array<double, 10>>(pixel * pixel);
 		const double pixel_size = 2. * half_angle * r / pixel, t1 = r + 100.;
@@ -360,7 +360,7 @@ namespace SBody {
 					metric_->HamiltonianToLagrangian(ph);
 					if (ph[2] < 0)
 						ph[2] += M_PI;
-					metric::s2c(ph, phc);
+					SphericalToCartesian(ph, phc, 8);
 					rec.Save({phc[6] * pixelPerAngle, (phc[7] * sin_theta_observer_ - phc[5] * cos_theta_observer_) * pixelPerAngle});
 				}
 				if (ProgressBar::display_)

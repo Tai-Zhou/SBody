@@ -33,8 +33,8 @@ namespace SBody {
 	 */
 	class Metric {
 	  protected:
-		std::string name_;
 		int mode_;
+		std::string name_;
 
 	  public:
 		Metric(metric_mode mode, std::string name);
@@ -42,6 +42,7 @@ namespace SBody {
 		virtual int GetMetricTensor(const double position[], gsl_matrix *metric);
 		virtual double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		virtual double Distance(const double x[], const double y[], const size_t dimension);
+		virtual int LocalInertialFrame(const double position[], double coordinate[]);
 		virtual int LagrangianToHamiltonian(double y[]);
 		virtual int HamiltonianToLagrangian(double y[]);
 		virtual double Energy(const double y[]);
@@ -49,7 +50,6 @@ namespace SBody {
 		virtual double CarterConstant(const double y[], const double mu2);
 		virtual int NormalizeTimelikeGeodesic(double y[]);
 		virtual int NormalizeNullGeodesic(double y[], double frequency = 1.);
-		virtual int LocalInertialFrame(const double y[], double coordinate[]);
 		virtual Integrator GetIntegrator(int coordinate);
 	};
 	class Newton : public Metric {
@@ -59,6 +59,7 @@ namespace SBody {
 		int GetMetricTensor(const double position[], gsl_matrix *metric);
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		double Distance(const double x[], const double y[], const size_t dimension);
+		int LocalInertialFrame(const double position[], double coordinate[]);
 		int LagrangianToHamiltonian(double y[]);
 		int HamiltonianToLagrangian(double y[]);
 		double Energy(const double y[]);
@@ -66,7 +67,6 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2);
 		int NormalizeTimelikeGeodesic(double y[]);
 		int NormalizeNullGeodesic(double y[], double frequency = 1.);
-		int LocalInertialFrame(const double y[], double coordinate[]);
 		Integrator GetIntegrator(int coordinate);
 	};
 	class Schwarzschild : public Metric {
@@ -75,6 +75,7 @@ namespace SBody {
 		int GetMetricTensor(const double position[], gsl_matrix *metric);
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		double Distance(const double x[], const double y[], const size_t dimension);
+		int LocalInertialFrame(const double position[], double coordinate[]);
 		int LagrangianToHamiltonian(double y[]);
 		int HamiltonianToLagrangian(double y[]);
 		double Energy(const double y[]);
@@ -82,7 +83,6 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2);
 		int NormalizeTimelikeGeodesic(double y[]);
 		int NormalizeNullGeodesic(double y[], double frequency = 1.);
-		int LocalInertialFrame(const double y[], double coordinate[]);
 		Integrator GetIntegrator(int coordinate);
 	};
 	class Kerr : public Schwarzschild {
@@ -92,6 +92,7 @@ namespace SBody {
 		int GetMetricTensor(const double position[], gsl_matrix *metric);
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		double Distance(const double x[], const double y[], const size_t dimension);
+		int LocalInertialFrame(const double position[], double coordinate[]);
 		int LagrangianToHamiltonian(double y[]);
 		int HamiltonianToLagrangian(double y[]);
 		double Energy(const double y[]);
@@ -99,7 +100,6 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2);
 		int NormalizeTimelikeGeodesic(double y[]);
 		int NormalizeNullGeodesic(double y[], double frequency = 1.);
-		int LocalInertialFrame(const double y[], double coordinate[]);
 		Integrator GetIntegrator(int coordinate);
 	};
 	class KerrTaubNUT : public Kerr {
@@ -110,6 +110,7 @@ namespace SBody {
 		int GetMetricTensor(const double position[], gsl_matrix *metric);
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		double Distance(const double x[], const double y[], const size_t dimension);
+		int LocalInertialFrame(const double position[], double coordinate[]);
 		int LagrangianToHamiltonian(double y[]);
 		int HamiltonianToLagrangian(double y[]);
 		double Energy(const double y[]);
@@ -117,7 +118,6 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2);
 		int NormalizeTimelikeGeodesic(double y[]);
 		int NormalizeNullGeodesic(double y[], double frequency = 1.);
-		int LocalInertialFrame(const double position[], double coordinate[]);
 		Integrator GetIntegrator(int coordinate);
 	};
 	namespace metric {

@@ -18,28 +18,57 @@
 
 namespace SBody {
 	std::vector<Object *> Object::object_list_;
-	Object::Object(std::unique_ptr<Metric> metric) : metric_(std::move(metric)) {}
-	Star::Star(std::unique_ptr<Metric> metric, double radius, const double position[], bool fixed) : Object(std::move(metric)), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)) {
-		std::copy(position, position + 8, pos);
+	Object::Object(std::shared_ptr<Metric> metric) : metric_(metric) {
+		object_list_.push_back(this);
+	}
+	Star::Star(std::shared_ptr<Metric> metric, double radius, bool fixed) : Object(metric), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)) {
+		for (int i = 0; i < 8; ++i)
+			position_[i] = 0;
+	}
+	Star::Star(std::shared_ptr<Metric> metric, double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination, double observer_rotation, double radius, bool fixed) : Object(metric), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)) {
+		position_[0] = 0.;
+		double r = a * (1 - e * e) / (1 + e * cos(true_anomaly));
+		const double tp1 = -r * cos(periapsis + true_anomaly), tp2 = -r * sin(periapsis + true_anomaly) * cos(inclination);
+		const double xp1 = tp1 * cos(ascending_node) - tp2 * sin(ascending_node), xp2 = tp2 * cos(ascending_node) + tp1 * sin(ascending_node), xp3 = -r * sin(periapsis + true_anomaly) * sin(inclination);
+		position_[1] = (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * cos(observer_inclination) + xp3 * sin(observer_inclination);
+		position_[2] = xp2 * cos(observer_rotation) - xp1 * sin(observer_rotation);
+		position_[3] = xp3 * cos(observer_inclination) - (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * sin(observer_inclination);
+		const double vphi = sqrt((1 - e * e) * a) / r, vr = GSL_SIGN(M_PI - ModBy2Pi(true_anomaly)) * sqrt(std::max(0., 2. / r - 1. / a - vphi * vphi));
+		const double tp5 = vphi * sin(periapsis + true_anomaly) - vr * cos(periapsis + true_anomaly), tp6 = -(vphi * cos(periapsis + true_anomaly) + vr * sin(periapsis + true_anomaly)) * cos(inclination);
+		const double xp5 = tp5 * cos(ascending_node) - tp6 * sin(ascending_node), xp6 = tp5 * sin(ascending_node) + tp6 * cos(ascending_node), xp7 = -(vphi * cos(periapsis + true_anomaly) + vr * sin(periapsis + true_anomaly)) * sin(inclination);
+		position_[5] = (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * cos(observer_inclination) + xp7 * sin(observer_inclination);
+		position_[6] = xp6 * cos(observer_rotation) - xp5 * sin(observer_rotation);
+		position_[7] = xp7 * cos(observer_inclination) - (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * sin(observer_inclination);
+		CartesianToSpherical(position_);
+		metric_->NormalizeTimelikeGeodesic(position_);
 	}
 	int Star::Hit(const double current[], const double last[]) {
-		double a2 = metric_->Distance(pos, current, 3);
+		double a2 = metric_->Distance(position_, current, 3);
 		if (a2 <= radius_square_)
 			return 1;
-		double b2 = metric_->Distance(pos, last, 3), c2 = metric_->Distance(current, last, 3);
+		double b2 = metric_->Distance(position_, last, 3), c2 = metric_->Distance(current, last, 3);
 		if (a2 + c2 > b2 && b2 + c2 > a2 && 2 * a2 * c2 - gsl_pow_2(a2 - b2 + c2) <= 4 * c2 * radius_square_)
 			return 1; // if min distance between current and last < radius, return 1;
 		return 0;
 	}
 	double Star::Redshift(const double photon[]) {
-		const double u[4] = {1., pos[5], pos[6], pos[7]}, v[4] = {1., photon[5], photon[6], photon[7]};
-		return -metric_->DotProduct(pos, u, v, 4) / (pos[4] * photon[4]);
+		const double u[4] = {1., position_[5], position_[6], position_[7]}, v[4] = {1., photon[5], photon[6], photon[7]};
+		return -metric_->DotProduct(position_, u, v, 4) / (position_[4] * photon[4]);
 	}
 	double Star::RedshiftTau(const double photon[]) {
-		const double u[4] = {1., pos[5], pos[6], pos[7]};
-		return -metric_->DotProduct(pos, u, photon + 4, 4) / pos[4];
+		const double u[4] = {1., position_[5], position_[6], position_[7]};
+		return -metric_->DotProduct(position_, u, photon + 4, 4) / position_[4];
 	}
-	Disk::Disk(std::unique_ptr<Metric> metric, double inner_radius, double outer_radius) : Object(std::move(metric)), inner_radius_(inner_radius), outer_radius_(outer_radius) {}
+	int Star::GetMetricTensor(gsl_matrix *metric) {
+		return metric_->GetMetricTensor(position_, metric);
+	}
+	double Star::DotProduct(const double x[], const double y[], const size_t dimension) {
+		return metric_->DotProduct(position_, x, y, dimension);
+	}
+	int Star::LocalInertialFrame(double coordinate[]) {
+		return metric_->LocalInertialFrame(position_, coordinate);
+	}
+	Disk::Disk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius) : Object(metric), inner_radius_(inner_radius), outer_radius_(outer_radius) {}
 	int Disk::Hit(const double current[], const double last[]) {
 		if (inner_radius_ <= current[1] && current[1] <= outer_radius_ && OppositeSign(current[2] - M_PI_2, last[2] - M_PI_2))
 			return 1;
@@ -49,7 +78,7 @@ namespace SBody {
 	double Disk::Redshift(const double ph[]) {
 		return 1.;
 	}
-	ThickDisk::ThickDisk(std::unique_ptr<Metric> metric, double inner_radius, double outer_radius, double half_angle) : Disk(std::move(metric), inner_radius, outer_radius), half_angle_(half_angle) {}
+	ThickDisk::ThickDisk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius, double half_angle) : Disk(metric, inner_radius, outer_radius), half_angle_(half_angle) {}
 	int ThickDisk::Hit(const double current[], const double last[]) { // TODO: need update
 		if (inner_radius_ <= current[1] && current[1] <= outer_radius_ && OppositeSign(current[2] - M_PI_2, last[2] - M_PI_2))
 			return 1;
@@ -59,7 +88,7 @@ namespace SBody {
 	double ThickDisk::Redshift(const double ph[]) {
 		return 1.;
 	}
-	Torus::Torus(std::unique_ptr<Metric> metric, double major_radius, double minor_radius) : Object(std::move(metric)), major_radius_(major_radius), minor_radius_(minor_radius) {}
+	Torus::Torus(std::shared_ptr<Metric> metric, double major_radius, double minor_radius) : Object(metric), major_radius_(major_radius), minor_radius_(minor_radius) {}
 	int Torus::Hit(const double current[], const double last[]) {
 		const double rc[4] = {0, major_radius_, M_PI_2, current[3]};
 		if (metric_->Distance(rc, current, 3) <= minor_radius_) // FIXME:not accurate if minorRadius not << majorRadius

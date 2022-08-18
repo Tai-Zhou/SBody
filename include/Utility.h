@@ -130,16 +130,22 @@ namespace SBody {
 	double Norm(const double x[], size_t dimension = 3);
 
 	/**
-	 * @brief Cross product of vector \f$x\timesy\f$, stored in z
+	 * @brief Cross product of vector \f$x\times y\f$, stored in z
 	 *
 	 * @param x
 	 * @param y
 	 * @param z
 	 */
-	void Cross(const double x[], const double y[], double z[]);
+	int Cross(const double x[], const double y[], double z[]);
+	int CartesianToSpherical(double x[], size_t dimension = 8);
+	int CartesianToSpherical(const double cartesian[], double spherical[], size_t dimension);
+	int CartesianToSpherical(const double cartesian_position[], const double cartesian_velocity[], double spherical_position[], double spherical_velocity[]);
+	int SphericalToCartesian(double x[], size_t dimension = 8);
+	int SphericalToCartesian(const double spherical[], double cartesian[], size_t dimension);
+	int SphericalToCartesian(const double spherical_position[], const double spherical_velocity[], double cartesian_position[], double cartesian_velocity[]);
 
 	/**
-	 * @brief return 1 if x, y have opposite signs
+	 * @brief return 1 if x, y have opposite signs, else 0.
 	 *
 	 * @param x
 	 * @param y
@@ -148,7 +154,7 @@ namespace SBody {
 	int OppositeSign(double x, double y);
 
 	/**
-	 * @brief return x in [0, 2*pi)
+	 * @brief return x in \f$[0, 2\pi)\f$.
 	 *
 	 * @param x
 	 * @return double

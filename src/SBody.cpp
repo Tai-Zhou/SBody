@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
 	double t = 0, tStep = 0, tRec = tFinal / tStepNumber;
 	if (metric == 0)
 		ray = 0;
-	Schwarzschild main_metric(T);
+	shared_ptr<Metric> main_metric = make_shared<Schwarzschild>(T);
 	// metric::setMetric(metric, PN, mass, spin, charge, NUT);
 	string strFormat = fmt::format(" ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps);
 	if (ProgressBar::display_) {
@@ -204,86 +204,36 @@ int main(int argc, char *argv[]) {
 			shadowPtr = make_unique<thread>(&View::Shadow, viewPtr.get());
 	}
 	if (ray & 10) {
-		cameraPtr = make_unique<Camera>(make_unique<Schwarzschild>(HAMILTONIAN), 1000, 5e-2, mass * 1.e3, inc, string("camera") + strFormat);
+		cameraPtr = make_unique<Camera>(make_unique<Schwarzschild>(HAMILTONIAN), 1000, 5e-2, 1.e3, inc, string("camera") + strFormat);
 		if (ray & 8)
 			lensPtr = make_unique<thread>(&Camera::Lens, cameraPtr.get());
 	}
-	double x[8], y[8];
-	if (metric == 0) {
-		y[0] = 0;
-		y[4] = 1;
-		double r = a * (1 - e * e) / (1 + e * cos(trueAnomaly));
-		double tp1 = -r * cos(periapsis + trueAnomaly), tp2 = -r * sin(periapsis + trueAnomaly) * cos(inclination);
-		double xp1 = tp1 * cos(ascendingNode) - tp2 * sin(ascendingNode), xp2 = tp2 * cos(ascendingNode) + tp1 * sin(ascendingNode), xp3 = -r * sin(periapsis + trueAnomaly) * sin(inclination);
-		y[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
-		y[2] = xp2 * cos(eps) - xp1 * sin(eps);
-		y[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
-		double vphi = sqrt((1 - e * e) * mass * a) / r, vr = GSL_SIGN(M_PI - ModBy2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vphi * vphi));
-		// vphi = 0.3822615764261866;
-		// vr = -0.16707659553531468;
-		double tp5 = vphi * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vphi * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
-		double xp5 = tp5 * cos(ascendingNode) - tp6 * sin(ascendingNode), xp6 = tp5 * sin(ascendingNode) + tp6 * cos(ascendingNode), xp7 = -(vphi * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * sin(inclination);
-		y[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
-		y[6] = xp6 * cos(eps) - xp5 * sin(eps);
-		y[7] = xp7 * cos(inc) - (xp5 * cos(eps) + xp6 * sin(eps)) * sin(inc);
-	} else {
-		x[0] = 0;
-		if (restMass) {
-			double r = a * (1 - e * e) / (1 + e * cos(trueAnomaly));
-			double tp1 = -r * cos(periapsis + trueAnomaly), tp2 = -r * sin(periapsis + trueAnomaly) * cos(inclination);
-			double xp1 = tp1 * cos(ascendingNode) - tp2 * sin(ascendingNode), xp2 = tp2 * cos(ascendingNode) + tp1 * sin(ascendingNode), xp3 = -r * sin(periapsis + trueAnomaly) * sin(inclination);
-			x[1] = (xp1 * cos(eps) + xp2 * sin(eps)) * cos(inc) + xp3 * sin(inc);
-			x[2] = xp2 * cos(eps) - xp1 * sin(eps);
-			x[3] = xp3 * cos(inc) - (xp1 * cos(eps) + xp2 * sin(eps)) * sin(inc);
-			double vphi = sqrt((1 - e * e) * mass * a) / r, vr = GSL_SIGN(M_PI - ModBy2Pi(trueAnomaly)) * sqrt(max(0., 2. * mass / r - mass / a - vphi * vphi));
-			vphi = 0.3822615764261866; // 0.3840905791842067; // 0.3822615764261866;
-			vr = -0.16707659553531468; // 0.16386176496281388; // 0.16707659553531468;
-			double tp5 = vphi * sin(periapsis + trueAnomaly) - vr * cos(periapsis + trueAnomaly), tp6 = -(vphi * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * cos(inclination);
-			double xp5 = tp5 * cos(ascendingNode) - tp6 * sin(ascendingNode), xp6 = tp5 * sin(ascendingNode) + tp6 * cos(ascendingNode), xp7 = -(vphi * cos(periapsis + trueAnomaly) + vr * sin(periapsis + trueAnomaly)) * sin(inclination);
-			x[5] = (xp5 * cos(eps) + xp6 * sin(eps)) * cos(inc) + xp7 * sin(inc);
-			x[6] = xp6 * cos(eps) - xp5 * sin(eps);
-			x[7] = xp7 * cos(inc) - (xp5 * cos(eps) + xp6 * sin(eps)) * sin(inc);
-		} else {
-			x[1] = mass * 1000;
-			x[5] = -1.;
-			x[6] = 0;
-			x[7] = 0;
-		}
-		metric::c2s(x, y);
-		if (restMass)
-			main_metric.NormalizeTimelikeGeodesic(y);
-		else
-			main_metric.NormalizeNullGeodesic(y, 1.);
-		if (Hamiltonian)
-			main_metric.LagrangianToHamiltonian(y);
-	}
 	// Integrator integ(metric::function, metric::jacobian, metric != 0);
-	Integrator &&integrator = main_metric.GetIntegrator(metric != 0);
-	Star star_0(make_unique<Schwarzschild>(T), Unit::R_sun, y, 0);
-	Object::object_list_.push_back(&star_0);
-	NumPy rec(main_metric.Name() + strFormat, {12});
+	Star star_0(main_metric, a, e, inclination, periapsis, ascendingNode, trueAnomaly, inc, eps, Unit::R_sun, 0);
+	Integrator &&integrator = main_metric->GetIntegrator(metric != 0);
+	NumPy rec(main_metric->Name() + strFormat, {12});
 	vector<double> temp(12);
 	int status = 0, TUse, TLastUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
 	double h = 1., stepPercent = 100. / tStepNumber;
 	for (int i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
 		while (status <= 0 && t < tStep)
-			status = integrator.Apply(&t, tStep, &h, star_0.pos);
+			status = integrator.Apply(&t, tStep, &h, star_0.position_);
 		if (status > 0)
 			fmt::print(stderr, "[!] main status = {}\n", status);
 		if (metric == 0)
-			copy(star_0.pos, star_0.pos + 8, temp.begin());
+			copy(star_0.position_, star_0.position_ + 8, temp.begin());
 		else {
 			if (Hamiltonian) {
-				copy(star_0.pos, star_0.pos + 8, temp.begin());
-				main_metric.HamiltonianToLagrangian(temp.data()); // TODO: need s2c()
+				copy(star_0.position_, star_0.position_ + 8, temp.begin());
+				main_metric->HamiltonianToLagrangian(temp.data()); // TODO: need s2c()
 			} else
-				metric::s2c(star_0.pos, temp.data());
+				SphericalToCartesian(star_0.position_, temp.data(), 8);
 		}
 		temp[8] = t / Unit::s;
-		temp[9] = main_metric.Energy(star_0.pos);
-		temp[10] = main_metric.AngularMomentum(star_0.pos);
-		temp[11] = main_metric.CarterConstant(star_0.pos, 1.);
+		temp[9] = main_metric->Energy(star_0.position_);
+		temp[10] = main_metric->AngularMomentum(star_0.position_);
+		temp[11] = main_metric->CarterConstant(star_0.position_, 1.);
 		if (ray & 1)
 			viewPtr->TraceStar(star_0, i);
 		if (ray & 2)

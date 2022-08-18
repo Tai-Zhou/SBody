@@ -163,23 +163,23 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 		main_metric.NormalizeTimelikeGeodesic(y);
 	}
 	Integrator &&integrator = main_metric.GetIntegrator(PN);
-	Star star_0(make_unique<Newton>(PN, T), Unit::R_sun, y, 0);
+	Star star_0(make_unique<Newton>(PN, T), Unit::R_sun, 0);
 	auto result = py::array_t<double>(tList.size() * 8);
 	double *result_ptr = (double *)result.request().ptr;
 	int status = 0, rayNO = 0;
 	double h = -1., tPoint = tList[0] * Unit::yr;
 	while (t > tPoint)
-		status = integrator.Apply(&t, tPoint, &h, star_0.pos);
+		status = integrator.Apply(&t, tPoint, &h, star_0.position_);
 	h = 1.;
 	integrator.Reset();
 	for (double tPoint : tList) {
 		tPoint = tPoint * Unit::yr;
 		while (status <= 0 && t < tPoint)
-			status = integrator.Apply(&t, tPoint, &h, star_0.pos);
+			status = integrator.Apply(&t, tPoint, &h, star_0.position_);
 		if (status > 0)
 			py::print("[!] status =", status);
 		if (metric == 0)
-			copy(star_0.pos, star_0.pos + 8, result_ptr + (rayNO++) * 8);
+			copy(star_0.position_, star_0.position_ + 8, result_ptr + (rayNO++) * 8);
 		else
 			viewPtr->TraceStar(star_0, rayNO++);
 	}

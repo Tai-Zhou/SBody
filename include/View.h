@@ -24,7 +24,7 @@
 namespace SBody {
 	class View {
 	  protected:
-		std::unique_ptr<Metric> metric_;
+		std::shared_ptr<Metric> metric_;
 		const double r_;
 		const double theta_;
 		const double sin_theta_observer_;
@@ -40,7 +40,7 @@ namespace SBody {
 		 * @param theta
 		 * @param file_name
 		 */
-		View(std::unique_ptr<Metric> metric, double r, double theta, std::string file_name);
+		View(std::shared_ptr<Metric> metric, double r, double theta, std::string file_name);
 
 		/**
 		 * @brief
@@ -86,7 +86,7 @@ namespace SBody {
 		 * @param theta
 		 * @param file_name
 		 */
-		Camera(std::unique_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta, std::string file_name);
+		Camera(std::shared_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta, std::string file_name);
 
 		/**
 		 * @brief
