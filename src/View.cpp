@@ -33,8 +33,8 @@
 using namespace std;
 
 namespace SBody {
-	View::View(double r, double theta, string file_name) : r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({5}))) {}
-	int View::RayInitialize(double *photon, double alpha, double beta) {
+	View::View(unique_ptr<Metric> metric, double r, double theta, string file_name) : metric_(move(metric)), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({5}))) {}
+	int View::InitializePhoton(double *photon, double alpha, double beta) {
 		photon[0] = 0.;
 		photon[1] = r_;
 		photon[5] = 1.;
@@ -58,7 +58,7 @@ namespace SBody {
 			photon[6] = beta / gsl_pow_2(r_);
 			photon[7] = -alpha / (gsl_pow_2(r_) * sin_theta_observer_);
 		}
-		return metric::lightNormalization(photon, 1.);
+		return metric_->NormalizeNullGeodesic(photon, 1.);
 	}
 	int View::TraceStar(Star &star, int ray_number) { // FIXME:!!!!
 		const double r_star = star.pos[1], sin_theta_star = sin(star.pos[2]), cos_theta_star = cos(star.pos[2]), sin_phi_star = sin(star.pos[3]), cos_phi_star = cos(star.pos[3]);
@@ -67,20 +67,12 @@ namespace SBody {
 		vector<double> qdq(12);
 		IO::NumPy rec("Trace " + to_string(ray_number), 12);
 #endif
-#ifdef VIEW_TAU
-		Integrator integrator(metric::functionTau, metric::jacobian, 2);
-#elif VIEW_HAMILTONIAN
-		Integrator integrator(metric::functionHamiltonian, metric::jacobian, 2);
-#else
-		Integrator integrator(metric::function, metric::jacobian, 2);
-#endif
+		Integrator &&integrator = metric_->GetIntegrator(2);
 		while (gsl_hypot(alpha1 - alpha0, beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
 			alpha0 = alpha1;
 			beta0 = beta1;
-			RayInitialize(ph, alpha0, beta0);
-#ifdef VIEW_HAMILTONIAN
-			metric::qdq2qp(ph);
-#endif
+			InitializePhoton(ph, alpha0, beta0);
+			metric_->LagrangianToHamiltonian(ph);
 			int status = 0, fixed = 0;
 			h = -1.;
 			while (status <= 0) {
@@ -94,7 +86,7 @@ namespace SBody {
 				else
 					status = integrator.Apply(ph + 9, t_final_, &h, ph);
 				cosph = (r_star * sin_theta_star * cos_phi_star - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * cos(ph[3])) * sin_theta_observer_ + (r_star * cos_theta_star - ph[1] * GSL_SIGN(ph[2]) * cos(ph[2])) * cos_theta_observer_;
-				if (cosph > r_star * relAcc) {
+				if (cosph > r_star * relative_accuracy) {
 					copy(last, last + 10, ph);
 					h *= 0.3;
 					fixed = 1;
@@ -119,7 +111,7 @@ namespace SBody {
 						alpha1 += r_star * sin_theta_star * sin_phi_star - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * sin(ph[3]); // TODO:OPT!
 						beta1 += (r_star * cos_theta_star - ph[1] * GSL_SIGN(ph[2]) * cos(ph[2])) * sin_theta_observer_ - (r_star * sin_theta_star * cos_phi_star - ph[1] * GSL_SIGN(ph[2]) * sin(ph[2]) * cos(ph[3])) * cos_theta_observer_;
 #ifdef VIEW_HAMILTONIAN
-						metric::qp2qdq(ph);
+						metric_->HamiltonianToLagrangian(ph);
 #endif
 						break;
 					}
@@ -133,9 +125,9 @@ namespace SBody {
 		double ph2[9], rec2[sample_number][8], recph[8], interval = M_2PI / sample_number, time_limit;
 		copy(ph, ph + 8, ph2);
 		ph2[8] = 0.;
-		metric::lightNormalization(ph2, 1.);
+		metric_->NormalizeNullGeodesic(ph2, 1.);
 #ifdef VIEW_HAMILTONIAN
-		metric::qdq2qp(ph2);
+		metric_->LagrangianToHamiltonian(ph2);
 #endif
 		h = 1.;
 		int status = 0;
@@ -149,18 +141,18 @@ namespace SBody {
 		copy(ph2, ph2 + 8, recph);
 		time_limit = ph2[8];
 #ifdef VIEW_HAMILTONIAN
-		metric::qp2qdq(recph);
+		metric_->HamiltonianToLagrangian(recph);
 #endif
 		gsl_matrix *coordinate = gsl_matrix_alloc(4, 4), *gmunu = gsl_matrix_alloc(4, 4), *coordinate_gmunu = gsl_matrix_alloc(4, 4);
 		gsl_permutation *perm = gsl_permutation_alloc(4);
-		metric::Schwarzschild::get_gmunu(star.pos, gmunu);
-		metric::Schwarzschild::LocalInertialFrame(star.pos, coordinate->data);
+		metric_->GetMetricTensor(star.pos, gmunu);
+		metric_->LocalInertialFrame(star.pos, coordinate->data);
 		const double ph_reg[4] = {1. / ph[4], ph[5] / ph[4], ph[6] / ph[4], ph[7] / ph[4]};
 		double ph_coor[4] = {
-			metric::Schwarzschild::dot(star.pos, ph_reg, coordinate->data, 4),
-			metric::Schwarzschild::dot(star.pos, ph_reg, coordinate->data + 4, 4),
-			metric::Schwarzschild::dot(star.pos, ph_reg, coordinate->data + 8, 4),
-			metric::Schwarzschild::dot(star.pos, ph_reg, coordinate->data + 12, 4)};
+			metric_->DotProduct(star.pos, ph_reg, coordinate->data, 4),
+			metric_->DotProduct(star.pos, ph_reg, coordinate->data + 4, 4),
+			metric_->DotProduct(star.pos, ph_reg, coordinate->data + 8, 4),
+			metric_->DotProduct(star.pos, ph_reg, coordinate->data + 12, 4)};
 		for (int i = 1; i < 4; ++i)
 			ph_coor[i] /= ph_coor[0];
 		const double ph_coor_sph[2] = {acos(ph_coor[3]), atan2(ph_coor[2], ph_coor[1])};
@@ -195,9 +187,9 @@ namespace SBody {
 			// ph2[6] = ph2[4] * (coordinate[2] + coordinate[6] * ph2_coor_phi[0] + coordinate[10] * ph2_coor_phi[1] + coordinate[14] * ph2_coor_phi[2]);
 			// ph2[7] = ph2[4] * (coordinate[3] + coordinate[7] * ph2_coor_phi[0] + coordinate[11] * ph2_coor_phi[1] + coordinate[15] * ph2_coor_phi[2]);
 			ph2[8] = 0.;
-			metric::lightNormalization(ph2, 1.);
+			metric_->NormalizeNullGeodesic(ph2, 1.);
 #ifdef VIEW_HAMILTONIAN
-			metric::qdq2qp(ph2);
+			metric_->LagrangianToHamiltonian(ph2);
 #endif
 			h = 1.;
 			int status = 0;
@@ -210,7 +202,7 @@ namespace SBody {
 			}
 			copy(ph2, ph2 + 8, rec2[i]);
 #ifdef VIEW_HAMILTONIAN
-			metric::qp2qdq(rec2[i]);
+			metric_->HamiltonianToLagrangian(rec2[i]);
 #endif
 		}
 		const double sin_theta = sin(recph[2]), cos_theta = cos(recph[2]), sin_phi = sin(recph[3]), cos_phi = cos(recph[3]);
@@ -250,13 +242,9 @@ namespace SBody {
 	}
 	int View::Shadow() {
 		const double interval = M_2PI / sample_number;
-		NumPy rec("shadow " + to_string(metric::a) + "," + to_string(metric::l), {2});
+		NumPy rec("shadow", {2});
 		double h, rin = 2., rout = 10., rmid = 6., photon[10];
-#ifdef VIEW_TAU
-		Integrator integrator(metric::functionTau, metric::jacobian, 2);
-#else
-		Integrator integrator(metric::function, metric::jacobian, 2);
-#endif
+		Integrator &&integrator = metric_->GetIntegrator(2);
 		indicators::BlockProgressBar shadowProgressBar{
 			indicators::option::ShowElapsedTime{true},
 			indicators::option::ShowRemainingTime{true},
@@ -270,7 +258,7 @@ namespace SBody {
 			int status = 0;
 			while (rout - rin > epsilon * (rin + rout)) {
 				rmid = 0.5 * (rin + rout);
-				RayInitialize(photon, rmid * cosa, rmid * sina);
+				InitializePhoton(photon, rmid * cosa, rmid * sina);
 				h = -1.;
 				while (status <= 0 && photon[8] + photon[9] > t_final_) {
 					status = integrator.Apply(photon + 9, t_final_, &h, photon);
@@ -301,24 +289,20 @@ namespace SBody {
 			ProgressBar::SetComplete(progressBarIndex, "! Shadow");
 		return 0;
 	}
-	Camera::Camera(size_t pixel, double half_angle, double r, double theta, string file_name) : View(r, theta, file_name), pixel_(pixel), half_angle_(half_angle) {
+	Camera::Camera(unique_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta, string file_name) : View(move(metric), r, theta, file_name), pixel_(pixel), half_angle_(half_angle) {
 		screen_ = vector<vector<double>>(pixel, vector<double>(pixel));
 		initials_ = vector<array<double, 10>>(pixel * pixel);
 		const double pixel_size = 2. * half_angle * r / pixel, t1 = r + 100.;
 		for (int i = 0; i < pixel; ++i)
 			for (int j = 0; j < pixel; ++j)
-				RayInitialize(initials_[i * pixel + j].data(), pixel_size * (i - 0.5 * pixel + 0.5), pixel_size * (j - 0.5 * pixel + 0.5));
+				InitializePhoton(initials_[i * pixel + j].data(), pixel_size * (i - 0.5 * pixel + 0.5), pixel_size * (j - 0.5 * pixel + 0.5));
 #pragma omp parallel for
 		for (int p = pixel * pixel - 1; p >= 0; --p) {
 			int status = 0;
 			initials_[p][9] = -1.;
-#ifdef VIEW_TAU
-			Integrator integrator(metric::functionTau, metric::jacobian, 2);
-#else
-			Integrator integrator(metric::functionHamiltonian, metric::jacobian, 2);
-#endif
-			metric::lightNormalization(initials_[p].data(), 1.);
-			metric::qdq2qp(initials_[p].data());
+			Integrator &&integrator = metric_->GetIntegrator(2);
+			metric_->NormalizeNullGeodesic(initials_[p].data(), 1.);
+			metric_->LagrangianToHamiltonian(initials_[p].data());
 			while (status <= 0 && initials_[p][8] > t1 && initials_[p][1] > 100)
 				status = integrator.Apply(initials_[p].data() + 8, t1, initials_[p].data() + 9, initials_[p].data());
 			if (status > 0)
@@ -334,11 +318,7 @@ namespace SBody {
 			double ph[10], last[10];
 			int status = 0;
 			copy(initials_[p].begin(), initials_[p].end(), ph);
-#ifdef VIEW_TAU
-			Integrator integrator(metric::functionTau, metric::jacobian, 2);
-#else
-			Integrator integrator(metric::function, metric::jacobian, 2);
-#endif
+			Integrator &&integrator = metric_->GetIntegrator(2);
 			while (status <= 0 && ph[8] > t1) {
 				copy(ph, ph + 10, last);
 				status = integrator.Apply(ph + 8, t1, ph + 9, ph);
@@ -369,11 +349,7 @@ namespace SBody {
 				double ph[10], phc[10];
 				int status = 0;
 				copy(initials_[i * pixel_ + j].begin(), initials_[i * pixel_ + j].end(), ph);
-#ifdef VIEW_TAU
-				Integrator integrator(metric::functionTau, metric::jacobian, 2);
-#else
-				Integrator integrator(metric::functionHamiltonian, metric::jacobian, 2);
-#endif
+				Integrator &&integrator = metric_->GetIntegrator(2);
 				while (status <= 0 && ph[8] > t1 && ph[1] > 3. && ph[1] < 3.e2)
 					status = integrator.Apply(ph + 8, t1, ph + 9, ph);
 				if (status > 0)
@@ -381,7 +357,7 @@ namespace SBody {
 				if (ph[1] <= 3.)
 					rec.save({NAN, NAN});
 				else {
-					metric::qp2qdq(ph);
+					metric_->HamiltonianToLagrangian(ph);
 					if (ph[2] < 0)
 						ph[2] += M_PI;
 					metric::s2c(ph, phc);

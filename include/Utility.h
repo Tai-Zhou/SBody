@@ -18,10 +18,10 @@
 
 namespace SBody {
 	/// Absolute accuracy
-	extern double absAcc;
+	extern double absolute_accuracy;
 
 	/// Relative accuracy
-	extern double relAcc;
+	extern double relative_accuracy;
 
 	/// Sample number
 	constexpr int sample_number = 100;

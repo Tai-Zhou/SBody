@@ -79,11 +79,11 @@ int main(int argc, char *argv[]) {
 	size_t metric = 1;
 	size_t Hamiltonian = 0;
 	size_t PN = 1;
-	size_t ray = 1;
+	size_t ray = 4;
 	int restMass = 1;
 	ProgressBar::display_ = true;
 	string storeFormat = "NumPy";
-	double inc = M_PI * 0. / 180., eps = 0.;
+	double inc = M_PI * 130. / 180., eps = 0.;
 	double a = 8.3, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180., ascendingNode = M_PI * 25.1 / 180., trueAnomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
 	unique_ptr<View> viewPtr;
 	unique_ptr<thread> shadowPtr;
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
 		case 'n':
 			metric = atoi(optarg);
 			if (metric > 3)
-				help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absAcc, relAcc, storeFormat);
+				help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absolute_accuracy, relative_accuracy, storeFormat);
 			break;
 		case 'P':
 			PN = atoi(optarg);
@@ -162,10 +162,10 @@ int main(int argc, char *argv[]) {
 			ray = atoi(optarg);
 			break;
 		case 'a':
-			absAcc = atof(optarg);
+			absolute_accuracy = atof(optarg);
 			break;
 		case 'r':
-			relAcc = atof(optarg);
+			relative_accuracy = atof(optarg);
 			break;
 		case 'i':
 			inc = atof(optarg);
@@ -183,14 +183,15 @@ int main(int argc, char *argv[]) {
 			ProgressBar::display_ = true;
 			break;
 		default:
-			help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absAcc, relAcc, storeFormat);
+			help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absolute_accuracy, relative_accuracy, storeFormat);
 		}
 	Unit::Initialize(mass);
 	tFinal *= Unit::s;
 	double t = 0, tStep = 0, tRec = tFinal / tStepNumber;
 	if (metric == 0)
 		ray = 0;
-	metric::setMetric(metric, PN, mass, spin, charge, NUT);
+	Schwarzschild main_metric(T);
+	// metric::setMetric(metric, PN, mass, spin, charge, NUT);
 	string strFormat = fmt::format(" ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps);
 	if (ProgressBar::display_) {
 		indicators::show_console_cursor(false);
@@ -198,12 +199,12 @@ int main(int argc, char *argv[]) {
 		ProgressBar::bars_[0].set_option(indicators::option::PrefixText{string("?") + strFormat});
 	}
 	if (ray & 5) {
-		viewPtr = make_unique<View>(8180. * Unit::pc, inc, string("view") + strFormat);
+		viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, string("view") + strFormat);
 		if (ray & 4)
 			shadowPtr = make_unique<thread>(&View::Shadow, viewPtr.get());
 	}
 	if (ray & 10) {
-		cameraPtr = make_unique<Camera>(1000, 5e-2, mass * 1.e3, inc, string("camera") + strFormat);
+		cameraPtr = make_unique<Camera>(make_unique<Schwarzschild>(HAMILTONIAN), 1000, 5e-2, mass * 1.e3, inc, string("camera") + strFormat);
 		if (ray & 8)
 			lensPtr = make_unique<thread>(&Camera::Lens, cameraPtr.get());
 	}
@@ -250,18 +251,17 @@ int main(int argc, char *argv[]) {
 		}
 		metric::c2s(x, y);
 		if (restMass)
-			metric::particleNormalization(y);
+			main_metric.NormalizeTimelikeGeodesic(y);
 		else
-			metric::lightNormalization(y, 1.);
+			main_metric.NormalizeNullGeodesic(y, 1.);
 		if (Hamiltonian)
-			metric::qdq2qp(y);
+			main_metric.LagrangianToHamiltonian(y);
 	}
 	// Integrator integ(metric::function, metric::jacobian, metric != 0);
-	class Metric tempMetric("Schwarzschild");
-	Integrator integrator = tempMetric.SetIntegrator(metric != 0);
-	Star star_0(Unit::R_sun, y, 0);
+	Integrator &&integrator = main_metric.GetIntegrator(metric != 0);
+	Star star_0(make_unique<Schwarzschild>(T), Unit::R_sun, y, 0);
 	Object::object_list_.push_back(&star_0);
-	NumPy rec(metric::name + strFormat, {12});
+	NumPy rec(main_metric.Name() + strFormat, {12});
 	vector<double> temp(12);
 	int status = 0, TUse, TLastUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
 	double h = 1., stepPercent = 100. / tStepNumber;
@@ -276,14 +276,14 @@ int main(int argc, char *argv[]) {
 		else {
 			if (Hamiltonian) {
 				copy(star_0.pos, star_0.pos + 8, temp.begin());
-				metric::qp2qdq(temp.data()); // TODO: need s2c()
+				main_metric.HamiltonianToLagrangian(temp.data()); // TODO: need s2c()
 			} else
 				metric::s2c(star_0.pos, temp.data());
 		}
 		temp[8] = t / Unit::s;
-		temp[9] = metric::energy(star_0.pos);
-		temp[10] = metric::angularMomentum(star_0.pos);
-		temp[11] = metric::carter(star_0.pos, 1.);
+		temp[9] = main_metric.Energy(star_0.pos);
+		temp[10] = main_metric.AngularMomentum(star_0.pos);
+		temp[11] = main_metric.CarterConstant(star_0.pos, 1.);
 		if (ray & 1)
 			viewPtr->TraceStar(star_0, i);
 		if (ray & 2)

@@ -123,11 +123,12 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 	double trueAnomaly = M_PI;
 	double t = tp - sqrt(gsl_pow_3(a / Unit::AU) / mass) * 0.5;
 	unique_ptr<View> viewPtr;
-	metric::setMetric(metric, PN != 0 ? 1 : 0, mass, 0, 0, 0);
+	// metric::setMetric(metric, PN != 0 ? 1 : 0, mass, 0, 0, 0);
+	Newton main_metric(PN, T);
 	char strFormat[1024]; // TODO: waiting for C++20
 	snprintf(strFormat, 1024, " (%.1f,%.1f,%.1f)[%f,%f]", spin, 0., 0., inc, eps);
 	if (metric == 1)
-		viewPtr = make_unique<View>(8246.7 * Unit::pc, inc, string("view") + strFormat);
+		viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8246.7 * Unit::pc, inc, string("view") + strFormat);
 	double x[8], y[8];
 	if (metric == 0) {
 		y[0] = 0.;
@@ -159,10 +160,10 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 		x[6] = xp6 * cos(eps) - xp5 * sin(eps);
 		x[7] = xp7 * cos(inc) - (xp5 * cos(eps) + xp6 * sin(eps)) * sin(inc);
 		metric::c2s(x, y);
-		metric::particleNormalization(y);
+		main_metric.NormalizeTimelikeGeodesic(y);
 	}
-	Integrator integrator(metric::function, metric::jacobian, metric != 0, &PN);
-	Star star_0(Unit::R_sun, y, 0);
+	Integrator &&integrator = main_metric.GetIntegrator(PN);
+	Star star_0(make_unique<Newton>(PN, T), Unit::R_sun, y, 0);
 	auto result = py::array_t<double>(tList.size() * 8);
 	double *result_ptr = (double *)result.request().ptr;
 	int status = 0, rayNO = 0;

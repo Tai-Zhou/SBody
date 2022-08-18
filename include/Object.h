@@ -14,14 +14,20 @@
 
 #include <vector>
 
+#include "Metric.h"
+
 namespace SBody {
 	/**
 	 * @brief
 	 *
 	 */
 	class Object {
+	  protected:
+		std::unique_ptr<Metric> metric_;
+
 	  public:
 		static std::vector<Object *> object_list_;
+		Object(std::unique_ptr<Metric> metric);
 		/**
 		 * @brief
 		 *
@@ -60,6 +66,7 @@ namespace SBody {
 	 */
 	class Star : public Object {
 	  protected:
+		std::unique_ptr<Metric> metric_;
 		/// if the position of star fixed
 		const bool fixed_;
 		/// radius of star
@@ -70,6 +77,7 @@ namespace SBody {
 	  public:
 		/// 8 dimensional information of the star
 		double pos[8]; // FIXME
+
 		/**
 		 * @brief Construct a new star object
 		 *
@@ -77,7 +85,8 @@ namespace SBody {
 		 * @param position initial position and velocity
 		 * @param fixed whether the position of the star is fixed
 		 */
-		Star(double radius, const double position[], bool fixed = false);
+		Star(std::unique_ptr<Metric> metric, double radius, const double position[], bool fixed = false);
+
 		/**
 		 * @brief Check if the star hit by the photon
 		 *
@@ -86,6 +95,7 @@ namespace SBody {
 		 * @return int
 		 */
 		int Hit(const double current[], const double last[] = nullptr);
+
 		/**
 		 * @brief return frequency
 		 *
@@ -93,6 +103,7 @@ namespace SBody {
 		 * @return double
 		 */
 		double Redshift(const double photon[]);
+
 		/**
 		 * @brief return frequency
 		 *
@@ -119,7 +130,7 @@ namespace SBody {
 		 * @param inner_radius
 		 * @param outer_radius
 		 */
-		Disk(double inner_radius, double outer_radius);
+		Disk(std::unique_ptr<Metric> metric, double inner_radius, double outer_radius);
 		int Hit(const double current[], const double last[] = nullptr);
 		double Redshift(const double ph[]);
 	};
@@ -139,7 +150,7 @@ namespace SBody {
 		 * @param outer_radius
 		 * @param half_angle
 		 */
-		ThickDisk(double inner_radius, double outer_radius, double half_angle);
+		ThickDisk(std::unique_ptr<Metric> metric, double inner_radius, double outer_radius, double half_angle);
 		int Hit(const double current[], const double last[] = nullptr);
 		double Redshift(const double ph[]);
 	};
@@ -159,7 +170,7 @@ namespace SBody {
 		 * @param major_radius
 		 * @param minor_radius
 		 */
-		Torus(double major_radius, double minor_radius);
+		Torus(std::unique_ptr<Metric> metric, double major_radius, double minor_radius);
 		int Hit(const double current[], const double last[] = nullptr);
 		double Redshift(const double ph[]);
 	};

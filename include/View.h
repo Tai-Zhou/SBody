@@ -17,11 +17,13 @@
 #include <vector>
 
 #include "IO.h"
+#include "Metric.h"
 #include "Object.h"
 
 namespace SBody {
 	class View {
 	  protected:
+		std::unique_ptr<Metric> metric_;
 		const double r_;
 		const double theta_;
 		const double sin_theta_observer_;
@@ -37,7 +39,7 @@ namespace SBody {
 		 * @param theta
 		 * @param file_name
 		 */
-		View(double r, double theta, std::string file_name);
+		View(std::unique_ptr<Metric> metric, double r, double theta, std::string file_name);
 
 		/**
 		 * @brief
@@ -47,7 +49,7 @@ namespace SBody {
 		 * @param beta
 		 * @return int
 		 */
-		int RayInitialize(double *photon, double alpha, double beta);
+		int InitializePhoton(double *photon, double alpha, double beta);
 
 		/**
 		 * @brief
@@ -83,7 +85,7 @@ namespace SBody {
 		 * @param theta
 		 * @param file_name
 		 */
-		Camera(size_t pixel, double half_angle, double r, double theta, std::string file_name);
+		Camera(std::unique_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta, std::string file_name);
 
 		/**
 		 * @brief
