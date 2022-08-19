@@ -137,11 +137,56 @@ namespace SBody {
 	 * @param z
 	 */
 	int Cross(const double x[], const double y[], double z[]);
+
+	/**
+	 * @brief
+	 *
+	 * @param x
+	 * @param dimension
+	 * @return int
+	 */
 	int CartesianToSpherical(double x[], size_t dimension = 8);
 	int CartesianToSpherical(const double cartesian[], double spherical[], size_t dimension);
+
+	/**
+	 * @brief
+	 *
+	 * @param cartesian_position
+	 * @param cartesian_velocity
+	 * @param spherical_position
+	 * @param spherical_velocity
+	 * @return int
+	 */
 	int CartesianToSpherical(const double cartesian_position[], const double cartesian_velocity[], double spherical_position[], double spherical_velocity[]);
+
+	/**
+	 * @brief
+	 *
+	 * @param x
+	 * @param dimension
+	 * @return int
+	 */
 	int SphericalToCartesian(double x[], size_t dimension = 8);
+
+	/**
+	 * @brief
+	 *
+	 * @param spherical
+	 * @param cartesian
+	 * @param dimension
+	 * @return int
+	 */
 	int SphericalToCartesian(const double spherical[], double cartesian[], size_t dimension);
+
+	/**
+	 * @brief
+	 *
+	 * @param spherical_position
+	 * @param spherical_velocity
+	 * @param cartesian_position
+	 * @param cartesian_velocity
+	 * @return int
+	 */
 	int SphericalToCartesian(const double spherical_position[], const double spherical_velocity[], double cartesian_position[], double cartesian_velocity[]);
 
 	/**

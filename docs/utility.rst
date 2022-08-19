@@ -42,6 +42,12 @@ Math
 .. doxygenfunction:: SBody::Cross
    :no-link:
 
+.. doxygenfunction:: SBody::CartesianToSpherical
+   :no-link:
+
+.. doxygenfunction:: SBody::SphericalToCartesian
+   :no-link:
+
 .. doxygenfunction:: SBody::OppositeSign
    :no-link:
 
