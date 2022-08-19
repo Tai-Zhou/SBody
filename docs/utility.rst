@@ -42,10 +42,16 @@ Math
 .. doxygenfunction:: SBody::Cross
    :no-link:
 
-.. doxygenfunction:: SBody::CartesianToSpherical
+.. doxygenfunction:: SBody::CartesianToSpherical(double[], size_t)
    :no-link:
 
-.. doxygenfunction:: SBody::SphericalToCartesian
+.. doxygenfunction:: SBody::CartesianToSpherical(const double[], double[], size_t)
+   :no-link:
+
+.. doxygenfunction:: SBody::SphericalToCartesian(double[], size_t)
+   :no-link:
+
+.. doxygenfunction:: SBody::SphericalToCartesian(const double[], double[], size_t)
    :no-link:
 
 .. doxygenfunction:: SBody::OppositeSign
