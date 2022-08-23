@@ -85,7 +85,8 @@ namespace SBody {
 		 * @param fixed whether the position of the star is fixed
 		 */
 		Star(std::shared_ptr<Metric> metric, double radius = 0, bool fixed = false);
-		Star(std::shared_ptr<Metric> metric, double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination = 0., double observer_rotation = 0., double radius = 0., bool fixed = false);
+		int InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination = 0., double observer_rotation = 0.);
+		int InitializeGeodesic(double orbital_radius, double inclination, double periapsis, double ascending_node, double v_r, double v_phi, double observer_inclination = 0., double observer_rotation = 0.);
 
 		/**
 		 * @brief Check if the star hit by the photon

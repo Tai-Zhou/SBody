@@ -25,22 +25,50 @@ namespace SBody {
 		for (int i = 0; i < 8; ++i)
 			position_[i] = 0;
 	}
-	Star::Star(std::shared_ptr<Metric> metric, double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination, double observer_rotation, double radius, bool fixed) : Object(metric), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)) {
+	int Star::InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination, double observer_rotation) {
 		position_[0] = 0.;
-		double r = a * (1 - e * e) / (1 + e * cos(true_anomaly));
-		const double tp1 = -r * cos(periapsis + true_anomaly), tp2 = -r * sin(periapsis + true_anomaly) * cos(inclination);
-		const double xp1 = tp1 * cos(ascending_node) - tp2 * sin(ascending_node), xp2 = tp2 * cos(ascending_node) + tp1 * sin(ascending_node), xp3 = -r * sin(periapsis + true_anomaly) * sin(inclination);
+		periapsis += true_anomaly;
+		double r = a * (1. - e * e) / (1. + e * cos(true_anomaly));
+		const double tp1 = -r * cos(periapsis), tp2 = -r * sin(periapsis) * cos(inclination);
+		const double xp1 = tp1 * cos(ascending_node) - tp2 * sin(ascending_node), xp2 = tp2 * cos(ascending_node) + tp1 * sin(ascending_node), xp3 = -r * sin(periapsis) * sin(inclination);
 		position_[1] = (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * cos(observer_inclination) + xp3 * sin(observer_inclination);
 		position_[2] = xp2 * cos(observer_rotation) - xp1 * sin(observer_rotation);
 		position_[3] = xp3 * cos(observer_inclination) - (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * sin(observer_inclination);
-		const double vphi = sqrt((1 - e * e) * a) / r, vr = GSL_SIGN(M_PI - ModBy2Pi(true_anomaly)) * sqrt(std::max(0., 2. / r - 1. / a - vphi * vphi));
-		const double tp5 = vphi * sin(periapsis + true_anomaly) - vr * cos(periapsis + true_anomaly), tp6 = -(vphi * cos(periapsis + true_anomaly) + vr * sin(periapsis + true_anomaly)) * cos(inclination);
-		const double xp5 = tp5 * cos(ascending_node) - tp6 * sin(ascending_node), xp6 = tp5 * sin(ascending_node) + tp6 * cos(ascending_node), xp7 = -(vphi * cos(periapsis + true_anomaly) + vr * sin(periapsis + true_anomaly)) * sin(inclination);
-		position_[5] = (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * cos(observer_inclination) + xp7 * sin(observer_inclination);
-		position_[6] = xp6 * cos(observer_rotation) - xp5 * sin(observer_rotation);
-		position_[7] = xp7 * cos(observer_inclination) - (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * sin(observer_inclination);
+		if (fixed_) {
+			position_[5] = 0.;
+			position_[6] = 0.;
+			position_[7] = 0.;
+		} else {
+			const double vphi = sqrt((1 - e * e) * a) / r, vr = GSL_SIGN(M_PI - ModBy2Pi(true_anomaly)) * sqrt(std::max(0., 2. / r - 1. / a - vphi * vphi));
+			const double tp5 = vphi * sin(periapsis) - vr * cos(periapsis), tp6 = -(vphi * cos(periapsis) + vr * sin(periapsis)) * cos(inclination);
+			const double xp5 = tp5 * cos(ascending_node) - tp6 * sin(ascending_node), xp6 = tp5 * sin(ascending_node) + tp6 * cos(ascending_node), xp7 = -(vphi * cos(periapsis) + vr * sin(periapsis)) * sin(inclination);
+			position_[5] = (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * cos(observer_inclination) + xp7 * sin(observer_inclination);
+			position_[6] = xp6 * cos(observer_rotation) - xp5 * sin(observer_rotation);
+			position_[7] = xp7 * cos(observer_inclination) - (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * sin(observer_inclination);
+		}
 		CartesianToSpherical(position_);
-		metric_->NormalizeTimelikeGeodesic(position_);
+		return metric_->NormalizeTimelikeGeodesic(position_);
+	}
+	int Star::InitializeGeodesic(double orbital_radius, double inclination, double periapsis, double ascending_node, double v_r, double v_phi, double observer_inclination, double observer_rotation) {
+		position_[0] = 0.;
+		const double tp1 = -orbital_radius * cos(periapsis), tp2 = -orbital_radius * sin(periapsis) * cos(inclination);
+		const double xp1 = tp1 * cos(ascending_node) - tp2 * sin(ascending_node), xp2 = tp2 * cos(ascending_node) + tp1 * sin(ascending_node), xp3 = -orbital_radius * sin(periapsis) * sin(inclination);
+		position_[1] = (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * cos(observer_inclination) + xp3 * sin(observer_inclination);
+		position_[2] = xp2 * cos(observer_rotation) - xp1 * sin(observer_rotation);
+		position_[3] = xp3 * cos(observer_inclination) - (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * sin(observer_inclination);
+		if (fixed_) {
+			position_[5] = 0.;
+			position_[6] = 0.;
+			position_[7] = 0.;
+		} else {
+			const double tp5 = v_phi * sin(periapsis) - v_r * cos(periapsis), tp6 = -(v_phi * cos(periapsis) + v_r * sin(periapsis)) * cos(inclination);
+			const double xp5 = tp5 * cos(ascending_node) - tp6 * sin(ascending_node), xp6 = tp5 * sin(ascending_node) + tp6 * cos(ascending_node), xp7 = -(v_phi * cos(periapsis) + v_r * sin(periapsis)) * sin(inclination);
+			position_[5] = (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * cos(observer_inclination) + xp7 * sin(observer_inclination);
+			position_[6] = xp6 * cos(observer_rotation) - xp5 * sin(observer_rotation);
+			position_[7] = xp7 * cos(observer_inclination) - (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * sin(observer_inclination);
+		}
+		CartesianToSpherical(position_);
+		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
 	int Star::Hit(const double current[], const double last[]) {
 		double a2 = metric_->Distance(position_, current, 3);
