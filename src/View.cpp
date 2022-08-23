@@ -178,7 +178,7 @@ namespace SBody {
 			gsl_vector_view ph2_view = gsl_vector_view_array(ph2 + 4, 4);
 			// coordinate * gmunu * ph2 = ph_coor_phi
 			gsl_matrix_set_zero(coordinate_gmunu);
-			gsl_blas_dsymm(CblasLeft, CblasUpper, 1., coordinate, gmunu, 0., coordinate_gmunu);
+			gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
 			int signum;
 			gsl_linalg_LU_decomp(coordinate_gmunu, perm, &signum);
 			gsl_linalg_LU_svx(coordinate_gmunu, perm, &ph2_view.vector);
