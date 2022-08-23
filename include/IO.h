@@ -59,12 +59,20 @@ namespace SBody {
 		/// Destroy the file object
 		virtual ~File();
 		/**
-		 * @brief Save the coming data.
+		 * @brief Save the data.
 		 *
 		 * @param data
 		 * @return int
 		 */
 		virtual int Save(const std::vector<double> &data) = 0;
+		/**
+		 * @brief Save the data.
+		 *
+		 * @param data Data to be saved
+		 * @param length Length of the data
+		 * @return int
+		 */
+		virtual int Save(const double *data, const int length) = 0;
 	};
 	/**
 	 * @brief
@@ -89,13 +97,8 @@ namespace SBody {
 		NumPy(std::string file_name, std::vector<int> dimension);
 		/// Destroy the NumPy object
 		~NumPy();
-		/**
-		 * @brief Save the coming data.
-		 *
-		 * @param data
-		 * @return int
-		 */
 		int Save(const std::vector<double> &data);
+		int Save(const double *data, const int length);
 	};
 	/**
 	 * @brief
@@ -114,12 +117,6 @@ namespace SBody {
 		 * @param separator Separator of the file. If `separator == '\t'`, the file would be a Tab-Separated Values (TSV).
 		 */
 		CSV(std::string file_name, char separator = ',');
-		/**
-		 * @brief Save the coming data.
-		 *
-		 * @param data
-		 * @return int
-		 */
 		int Save(const std::vector<double> &data);
 	};
 #ifdef WITH_CFITSIO
@@ -135,12 +132,6 @@ namespace SBody {
 		 * @param file_name
 		 */
 		FITS(std::string file_name);
-		/**
-		 * @brief Save the coming data.
-		 *
-		 * @param data
-		 * @return int
-		 */
 		int Save(const std::vector<double> &data);
 	};
 #endif

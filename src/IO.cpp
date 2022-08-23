@@ -24,8 +24,7 @@ namespace SBody {
 	indicators::BlockProgressBar main_bar{
 		indicators::option::ShowElapsedTime{true},
 		indicators::option::ShowRemainingTime{true},
-		indicators::option::FontStyles{
-			vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
+		indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
 	indicators::DynamicProgress<indicators::BlockProgressBar> ProgressBar::bars_(main_bar);
 	void ProgressBar::SetComplete(int index, std::string prefix) {
 		bars_[index].set_progress(100.);
@@ -73,6 +72,11 @@ namespace SBody {
 	int NumPy::Save(const vector<double> &data) {
 		file_size_ += data.size();
 		file_buffer_.sputn(reinterpret_cast<const char *>(data.data()), 8 * data.size());
+		return 0;
+	}
+	int NumPy::Save(const double *data, const int length) {
+		file_size_ += length;
+		file_buffer_.sputn(reinterpret_cast<const char *>(data), 8 * length);
 		return 0;
 	}
 	CSV::CSV(string file_name, char separator) : File(file_name + ".csv", ios::out), separator_(separator) {}
