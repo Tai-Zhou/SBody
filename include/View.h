@@ -30,6 +30,7 @@ namespace SBody {
 		const double sin_theta_observer_;
 		const double cos_theta_observer_;
 		const double t_final_;
+		std::unique_ptr<indicators::BlockProgressBar> bar_;
 		std::unique_ptr<File> output_;
 
 	  public:

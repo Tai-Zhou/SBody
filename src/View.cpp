@@ -33,7 +33,12 @@
 using namespace std;
 
 namespace SBody {
-	View::View(shared_ptr<Metric> metric, double r, double theta, string file_name) : metric_(move(metric)), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({5}))) {}
+	View::View(shared_ptr<Metric> metric, double r, double theta, string file_name) : metric_(move(metric)), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({5}))) {
+		bar_ = make_unique<indicators::BlockProgressBar>(indicators::option::ShowElapsedTime{true},
+														 indicators::option::ShowRemainingTime{true},
+														 indicators::option::ForegroundColor{indicators::Color(4)},
+														 indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}});
+	}
 	int View::InitializePhoton(double *photon, double alpha, double beta) {
 		photon[0] = 0.;
 		photon[1] = r_;
@@ -155,7 +160,7 @@ namespace SBody {
 			star.DotProduct(ph_reg, coordinate->data + 12, 4)};
 		for (int i = 1; i < 4; ++i)
 			ph_coor[i] /= ph_coor[0];
-		const double ph_coor_sph[2] = {acos(ph_coor[3]), atan2(ph_coor[2], ph_coor[1])};
+		const double ph_coor_sph_theta = acos(ph_coor[3]), ph_coor_sph_phi = atan2(ph_coor[2], ph_coor[1]);
 		for (int i = 0; i < sample_number; ++i) {
 			const double angle = i * interval, sin_angle = sin(angle), cos_angle = cos(angle);
 			const double ph2_coor[3] = {
@@ -163,17 +168,17 @@ namespace SBody {
 				sin_angle * sin_epsilon,
 				cos_epsilon};
 			const double ph2_coor_theta[3] = {
-				ph2_coor[0] * cos(ph_coor_sph[0]) + ph2_coor[2] * sin(ph_coor_sph[0]),
+				ph2_coor[0] * cos(ph_coor_sph_theta) + ph2_coor[2] * sin(ph_coor_sph_theta),
 				ph2_coor[1],
-				ph2_coor[2] * cos(ph_coor_sph[0]) - ph2_coor[0] * sin(ph_coor_sph[0])};
+				ph2_coor[2] * cos(ph_coor_sph_theta) - ph2_coor[0] * sin(ph_coor_sph_theta)};
 			// const double ph2_coor_phi[3] = {
 			//	ph2_coor_theta[0] * cos(ph_coor_sph[1]) - ph2_coor_theta[1] * sin(ph_coor_sph[1]),
 			//	ph2_coor_theta[1] * cos(ph_coor_sph[1]) + ph2_coor_theta[0] * sin(ph_coor_sph[1]),
 			//	ph2_coor_theta[2]};
 			copy(ph, ph + 4, ph2);
 			ph2[4] = 1.;
-			ph2[5] = ph2_coor_theta[0] * cos(ph_coor_sph[1]) - ph2_coor_theta[1] * sin(ph_coor_sph[1]);
-			ph2[6] = ph2_coor_theta[1] * cos(ph_coor_sph[1]) + ph2_coor_theta[0] * sin(ph_coor_sph[1]);
+			ph2[5] = ph2_coor_theta[0] * cos(ph_coor_sph_phi) - ph2_coor_theta[1] * sin(ph_coor_sph_phi);
+			ph2[6] = ph2_coor_theta[1] * cos(ph_coor_sph_phi) + ph2_coor_theta[0] * sin(ph_coor_sph_phi);
 			ph2[7] = ph2_coor_theta[2];
 			gsl_vector_view ph2_view = gsl_vector_view_array(ph2 + 4, 4);
 			// coordinate * gmunu * ph2 = ph_coor_phi
@@ -222,6 +227,12 @@ namespace SBody {
 			for (int j = 0; j < 3; ++j)
 				rec3[i][j] /= vph_norm;
 		}
+		if (ray_number == 0) {
+			NumPy cone_record("cone_record", {3});
+			cone_record.Save({vphph[0], vphph[1], vphph[2]});
+			for (int i = 0; i < sample_number; ++i)
+				cone_record.Save(rec3[i], 3);
+		}
 		double cross_product[3];
 		Cross(rec3[0], rec3[sample_number - 1], cross_product);
 		double area = Dot(cross_product, vphph);
@@ -245,14 +256,9 @@ namespace SBody {
 		NumPy rec("shadow", {2});
 		double h, rin = 2., rout = 10., rmid = 6., photon[10];
 		Integrator &&integrator = metric_->GetIntegrator(2);
-		indicators::BlockProgressBar shadowProgressBar{
-			indicators::option::ShowElapsedTime{true},
-			indicators::option::ShowRemainingTime{true},
-			indicators::option::PrefixText{"? Shadow"},
-			indicators::option::ForegroundColor{indicators::Color(4)},
-			indicators::option::MaxProgress{sample_number},
-			indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
-		int progressBarIndex = ProgressBar::bars_.push_back(shadowProgressBar);
+		bar_->set_option(indicators::option::MaxProgress(sample_number));
+		bar_->set_option(indicators::option::PrefixText("? Shadow"));
+		int progressBarIndex = ProgressBar::bars_.push_back(*bar_);
 		for (int i = 0; i < sample_number; ++i) {
 			const double angle = i * interval, sina = sin(angle), cosa = cos(angle);
 			int status = 0;
@@ -336,14 +342,9 @@ namespace SBody {
 	int Camera::Lens() {
 		const double t1 = -1000. * r_, pixelPerAngle = 0.5 * pixel_ / half_angle_;
 		NumPy rec("lens", {2});
-		indicators::BlockProgressBar lensProgressBar{
-			indicators::option::ShowElapsedTime{true},
-			indicators::option::ShowRemainingTime{true},
-			indicators::option::ForegroundColor{indicators::Color(5)},
-			indicators::option::PrefixText{"? lens"},
-			indicators::option::MaxProgress{pixel_ * pixel_},
-			indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
-		int progressBarIndex = ProgressBar::bars_.push_back(lensProgressBar);
+		bar_->set_option(indicators::option::MaxProgress(pixel_ * pixel_));
+		bar_->set_option(indicators::option::PrefixText("? Lens"));
+		int progressBarIndex = ProgressBar::bars_.push_back(*bar_);
 		for (int i = 0; i < pixel_; ++i)
 			for (int j = 0; j < pixel_; ++j) {
 				double ph[10], phc[10];

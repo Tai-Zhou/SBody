@@ -41,7 +41,7 @@ void interruptHandler(int signum) {
 	exit(signum);
 }
 
-void help(double mass, double spin, double NUT, double tFinal, size_t tStepNumber, double TCal, int metric, int PN, int ray, double absAcc, double relAcc, string storeFormat) {
+void help(double mass, double spin, double NUT, double tFinal, size_t tStepNumber, double TCal, int metric, int PN, int ray, double absAcc, double relAcc, string store_format) {
 	fmt::print("SBody ({})\n\nOptions:\n", VERSION);
 	fmt::print("  -m --mass   [f]: mass of the source [{}] (M_sun)\n", mass);
 	fmt::print("  -s --spin   [f]: spin of the source [{}]\n", spin);
@@ -61,7 +61,7 @@ void help(double mass, double spin, double NUT, double tFinal, size_t tStepNumbe
 	fmt::print("  -r --rel    [f]: relative accuracy [{}]\n", relAcc);
 	fmt::print("  -i --inc    [f]: inclination of the BH\n");
 	fmt::print("  -e --eps    [f]: epsilon of the BH\n");
-	fmt::print("  -f --format [s]: storage format [{}]\n", storeFormat);
+	fmt::print("  -f --format [s]: storage format [{}]\n", store_format);
 	fmt::print("  -L --light     : light instead of particle\n");
 	fmt::print("  -b --bar       : show progress bar\n");
 	fmt::print("  -h --help      : this help information\n");
@@ -79,12 +79,12 @@ int main(int argc, char *argv[]) {
 	size_t metric = 1;
 	size_t Hamiltonian = 0;
 	size_t PN = 1;
-	size_t ray = 4;
-	int restMass = 1;
+	size_t ray = 1;
+	int rest_mass = 1;
 	ProgressBar::display_ = true;
-	string storeFormat = "NumPy";
-	double inc = M_PI * 130. / 180., eps = 0.;
-	double a = 8.3, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180., ascendingNode = M_PI * 25.1 / 180., trueAnomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
+	string store_format = "NumPy";
+	double inc = M_PI * 0. / 180., eps = 0.;
+	double a = 8.3, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180. + M_PI_2, ascending_node = M_PI * 25.1 / 180., true_anomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
 	unique_ptr<View> viewPtr;
 	unique_ptr<thread> shadowPtr;
 	unique_ptr<Camera> cameraPtr;
@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
 			periapsis = atof(optarg) * M_PI / 180.;
 			break;
 		case 'O':
-			ascendingNode = atof(optarg) * M_PI / 180.;
+			ascending_node = atof(optarg) * M_PI / 180.;
 			break;
 		case 't':
 			tFinal = atof(optarg);
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
 		case 'n':
 			metric = atoi(optarg);
 			if (metric > 3)
-				help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absolute_accuracy, relative_accuracy, storeFormat);
+				help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absolute_accuracy, relative_accuracy, store_format);
 			break;
 		case 'P':
 			PN = atoi(optarg);
@@ -174,16 +174,16 @@ int main(int argc, char *argv[]) {
 			eps = atof(optarg);
 			break;
 		case 'f':
-			storeFormat = atoi(optarg);
+			store_format = atoi(optarg);
 			break;
 		case 'L':
-			restMass = 0;
+			rest_mass = 0;
 			break;
 		case 'b':
 			ProgressBar::display_ = true;
 			break;
 		default:
-			help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absolute_accuracy, relative_accuracy, storeFormat);
+			help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absolute_accuracy, relative_accuracy, store_format);
 		}
 	Unit::Initialize(mass);
 	tFinal *= Unit::s;
@@ -209,7 +209,9 @@ int main(int argc, char *argv[]) {
 			lensPtr = make_unique<thread>(&Camera::Lens, cameraPtr.get());
 	}
 	// Integrator integ(metric::function, metric::jacobian, metric != 0);
-	Star star_0(main_metric, a, e, inclination, periapsis, ascendingNode, trueAnomaly, inc, eps, Unit::R_sun, 0);
+	Star star_0(main_metric, Unit::R_sun, 0);
+	star_0.InitializeKeplerian(6.5, 0., inclination, periapsis, ascending_node, true_anomaly, inc, eps);
+	// star_0.InitializeGeodesic(a, inclination, periapsis, ascending_node, -0.16707659553531468, 0.3822615764261866, inc, eps);
 	Integrator &&integrator = main_metric->GetIntegrator(metric != 0);
 	NumPy rec(main_metric->Name() + strFormat, {12});
 	vector<double> temp(12);
