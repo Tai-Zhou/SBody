@@ -211,7 +211,7 @@ namespace SBody {
 		if (mode_ != HAMILTONIAN)
 			return 1;
 		const double r_1 = 1. / y[1], g00 = 1. - 2. * r_1;
-		y[4] = -g00 * (y[4] - 1.);
+		y[4] = -g00 / (y[4] - 1.);
 		y[5] *= g00 * y[4];
 		y[6] *= gsl_pow_2(r_1) * y[4];
 		y[7] *= gsl_pow_2(r_1 / sin(y[2])) * y[4];
