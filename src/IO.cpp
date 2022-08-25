@@ -74,7 +74,7 @@ namespace SBody {
 		file_buffer_.sputn(reinterpret_cast<const char *>(data.data()), 8 * data.size());
 		return 0;
 	}
-	int NumPy::Save(const double *data, const int length) {
+	int NumPy::Save(const double *data, size_t length) {
 		file_size_ += length;
 		file_buffer_.sputn(reinterpret_cast<const char *>(data), 8 * length);
 		return 0;
