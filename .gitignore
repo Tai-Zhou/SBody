@@ -3,6 +3,9 @@
 
 # Data
 data
+img
+report
+script
 
 # Tex
 *.pdf
