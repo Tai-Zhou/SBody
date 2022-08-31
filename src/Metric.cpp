@@ -185,7 +185,7 @@ namespace SBody {
 		gsl_matrix_set(metric, 1, 1, position[1] / (position[1] - 2.));
 		gsl_matrix_set(metric, 2, 2, gsl_pow_2(position[1]));
 		gsl_matrix_set(metric, 3, 3, gsl_pow_2(position[1] * sin(position[2])));
-		return 0;
+		return position[1] == 2. ? 1 : 0;
 	}
 	double Schwarzschild::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
 		if (dimension == 3)
