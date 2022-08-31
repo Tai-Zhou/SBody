@@ -10,7 +10,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 if(CMAKE_BUILD_TYPE EQUAL "RELEASE")
-    add_compile_definitions(HAVE_INLINE)
+    add_compile_definitions(GSL_RANGE_CHECK_OFF)
 endif()
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
