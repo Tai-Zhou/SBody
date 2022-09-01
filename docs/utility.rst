@@ -22,11 +22,17 @@ Utility
 .. doxygenvariable:: SBody::M_PI2
    :no-link:
 
-
 Integrator
 ----------
 
 .. doxygenclass:: SBody::Integrator
+   :members:
+   :no-link:
+
+GslBlock
+--------
+
+.. doxygenclass:: SBody::GslBlock
    :members:
    :no-link:
 
@@ -42,16 +48,25 @@ Math
 .. doxygenfunction:: SBody::Cross
    :no-link:
 
-.. doxygenfunction:: SBody::CartesianToSpherical(double[], size_t)
+.. doxygenfunction:: SBody::RotateAroundAxis
    :no-link:
 
-.. doxygenfunction:: SBody::CartesianToSpherical(const double[], double[], size_t)
+.. doxygenfunction:: SBody::CartesianToSpherical(double[], bool)
    :no-link:
 
-.. doxygenfunction:: SBody::SphericalToCartesian(double[], size_t)
+.. doxygenfunction:: SBody::CartesianToSpherical(const double[], double[])
    :no-link:
 
-.. doxygenfunction:: SBody::SphericalToCartesian(const double[], double[], size_t)
+.. doxygenfunction:: SBody::CartesianToSpherical(const double[], const double[], double[], double[])
+   :no-link:
+
+.. doxygenfunction:: SBody::SphericalToCartesian(double[], bool)
+   :no-link:
+
+.. doxygenfunction:: SBody::SphericalToCartesian(const double[], double[])
+   :no-link:
+
+.. doxygenfunction:: SBody::SphericalToCartesian(const double[], const double[], double[], double[])
    :no-link:
 
 .. doxygenfunction:: SBody::OppositeSign
