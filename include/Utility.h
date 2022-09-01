@@ -111,6 +111,71 @@ namespace SBody {
 	};
 
 	/**
+	 * @brief A wrapper of the `gsl_vector`, `gsl_matrix`, and `gsl_permutation`
+	 *
+	 */
+	class GslBlock {
+	  private:
+		std::vector<gsl_vector *> vectors_;
+		std::vector<gsl_matrix *> matrices_;
+		std::vector<gsl_permutation *> permutations_;
+
+	  public:
+		/// Destroy the GslBlock object, free the memory
+		~GslBlock();
+
+		/**
+		 * @brief gsl_vector_alloc, creates a vector of length `n`
+		 *
+		 * @param n length of the vector
+		 * @return gsl_vector*
+		 */
+		gsl_vector *VectorAlloc(size_t n);
+
+		/**
+		 * @brief gsl_vector_calloc, creates a vector of length `n` and initializes all the elements of the vector to zero
+		 *
+		 * @param n length of the vector
+		 * @return gsl_vector*
+		 */
+		gsl_vector *VectorCalloc(size_t n);
+
+		/**
+		 * @brief gsl_matrix_alloc, creates a matrix of size `n1` rows by `n2` columns
+		 *
+		 * @param n1 rows of the matrix
+		 * @param n2 columns of the matrix
+		 * @return gsl_matrix*
+		 */
+		gsl_matrix *MatrixAlloc(size_t n1, size_t n2);
+
+		/**
+		 * @brief gsl_matrix_alloc, creates a matrix of size `n1` rows by `n2` columns and initializes all the elements of the matrix to zero
+		 *
+		 * @param n1 rows of the matrix
+		 * @param n2 columns of the matrix
+		 * @return gsl_matrix*
+		 */
+		gsl_matrix *MatrixCalloc(size_t n1, size_t n2);
+
+		/**
+		 * @brief gsl_permutation_alloc, allocates memory for a new permutation of size `n`
+		 *
+		 * @param n size of the permutation
+		 * @return gsl_permutation*
+		 */
+		gsl_permutation *PermutationAlloc(size_t n);
+
+		/**
+		 * @brief gsl_permutation_alloc, allocates memory for a new permutation of size `n` and initializes it to the identity
+		 *
+		 * @param n size of the permutation
+		 * @return gsl_permutation*
+		 */
+		gsl_permutation *PermutationCalloc(size_t n);
+	};
+
+	/**
 	 * @brief Dot product of vector x·y, or x·x if y == nullptr
 	 *
 	 * @param x

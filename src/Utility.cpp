@@ -78,6 +78,38 @@ namespace SBody {
 			return s;
 		return GSL_SUCCESS;
 	}
+	GslBlock::~GslBlock() {
+		for (auto vector : vectors_)
+			gsl_vector_free(vector);
+		for (auto matrix : matrices_)
+			gsl_matrix_free(matrix);
+		for (auto permutation : permutations_)
+			gsl_permutation_free(permutation);
+	}
+	gsl_vector *GslBlock::VectorAlloc(size_t n) {
+		vectors_.push_back(gsl_vector_alloc(n));
+		return vectors_.back();
+	}
+	gsl_vector *GslBlock::VectorCalloc(size_t n) {
+		vectors_.push_back(gsl_vector_calloc(n));
+		return vectors_.back();
+	}
+	gsl_matrix *GslBlock::MatrixAlloc(size_t n1, size_t n2) {
+		matrices_.push_back(gsl_matrix_alloc(n1, n2));
+		return matrices_.back();
+	}
+	gsl_matrix *GslBlock::MatrixCalloc(size_t n1, size_t n2) {
+		matrices_.push_back(gsl_matrix_calloc(n1, n2));
+		return matrices_.back();
+	}
+	gsl_permutation *GslBlock::PermutationAlloc(size_t n) {
+		permutations_.push_back(gsl_permutation_alloc(n));
+		return permutations_.back();
+	}
+	gsl_permutation *GslBlock::PermutationCalloc(size_t n) {
+		permutations_.push_back(gsl_permutation_calloc(n));
+		return permutations_.back();
+	}
 	double Dot(const double x[], const double y[], size_t dimension) {
 		if (dimension == 3) {
 			if (y == nullptr)
