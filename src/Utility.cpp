@@ -12,7 +12,6 @@
 #include "Utility.h"
 
 #include <cmath>
-#include <memory>
 #include <vector>
 
 #include <gsl/gsl_errno.h>
@@ -104,10 +103,26 @@ namespace SBody {
 		z[2] = x[0] * y[1] - x[1] * y[0];
 		return 0;
 	}
+	int RotateAroundAxis(double x[], int axis, double angle) {
+		const double sin_angle = sin(angle), cos_angle = cos(angle);
+		if (axis == 0) {
+			angle = x[1] * cos_angle - x[2] * sin_angle;
+			x[2] = x[1] * sin_angle + x[2] * cos_angle;
+			x[1] = angle;
+		} else if (axis == 1) {
+			angle = x[2] * cos_angle - x[0] * sin_angle;
+			x[0] = x[2] * sin_angle + x[0] * cos_angle;
+			x[2] = angle;
+		} else if (axis == 2) {
+			angle = x[0] * cos_angle - x[1] * sin_angle;
+			x[1] = x[0] * sin_angle + x[1] * cos_angle;
+			x[0] = angle;
+		}
+		return 0;
+	}
 	int CartesianToSpherical(double x[], size_t dimension) {
-		std::shared_ptr<double[]> y(new double[dimension]);
-		std::copy(x, x + dimension, y.get());
-		return CartesianToSpherical(y.get(), x, dimension);
+		std::vector<double> y(x, x + dimension);
+		return CartesianToSpherical(y.data(), x, dimension);
 	}
 	int CartesianToSpherical(const double cartesian[], double spherical[], size_t dimension) {
 		if (dimension < 4)
@@ -150,9 +165,8 @@ namespace SBody {
 		return 0;
 	}
 	int SphericalToCartesian(double x[], size_t dimension) {
-		std::shared_ptr<double[]> y(new double[dimension]);
-		std::copy(x, x + dimension, y.get());
-		return SphericalToCartesian(y.get(), x, dimension);
+		std::vector<double> y(x, x + dimension);
+		return SphericalToCartesian(y.data(), x, dimension);
 	}
 	int SphericalToCartesian(const double spherical[], double cartesian[], size_t dimension) {
 		if (dimension < 4)

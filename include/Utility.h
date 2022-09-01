@@ -142,6 +142,16 @@ namespace SBody {
 	 * @brief
 	 *
 	 * @param x
+	 * @param axis the subscript of the axis
+	 * @param angle in unit rad
+	 * @return int
+	 */
+	int RotateAroundAxis(double x[], int axis, double angle);
+
+	/**
+	 * @brief
+	 *
+	 * @param x
 	 * @param dimension
 	 * @return int
 	 */
