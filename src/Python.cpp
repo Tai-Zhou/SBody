@@ -13,7 +13,6 @@
 #include <chrono>
 #include <cmath>
 #include <csignal>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
