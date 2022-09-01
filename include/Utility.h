@@ -13,14 +13,18 @@
 #define SBODY_UTILITY_H
 
 #include <string>
+#include <vector>
 
+#include <gsl/gsl_matrix.h>
 #include <gsl/gsl_odeiv2.h>
+#include <gsl/gsl_permutation.h>
+#include <gsl/gsl_vector.h>
 
 namespace SBody {
-	/// Absolute accuracy
+	/// Global absolute accuracy
 	extern double absolute_accuracy;
 
-	/// Relative accuracy
+	/// Global relative accuracy
 	extern double relative_accuracy;
 
 	/// Sample number
@@ -42,7 +46,7 @@ namespace SBody {
 	constexpr double M_PI2 = 9.86960440108935861883449099987615111;
 
 	/**
-	 * @brief
+	 * @brief A wrapper of the gsl_odeiv2_evolve
 	 *
 	 */
 	class Integrator {
@@ -62,11 +66,11 @@ namespace SBody {
 		/**
 		 * @brief Construct a new Integrator object
 		 *
-		 * @param function
-		 * @param jacobian
-		 * @param coordinate
-		 * @param params
-		 * @param type
+		 * @param function The function calculates \f$dy/dt\f$
+		 * @param jacobian The jacobian of the function \f$J_{ij}=\partial f_i/\partial y_j\f$
+		 * @param coordinate The coordinate of the system, `0` for Cartesian, `1` for spherical, and `2` for modified spherical
+		 * @param params The parameters passed to the function
+		 * @param type Type of the algorithms
 		 */
 		Integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
 
@@ -125,7 +129,7 @@ namespace SBody {
 		~GslBlock();
 
 		/**
-		 * @brief gsl_vector_alloc, creates a vector of length `n`
+		 * @brief :func:`gsl_vector_alloc`, creates a vector of length `n`
 		 *
 		 * @param n length of the vector
 		 * @return gsl_vector*
@@ -133,7 +137,7 @@ namespace SBody {
 		gsl_vector *VectorAlloc(size_t n);
 
 		/**
-		 * @brief gsl_vector_calloc, creates a vector of length `n` and initializes all the elements of the vector to zero
+		 * @brief :func:`gsl_vector_calloc`, creates a vector of length `n` and initializes all the elements of the vector to zero
 		 *
 		 * @param n length of the vector
 		 * @return gsl_vector*
@@ -141,7 +145,7 @@ namespace SBody {
 		gsl_vector *VectorCalloc(size_t n);
 
 		/**
-		 * @brief gsl_matrix_alloc, creates a matrix of size `n1` rows by `n2` columns
+		 * @brief :func:`gsl_matrix_alloc`, creates a matrix of size `n1` rows by `n2` columns
 		 *
 		 * @param n1 rows of the matrix
 		 * @param n2 columns of the matrix
@@ -150,7 +154,7 @@ namespace SBody {
 		gsl_matrix *MatrixAlloc(size_t n1, size_t n2);
 
 		/**
-		 * @brief gsl_matrix_alloc, creates a matrix of size `n1` rows by `n2` columns and initializes all the elements of the matrix to zero
+		 * @brief :func:`gsl_matrix_alloc`, creates a matrix of size `n1` rows by `n2` columns and initializes all the elements of the matrix to zero
 		 *
 		 * @param n1 rows of the matrix
 		 * @param n2 columns of the matrix
@@ -159,7 +163,7 @@ namespace SBody {
 		gsl_matrix *MatrixCalloc(size_t n1, size_t n2);
 
 		/**
-		 * @brief gsl_permutation_alloc, allocates memory for a new permutation of size `n`
+		 * @brief :func:`gsl_permutation_alloc`, allocates memory for a new permutation of size `n`
 		 *
 		 * @param n size of the permutation
 		 * @return gsl_permutation*
@@ -167,7 +171,7 @@ namespace SBody {
 		gsl_permutation *PermutationAlloc(size_t n);
 
 		/**
-		 * @brief gsl_permutation_alloc, allocates memory for a new permutation of size `n` and initializes it to the identity
+		 * @brief :func:`gsl_permutation_alloc`, allocates memory for a new permutation of size `n` and initializes it to the identity
 		 *
 		 * @param n size of the permutation
 		 * @return gsl_permutation*
@@ -176,7 +180,7 @@ namespace SBody {
 	};
 
 	/**
-	 * @brief Dot product of vector x·y, or x·x if y == nullptr
+	 * @brief Dot product of vector \f$x\cdot y\f$, or \f$x\cdot x\f$ if :code:`y == nullptr`
 	 *
 	 * @param x
 	 * @param y
@@ -186,10 +190,10 @@ namespace SBody {
 	double Dot(const double x[], const double y[] = nullptr, size_t dimension = 3);
 
 	/**
-	 * @brief Length of vector x, with 3 dimensions set by default
+	 * @brief Euclidean norm of `x`, \f$\|x\|_2\f$
 	 *
-	 * @param x
-	 * @param dimension
+	 * @param x vector
+	 * @param dimension the dimension of the vector
 	 * @return double
 	 */
 	double Norm(const double x[], size_t dimension = 3);
@@ -197,17 +201,17 @@ namespace SBody {
 	/**
 	 * @brief Cross product of vector \f$x\times y\f$, stored in z
 	 *
-	 * @param x
-	 * @param y
-	 * @param z
+	 * @param x 3 dimensional vector
+	 * @param y 3 dimensional vector
+	 * @param z 3 dimensional vector
 	 */
 	int Cross(const double x[], const double y[], double z[]);
 
 	/**
-	 * @brief
+	 * @brief Rotate vector `x` around the `axis` by `angle`
 	 *
-	 * @param x
-	 * @param axis the subscript of the axis
+	 * @param x 3 dimensional vector
+	 * @param axis the subscript of the rotation axis
 	 * @param angle in unit rad
 	 * @return int
 	 */
@@ -216,47 +220,63 @@ namespace SBody {
 	/**
 	 * @brief
 	 *
-	 * @param x
-	 * @param dimension
+	 * @param x 4 or 8 dimensional vector
+	 * @param calculate_velocity if `true`, the velocity (`x[5]` - `x[8]`) is also calculated
 	 * @return int
 	 */
-	int CartesianToSpherical(double x[], size_t dimension = 8);
+	int CartesianToSpherical(double x[], bool calculate_velocity = true);
 
 	/**
 	 * @brief
 	 *
-	 * @param cartesian
-	 * @param spherical
-	 * @param dimension
+	 * @param cartesian 3 dimensional vector
+	 * @param spherical 3 dimensional vector
 	 * @return int
 	 */
-	int CartesianToSpherical(const double cartesian[], double spherical[], size_t dimension);
+	int CartesianToSpherical(const double cartesian[], double spherical[]);
 
+	/**
+	 * @brief
+	 *
+	 * @param cartesian_position 3 dimensional vector
+	 * @param cartesian_velocity 3 dimensional vector
+	 * @param spherical_position 3 dimensional vector
+	 * @param spherical_velocity 3 dimensional vector
+	 * @return int
+	 */
 	int CartesianToSpherical(const double cartesian_position[], const double cartesian_velocity[], double spherical_position[], double spherical_velocity[]);
 
 	/**
 	 * @brief
 	 *
-	 * @param x
-	 * @param dimension
+	 * @param x 4 or 8 dimensional vector
+	 * @param calculate_velocity if `true`, the velocity (`x[5]` - `x[8]`) is also calculated
 	 * @return int
 	 */
-	int SphericalToCartesian(double x[], size_t dimension = 8);
+	int SphericalToCartesian(double x[], bool calculate_velocity = true);
 
 	/**
 	 * @brief
 	 *
-	 * @param spherical
-	 * @param cartesian
-	 * @param dimension
+	 * @param spherical 3 dimensional vector
+	 * @param cartesian 3 dimensional vector
 	 * @return int
 	 */
-	int SphericalToCartesian(const double spherical[], double cartesian[], size_t dimension);
+	int SphericalToCartesian(const double spherical[], double cartesian[]);
 
+	/**
+	 * @brief
+	 *
+	 * @param spherical_position 3 dimensional vector
+	 * @param spherical_velocity 3 dimensional vector
+	 * @param cartesian_position 3 dimensional vector or `nullptr`
+	 * @param cartesian_velocity 3 dimensional vector
+	 * @return int
+	 */
 	int SphericalToCartesian(const double spherical_position[], const double spherical_velocity[], double cartesian_position[], double cartesian_velocity[]);
 
 	/**
-	 * @brief return 1 if x, y have opposite signs, else 0.
+	 * @brief return `1` if `x`, `y` have opposite signs, else `0`.
 	 *
 	 * @param x
 	 * @param y
@@ -265,7 +285,7 @@ namespace SBody {
 	int OppositeSign(double x, double y);
 
 	/**
-	 * @brief return x in \f$[0, 2\pi)\f$.
+	 * @brief return `x` in \f$[0, 2\pi)\f$.
 	 *
 	 * @param x
 	 * @return double

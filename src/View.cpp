@@ -360,7 +360,7 @@ namespace SBody {
 		int progressBarIndex = ProgressBar::bars_.push_back(*bar_);
 		for (int i = 0; i < pixel_; ++i)
 			for (int j = 0; j < pixel_; ++j) {
-				double ph[10], phc[10];
+				double ph[10];
 				int status = 0;
 				copy(initials_[i * pixel_ + j].begin(), initials_[i * pixel_ + j].end(), ph);
 				Integrator &&integrator = metric_->GetIntegrator(2);
@@ -374,8 +374,8 @@ namespace SBody {
 					metric_->HamiltonianToLagrangian(ph);
 					if (ph[2] < 0)
 						ph[2] += M_PI;
-					SphericalToCartesian(ph, phc, 8);
-					rec.Save({phc[6] * pixelPerAngle, (phc[7] * sin_theta_observer_ - phc[5] * cos_theta_observer_) * pixelPerAngle});
+					SphericalToCartesian(ph);
+					rec.Save({ph[6] * pixelPerAngle, (ph[7] * sin_theta_observer_ - ph[5] * cos_theta_observer_) * pixelPerAngle});
 				}
 				if (ProgressBar::display_)
 					ProgressBar::bars_[progressBarIndex].tick();

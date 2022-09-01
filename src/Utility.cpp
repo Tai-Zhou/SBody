@@ -152,36 +152,24 @@ namespace SBody {
 		}
 		return 0;
 	}
-	int CartesianToSpherical(double x[], size_t dimension) {
-		std::vector<double> y(x, x + dimension);
-		return CartesianToSpherical(y.data(), x, dimension);
-	}
-	int CartesianToSpherical(const double cartesian[], double spherical[], size_t dimension) {
-		if (dimension < 4)
-			return 1;
-		spherical[1] = Norm(cartesian + 1);
-		if (spherical[1] < epsilon)
-			return 1;
-		spherical[2] = acos(cartesian[3] / spherical[1]);
-		if (dimension < 8) {
-			spherical[3] = ModBy2Pi(atan2(cartesian[2], cartesian[1]));
-		} else {
-			spherical[5] = SBody::Dot(cartesian + 1, cartesian + 5) / spherical[1];
-			if (const double norm_x_y = Norm(cartesian + 1, 2); norm_x_y < epsilon) {
-				spherical[3] = ModBy2Pi(atan2(cartesian[6], cartesian[5]));
-				spherical[6] = GSL_SIGN(cartesian[3]) * Norm(cartesian + 5, 2) / spherical[1];
-				spherical[7] = 0;
-			} else {
-				spherical[3] = ModBy2Pi(atan2(cartesian[2], cartesian[1]));
-				spherical[6] = (-cartesian[7] + cartesian[3] / spherical[1] * spherical[5]) / norm_x_y;
-				spherical[7] = (cartesian[6] * cartesian[1] - cartesian[5] * cartesian[2]) / gsl_pow_2(norm_x_y);
-			}
+	int CartesianToSpherical(double x[], bool calculate_velocity) {
+		const double position[3] = {x[1], x[2], x[3]};
+		if (!calculate_velocity)
+			return CartesianToSpherical(position, x + 1);
+		else {
+			const double velocity[3] = {x[5], x[6], x[7]};
+			return CartesianToSpherical(position, velocity, x + 1, x + 5);
 		}
+	}
+	int CartesianToSpherical(const double cartesian[], double spherical[]) {
+		if (spherical[0] = Norm(cartesian); spherical[0] < epsilon)
+			return 1;
+		spherical[1] = acos(cartesian[2] / spherical[0]);
+		spherical[2] = ModBy2Pi(atan2(cartesian[1], cartesian[0]));
 		return 0;
 	}
 	int CartesianToSpherical(const double cartesian_position[], const double cartesian_velocity[], double spherical_position[], double spherical_velocity[]) {
-		spherical_position[0] = Norm(cartesian_position);
-		if (spherical_position[0] < epsilon)
+		if (spherical_position[0] = Norm(cartesian_position); spherical_position[0] < epsilon)
 			return 1;
 		spherical_position[1] = acos(cartesian_position[2] / spherical_position[0]);
 		spherical_velocity[0] = SBody::Dot(cartesian_position, cartesian_velocity) / spherical_position[0];
@@ -196,29 +184,29 @@ namespace SBody {
 		}
 		return 0;
 	}
-	int SphericalToCartesian(double x[], size_t dimension) {
-		std::vector<double> y(x, x + dimension);
-		return SphericalToCartesian(y.data(), x, dimension);
-	}
-	int SphericalToCartesian(const double spherical[], double cartesian[], size_t dimension) {
-		if (dimension < 4)
-			return 1;
-		const double sin_theta = sin(spherical[2]), cos_theta = cos(spherical[2]), sin_phi = sin(spherical[3]), cos_phi = cos(spherical[3]);
-		cartesian[1] = spherical[1] * sin_theta * cos_phi;
-		cartesian[2] = spherical[1] * sin_theta * sin_phi;
-		cartesian[3] = spherical[1] * cos_theta;
-		if (dimension >= 8) {
-			cartesian[5] = spherical[5] * sin_theta * cos_phi + spherical[1] * (cos_theta * cos_phi * spherical[6] - sin_theta * sin_phi * spherical[7]);
-			cartesian[6] = spherical[5] * sin_theta * sin_phi + spherical[1] * (cos_theta * sin_phi * spherical[6] + sin_theta * cos_phi * spherical[7]);
-			cartesian[7] = spherical[5] * cos_theta - spherical[1] * sin_theta * spherical[6];
+	int SphericalToCartesian(double x[], bool calculate_velocity) {
+		const double position[3] = {x[1], x[2], x[3]};
+		if (!calculate_velocity)
+			return SphericalToCartesian(position, x + 1);
+		else {
+			const double velocity[3] = {x[5], x[6], x[7]};
+			return SphericalToCartesian(position, velocity, x + 1, x + 5);
 		}
+	}
+	int SphericalToCartesian(const double spherical[], double cartesian[]) {
+		const double sin_theta = sin(spherical[2]);
+		cartesian[0] = spherical[0] * sin_theta * cos(spherical[3]);
+		cartesian[1] = spherical[0] * sin_theta * sin(spherical[3]);
+		cartesian[2] = spherical[0] * cos(spherical[2]);
 		return 0;
 	}
 	int SphericalToCartesian(const double spherical_position[], const double spherical_velocity[], double cartesian_position[], double cartesian_velocity[]) {
 		const double sin_theta = sin(spherical_position[1]), cos_theta = cos(spherical_position[1]), sin_phi = sin(spherical_position[2]), cos_phi = cos(spherical_position[2]);
-		cartesian_position[0] = spherical_position[0] * sin_theta * cos_phi;
-		cartesian_position[1] = spherical_position[0] * sin_theta * sin_phi;
-		cartesian_position[2] = spherical_position[0] * cos_theta;
+		if (cartesian_position != nullptr) {
+			cartesian_position[0] = spherical_position[0] * sin_theta * cos_phi;
+			cartesian_position[1] = spherical_position[0] * sin_theta * sin_phi;
+			cartesian_position[2] = spherical_position[0] * cos_theta;
+		}
 		cartesian_velocity[0] = spherical_velocity[0] * sin_theta * cos_phi + spherical_position[0] * cos_theta * cos_phi * spherical_velocity[1] - spherical_position[0] * sin_theta * sin_phi * spherical_velocity[2];
 		cartesian_velocity[1] = spherical_velocity[0] * sin_theta * sin_phi + spherical_position[0] * cos_theta * sin_phi * spherical_velocity[1] + spherical_position[0] * sin_theta * cos_phi * spherical_velocity[2];
 		cartesian_velocity[2] = spherical_velocity[0] * cos_theta - spherical_position[0] * sin_theta * spherical_velocity[1];

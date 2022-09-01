@@ -227,9 +227,11 @@ int main(int argc, char *argv[]) {
 		else {
 			if (Hamiltonian) {
 				copy(star_0.position_, star_0.position_ + 8, temp.begin());
-				main_metric->HamiltonianToLagrangian(temp.data()); // TODO: need s2c()
-			} else
-				SphericalToCartesian(star_0.position_, temp.data(), 8);
+				main_metric->HamiltonianToLagrangian(temp.data()); // TODO: might need s2c()
+			} else {
+				copy(star_0.position_, star_0.position_ + 8, temp.begin());
+				SphericalToCartesian(temp.data());
+			}
 		}
 		temp[8] = t / Unit::s;
 		temp[9] = main_metric->Energy(star_0.position_);
