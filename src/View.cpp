@@ -127,7 +127,7 @@ namespace SBody {
 				return status;
 			}
 		}
-		double ph2[9], rec2[sample_number][8], recph[8], interval = M_2PI / sample_number, time_limit = 0;
+		double ph2[9], rec2[sample_number][3], rec3[sample_number][3], recph[8], interval = M_2PI / sample_number, time_limit = 0;
 		copy(photon, photon + 8, ph2);
 		metric_->NormalizeNullGeodesic(ph2, 1.);
 		metric_->LagrangianToHamiltonian(ph2);
@@ -161,34 +161,22 @@ namespace SBody {
 			star.DotProduct(ph_reg, coordinate_static->data + 12, 4)};
 		for (int i = 1; i < 4; ++i)
 			ph_static[i] /= ph_static[0];
-		double rec4[100][3];
 		double ph_coor[4] = {
 			star.DotProduct(ph_reg, coordinate->data, 4),
 			star.DotProduct(ph_reg, coordinate->data + 4, 4),
 			star.DotProduct(ph_reg, coordinate->data + 8, 4),
 			star.DotProduct(ph_reg, coordinate->data + 12, 4)};
-		for (int i = 1; i < 4; ++i)
-			ph_coor[i] /= ph_coor[0];
-		const double ph_coor_sph_theta = acos(ph_coor[3]), ph_coor_sph_phi = atan2(ph_coor[2], ph_coor[1]);
+		double ph_coor_sph[3];
+		CartesianToSpherical(ph_coor + 1, ph_coor_sph);
 		for (int i = 0; i < sample_number; ++i) {
 			const double angle = i * interval, sin_angle = sin(angle), cos_angle = cos(angle);
-			const double ph2_coor[3] = {
-				cos_angle * sin_epsilon,
-				sin_angle * sin_epsilon,
-				cos_epsilon};
-			const double ph2_coor_theta[3] = {
-				ph2_coor[0] * cos(ph_coor_sph_theta) + ph2_coor[2] * sin(ph_coor_sph_theta),
-				ph2_coor[1],
-				ph2_coor[2] * cos(ph_coor_sph_theta) - ph2_coor[0] * sin(ph_coor_sph_theta)};
-			// const double ph2_coor_phi[3] = {
-			//	ph2_coor_theta[0] * cos(ph_coor_sph[1]) - ph2_coor_theta[1] * sin(ph_coor_sph[1]),
-			//	ph2_coor_theta[1] * cos(ph_coor_sph[1]) + ph2_coor_theta[0] * sin(ph_coor_sph[1]),
-			//	ph2_coor_theta[2]};
 			copy(photon, photon + 4, ph2);
 			ph2[4] = 1.;
-			ph2[5] = ph2_coor_theta[0] * cos(ph_coor_sph_phi) - ph2_coor_theta[1] * sin(ph_coor_sph_phi);
-			ph2[6] = ph2_coor_theta[1] * cos(ph_coor_sph_phi) + ph2_coor_theta[0] * sin(ph_coor_sph_phi);
-			ph2[7] = ph2_coor_theta[2];
+			ph2[5] = cos_angle * sin_epsilon;
+			ph2[6] = sin_angle * sin_epsilon;
+			ph2[7] = cos_epsilon;
+			RotateAroundAxis(ph2 + 5, 1, ph_coor_sph[1]);
+			RotateAroundAxis(ph2 + 5, 2, ph_coor_sph[2]);
 			gsl_vector_view ph2_view = gsl_vector_view_array(ph2 + 4, 4);
 			gsl_vector_unique_ptr ph2_ptr(gsl_vector_alloc(8), gsl_vector_free);
 			// coordinate * gmunu * ph2 = ph_coor_phi
@@ -196,18 +184,14 @@ namespace SBody {
 			int signum;
 			gsl_linalg_LU_decomp(coordinate_gmunu.get(), perm.get(), &signum);
 			gsl_linalg_LU_svx(coordinate_gmunu.get(), perm.get(), &ph2_view.vector);
-			// ph2[4] = 1. / (coordinate[0] + coordinate[4] * ph2_coor_phi[0] + coordinate[8] * ph2_coor_phi[1] + coordinate[12] * ph2_coor_phi[2]);
-			// ph2[5] = ph2[4] * (coordinate[1] + coordinate[5] * ph2_coor_phi[0] + coordinate[9] * ph2_coor_phi[1] + coordinate[13] * ph2_coor_phi[2]);
-			// ph2[6] = ph2[4] * (coordinate[2] + coordinate[6] * ph2_coor_phi[0] + coordinate[10] * ph2_coor_phi[1] + coordinate[14] * ph2_coor_phi[2]);
-			// ph2[7] = ph2[4] * (coordinate[3] + coordinate[7] * ph2_coor_phi[0] + coordinate[11] * ph2_coor_phi[1] + coordinate[15] * ph2_coor_phi[2]);
 			ph2[8] = 0.;
 			metric_->NormalizeNullGeodesic(ph2, 1.);
-			rec4[i][0] = star.DotProduct(ph2 + 4, coordinate_static->data + 4, 4);
-			rec4[i][1] = star.DotProduct(ph2 + 4, coordinate_static->data + 8, 4);
-			rec4[i][2] = star.DotProduct(ph2 + 4, coordinate_static->data + 12, 4);
+			rec3[i][0] = star.DotProduct(ph2 + 4, coordinate_static->data + 4, 4);
+			rec3[i][1] = star.DotProduct(ph2 + 4, coordinate_static->data + 8, 4);
+			rec3[i][2] = star.DotProduct(ph2 + 4, coordinate_static->data + 12, 4);
 			const double vph_norm = star.DotProduct(ph2 + 4, coordinate_static->data, 4);
 			for (int j = 0; j < 3; ++j)
-				rec4[i][j] /= vph_norm;
+				rec3[i][j] /= vph_norm;
 			metric_->LagrangianToHamiltonian(ph2);
 			h = 1.;
 			int status = 0;
@@ -218,43 +202,32 @@ namespace SBody {
 				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 				return status;
 			}
-			copy(ph2, ph2 + 8, rec2[i]);
-			metric_->HamiltonianToLagrangian(rec2[i]);
-		}
-		const double sin_theta = sin(recph[2]), cos_theta = cos(recph[2]), sin_phi = sin(recph[3]), cos_phi = cos(recph[3]);
-		double vphph[3] = {recph[5] * sin_theta * cos_phi + recph[1] * (cos_theta * cos_phi * recph[6] - sin_theta * sin_phi * recph[7]),
-						   recph[5] * sin_theta * sin_phi + recph[1] * (cos_theta * sin_phi * recph[6] + sin_theta * cos_phi * recph[7]),
-						   recph[5] * cos_theta - recph[1] * sin_theta * recph[6]};
-		const double vphph_norm = Norm(vphph);
-		for (int j = 0; j < 3; ++j)
-			vphph[j] /= vphph_norm;
-		double rec3[100][3];
-		for (int i = 0; i < sample_number; ++i) {
-			const double sin_theta = sin(rec2[i][2]), cos_theta = cos(rec2[i][2]), sin_phi = sin(rec2[i][3]), cos_phi = cos(rec2[i][3]);
-			rec3[i][0] = rec2[i][5] * sin_theta * cos_phi + rec2[i][1] * (cos_theta * cos_phi * rec2[i][6] - sin_theta * sin_phi * rec2[i][7]);
-			rec3[i][1] = rec2[i][5] * sin_theta * sin_phi + rec2[i][1] * (cos_theta * sin_phi * rec2[i][6] + sin_theta * cos_phi * rec2[i][7]);
-			rec3[i][2] = rec2[i][5] * cos_theta - rec2[i][1] * sin_theta * rec2[i][6];
-			const double vph_norm = Norm(rec3[i]);
+			metric_->HamiltonianToLagrangian(ph2);
+			SphericalToCartesian(ph2);
+			copy(ph2 + 5, ph2 + 8, rec2[i]);
+			const double rec2_norm = Norm(rec2[i]); // TODO: == ph2[4]?
 			for (int j = 0; j < 3; ++j)
-				rec3[i][j] /= vph_norm;
+				rec2[i][j] /= rec2_norm;
 		}
+		SphericalToCartesian(recph);
+		const double recph_norm = Norm(recph + 5);
+		for (int j = 5; j < 8; ++j)
+			recph[j] /= recph_norm;
 		if (ray_number == 2500) {
 			NumPy cone_record("cone_record", {3});
-			cone_record.Save(vphph, 3);
+			cone_record.Save(recph + 5, 3);
 			for (int i = 0; i < sample_number; ++i)
-				cone_record.Save(rec3[i], 3);
+				cone_record.Save(rec2[i], 3);
 		}
 		double cross_product[3];
+		Cross(rec2[0], rec2[sample_number - 1], cross_product);
+		double area = Dot(cross_product, recph + 5);
 		Cross(rec3[0], rec3[sample_number - 1], cross_product);
-		double area = Dot(cross_product, vphph);
-		for (int i = 1; i < sample_number; ++i) {
-			Cross(rec3[i], rec3[i - 1], cross_product);
-			area += Dot(cross_product, vphph);
-		}
-		Cross(rec4[0], rec4[sample_number - 1], cross_product);
 		double area2 = Dot(cross_product, ph_static + 1);
 		for (int i = 1; i < sample_number; ++i) {
-			Cross(rec4[i], rec4[i - 1], cross_product);
+			Cross(rec2[i], rec2[i - 1], cross_product);
+			area += Dot(cross_product, recph + 5);
+			Cross(rec3[i], rec3[i - 1], cross_product);
 			area2 += Dot(cross_product, ph_static + 1);
 		}
 #ifdef VIEW_TAU

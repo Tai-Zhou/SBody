@@ -207,8 +207,8 @@ namespace SBody {
 			cartesian_position[1] = spherical_position[0] * sin_theta * sin_phi;
 			cartesian_position[2] = spherical_position[0] * cos_theta;
 		}
-		cartesian_velocity[0] = spherical_velocity[0] * sin_theta * cos_phi + spherical_position[0] * cos_theta * cos_phi * spherical_velocity[1] - spherical_position[0] * sin_theta * sin_phi * spherical_velocity[2];
-		cartesian_velocity[1] = spherical_velocity[0] * sin_theta * sin_phi + spherical_position[0] * cos_theta * sin_phi * spherical_velocity[1] + spherical_position[0] * sin_theta * cos_phi * spherical_velocity[2];
+		cartesian_velocity[0] = spherical_velocity[0] * sin_theta * cos_phi + spherical_position[0] * (cos_theta * cos_phi * spherical_velocity[1] - sin_theta * sin_phi * spherical_velocity[2]);
+		cartesian_velocity[1] = spherical_velocity[0] * sin_theta * sin_phi + spherical_position[0] * (cos_theta * sin_phi * spherical_velocity[1] + sin_theta * cos_phi * spherical_velocity[2]);
 		cartesian_velocity[2] = spherical_velocity[0] * cos_theta - spherical_position[0] * sin_theta * spherical_velocity[1];
 		return 0;
 	}
