@@ -14,6 +14,7 @@
 #include <cmath>
 #include <vector>
 
+#include <fmt/core.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_math.h>
 
@@ -72,10 +73,10 @@ namespace SBody {
 		return status;
 	}
 	int Integrator::Reset() {
-		if (int s = gsl_odeiv2_evolve_reset(evolve_); s)
-			return s;
-		if (int s = gsl_odeiv2_step_reset(step_); s)
-			return s;
+		if (int status = gsl_odeiv2_evolve_reset(evolve_); status)
+			return status;
+		if (int status = gsl_odeiv2_step_reset(step_); status)
+			return status;
 		return GSL_SUCCESS;
 	}
 	GslBlock::~GslBlock() {
@@ -137,22 +138,33 @@ namespace SBody {
 	}
 	int RotateAroundAxis(double x[], int axis, double angle) {
 		const double sin_angle = sin(angle), cos_angle = cos(angle);
-		if (axis == 0) {
+		switch (axis) {
+		case 0:
 			angle = x[1] * cos_angle - x[2] * sin_angle;
 			x[2] = x[1] * sin_angle + x[2] * cos_angle;
 			x[1] = angle;
-		} else if (axis == 1) {
+			return 0;
+		case 1:
 			angle = x[2] * cos_angle - x[0] * sin_angle;
 			x[0] = x[2] * sin_angle + x[0] * cos_angle;
 			x[2] = angle;
-		} else if (axis == 2) {
+			return 0;
+		case 2:
 			angle = x[0] * cos_angle - x[1] * sin_angle;
 			x[1] = x[0] * sin_angle + x[1] * cos_angle;
 			x[0] = angle;
+			return 0;
+		default:
+			return 1;
 		}
-		return 0;
 	}
 	int CartesianToSpherical(double x[], size_t dimension) {
+#ifndef GSL_RANGE_CHECK_OFF
+		if (dimension != 3 && dimension != 4 && dimension != 8) {
+			fmt::print(stderr, "[!] CartesianToSpherical dimension = {}\n", dimension);
+			return 1;
+		}
+#endif
 		if (dimension == 3) {
 			const double position[3] = {x[0], x[1], x[2]};
 			return CartesianToSpherical(position, x);
@@ -190,6 +202,12 @@ namespace SBody {
 		return 0;
 	}
 	int SphericalToCartesian(double x[], size_t dimension) {
+#ifndef GSL_RANGE_CHECK_OFF
+		if (dimension != 3 && dimension != 4 && dimension != 8) {
+			fmt::print(stderr, "[!] SphericalToCartesian dimension = {}\n", dimension);
+			return 1;
+		}
+#endif
 		if (dimension == 3) {
 			const double position[3] = {x[0], x[1], x[2]};
 			return SphericalToCartesian(position, x);

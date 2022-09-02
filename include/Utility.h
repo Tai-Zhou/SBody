@@ -66,11 +66,16 @@ namespace SBody {
 		/**
 		 * @brief Construct a new Integrator object
 		 *
-		 * @param function The function calculates \f$dy/dt\f$
-		 * @param jacobian The jacobian of the function \f$J_{ij}=\partial f_i/\partial y_j\f$
-		 * @param coordinate The coordinate of the system, `0` for Cartesian, `1` for spherical, and `2` for modified spherical
-		 * @param params The parameters passed to the function
-		 * @param type Type of the algorithms
+		 * @param function The function calculates \f[
+		 * \frac{\mathrm dy_i(t)}{\mathrm dt}=f_i\left[t,y_1(t),\dots,y_n(t)\right]
+		 * \f]
+		 * @param jacobian The jacobian of the function \f[J_{ij}=\frac{\partial f_i\left[t,y(t)\right]}{\partial y_j}\f]
+		 * @param coordinate The coordinate of the system, `0` for Cartesian, `1` for spherical, and `2` for modified spherical. The modified spherical coordiante maps the polar angle from \f$\theta\in[0,\pi]\f$ to \f[
+		 * \theta'\equiv\begin{cases}\theta & (\theta\leq\pi/2)\\
+		 * \theta-\pi & (\theta>\pi/2)\end{cases}
+		 * \f]
+		 * @param params The parameters passed to the function, like the PN parameter, or the spin of the black hole.
+		 * @param type Type of the algorithms. Explicit embedded Runge-Kutta Prince-Dormand (8, 9) method is set by default.
 		 */
 		Integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
 
@@ -115,7 +120,7 @@ namespace SBody {
 	};
 
 	/**
-	 * @brief A wrapper of the `gsl_vector`, `gsl_matrix`, and `gsl_permutation`
+	 * @brief A wrapper of the `gsl_vector`, `gsl_matrix`, and `gsl_permutation`.
 	 *
 	 */
 	class GslBlock {
@@ -129,7 +134,7 @@ namespace SBody {
 		~GslBlock();
 
 		/**
-		 * @brief :func:`gsl_vector_alloc`, creates a vector of length `n`
+		 * @brief `gsl_vector_alloc`, creates a vector of length `n`
 		 *
 		 * @param n length of the vector
 		 * @return gsl_vector*
@@ -137,7 +142,7 @@ namespace SBody {
 		gsl_vector *VectorAlloc(size_t n);
 
 		/**
-		 * @brief :func:`gsl_vector_calloc`, creates a vector of length `n` and initializes all the elements of the vector to zero
+		 * @brief `gsl_vector_calloc`, creates a vector of length `n` and initializes all the elements of the vector to zero.
 		 *
 		 * @param n length of the vector
 		 * @return gsl_vector*
@@ -145,7 +150,7 @@ namespace SBody {
 		gsl_vector *VectorCalloc(size_t n);
 
 		/**
-		 * @brief :func:`gsl_matrix_alloc`, creates a matrix of size `n1` rows by `n2` columns
+		 * @brief `gsl_matrix_alloc`, creates a matrix of size `n1` rows by `n2` columns.
 		 *
 		 * @param n1 rows of the matrix
 		 * @param n2 columns of the matrix
@@ -154,7 +159,7 @@ namespace SBody {
 		gsl_matrix *MatrixAlloc(size_t n1, size_t n2);
 
 		/**
-		 * @brief :func:`gsl_matrix_alloc`, creates a matrix of size `n1` rows by `n2` columns and initializes all the elements of the matrix to zero
+		 * @brief `gsl_matrix_alloc`, creates a matrix of size `n1` rows by `n2` columns and initializes all the elements of the matrix to zero
 		 *
 		 * @param n1 rows of the matrix
 		 * @param n2 columns of the matrix
@@ -163,7 +168,7 @@ namespace SBody {
 		gsl_matrix *MatrixCalloc(size_t n1, size_t n2);
 
 		/**
-		 * @brief :func:`gsl_permutation_alloc`, allocates memory for a new permutation of size `n`
+		 * @brief `gsl_permutation_alloc`, allocates memory for a new permutation of size `n`
 		 *
 		 * @param n size of the permutation
 		 * @return gsl_permutation*
@@ -171,7 +176,7 @@ namespace SBody {
 		gsl_permutation *PermutationAlloc(size_t n);
 
 		/**
-		 * @brief :func:`gsl_permutation_alloc`, allocates memory for a new permutation of size `n` and initializes it to the identity
+		 * @brief `gsl_permutation_alloc`, allocates memory for a new permutation of size `n` and initializes it to the identity
 		 *
 		 * @param n size of the permutation
 		 * @return gsl_permutation*
@@ -180,7 +185,7 @@ namespace SBody {
 	};
 
 	/**
-	 * @brief Dot product of vector \f$x\cdot y\f$, or \f$x\cdot x\f$ if :code:`y == nullptr`
+	 * @brief Dot product of vector `x` and `y`, or `x` and `x` if `y == nullptr`. \f$\vec{x}\cdot\vec{y}\f$ or \f$\vec{x}\cdot\vec{x}\f$
 	 *
 	 * @param x
 	 * @param y
@@ -190,7 +195,7 @@ namespace SBody {
 	double Dot(const double x[], const double y[] = nullptr, size_t dimension = 3);
 
 	/**
-	 * @brief Euclidean norm of `x`, \f$\|x\|_2\f$
+	 * @brief Euclidean norm of `x`. \f$\|\vec{x}\|_2\f$.
 	 *
 	 * @param x vector
 	 * @param dimension the dimension of the vector
@@ -199,7 +204,7 @@ namespace SBody {
 	double Norm(const double x[], size_t dimension = 3);
 
 	/**
-	 * @brief Cross product of vector \f$x\times y\f$, stored in z
+	 * @brief Cross product of vector `x` and `y`, stored in `z`. \f$\vec{z}=\vec{x}\times\vec{y}\f$.
 	 *
 	 * @param x 3 dimensional vector
 	 * @param y 3 dimensional vector
@@ -208,11 +213,11 @@ namespace SBody {
 	int Cross(const double x[], const double y[], double z[]);
 
 	/**
-	 * @brief Rotate vector `x` around the `axis` by `angle`
+	 * @brief Rotate vector `x` around the `axis` by `angle`.
 	 *
 	 * @param x 3 dimensional vector
-	 * @param axis the subscript of the rotation axis
-	 * @param angle in unit rad
+	 * @param axis the subscript of the rotation axis, should be \f$\geq0\f$ and \f$\leq2\f$.
+	 * @param angle in rad
 	 * @return int
 	 */
 	int RotateAroundAxis(double x[], int axis, double angle);
@@ -221,7 +226,7 @@ namespace SBody {
 	 * @brief
 	 *
 	 * @param x 4 or 8 dimensional vector
-	 * @param dimension 3, 4, or 8.
+	 * @param dimension 3, 4, or 8
 	 * @return int
 	 */
 	int CartesianToSpherical(double x[], size_t dimension = 8);

@@ -51,7 +51,7 @@ Math
 .. doxygenfunction:: SBody::RotateAroundAxis
    :no-link:
 
-.. doxygenfunction:: SBody::CartesianToSpherical(double[], bool)
+.. doxygenfunction:: SBody::CartesianToSpherical(double[], size_t)
    :no-link:
 
 .. doxygenfunction:: SBody::CartesianToSpherical(const double[], double[])
@@ -60,7 +60,7 @@ Math
 .. doxygenfunction:: SBody::CartesianToSpherical(const double[], const double[], double[], double[])
    :no-link:
 
-.. doxygenfunction:: SBody::SphericalToCartesian(double[], bool)
+.. doxygenfunction:: SBody::SphericalToCartesian(double[], size_t)
    :no-link:
 
 .. doxygenfunction:: SBody::SphericalToCartesian(const double[], double[])
