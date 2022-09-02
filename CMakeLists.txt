@@ -9,7 +9,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif()
 
-if(CMAKE_BUILD_TYPE EQUAL "RELEASE")
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_compile_definitions(GSL_RANGE_CHECK_OFF)
 endif()
 
