@@ -221,10 +221,10 @@ namespace SBody {
 	 * @brief
 	 *
 	 * @param x 4 or 8 dimensional vector
-	 * @param calculate_velocity if `true`, the velocity (`x[5]` - `x[8]`) is also calculated
+	 * @param dimension 3, 4, or 8.
 	 * @return int
 	 */
-	int CartesianToSpherical(double x[], bool calculate_velocity = true);
+	int CartesianToSpherical(double x[], size_t dimension = 8);
 
 	/**
 	 * @brief
@@ -250,10 +250,10 @@ namespace SBody {
 	 * @brief
 	 *
 	 * @param x 4 or 8 dimensional vector
-	 * @param calculate_velocity if `true`, the velocity (`x[5]` - `x[8]`) is also calculated
+	 * @param dimension 3, 4, or 8.
 	 * @return int
 	 */
-	int SphericalToCartesian(double x[], bool calculate_velocity = true);
+	int SphericalToCartesian(double x[], size_t dimension = 8);
 
 	/**
 	 * @brief

@@ -152,13 +152,18 @@ namespace SBody {
 		}
 		return 0;
 	}
-	int CartesianToSpherical(double x[], bool calculate_velocity) {
-		const double position[3] = {x[1], x[2], x[3]};
-		if (!calculate_velocity)
-			return CartesianToSpherical(position, x + 1);
-		else {
-			const double velocity[3] = {x[5], x[6], x[7]};
-			return CartesianToSpherical(position, velocity, x + 1, x + 5);
+	int CartesianToSpherical(double x[], size_t dimension) {
+		if (dimension == 3) {
+			const double position[3] = {x[0], x[1], x[2]};
+			return CartesianToSpherical(position, x);
+		} else {
+			const double position[3] = {x[1], x[2], x[3]};
+			if (dimension == 4)
+				return CartesianToSpherical(position, x + 1);
+			else {
+				const double velocity[3] = {x[5], x[6], x[7]};
+				return CartesianToSpherical(position, velocity, x + 1, x + 5);
+			}
 		}
 	}
 	int CartesianToSpherical(const double cartesian[], double spherical[]) {
@@ -184,13 +189,18 @@ namespace SBody {
 		}
 		return 0;
 	}
-	int SphericalToCartesian(double x[], bool calculate_velocity) {
-		const double position[3] = {x[1], x[2], x[3]};
-		if (!calculate_velocity)
-			return SphericalToCartesian(position, x + 1);
-		else {
-			const double velocity[3] = {x[5], x[6], x[7]};
-			return SphericalToCartesian(position, velocity, x + 1, x + 5);
+	int SphericalToCartesian(double x[], size_t dimension) {
+		if (dimension == 3) {
+			const double position[3] = {x[0], x[1], x[2]};
+			return SphericalToCartesian(position, x);
+		} else {
+			const double position[3] = {x[1], x[2], x[3]};
+			if (dimension == 4)
+				return SphericalToCartesian(position, x + 1);
+			else {
+				const double velocity[3] = {x[5], x[6], x[7]};
+				return SphericalToCartesian(position, velocity, x + 1, x + 5);
+			}
 		}
 	}
 	int SphericalToCartesian(const double spherical[], double cartesian[]) {
