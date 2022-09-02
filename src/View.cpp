@@ -32,10 +32,6 @@
 
 using namespace std;
 
-typedef unique_ptr<gsl_vector, decltype(gsl_vector_free) *> gsl_vector_unique_ptr;
-typedef unique_ptr<gsl_matrix, decltype(gsl_matrix_free) *> gsl_matrix_unique_ptr;
-typedef unique_ptr<gsl_permutation, decltype(gsl_permutation_free) *> gsl_permutation_unique_ptr;
-
 namespace SBody {
 	View::View(shared_ptr<Metric> metric, double r, double theta, string file_name) : metric_(move(metric)), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({8}))) {
 		bar_ = make_unique<indicators::BlockProgressBar>(indicators::option::ShowElapsedTime{true},
@@ -71,7 +67,9 @@ namespace SBody {
 	}
 	int View::TraceStar(Star &star, int ray_number) { // FIXME:!!!!
 		const double r_star = star.position_[1], sin_theta_star = sin(star.position_[2]), cos_theta_star = cos(star.position_[2]), sin_phi_star = sin(star.position_[3]), cos_phi_star = cos(star.position_[3]);
-		double alpha0 = GSL_POSINF, alpha1 = (r_star + 1.) * sin_theta_star * sin_phi_star, beta0 = GSL_POSINF, beta1 = (r_star + 1.) * (cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_), photon[10], cosph, last[10], h;
+		double alpha0 = GSL_POSINF, alpha1 = (r_star + 1.) * sin_theta_star * sin_phi_star, beta0 = GSL_POSINF, beta1 = (r_star + 1.) * (cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_), cosph, h;
+		GslBlock collector;
+		gsl_vector *photon = collector.VectorAlloc(10), *last = collector.VectorAlloc(10);
 #ifdef RECORD_TRACE
 		vector<double> qdq(12);
 		IO::NumPy rec("Trace " + to_string(ray_number), 12);
@@ -80,8 +78,8 @@ namespace SBody {
 		while (gsl_hypot(alpha1 - alpha0, beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
 			alpha0 = alpha1;
 			beta0 = beta1;
-			InitializePhoton(photon, alpha0, beta0);
-			metric_->LagrangianToHamiltonian(photon);
+			InitializePhoton(photon->data, alpha0, beta0);
+			metric_->LagrangianToHamiltonian(photon->data);
 			int status = 0, fixed = 0;
 			h = -1.;
 			while (status <= 0) {
@@ -89,21 +87,21 @@ namespace SBody {
 					h *= 0.5;
 					fixed = 0;
 				}
-				copy(photon, photon + 10, last);
+				gsl_vector_memcpy(last, photon);
 				if (fixed)
-					status = integrator.ApplyFixedStep(photon + 9, h, photon);
+					status = integrator.ApplyFixedStep(gsl_vector_ptr(photon, 9), h, photon->data);
 				else
-					status = integrator.Apply(photon + 9, t_final_, &h, photon);
-				cosph = (r_star * sin_theta_star * cos_phi_star - photon[1] * GSL_SIGN(photon[2]) * sin(photon[2]) * cos(photon[3])) * sin_theta_observer_ + (r_star * cos_theta_star - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * cos_theta_observer_;
+					status = integrator.Apply(gsl_vector_ptr(photon, 9), t_final_, &h, photon->data);
+				cosph = (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 3))) * sin_theta_observer_ + (r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * cos_theta_observer_;
 				if (cosph > r_star * relative_accuracy) {
-					copy(last, last + 10, photon);
+					gsl_vector_memcpy(photon, last);
 					h *= 0.3;
 					fixed = 1;
 					integrator.Reset();
 				} else {
-					if (photon[9] < t_final_ * 1e-8) {
-						photon[8] += photon[9];
-						photon[9] = 0;
+					if (gsl_vector_get(photon, 9) < t_final_ * 1e-8) {
+						gsl_vector_set(photon, 8, gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9));
+						gsl_vector_set(photon, 9, 0);
 					}
 #ifdef RECORD_TRACE
 					copy(photon, photon + 8, qdq.begin());
@@ -115,9 +113,9 @@ namespace SBody {
 					rec.save(qdq);
 #endif
 					if (cosph >= 0) {
-						alpha1 += r_star * sin_theta_star * sin_phi_star - photon[1] * GSL_SIGN(photon[2]) * sin(photon[2]) * sin(photon[3]); // TODO:OPT!
-						beta1 += (r_star * cos_theta_star - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * sin_theta_observer_ - (r_star * sin_theta_star * cos_phi_star - photon[1] * GSL_SIGN(photon[2]) * sin(photon[2]) * cos(photon[3])) * cos_theta_observer_;
-						metric_->HamiltonianToLagrangian(photon);
+						alpha1 += r_star * sin_theta_star * sin_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 3)); // TODO:OPT!
+						beta1 += (r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * sin_theta_observer_ - (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 3))) * cos_theta_observer_;
+						metric_->HamiltonianToLagrangian(photon->data);
 						break;
 					}
 				}
@@ -128,7 +126,7 @@ namespace SBody {
 			}
 		}
 		double ph2[9], rec2[sample_number][3], rec3[sample_number][3], recph[8], interval = M_2PI / sample_number, time_limit = 0;
-		copy(photon, photon + 8, ph2);
+		copy(photon->data, photon->data + 8, ph2);
 		metric_->NormalizeNullGeodesic(ph2, 1.);
 		metric_->LagrangianToHamiltonian(ph2);
 		h = 1.;
@@ -142,18 +140,15 @@ namespace SBody {
 		}
 		copy(ph2, ph2 + 8, recph);
 		metric_->HamiltonianToLagrangian(recph);
-		gsl_matrix_unique_ptr coordinate(gsl_matrix_alloc(4, 4), gsl_matrix_free);
-		gsl_matrix_unique_ptr gmunu(gsl_matrix_alloc(4, 4), gsl_matrix_free);
-		gsl_matrix_unique_ptr coordinate_gmunu(gsl_matrix_alloc(4, 4), gsl_matrix_free);
-		gsl_permutation_unique_ptr perm(gsl_permutation_alloc(4), gsl_permutation_free);
-		star.GetMetricTensor(gmunu.get());
+		gsl_matrix *coordinate = collector.MatrixAlloc(4, 4), *gmunu = collector.MatrixAlloc(4, 4), *coordinate_gmunu = collector.MatrixAlloc(4, 4), *coordinate_static = collector.MatrixAlloc(4, 4);
+		gsl_permutation *perm = collector.PermutationAlloc(4);
+		star.GetMetricTensor(gmunu);
 		star.LocalInertialFrame(coordinate->data);
-		gsl_matrix_unique_ptr coordinate_static(gsl_matrix_calloc(4, 4), gsl_matrix_free);
-		gsl_matrix_set(coordinate_static.get(), 0, 0, sqrt(-1. / gmunu->data[0]));
-		gsl_matrix_set(coordinate_static.get(), 1, 1, sqrt(1. / gmunu->data[5]));
-		gsl_matrix_set(coordinate_static.get(), 2, 2, sqrt(1. / gmunu->data[10]));
-		gsl_matrix_set(coordinate_static.get(), 3, 3, sqrt(1. / gmunu->data[15]));
-		const double ph_reg[4] = {1., photon[5], photon[6], photon[7]};
+		gsl_matrix_set(coordinate_static, 0, 0, sqrt(-1. / gmunu->data[0]));
+		gsl_matrix_set(coordinate_static, 1, 1, sqrt(1. / gmunu->data[5]));
+		gsl_matrix_set(coordinate_static, 2, 2, sqrt(1. / gmunu->data[10]));
+		gsl_matrix_set(coordinate_static, 3, 3, sqrt(1. / gmunu->data[15]));
+		const double ph_reg[4] = {1., gsl_vector_get(photon, 5), gsl_vector_get(photon, 6), gsl_vector_get(photon, 7)};
 		double ph_static[4] = {
 			star.DotProduct(ph_reg, coordinate_static->data, 4),
 			star.DotProduct(ph_reg, coordinate_static->data + 4, 4),
@@ -170,7 +165,7 @@ namespace SBody {
 		CartesianToSpherical(ph_coor + 1, ph_coor_sph);
 		for (int i = 0; i < sample_number; ++i) {
 			const double angle = i * interval, sin_angle = sin(angle), cos_angle = cos(angle);
-			copy(photon, photon + 4, ph2);
+			copy(photon->data, photon->data + 4, ph2);
 			ph2[4] = 1.;
 			ph2[5] = cos_angle * sin_epsilon;
 			ph2[6] = sin_angle * sin_epsilon;
@@ -178,12 +173,11 @@ namespace SBody {
 			RotateAroundAxis(ph2 + 5, 1, ph_coor_sph[1]);
 			RotateAroundAxis(ph2 + 5, 2, ph_coor_sph[2]);
 			gsl_vector_view ph2_view = gsl_vector_view_array(ph2 + 4, 4);
-			gsl_vector_unique_ptr ph2_ptr(gsl_vector_alloc(8), gsl_vector_free);
 			// coordinate * gmunu * ph2 = ph_coor_phi
-			gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu.get(), coordinate.get(), 0., coordinate_gmunu.get());
+			gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
 			int signum;
-			gsl_linalg_LU_decomp(coordinate_gmunu.get(), perm.get(), &signum);
-			gsl_linalg_LU_svx(coordinate_gmunu.get(), perm.get(), &ph2_view.vector);
+			gsl_linalg_LU_decomp(coordinate_gmunu, perm, &signum);
+			gsl_linalg_LU_svx(coordinate_gmunu, perm, &ph2_view.vector);
 			ph2[8] = 0.;
 			metric_->NormalizeNullGeodesic(ph2, 1.);
 			rec3[i][0] = star.DotProduct(ph2 + 4, coordinate_static->data + 4, 4);
@@ -233,7 +227,7 @@ namespace SBody {
 #ifdef VIEW_TAU
 		output->Save({alpha1, beta1, star.RedshiftTau(photon), (photon[8] + photon[9]) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon)), sqrt(-1. / gmunu->data[0]), abs(area2) / (M_2PI * gsl_pow_2(epsilon))});
 #else
-		output_->Save({alpha1, beta1, star.Redshift(photon), (photon[8] + photon[9]) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon)), sqrt(-1. / gmunu->data[0]), abs(area2) / (M_2PI * gsl_pow_2(epsilon))});
+		output_->Save({alpha1, beta1, star.Redshift(photon->data), (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon)), sqrt(-1. / gmunu->data[0]), abs(area2) / (M_2PI * gsl_pow_2(epsilon))});
 #endif
 		return 0;
 	}
@@ -285,8 +279,8 @@ namespace SBody {
 		screen_ = vector<vector<double>>(pixel, vector<double>(pixel));
 		initials_ = vector<array<double, 10>>(pixel * pixel);
 		const double pixel_size = 2. * half_angle * r / pixel, t1 = r + 100.;
-		for (int i = 0; i < pixel; ++i)
-			for (int j = 0; j < pixel; ++j)
+		for (size_t i = 0; i < pixel; ++i)
+			for (size_t j = 0; j < pixel; ++j)
 				InitializePhoton(initials_[i * pixel + j].data(), pixel_size * (i - 0.5 * pixel + 0.5), pixel_size * (j - 0.5 * pixel + 0.5));
 #pragma omp parallel for
 		for (int p = pixel * pixel - 1; p >= 0; --p) {
@@ -331,8 +325,8 @@ namespace SBody {
 		bar_->set_option(indicators::option::MaxProgress(pixel_ * pixel_));
 		bar_->set_option(indicators::option::PrefixText("? Lens"));
 		int progressBarIndex = ProgressBar::bars_.push_back(*bar_);
-		for (int i = 0; i < pixel_; ++i)
-			for (int j = 0; j < pixel_; ++j) {
+		for (size_t i = 0; i < pixel_; ++i)
+			for (size_t j = 0; j < pixel_; ++j) {
 				double ph[10];
 				int status = 0;
 				copy(initials_[i * pixel_ + j].begin(), initials_[i * pixel_ + j].end(), ph);
