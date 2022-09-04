@@ -213,16 +213,11 @@ namespace SBody {
 			for (int i = 0; i < sample_number; ++i)
 				cone_record.Save(rec2[i], 3);
 		}
-		double cross_product[3];
-		Cross(rec2[0], rec2[sample_number - 1], cross_product);
-		double area = Dot(cross_product, recph + 5);
-		Cross(rec3[0], rec3[sample_number - 1], cross_product);
-		double area2 = Dot(cross_product, ph_static + 1);
+		double area = DotCross(recph + 5, rec2[0], rec2[sample_number - 1]);
+		double area2 = DotCross(ph_static + 1, rec3[0], rec3[sample_number - 1]);
 		for (int i = 1; i < sample_number; ++i) {
-			Cross(rec2[i], rec2[i - 1], cross_product);
-			area += Dot(cross_product, recph + 5);
-			Cross(rec3[i], rec3[i - 1], cross_product);
-			area2 += Dot(cross_product, ph_static + 1);
+			area += DotCross(recph + 5, rec2[i], rec2[i - 1]);
+			area2 += DotCross(ph_static + 1, rec3[i], rec3[i - 1]);
 		}
 #ifdef VIEW_TAU
 		output->Save({alpha1, beta1, star.RedshiftTau(photon), (photon[8] + photon[9]) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon)), sqrt(-1. / gmunu->data[0]), abs(area2) / (M_2PI * gsl_pow_2(epsilon))});

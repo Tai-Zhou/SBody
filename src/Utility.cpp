@@ -140,6 +140,9 @@ namespace SBody {
 		z[2] = x[0] * y[1] - x[1] * y[0];
 		return 0;
 	}
+	double DotCross(const double x[], const double y[], const double z[]) {
+		return x[0] * (y[1] * z[2] - y[2] * z[1]) + x[1] * (y[2] * z[0] - y[0] * z[2]) + x[2] * (y[0] * z[1] - y[1] * z[0]);
+	}
 	int RotateAroundAxis(double x[], int axis, double angle) {
 		const double sin_angle = sin(angle), cos_angle = cos(angle);
 		switch (axis) {

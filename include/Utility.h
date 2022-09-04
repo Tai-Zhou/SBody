@@ -224,6 +224,16 @@ namespace SBody {
 	int Cross(const double x[], const double y[], double z[]);
 
 	/**
+	 * @brief Dot product of vector `x` and the cross product of vector `y` and vector `z`. \f$\vec{x}\cdot(\vec{y}\times\vec{z})\f$.
+	 *
+	 * @param x 3 dimensional vector
+	 * @param y 3 dimensional vector
+	 * @param z 3 dimensional vector
+	 * @return double
+	 */
+	double DotCross(const double x[], const double y[], const double z[]);
+
+	/**
 	 * @brief Rotate vector `x` around the `axis` by `angle`.
 	 *
 	 * @param x 3 dimensional vector
