@@ -48,6 +48,9 @@ Math
 .. doxygenfunction:: SBody::Cross
    :no-link:
 
+.. doxygenfunction:: SBody::DotCross
+   :no-link:
+
 .. doxygenfunction:: SBody::RotateAroundAxis
    :no-link:
 

@@ -138,7 +138,7 @@ namespace SBody {
 		z[0] = x[1] * y[2] - x[2] * y[1];
 		z[1] = x[2] * y[0] - x[0] * y[2];
 		z[2] = x[0] * y[1] - x[1] * y[0];
-		return 0;
+		return GSL_SUCCESS;
 	}
 	double DotCross(const double x[], const double y[], const double z[]) {
 		return x[0] * (y[1] * z[2] - y[2] * z[1]) + x[1] * (y[2] * z[0] - y[0] * z[2]) + x[2] * (y[0] * z[1] - y[1] * z[0]);
@@ -150,26 +150,26 @@ namespace SBody {
 			angle = x[1] * cos_angle - x[2] * sin_angle;
 			x[2] = x[1] * sin_angle + x[2] * cos_angle;
 			x[1] = angle;
-			return 0;
+			return GSL_SUCCESS;
 		case 1:
 			angle = x[2] * cos_angle - x[0] * sin_angle;
 			x[0] = x[2] * sin_angle + x[0] * cos_angle;
 			x[2] = angle;
-			return 0;
+			return GSL_SUCCESS;
 		case 2:
 			angle = x[0] * cos_angle - x[1] * sin_angle;
 			x[1] = x[0] * sin_angle + x[1] * cos_angle;
 			x[0] = angle;
-			return 0;
+			return GSL_SUCCESS;
 		default:
-			return 1;
+			return GSL_EINVAL;
 		}
 	}
 	int CartesianToSpherical(double x[], size_t dimension) {
 #ifndef GSL_RANGE_CHECK_OFF
 		if (dimension != 3 && dimension != 4 && dimension != 8) {
 			fmt::print(stderr, "[!] CartesianToSpherical dimension = {}\n", dimension);
-			return 1;
+			return GSL_EINVAL;
 		}
 #endif
 		if (dimension == 3) {
@@ -187,14 +187,14 @@ namespace SBody {
 	}
 	int CartesianToSpherical(const double cartesian[], double spherical[]) {
 		if (spherical[0] = Norm(cartesian); spherical[0] < epsilon)
-			return 1;
+			return GSL_EZERODIV;
 		spherical[1] = acos(cartesian[2] / spherical[0]);
 		spherical[2] = ModBy2Pi(atan2(cartesian[1], cartesian[0]));
-		return 0;
+		return GSL_SUCCESS;
 	}
 	int CartesianToSpherical(const double cartesian_position[], const double cartesian_velocity[], double spherical_position[], double spherical_velocity[]) {
 		if (spherical_position[0] = Norm(cartesian_position); spherical_position[0] < epsilon)
-			return 1;
+			return GSL_EZERODIV;
 		spherical_position[1] = acos(cartesian_position[2] / spherical_position[0]);
 		spherical_velocity[0] = SBody::Dot(cartesian_position, cartesian_velocity) / spherical_position[0];
 		if (const double norm_x_y = Norm(cartesian_position, 2); norm_x_y < epsilon) {
@@ -206,13 +206,13 @@ namespace SBody {
 			spherical_velocity[1] = (-cartesian_velocity[2] + cartesian_position[2] / spherical_position[0] * spherical_velocity[0]) / norm_x_y;
 			spherical_velocity[2] = (cartesian_velocity[1] * cartesian_position[0] - cartesian_velocity[0] * cartesian_position[1]) / gsl_pow_2(norm_x_y);
 		}
-		return 0;
+		return GSL_SUCCESS;
 	}
 	int SphericalToCartesian(double x[], size_t dimension) {
 #ifndef GSL_RANGE_CHECK_OFF
 		if (dimension != 3 && dimension != 4 && dimension != 8) {
 			fmt::print(stderr, "[!] SphericalToCartesian dimension = {}\n", dimension);
-			return 1;
+			return GSL_EINVAL;
 		}
 #endif
 		if (dimension == 3) {
@@ -233,7 +233,7 @@ namespace SBody {
 		cartesian[0] = spherical[0] * sin_theta * cos(spherical[3]);
 		cartesian[1] = spherical[0] * sin_theta * sin(spherical[3]);
 		cartesian[2] = spherical[0] * cos(spherical[2]);
-		return 0;
+		return GSL_SUCCESS;
 	}
 	int SphericalToCartesian(const double spherical_position[], const double spherical_velocity[], double cartesian_position[], double cartesian_velocity[]) {
 		const double sin_theta = sin(spherical_position[1]), cos_theta = cos(spherical_position[1]), sin_phi = sin(spherical_position[2]), cos_phi = cos(spherical_position[2]);
@@ -245,7 +245,7 @@ namespace SBody {
 		cartesian_velocity[0] = spherical_velocity[0] * sin_theta * cos_phi + spherical_position[0] * (cos_theta * cos_phi * spherical_velocity[1] - sin_theta * sin_phi * spherical_velocity[2]);
 		cartesian_velocity[1] = spherical_velocity[0] * sin_theta * sin_phi + spherical_position[0] * (cos_theta * sin_phi * spherical_velocity[1] + sin_theta * cos_phi * spherical_velocity[2]);
 		cartesian_velocity[2] = spherical_velocity[0] * cos_theta - spherical_position[0] * sin_theta * spherical_velocity[1];
-		return 0;
+		return GSL_SUCCESS;
 	}
 	int OppositeSign(double x, double y) {
 		return (x >= 0. && y <= 0.) || (x <= 0. && y >= 0.);
