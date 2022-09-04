@@ -95,7 +95,30 @@ namespace SBody {
 		return 0;
 	}
 	int Metric::LocalInertialFrame(const double position[], gsl_matrix *coordinate) {
-		return 1;
+		GslBlock collector;
+		gsl_matrix *metric = collector.MatrixAlloc(4, 4), *product = collector.MatrixAlloc(4, 4), *product_LU = collector.MatrixAlloc(4, 4);
+		gsl_matrix_set_identity(product);
+		GetMetricTensor(position, metric);
+		gsl_vector *coordinate_row, *product_row;
+		gsl_permutation *permutation = collector.PermutationAlloc(4);
+		int signum;
+		for (int i = 0; i < 4; ++i) {
+			coordinate_row = collector.VectorAllocFromBlock(coordinate->block, i * 4, 4);
+			product_row = collector.VectorAllocFromBlock(product->block, i * 4, 4);
+			gsl_vector_set_basis(coordinate_row, i);
+			if (i == 0) {
+				gsl_vector_set(coordinate_row, 1, position[5]);
+				gsl_vector_set(coordinate_row, 2, position[6]);
+				gsl_vector_set(coordinate_row, 3, position[7]);
+			} else {
+				gsl_matrix_memcpy(product_LU, product);
+				gsl_linalg_LU_decomp(product_LU, permutation, &signum);
+				gsl_linalg_LU_svx(product_LU, permutation, coordinate_row);
+			}
+			gsl_vector_scale(coordinate_row, 1. / sqrt(abs(DotProduct(position, coordinate_row->data, coordinate_row->data, 4))));
+			gsl_blas_dsymv(CblasUpper, 1., metric, coordinate_row, 0., product_row);
+		}
+		return isnan(gsl_matrix_get(coordinate, 3, 0)) ? 1 : 0;
 	}
 	Integrator Metric::GetIntegrator(int coordinate) {
 		Integrator integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian, coordinate);
@@ -172,9 +195,6 @@ namespace SBody {
 		for (int i = 5; i < 8; ++i)
 			y[i] *= v_1;
 		return 0;
-	}
-	int Newton::LocalInertialFrame(const double position[], gsl_matrix *coordinate) {
-		return 1;
 	}
 	Integrator Newton::GetIntegrator(int coordinate) {
 		Integrator integrator(metric::Newton::function, metric::Newton::jacobian, coordinate, this);
@@ -260,32 +280,6 @@ namespace SBody {
 		y[5] *= coefficient;
 		y[6] *= coefficient;
 		y[7] *= coefficient;
-		return 0;
-	}
-	int Schwarzschild::LocalInertialFrame(const double position[], gsl_matrix *coordinate) {
-		GslBlock collector;
-		gsl_matrix *metric = collector.MatrixAlloc(4, 4), *product = collector.MatrixAlloc(4, 4), *product_LU = collector.MatrixAlloc(4, 4);
-		gsl_matrix_set_identity(product);
-		GetMetricTensor(position, metric);
-		gsl_vector *coordinate_row, *product_row;
-		gsl_permutation *permutation = collector.PermutationAlloc(4);
-		int signum;
-		for (int i = 0; i < 4; ++i) {
-			coordinate_row = collector.VectorAllocFromBlock(coordinate->block, i * 4, 4);
-			product_row = collector.VectorAllocFromBlock(product->block, i * 4, 4);
-			gsl_vector_set_basis(coordinate_row, i);
-			if (i == 0) {
-				gsl_vector_set(coordinate_row, 1, position[5]);
-				gsl_vector_set(coordinate_row, 2, position[6]);
-				gsl_vector_set(coordinate_row, 3, position[7]);
-			} else {
-				gsl_matrix_memcpy(product_LU, product);
-				gsl_linalg_LU_decomp(product_LU, permutation, &signum);
-				gsl_linalg_LU_svx(product_LU, permutation, coordinate_row);
-			}
-			gsl_vector_scale(coordinate_row, 1. / sqrt(abs(DotProduct(position, coordinate_row->data, coordinate_row->data, 4))));
-			gsl_blas_dsymv(CblasUpper, 1., metric, coordinate_row, 0., product_row);
-		}
 		return 0;
 	}
 	Integrator Schwarzschild::GetIntegrator(int coordinate) {
@@ -395,9 +389,6 @@ namespace SBody {
 		y[6] *= eff;
 		y[7] *= eff;
 		return 0;
-	}
-	int Kerr::LocalInertialFrame(const double position[], gsl_matrix *coordinate) {
-		return 1;
 	}
 	Integrator Kerr::GetIntegrator(int coordinate) {
 		if (mode_ == T)
@@ -515,9 +506,6 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	int KerrTaubNUT::LocalInertialFrame(const double position[], gsl_matrix *coordinate) {
-		return 1;
-	}
 	Integrator KerrTaubNUT::GetIntegrator(int coordinate) {
 		if (mode_ == T)
 			return Integrator(metric::KerrTaubNUT::function, metric::KerrTaubNUT::jacobian, coordinate, this);
@@ -529,7 +517,7 @@ namespace SBody {
 
 	namespace metric {
 		namespace Newton {
-			int function(double t, const double y[], double dydt[], void *params) {
+			int function(double t, const double y[], double dydt[], void *params) { // FIXME: rewrite in spherical coordinates
 				class Newton *newton = reinterpret_cast<class Newton *>(params);
 				const double r = Norm(y + 1), r_1 = 1. / r, v2 = SBody::Dot(y + 5);
 				const double m_r = r_1, rdot = SBody::Dot(y + 1, y + 5) * r_1;
