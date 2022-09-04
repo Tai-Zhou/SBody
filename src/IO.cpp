@@ -9,9 +9,9 @@
  *
  */
 
-#include <fmt/core.h>
-
 #include "IO.h"
+
+#include <fmt/core.h>
 
 #ifdef WITH_CFITSIO
 #include <fitsio.h>
