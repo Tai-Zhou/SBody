@@ -141,9 +141,9 @@ namespace SBody {
 		copy(ph2, ph2 + 8, recph);
 		metric_->HamiltonianToLagrangian(recph);
 		gsl_matrix *coordinate = collector.MatrixAlloc(4, 4), *gmunu = collector.MatrixAlloc(4, 4), *coordinate_gmunu = collector.MatrixAlloc(4, 4), *coordinate_static = collector.MatrixAlloc(4, 4);
-		gsl_permutation *perm = collector.PermutationAlloc(4);
+		gsl_permutation *permutation = collector.PermutationAlloc(4);
 		star.GetMetricTensor(gmunu);
-		star.LocalInertialFrame(coordinate->data);
+		star.LocalInertialFrame(coordinate);
 		gsl_matrix_set(coordinate_static, 0, 0, sqrt(-1. / gmunu->data[0]));
 		gsl_matrix_set(coordinate_static, 1, 1, sqrt(1. / gmunu->data[5]));
 		gsl_matrix_set(coordinate_static, 2, 2, sqrt(1. / gmunu->data[10]));
@@ -176,8 +176,8 @@ namespace SBody {
 			// coordinate * gmunu * ph2 = ph_coor_phi
 			gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
 			int signum;
-			gsl_linalg_LU_decomp(coordinate_gmunu, perm, &signum);
-			gsl_linalg_LU_svx(coordinate_gmunu, perm, &ph2_view.vector);
+			gsl_linalg_LU_decomp(coordinate_gmunu, permutation, &signum);
+			gsl_linalg_LU_svx(coordinate_gmunu, permutation, &ph2_view.vector);
 			ph2[8] = 0.;
 			metric_->NormalizeNullGeodesic(ph2, 1.);
 			rec3[i][0] = star.DotProduct(ph2 + 4, coordinate_static->data + 4, 4);

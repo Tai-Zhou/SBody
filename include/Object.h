@@ -15,6 +15,8 @@
 #include <memory>
 #include <vector>
 
+#include <gsl/gsl_matrix.h>
+
 #include "Metric.h"
 
 namespace SBody {
@@ -28,6 +30,11 @@ namespace SBody {
 
 	  public:
 		static std::vector<Object *> object_list_;
+		/**
+		 * @brief Construct a new Object object
+		 *
+		 * @param metric
+		 */
 		Object(std::shared_ptr<Metric> metric);
 		/**
 		 * @brief
@@ -81,6 +88,7 @@ namespace SBody {
 		/**
 		 * @brief Construct a new star object
 		 *
+		 * @param metric
 		 * @param radius radius
 		 * @param fixed whether the position of the star is fixed
 		 */
@@ -114,7 +122,7 @@ namespace SBody {
 		double RedshiftTau(const double photon[]);
 		int GetMetricTensor(gsl_matrix *metric);
 		double DotProduct(const double x[], const double y[], const size_t dimension);
-		int LocalInertialFrame(double coordinate[]);
+		int LocalInertialFrame(gsl_matrix *coordinate);
 	};
 	/**
 	 * @brief
@@ -131,6 +139,7 @@ namespace SBody {
 		/**
 		 * @brief Construct a new Disk object
 		 *
+		 * @param metric
 		 * @param inner_radius
 		 * @param outer_radius
 		 */
@@ -150,6 +159,7 @@ namespace SBody {
 		/**
 		 * @brief Construct a new Thick Disk object
 		 *
+		 * @param metric
 		 * @param inner_radius
 		 * @param outer_radius
 		 * @param half_angle
@@ -171,6 +181,7 @@ namespace SBody {
 		/**
 		 * @brief Construct a new Torus object
 		 *
+		 * @param metric
 		 * @param major_radius
 		 * @param minor_radius
 		 */

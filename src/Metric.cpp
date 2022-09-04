@@ -13,9 +13,12 @@
 
 #include <cmath>
 
-#include <gsl/gsl_cblas.h>
+#include <gsl/gsl_blas.h>
 #include <gsl/gsl_errno.h>
+#include <gsl/gsl_linalg.h>
 #include <gsl/gsl_math.h>
+#include <gsl/gsl_permutation.h>
+#include <gsl/gsl_vector.h>
 
 #include "Utility.h"
 
@@ -91,7 +94,7 @@ namespace SBody {
 		y[7] *= coefficient;
 		return 0;
 	}
-	int Metric::LocalInertialFrame(const double position[], double coordinate[]) {
+	int Metric::LocalInertialFrame(const double position[], gsl_matrix *coordinate) {
 		return 1;
 	}
 	Integrator Metric::GetIntegrator(int coordinate) {
@@ -170,7 +173,7 @@ namespace SBody {
 			y[i] *= v_1;
 		return 0;
 	}
-	int Newton::LocalInertialFrame(const double position[], double coordinate[]) {
+	int Newton::LocalInertialFrame(const double position[], gsl_matrix *coordinate) {
 		return 1;
 	}
 	Integrator Newton::GetIntegrator(int coordinate) {
@@ -259,71 +262,30 @@ namespace SBody {
 		y[7] *= coefficient;
 		return 0;
 	}
-	int Schwarzschild::LocalInertialFrame(const double position[], double coordinate[]) {
-		coordinate[0] = 1. / position[4];
-		coordinate[1] = position[5] * coordinate[0];
-		coordinate[2] = position[6] * coordinate[0];
-		coordinate[3] = position[7] * coordinate[0];
-		const double temporal[4] = {-(1. - 2. / position[1]) * coordinate[0],
-									position[1] / (position[1] - 2.) * coordinate[1],
-									gsl_pow_2(position[1]) * coordinate[2],
-									gsl_pow_2(position[1] * sin(position[2])) * coordinate[3]};
-		// coordinate[5] = position[5];
-		// coordinate[6] = position[6];
-		// coordinate[7] = position[7];
-		// coordinate[4] = metric::dot(position, coordinate + 4, coordinate, 3) / (position[1] - 2.) * position[1] * position[4];
-		coordinate[5] = 1.;
-		coordinate[6] = 0.;
-		coordinate[7] = 0.;
-		coordinate[4] = -temporal[1] / temporal[0];
-		const double norm1 = sqrt(DotProduct(position, coordinate + 4, coordinate + 4, 4));
-		coordinate[4] /= norm1;
-		coordinate[5] /= norm1;
-		const double spatial1[4] = {-(1. - 2. / position[1]) * coordinate[4],
-									position[1] / (position[1] - 2.) * coordinate[5],
-									gsl_pow_2(position[1]) * coordinate[6],
-									gsl_pow_2(position[1] * sin(position[2])) * coordinate[7]};
-		coordinate[10] = 1.;
-		coordinate[11] = 0.;
-		coordinate[8] = -(temporal[2] * spatial1[1] - spatial1[2] * temporal[1]) / (temporal[0] * spatial1[1] - spatial1[0] * temporal[1]);
-		coordinate[9] = -(temporal[2] + temporal[0] * coordinate[8]) / temporal[1];
-		const double norm2 = sqrt(DotProduct(position, coordinate + 8, coordinate + 8, 4));
-		coordinate[8] /= norm2;
-		coordinate[9] /= norm2;
-		coordinate[10] /= norm2;
-		coordinate[11] /= norm2;
-		const double spatial2[4] = {-(1. - 2. / position[1]) * coordinate[8],
-									position[1] / (position[1] - 2.) * coordinate[9],
-									gsl_pow_2(position[1]) * coordinate[10],
-									gsl_pow_2(position[1] * sin(position[2])) * coordinate[11]};
-		coordinate[15] = 1.;
-
-		// coordinate[12] * temporal[0] + coordinate[13] * temporal[1] + coordinate[14] * temporal[2] + temporal[3] = 0;
-		// coordinate[12] * spatial1[0] + coordinate[13] * spatial1[1] + coordinate[14] * spatial1[2] + spatial1[3] = 0;
-		// coordinate[12] * spatial2[0] + coordinate[13] * spatial2[1] + coordinate[14] * spatial2[2] + spatial2[3] = 0;
-
-		// spatial1[2] * (coordinate[12] * temporal[0] + coordinate[13] * temporal[1] + coordinate[14] * temporal[2] + temporal[3]) = 0;
-		// temporal[2] * (coordinate[12] * spatial1[0] + coordinate[13] * spatial1[1] + coordinate[14] * spatial1[2] + spatial1[3]) = 0;
-
-		// spatial2[2] * (coordinate[12] * temporal[0] + coordinate[13] * temporal[1] + coordinate[14] * temporal[2] + temporal[3]) = 0;
-		// temporal[2] * (coordinate[12] * spatial2[0] + coordinate[13] * spatial2[1] + coordinate[14] * spatial2[2] + spatial2[3]) = 0;
-
-		// coordiante[12] * (temporal[0] * spatial1[2] - spatial1[0] * temporal[2]) + coordinate[13] * (temporal[1] * spatial1[2] - spatial1[1] * temporal[2]) + temporal[3] * spatial1[2] - spatial1[3] * temporal[2] = 0;
-		// coordinate[12] * (temporal[0] * spatial2[2] - spatial2[0] * temporal[2]) + coordinate[13] * (temporal[1] * spatial2[2] - spatial2[1] * temporal[2]) + temporal[3] * spatial2[2] - spatial2[3] * temporal[2] = 0;
-
-		// coordinate[12] = -((temporal[3] * spatial1[1] - spatial1[3] * temporal[1]) * (temporal[2] * spatial2[1] - spatial2[2] * temporal[1]) - (temporal[3] * spatial2[1] - spatial2[3] * temporal[1]) * (temporal[2] * spatial1[1] - spatial1[2] * temporal[1])) / ((temporal[0] * spatial1[1] - spatial1[0] * temporal[1]) * (temporal[2] * spatial2[1] - spatial2[2] * temporal[1]) - (temporal[0] * spatial2[1] - spatial2[0] * temporal[1]) * (temporal[2] * spatial1[1] - spatial1[2] * temporal[1]));
-		coordinate[12] = -((temporal[3] * spatial1[2] - spatial1[3] * temporal[2]) * (temporal[1] * spatial2[2] - spatial2[1] * temporal[2]) - (temporal[3] * spatial2[2] - spatial2[3] * temporal[2]) * (temporal[1] * spatial1[2] - spatial1[1] * temporal[2])) / ((temporal[0] * spatial1[2] - spatial1[0] * temporal[2]) * (temporal[1] * spatial2[2] - spatial2[1] * temporal[2]) - (temporal[0] * spatial2[2] - spatial2[0] * temporal[2]) * (temporal[1] * spatial1[2] - spatial1[1] * temporal[2]));
-		coordinate[13] = -(coordinate[12] * (temporal[0] * spatial1[2] - spatial1[0] * temporal[2]) + temporal[3] * spatial1[2] - spatial1[3] * temporal[2]) / (temporal[1] * spatial1[2] - spatial1[1] * temporal[2]);
-		coordinate[14] = -(coordinate[12] * temporal[0] + coordinate[13] * temporal[1] + temporal[3]) / temporal[2];
-		double norm3 = sqrt(DotProduct(position, coordinate + 12, coordinate + 12, 4));
-		coordinate[12] /= norm3;
-		coordinate[13] /= norm3;
-		coordinate[14] /= norm3;
-		coordinate[15] /= norm3;
-		for (int i = 1; i < 4; ++i)
-			for (int j = 0; j < i; ++j)
-				if (abs(DotProduct(position, coordinate + j * 4, coordinate + i * 4, 4)) > epsilon)
-					return 1;
+	int Schwarzschild::LocalInertialFrame(const double position[], gsl_matrix *coordinate) {
+		GslBlock collector;
+		gsl_matrix *metric = collector.MatrixAlloc(4, 4), *product = collector.MatrixAlloc(4, 4), *product_LU = collector.MatrixAlloc(4, 4);
+		gsl_matrix_set_identity(product);
+		GetMetricTensor(position, metric);
+		gsl_vector *coordinate_row, *product_row;
+		gsl_permutation *permutation = collector.PermutationAlloc(4);
+		int signum;
+		for (int i = 0; i < 4; ++i) {
+			coordinate_row = collector.VectorAllocFromBlock(coordinate->block, i * 4, 4);
+			product_row = collector.VectorAllocFromBlock(product->block, i * 4, 4);
+			gsl_vector_set_basis(coordinate_row, i);
+			if (i == 0) {
+				gsl_vector_set(coordinate_row, 1, position[5]);
+				gsl_vector_set(coordinate_row, 2, position[6]);
+				gsl_vector_set(coordinate_row, 3, position[7]);
+			} else {
+				gsl_matrix_memcpy(product_LU, product);
+				gsl_linalg_LU_decomp(product_LU, permutation, &signum);
+				gsl_linalg_LU_svx(product_LU, permutation, coordinate_row);
+			}
+			gsl_vector_scale(coordinate_row, 1. / sqrt(abs(DotProduct(position, coordinate_row->data, coordinate_row->data, 4))));
+			gsl_blas_dsymv(CblasUpper, 1., metric, coordinate_row, 0., product_row);
+		}
 		return 0;
 	}
 	Integrator Schwarzschild::GetIntegrator(int coordinate) {
@@ -434,7 +396,7 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	int Kerr::LocalInertialFrame(const double position[], double coordinate[]) {
+	int Kerr::LocalInertialFrame(const double position[], gsl_matrix *coordinate) {
 		return 1;
 	}
 	Integrator Kerr::GetIntegrator(int coordinate) {
@@ -553,7 +515,7 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	int KerrTaubNUT::LocalInertialFrame(const double position[], double coordinate[]) {
+	int KerrTaubNUT::LocalInertialFrame(const double position[], gsl_matrix *coordinate) {
 		return 1;
 	}
 	Integrator KerrTaubNUT::GetIntegrator(int coordinate) {

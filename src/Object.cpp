@@ -93,7 +93,7 @@ namespace SBody {
 	double Star::DotProduct(const double x[], const double y[], const size_t dimension) {
 		return metric_->DotProduct(position_, x, y, dimension);
 	}
-	int Star::LocalInertialFrame(double coordinate[]) {
+	int Star::LocalInertialFrame(gsl_matrix *coordinate) {
 		return metric_->LocalInertialFrame(position_, coordinate);
 	}
 	Disk::Disk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius) : Object(metric), inner_radius_(inner_radius), outer_radius_(outer_radius) {}

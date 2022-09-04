@@ -95,6 +95,10 @@ namespace SBody {
 		vectors_.push_back(gsl_vector_calloc(n));
 		return vectors_.back();
 	}
+	gsl_vector *GslBlock::VectorAllocFromBlock(gsl_block *block, const size_t offset, const size_t n, const size_t stride) {
+		vectors_.push_back(gsl_vector_alloc_from_block(block, offset, n, stride));
+		return vectors_.back();
+	}
 	gsl_matrix *GslBlock::MatrixAlloc(size_t n1, size_t n2) {
 		matrices_.push_back(gsl_matrix_alloc(n1, n2));
 		return matrices_.back();

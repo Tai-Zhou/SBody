@@ -42,7 +42,7 @@ namespace SBody {
 		virtual int GetMetricTensor(const double position[], gsl_matrix *metric);
 		virtual double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		virtual double Distance(const double x[], const double y[], const size_t dimension);
-		virtual int LocalInertialFrame(const double position[], double coordinate[]);
+		virtual int LocalInertialFrame(const double position[], gsl_matrix *coordinate);
 		virtual int LagrangianToHamiltonian(double y[]);
 		virtual int HamiltonianToLagrangian(double y[]);
 		virtual double Energy(const double y[]);
@@ -59,7 +59,7 @@ namespace SBody {
 		int GetMetricTensor(const double position[], gsl_matrix *metric);
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		double Distance(const double x[], const double y[], const size_t dimension);
-		int LocalInertialFrame(const double position[], double coordinate[]);
+		int LocalInertialFrame(const double position[], gsl_matrix *coordinate);
 		int LagrangianToHamiltonian(double y[]);
 		int HamiltonianToLagrangian(double y[]);
 		double Energy(const double y[]);
@@ -75,7 +75,7 @@ namespace SBody {
 		int GetMetricTensor(const double position[], gsl_matrix *metric);
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		double Distance(const double x[], const double y[], const size_t dimension);
-		int LocalInertialFrame(const double position[], double coordinate[]);
+		int LocalInertialFrame(const double position[], gsl_matrix *coordinate);
 		int LagrangianToHamiltonian(double y[]);
 		int HamiltonianToLagrangian(double y[]);
 		double Energy(const double y[]);
@@ -92,7 +92,7 @@ namespace SBody {
 		int GetMetricTensor(const double position[], gsl_matrix *metric);
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		double Distance(const double x[], const double y[], const size_t dimension);
-		int LocalInertialFrame(const double position[], double coordinate[]);
+		int LocalInertialFrame(const double position[], gsl_matrix *coordinate);
 		int LagrangianToHamiltonian(double y[]);
 		int HamiltonianToLagrangian(double y[]);
 		double Energy(const double y[]);
@@ -110,7 +110,7 @@ namespace SBody {
 		int GetMetricTensor(const double position[], gsl_matrix *metric);
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		double Distance(const double x[], const double y[], const size_t dimension);
-		int LocalInertialFrame(const double position[], double coordinate[]);
+		int LocalInertialFrame(const double position[], gsl_matrix *coordinate);
 		int LagrangianToHamiltonian(double y[]);
 		int HamiltonianToLagrangian(double y[]);
 		double Energy(const double y[]);
