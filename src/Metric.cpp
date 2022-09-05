@@ -293,7 +293,15 @@ namespace SBody {
 
 	Kerr::Kerr(double spin, metric_mode mode, std::string name) : Schwarzschild(mode, "Kerr"), a_(spin), a2_(a_ * a_), a4_(a2_ * a2_) {}
 	int Kerr::GetMetricTensor(const double position[], gsl_matrix *metric) {
-		return 1;
+		const double r2 = gsl_pow_2(position[1]), Delta = r2 - 2. * position[1] + a2_, rho2 = gsl_pow_2(position[1]) + a2_ * gsl_pow_2(cos(position[2])), mr_rho2 = 2. * position[1] / rho2, sin2_theta = gsl_pow_2(sin(position[2]));
+		gsl_matrix_set_zero(metric);
+		gsl_matrix_set(metric, 0, 0, -(1. - mr_rho2));
+		gsl_matrix_set(metric, 0, 3, -mr_rho2 * a_ * sin2_theta);
+		gsl_matrix_set(metric, 1, 1, rho2 / Delta);
+		gsl_matrix_set(metric, 2, 2, rho2);
+		gsl_matrix_set(metric, 3, 0, -mr_rho2 * a_ * sin2_theta);
+		gsl_matrix_set(metric, 3, 3, (r2 + a2_ * (1. + mr_rho2 * sin2_theta)) * sin2_theta);
+		return rho2 == 0. || Delta == 0. ? 1 : 0;
 	}
 	double Kerr::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
 		const double r = position[1], r2 = gsl_pow_2(r);
