@@ -161,8 +161,9 @@ namespace SBody {
 			star.DotProduct(ph_reg, coordinate->data + 4, 4),
 			star.DotProduct(ph_reg, coordinate->data + 8, 4),
 			star.DotProduct(ph_reg, coordinate->data + 12, 4)};
-		double ph_coor_sph[3];
-		CartesianToSpherical(ph_coor + 1, ph_coor_sph);
+		for (int i = 1; i < 4; ++i)
+			ph_coor[i] /= ph_coor[0];
+		CartesianToSpherical(ph_coor, 4);
 		for (int i = 0; i < sample_number; ++i) {
 			const double angle = i * interval, sin_angle = sin(angle), cos_angle = cos(angle);
 			copy(photon->data, photon->data + 4, ph2);
@@ -170,8 +171,8 @@ namespace SBody {
 			ph2[5] = cos_angle * sin_epsilon;
 			ph2[6] = sin_angle * sin_epsilon;
 			ph2[7] = cos_epsilon;
-			RotateAroundAxis(ph2 + 5, 1, ph_coor_sph[1]);
-			RotateAroundAxis(ph2 + 5, 2, ph_coor_sph[2]);
+			RotateAroundAxis(ph2 + 5, 1, ph_coor[2]);
+			RotateAroundAxis(ph2 + 5, 2, ph_coor[3]);
 			gsl_vector_view ph2_view = gsl_vector_view_array(ph2 + 4, 4);
 			// coordinate * gmunu * ph2 = ph_coor_phi
 			gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
@@ -179,7 +180,7 @@ namespace SBody {
 			gsl_linalg_LU_decomp(coordinate_gmunu, permutation, &signum);
 			gsl_linalg_LU_svx(coordinate_gmunu, permutation, &ph2_view.vector);
 			ph2[8] = 0.;
-			metric_->NormalizeNullGeodesic(ph2, 1.);
+			metric_->NormalizeNullGeodesic(ph2);
 			rec3[i][0] = star.DotProduct(ph2 + 4, coordinate_static->data + 4, 4);
 			rec3[i][1] = star.DotProduct(ph2 + 4, coordinate_static->data + 8, 4);
 			rec3[i][2] = star.DotProduct(ph2 + 4, coordinate_static->data + 12, 4);
