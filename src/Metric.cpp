@@ -27,13 +27,13 @@ namespace SBody {
 	std::string &Metric::Name() {
 		return name_;
 	}
-	int Metric::GetMetricTensor(const double position[], gsl_matrix *metric) {
+	int Metric::MetricTensor(const double position[], gsl_matrix *metric) {
 		gsl_matrix_set_zero(metric);
 		gsl_matrix_set(metric, 0, 0, -1.);
 		gsl_matrix_set(metric, 1, 1, 1.);
 		gsl_matrix_set(metric, 2, 2, gsl_pow_2(position[1]));
 		gsl_matrix_set(metric, 3, 3, gsl_pow_2(position[1] * sin(position[2])));
-		return 0;
+		return GSL_SUCCESS;
 	}
 	double Metric::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
 		if (dimension == 3)
@@ -98,7 +98,7 @@ namespace SBody {
 		GslBlock collector;
 		gsl_matrix *metric = collector.MatrixAlloc(4, 4), *product = collector.MatrixAlloc(4, 4), *product_LU = collector.MatrixAlloc(4, 4);
 		gsl_matrix_set_identity(product);
-		GetMetricTensor(position, metric);
+		MetricTensor(position, metric);
 		gsl_vector *coordinate_row, *product_row;
 		gsl_permutation *permutation = collector.PermutationAlloc(4);
 		int signum;
@@ -126,8 +126,13 @@ namespace SBody {
 	}
 
 	Newton::Newton(int PN, metric_mode mode, std::string name) : Metric(mode, name), PN_(PN){};
-	int Newton::GetMetricTensor(const double position[], gsl_matrix *metric) {
-		return 1;
+	int Newton::MetricTensor(const double position[], gsl_matrix *metric) { // FIXME: Check
+		gsl_matrix_set_zero(metric);
+		gsl_matrix_set(metric, 0, 0, -1.);
+		gsl_matrix_set(metric, 1, 1, 1.);
+		gsl_matrix_set(metric, 2, 2, gsl_pow_2(position[1]));
+		gsl_matrix_set(metric, 3, 3, gsl_pow_2(position[1] * sin(position[2])));
+		return 0;
 	}
 	double Newton::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
 		if (dimension == 3)
@@ -202,13 +207,13 @@ namespace SBody {
 	}
 
 	Schwarzschild::Schwarzschild(metric_mode mode, std::string name) : Metric(mode, name) {}
-	int Schwarzschild::GetMetricTensor(const double position[], gsl_matrix *metric) {
+	int Schwarzschild::MetricTensor(const double position[], gsl_matrix *metric) {
 		gsl_matrix_set_zero(metric);
 		gsl_matrix_set(metric, 0, 0, -(1. - 2. / position[1]));
 		gsl_matrix_set(metric, 1, 1, position[1] / (position[1] - 2.));
 		gsl_matrix_set(metric, 2, 2, gsl_pow_2(position[1]));
 		gsl_matrix_set(metric, 3, 3, gsl_pow_2(position[1] * sin(position[2])));
-		return position[1] == 2. ? 1 : 0;
+		return position[1] == 2. ? GSL_EZERODIV : GSL_SUCCESS;
 	}
 	double Schwarzschild::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
 		if (dimension == 3)
@@ -292,7 +297,7 @@ namespace SBody {
 	}
 
 	Kerr::Kerr(double spin, metric_mode mode, std::string name) : Schwarzschild(mode, "Kerr"), a_(spin), a2_(a_ * a_), a4_(a2_ * a2_) {}
-	int Kerr::GetMetricTensor(const double position[], gsl_matrix *metric) {
+	int Kerr::MetricTensor(const double position[], gsl_matrix *metric) {
 		const double r2 = gsl_pow_2(position[1]), Delta = r2 - 2. * position[1] + a2_, rho2 = gsl_pow_2(position[1]) + a2_ * gsl_pow_2(cos(position[2])), mr_rho2 = 2. * position[1] / rho2, sin2_theta = gsl_pow_2(sin(position[2]));
 		gsl_matrix_set_zero(metric);
 		gsl_matrix_set(metric, 0, 0, -(1. - mr_rho2));
@@ -408,7 +413,7 @@ namespace SBody {
 	}
 
 	KerrTaubNUT::KerrTaubNUT(double spin, double charge, double NUT, metric_mode mode, std::string name) : Kerr(spin, mode, "Kerr-Taub-NUT"), e_(charge), e2_(e_ * e_), e4_(e2_ * e2_), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
-	int KerrTaubNUT::GetMetricTensor(const double position[], gsl_matrix *metric) {
+	int KerrTaubNUT::MetricTensor(const double position[], gsl_matrix *metric) {
 		return 1;
 	}
 	double KerrTaubNUT::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {

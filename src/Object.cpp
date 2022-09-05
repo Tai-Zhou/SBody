@@ -87,8 +87,8 @@ namespace SBody {
 		const double u[4] = {1., position_[5], position_[6], position_[7]};
 		return -metric_->DotProduct(position_, u, photon + 4, 4) / position_[4];
 	}
-	int Star::GetMetricTensor(gsl_matrix *metric) {
-		return metric_->GetMetricTensor(position_, metric);
+	int Star::MetricTensor(gsl_matrix *metric) {
+		return metric_->MetricTensor(position_, metric);
 	}
 	double Star::DotProduct(const double x[], const double y[], const size_t dimension) {
 		return metric_->DotProduct(position_, x, y, dimension);

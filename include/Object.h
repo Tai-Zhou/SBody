@@ -120,7 +120,7 @@ namespace SBody {
 		 * @return double
 		 */
 		double RedshiftTau(const double photon[]);
-		int GetMetricTensor(gsl_matrix *metric);
+		int MetricTensor(gsl_matrix *metric);
 		double DotProduct(const double x[], const double y[], const size_t dimension);
 		int LocalInertialFrame(gsl_matrix *coordinate);
 	};

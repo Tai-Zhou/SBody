@@ -142,7 +142,7 @@ namespace SBody {
 		metric_->HamiltonianToLagrangian(recph);
 		gsl_matrix *coordinate = collector.MatrixAlloc(4, 4), *gmunu = collector.MatrixAlloc(4, 4), *coordinate_gmunu = collector.MatrixAlloc(4, 4), *coordinate_static = collector.MatrixAlloc(4, 4);
 		gsl_permutation *permutation = collector.PermutationAlloc(4);
-		star.GetMetricTensor(gmunu);
+		star.MetricTensor(gmunu);
 		star.LocalInertialFrame(coordinate);
 		gsl_matrix_set(coordinate_static, 0, 0, sqrt(-1. / gmunu->data[0]));
 		gsl_matrix_set(coordinate_static, 1, 1, sqrt(1. / gmunu->data[5]));

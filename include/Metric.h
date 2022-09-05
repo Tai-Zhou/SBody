@@ -39,7 +39,7 @@ namespace SBody {
 	  public:
 		Metric(metric_mode mode, std::string name);
 		std::string &Name();
-		virtual int GetMetricTensor(const double position[], gsl_matrix *metric);
+		virtual int MetricTensor(const double position[], gsl_matrix *metric);
 		virtual double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		virtual double Distance(const double x[], const double y[], const size_t dimension);
 		int LocalInertialFrame(const double position[], gsl_matrix *coordinate);
@@ -56,7 +56,7 @@ namespace SBody {
 	  public:
 		const int PN_;
 		Newton(int PN, metric_mode mode, std::string name = "Newton");
-		int GetMetricTensor(const double position[], gsl_matrix *metric);
+		int MetricTensor(const double position[], gsl_matrix *metric);
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		double Distance(const double x[], const double y[], const size_t dimension);
 		int LagrangianToHamiltonian(double y[]);
@@ -71,7 +71,7 @@ namespace SBody {
 	class Schwarzschild : public Metric {
 	  public:
 		Schwarzschild(metric_mode mode, std::string name = "Schwarzschild");
-		int GetMetricTensor(const double position[], gsl_matrix *metric);
+		int MetricTensor(const double position[], gsl_matrix *metric);
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		double Distance(const double x[], const double y[], const size_t dimension);
 		int LagrangianToHamiltonian(double y[]);
@@ -87,7 +87,7 @@ namespace SBody {
 	  public:
 		const double a_, a2_, a4_;
 		Kerr(double spin, metric_mode mode, std::string name = "Kerr");
-		int GetMetricTensor(const double position[], gsl_matrix *metric);
+		int MetricTensor(const double position[], gsl_matrix *metric);
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		double Distance(const double x[], const double y[], const size_t dimension);
 		int LagrangianToHamiltonian(double y[]);
@@ -104,7 +104,7 @@ namespace SBody {
 		const double e_, e2_, e4_;
 		const double l_, l2_, l4_;
 		KerrTaubNUT(double spin, double charge, double NUT, metric_mode mode, std::string name = "Kerr-Taub-NUT");
-		int GetMetricTensor(const double position[], gsl_matrix *metric);
+		int MetricTensor(const double position[], gsl_matrix *metric);
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		double Distance(const double x[], const double y[], const size_t dimension);
 		int LagrangianToHamiltonian(double y[]);
