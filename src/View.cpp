@@ -125,12 +125,13 @@ namespace SBody {
 				return status;
 			}
 		}
-		double ph2[9], rec2[sample_number][3], rec3[sample_number][3], recph[8], interval = M_2PI / sample_number, time_limit = 0;
+		double ph2[9], rec2[sample_number][3], rec3[sample_number][3], recph[3], interval = M_2PI / sample_number, time_limit = 0;
+		gsl_vector_set(photon, 0, 0.);
 		copy(photon->data, photon->data + 8, ph2);
 		metric_->NormalizeNullGeodesic(ph2, 1.);
 		metric_->LagrangianToHamiltonian(ph2);
 		h = 1.;
-		int status = 0;
+		int status = 0, signum;
 		integrator.Reset();
 		while (status <= 0 && ph2[1] < 1.e3)
 			status = integrator.Apply(&time_limit, -t_final_, &h, ph2);
@@ -138,12 +139,18 @@ namespace SBody {
 			fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 			return status;
 		}
-		copy(ph2, ph2 + 8, recph);
-		metric_->HamiltonianToLagrangian(recph);
-		gsl_matrix *coordinate = collector.MatrixAlloc(4, 4), *gmunu = collector.MatrixAlloc(4, 4), *coordinate_gmunu = collector.MatrixAlloc(4, 4), *coordinate_static = collector.MatrixAlloc(4, 4);
+		metric_->HamiltonianToLagrangian(ph2);
+		SphericalToCartesian(ph2);
+		copy(ph2 + 5, ph2 + 8, recph);
+		const double recph_norm = Norm(recph);
+		for (int i = 0; i < 3; ++i)
+			recph[i] /= recph_norm;
+		gsl_matrix *coordinate = collector.MatrixAlloc(4, 4), *gmunu = collector.MatrixAlloc(4, 4), *coordinate_gmunu = collector.MatrixAlloc(4, 4), *coordinate_static = collector.MatrixCalloc(4, 4);
 		gsl_permutation *permutation = collector.PermutationAlloc(4);
 		star.MetricTensor(gmunu);
 		star.LocalInertialFrame(coordinate);
+		gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
+		gsl_linalg_LU_decomp(coordinate_gmunu, permutation, &signum);
 		gsl_matrix_set(coordinate_static, 0, 0, sqrt(-1. / gmunu->data[0]));
 		gsl_matrix_set(coordinate_static, 1, 1, sqrt(1. / gmunu->data[5]));
 		gsl_matrix_set(coordinate_static, 2, 2, sqrt(1. / gmunu->data[10]));
@@ -174,10 +181,6 @@ namespace SBody {
 			RotateAroundAxis(ph2 + 5, 1, ph_coor[2]);
 			RotateAroundAxis(ph2 + 5, 2, ph_coor[3]);
 			gsl_vector_view ph2_view = gsl_vector_view_array(ph2 + 4, 4);
-			// coordinate * gmunu * ph2 = ph_coor_phi
-			gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
-			int signum;
-			gsl_linalg_LU_decomp(coordinate_gmunu, permutation, &signum);
 			gsl_linalg_LU_svx(coordinate_gmunu, permutation, &ph2_view.vector);
 			ph2[8] = 0.;
 			metric_->NormalizeNullGeodesic(ph2);
@@ -204,10 +207,6 @@ namespace SBody {
 			for (int j = 0; j < 3; ++j)
 				rec2[i][j] /= rec2_norm;
 		}
-		SphericalToCartesian(recph);
-		const double recph_norm = Norm(recph + 5);
-		for (int j = 5; j < 8; ++j)
-			recph[j] /= recph_norm;
 		if (ray_number == 2500) {
 			NumPy cone_record("cone_record", {3});
 			cone_record.Save(recph + 5, 3);
