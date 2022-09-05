@@ -103,8 +103,8 @@ namespace SBody {
 		gsl_permutation *permutation = collector.PermutationAlloc(4);
 		int signum;
 		for (int i = 0; i < 4; ++i) {
-			coordinate_row = collector.VectorAllocFromBlock(coordinate->block, i * 4, 4);
-			product_row = collector.VectorAllocFromBlock(product->block, i * 4, 4);
+			coordinate_row = collector.VectorAllocRowFromMatrix(coordinate, i);
+			product_row = collector.VectorAllocRowFromMatrix(product, i);
 			gsl_vector_set_basis(coordinate_row, i);
 			if (i == 0) {
 				gsl_vector_set(coordinate_row, 1, position[5]);

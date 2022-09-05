@@ -148,15 +148,33 @@ namespace SBody {
 		gsl_vector *VectorCalloc(size_t n);
 
 		/**
-		 * @brief `gsl_vector_alloc_from_block`, creates a vector with data from `block`.
+		 * @brief `gsl_vector_alloc_from_block`, creates a vector as a slice of an existing `block`.
 		 *
-		 * @param block the data block
-		 * @param offset the offset to the data block
+		 * @param block target block
+		 * @param offset offset to the data block
 		 * @param n length of the vector
 		 * @param stride step-size of the vector
 		 * @return pointer
 		 */
 		gsl_vector *VectorAllocFromBlock(gsl_block *block, const size_t offset, const size_t n, const size_t stride = 1);
+
+		/**
+		 * @brief `gsl_vector_alloc_row_from_matrix`, allocates a new `gsl_vector` which points to the `i`-th row of the `matrix`.
+		 *
+		 * @param matrix target matrix
+		 * @param i row index
+		 * @return pointer
+		 */
+		gsl_vector *VectorAllocRowFromMatrix(gsl_matrix *matrix, const size_t i);
+
+		/**
+		 * @brief `gsl_vector_alloc_col_from_matrix`, allocates a new `gsl_vector` which points to the `j`-th column of the `matrix`.
+		 *
+		 * @param matrix target matrix
+		 * @param j column index
+		 * @return pointer
+		 */
+		gsl_vector *VectorAllocColFromMatrix(gsl_matrix *matrix, const size_t j);
 
 		/**
 		 * @brief `gsl_matrix_alloc`, creates a matrix of size `n1` rows by `n2` columns.
