@@ -21,28 +21,28 @@
 #include <gsl/gsl_vector.h>
 
 namespace SBody {
-	/// Global absolute accuracy
+	/// Global absolute accuracy.
 	extern double absolute_accuracy;
 
-	/// Global relative accuracy
+	/// Global relative accuracy.
 	extern double relative_accuracy;
 
-	/// Sample number
+	/// Sample number.
 	constexpr int sample_number = 100;
 
-	/// Epsilon, \f$\epsilon\f$
+	/// Epsilon, a small value. \f$\varepsilon\f$.
 	constexpr double epsilon = 1e-10;
 
-	/// \f$\sin\epsilon\f$
-	extern const double sin_epsilon;
+	/// \f$\sin\varepsilon\f$.
+	constexpr double sin_epsilon = 1e-10;
 
-	/// \f$\cos\epsilon\f$
-	extern const double cos_epsilon;
+	/// \f$\cos\varepsilon\f$.
+	constexpr double cos_epsilon = 0.999999999999999999995;
 
-	/// \f$2\pi\f$
+	/// \f$2\pi\f$.
 	constexpr double M_2PI = 6.28318530717958647692528676655900576;
 
-	/// \f$\pi^2\f$
+	/// \f$\pi^2\f$.
 	constexpr double M_PI2 = 9.86960440108935861883449099987615111;
 
 	/**
@@ -64,15 +64,13 @@ namespace SBody {
 
 	  public:
 		/**
-		 * @brief Construct a new Integrator object
+		 * @brief Construct a new Integrator object.
 		 *
-		 * @param function The function calculates \f[
-		 * \frac{\mathrm dy_i(t)}{\mathrm dt}=f_i\left[t,y_1(t),\dots,y_n(t)\right]
-		 * \f]
-		 * @param jacobian The jacobian of the function \f[J_{ij}=\frac{\partial f_i\left[t,y(t)\right]}{\partial y_j}\f]
+		 * @param function The function calculates \f[\frac{\mathrm dy_i(t)}{\mathrm dt}=f_i\left[t,y_1(t),\dots,y_n(t)\right].\f]
+		 * @param jacobian The jacobian of the function \f[J_{ij}=\frac{\partial f_i\left[t,y(t)\right]}{\partial y_j}.\f]
 		 * @param coordinate The coordinate of the system, `0` for Cartesian, `1` for spherical, and `2` for modified spherical. The modified spherical coordiante maps the polar angle from \f$\theta\in[0,\pi]\f$ to \f[
 		 * \theta'\equiv\begin{cases}\theta & (\theta\leq\pi/2)\\
-		 * \theta-\pi & (\theta>\pi/2)\end{cases}
+		 * \theta-\pi & (\theta>\pi/2)\end{cases}.
 		 * \f]
 		 * @param params The parameters passed to the function, like the PN parameter, or the spin of the black hole.
 		 * @param type Type of the algorithms. Explicit embedded Runge-Kutta Prince-Dormand (8, 9) method is set by default.
@@ -83,30 +81,30 @@ namespace SBody {
 		~Integrator();
 
 		/**
-		 * @brief
+		 * @brief `gsl_odeiv2_evolve_apply`.
 		 *
-		 * @param t
-		 * @param t1
-		 * @param h
-		 * @param y
-		 * @return int
+		 * @param t time.
+		 * @param t1 maximum time not to be exceeded by the time step.
+		 * @param h step size.
+		 * @param y values of the integrated system.
+		 * @return status
 		 */
 		int Apply(double *t, double t1, double *h, double *y);
 
 		/**
-		 * @brief
+		 * @brief `gsl_odeiv2_evolve_apply_fixed_step`.
 		 *
-		 * @param t
-		 * @param h
-		 * @param y
-		 * @return int
+		 * @param t time.
+		 * @param h step size.
+		 * @param y values of the integrated system.
+		 * @return status
 		 */
 		int ApplyFixedStep(double *t, const double h, double *y);
 
 		/**
-		 * @brief
+		 * @brief Resets the evolution function and the stepping function.
 		 *
-		 * @return int
+		 * @return status
 		 */
 		int Reset();
 
@@ -114,7 +112,7 @@ namespace SBody {
 		 * @brief
 		 *
 		 * @param y
-		 * @return int
+		 * @return status
 		 */
 		int CheckCoordinate(double *y);
 	};
