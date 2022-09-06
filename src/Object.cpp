@@ -11,6 +11,7 @@
 
 #include "Object.h"
 
+#include <gsl/gsl_errno.h>
 #include <gsl/gsl_math.h>
 
 #include "Metric.h"
@@ -21,9 +22,13 @@ namespace SBody {
 	Object::Object(std::shared_ptr<Metric> metric) : metric_(metric) {
 		object_list_.push_back(this);
 	}
-	Star::Star(std::shared_ptr<Metric> metric, double radius, bool fixed) : Object(metric), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)) {
+	Star::Star(std::shared_ptr<Metric> metric, double radius, bool fixed) : Object(metric), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)), integrator_(metric->GetIntegrator(metric != 0)) {
 		for (int i = 0; i < 8; ++i)
 			position_[i] = 0;
+	}
+	int Star::Position(double *position) {
+		std::copy(position_, position_ + 8, position);
+		return GSL_SUCCESS;
 	}
 	int Star::InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination, double observer_rotation) {
 		position_[0] = 0.;
@@ -70,6 +75,20 @@ namespace SBody {
 		CartesianToSpherical(position_);
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
+	int Star::IntegratorApply(double *t, double t1, double *h) {
+		if (fixed_)
+			*t = t1;
+		else
+			integrator_.Apply(t, t1, h, position_);
+		return GSL_SUCCESS;
+	}
+	int Star::IntegratorApplyFixedStep(double *t, const double h) {
+		if (fixed_)
+			*t += h;
+		else
+			integrator_.ApplyFixedStep(t, h, position_);
+		return GSL_SUCCESS;
+	}
 	int Star::Hit(const double current[], const double last[]) {
 		double a2 = metric_->Distance(position_, current, 3);
 		if (a2 <= radius_square_)
@@ -95,6 +114,15 @@ namespace SBody {
 	}
 	int Star::LocalInertialFrame(gsl_matrix *coordinate) {
 		return metric_->LocalInertialFrame(position_, coordinate);
+	}
+	double Star::Energy() {
+		return metric_->Energy(position_);
+	}
+	double Star::AngularMomentum() {
+		return metric_->AngularMomentum(position_);
+	}
+	double Star::CarterConstant() {
+		return metric_->CarterConstant(position_, 1.);
 	}
 	Disk::Disk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius) : Object(metric), inner_radius_(inner_radius), outer_radius_(outer_radius) {}
 	int Disk::Hit(const double current[], const double last[]) {

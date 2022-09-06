@@ -219,24 +219,24 @@ int main(int argc, char *argv[]) {
 	for (int i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
 		while (status <= 0 && t < tStep)
-			status = integrator.Apply(&t, tStep, &h, star_0.position_);
+			status = star_0.IntegratorApply(&t, tStep, &h);
 		if (status > 0)
 			fmt::print(stderr, "[!] main status = {}\n", status);
 		if (metric == 0)
-			copy(star_0.position_, star_0.position_ + 8, temp.begin());
+			star_0.Position(temp.data());
 		else {
 			if (Hamiltonian) {
-				copy(star_0.position_, star_0.position_ + 8, temp.begin());
+				star_0.Position(temp.data());
 				main_metric->HamiltonianToLagrangian(temp.data()); // TODO: might need s2c()
 			} else {
-				copy(star_0.position_, star_0.position_ + 8, temp.begin());
+				star_0.Position(temp.data());
 				SphericalToCartesian(temp.data());
 			}
 		}
 		temp[8] = t / Unit::s;
-		temp[9] = main_metric->Energy(star_0.position_);
-		temp[10] = main_metric->AngularMomentum(star_0.position_);
-		temp[11] = main_metric->CarterConstant(star_0.position_, 1.);
+		temp[9] = star_0.Energy();
+		temp[10] = star_0.AngularMomentum();
+		temp[11] = star_0.CarterConstant();
 		if (ray & 1)
 			viewPtr->TraceStar(star_0, i);
 		if (ray & 2)

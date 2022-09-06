@@ -121,8 +121,7 @@ namespace SBody {
 		return isnan(gsl_matrix_get(coordinate, 3, 0)) ? 1 : 0;
 	}
 	Integrator Metric::GetIntegrator(int coordinate) {
-		Integrator integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian, coordinate);
-		return integrator;
+		return Integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian, coordinate);
 	}
 
 	Newton::Newton(int PN, metric_mode mode, std::string name) : Metric(mode, name), PN_(PN){};

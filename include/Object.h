@@ -74,17 +74,18 @@ namespace SBody {
 	 */
 	class Star : public Object {
 	  protected:
-		/// if the position of star fixed
+		/// 8 dimensional information
+		double position_[8];
+		/// if the position fixed
 		const bool fixed_;
-		/// radius of star
+		/// radius
 		const double radius_;
-		/// square of radius
+		/// radius square
 		const double radius_square_;
+		/// integrator
+		Integrator integrator_;
 
 	  public:
-		/// 8 dimensional information of the star
-		double position_[8]; // FIXME
-
 		/**
 		 * @brief Construct a new star object
 		 *
@@ -93,8 +94,11 @@ namespace SBody {
 		 * @param fixed whether the position of the star is fixed
 		 */
 		Star(std::shared_ptr<Metric> metric, double radius = 0, bool fixed = false);
+		int Position(double *position);
 		int InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination = 0., double observer_rotation = 0.);
 		int InitializeGeodesic(double orbital_radius, double inclination, double periapsis, double ascending_node, double v_r, double v_phi, double observer_inclination = 0., double observer_rotation = 0.);
+		int IntegratorApply(double *t, double t1, double *h);
+		int IntegratorApplyFixedStep(double *t, const double h);
 
 		/**
 		 * @brief Check if the star hit by the photon
@@ -123,6 +127,9 @@ namespace SBody {
 		int MetricTensor(gsl_matrix *metric);
 		double DotProduct(const double x[], const double y[], const size_t dimension);
 		int LocalInertialFrame(gsl_matrix *coordinate);
+		double Energy();
+		double AngularMomentum();
+		double CarterConstant();
 	};
 	/**
 	 * @brief
