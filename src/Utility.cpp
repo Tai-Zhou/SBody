@@ -235,10 +235,10 @@ namespace SBody {
 		}
 	}
 	int SphericalToCartesian(const double spherical[], double cartesian[]) {
-		const double sin_theta = sin(spherical[2]);
-		cartesian[0] = spherical[0] * sin_theta * cos(spherical[3]);
-		cartesian[1] = spherical[0] * sin_theta * sin(spherical[3]);
-		cartesian[2] = spherical[0] * cos(spherical[2]);
+		const double sin_theta = sin(spherical[1]);
+		cartesian[0] = spherical[0] * sin_theta * cos(spherical[2]);
+		cartesian[1] = spherical[0] * sin_theta * sin(spherical[2]);
+		cartesian[2] = spherical[0] * cos(spherical[1]);
 		return GSL_SUCCESS;
 	}
 	int SphericalToCartesian(const double spherical_position[], const double spherical_velocity[], double cartesian_position[], double cartesian_velocity[]) {
