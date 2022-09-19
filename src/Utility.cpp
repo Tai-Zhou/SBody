@@ -263,6 +263,13 @@ namespace SBody {
 			x -= M_2PI;
 		return x;
 	}
+	double PhiDifference(double x) {
+		while (x <= -M_PI)
+			x += M_2PI;
+		while (x > M_PI)
+			x -= M_2PI;
+		return x;
+	}
 	double _0x(double x) {
 		return x > 0 ? x : 0;
 	}

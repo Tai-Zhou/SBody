@@ -39,6 +39,9 @@ namespace SBody {
 	/// \f$\cos\varepsilon\f$.
 	constexpr double cos_epsilon = 0.999999999999999999995;
 
+	/// Area of a circle with radius of epsilon. \f$\pi\varepsilon^2\f$
+	constexpr double epsilon_circle_area = 3.14159265358979323846 * epsilon * epsilon;
+
 	/// \f$2\pi\f$.
 	constexpr double M_2PI = 6.28318530717958647692528676655900576;
 
@@ -319,7 +322,7 @@ namespace SBody {
 	int SphericalToCartesian(const double spherical_position[], const double spherical_velocity[], double cartesian_position[], double cartesian_velocity[]);
 
 	/**
-	 * @brief return `1` if `x`, `y` have opposite signs, else `0`.
+	 * @brief Return `1` if `x`, `y` have opposite signs, else `0`.
 	 *
 	 * @param x number
 	 * @param y number
@@ -328,12 +331,20 @@ namespace SBody {
 	int OppositeSign(double x, double y);
 
 	/**
-	 * @brief return `x` in \f$[0, 2\pi)\f$.
+	 * @brief Return `x` in \f$[0, 2\pi)\f$.
 	 *
 	 * @param x
 	 * @return result
 	 */
 	double ModBy2Pi(double x);
+
+	/**
+	 * @brief Similar to `ModBy2Pi`, but return `x` in \f$(-\pi, \pi]\f$.
+	 *
+	 * @param x
+	 * @return result
+	 */
+	double PhiDifference(double x);
 
 	/**
 	 * @brief
