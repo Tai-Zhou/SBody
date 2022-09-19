@@ -94,7 +94,7 @@ namespace SBody {
 		y[7] *= coefficient;
 		return 0;
 	}
-	int Metric::LocalInertialFrame(const double position[], gsl_matrix *coordinate) {
+	int Metric::LocalInertialFrame(const double position[], gsl_matrix *coordinate, const double timelike[]) {
 		GslBlock collector;
 		gsl_matrix *metric = collector.MatrixAlloc(4, 4), *product = collector.MatrixAlloc(4, 4), *product_LU = collector.MatrixAlloc(4, 4);
 		gsl_matrix_set_identity(product);
@@ -107,9 +107,11 @@ namespace SBody {
 			product_row = collector.VectorAllocRowFromMatrix(product, i);
 			gsl_vector_set_basis(coordinate_row, i);
 			if (i == 0) {
-				gsl_vector_set(coordinate_row, 1, position[5]);
-				gsl_vector_set(coordinate_row, 2, position[6]);
-				gsl_vector_set(coordinate_row, 3, position[7]);
+				if (timelike != nullptr) {
+					gsl_vector_set(coordinate_row, 1, timelike[1]);
+					gsl_vector_set(coordinate_row, 2, timelike[2]);
+					gsl_vector_set(coordinate_row, 3, timelike[3]);
+				}
 			} else {
 				gsl_matrix_memcpy(product_LU, product);
 				gsl_linalg_LU_decomp(product_LU, permutation, &signum);

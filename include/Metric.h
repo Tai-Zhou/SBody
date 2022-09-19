@@ -42,7 +42,7 @@ namespace SBody {
 		virtual int MetricTensor(const double position[], gsl_matrix *metric);
 		virtual double DotProduct(const double position[], const double x[], const double y[], const size_t dimension);
 		virtual double Distance(const double x[], const double y[], const size_t dimension);
-		int LocalInertialFrame(const double position[], gsl_matrix *coordinate);
+		int LocalInertialFrame(const double position[], gsl_matrix *coordinate, const double timelike[] = nullptr);
 		virtual int LagrangianToHamiltonian(double y[]);
 		virtual int HamiltonianToLagrangian(double y[]);
 		virtual double Energy(const double y[]);
