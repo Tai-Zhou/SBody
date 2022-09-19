@@ -33,8 +33,8 @@ endif()
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/include fmt/include indicators/include)
 add_subdirectory(${PROJECT_SOURCE_DIR}/fmt)
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)
-add_executable(${PROJECT_NAME} src/SBody.cpp)
-target_link_libraries(${PROJECT_NAME} SBodyLibStatic)
+add_executable(sbody src/SBody.cpp)
+target_link_libraries(sbody SBodyLibStatic)
 
 find_package(Doxygen)
 
