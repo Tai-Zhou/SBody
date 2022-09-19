@@ -37,7 +37,7 @@ namespace SBody {
 		else
 			file_buffer_.open("../data/" + file_name, mode);
 		if (!file_buffer_.is_open()) {
-			fmt::print(stderr, "[!] IO file not open\n");
+			fmt::print(stderr, "\033[101m[ERR]\033[0m IO file not open\n");
 			exit(1);
 		}
 	}
@@ -48,7 +48,7 @@ namespace SBody {
 		row_size_ = 1;
 		for (int i : dimension)
 			if (i < 1)
-				fmt::print(stderr, "[?] NumPy file dimension warning (smaller than 1)\n");
+				fmt::print(stderr, "\033[103m[ERR]\033[0m NumPy file dimension warning (smaller than 1)\n");
 			else
 				row_size_ *= i;
 		file_buffer_.sputn("\x93NUMPY\x01\x00\x76\x00{'descr': '<f8', 'fortran_order': False, 'shape': (                                                                  \n", 128);
