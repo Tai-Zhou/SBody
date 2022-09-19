@@ -35,13 +35,16 @@
 using namespace std;
 using namespace SBody;
 
-void interruptHandler(int signum) {
+void InterruptHandler(int signum) {
+	fmt::print("\r\033[KSBody exiting...\n");
 	indicators::show_console_cursor(true);
 	exit(signum);
 }
 
-void help(double mass, double spin, double NUT, double tFinal, size_t tStepNumber, double TCal, int metric, int PN, int ray, double absAcc, double relAcc, string store_format) {
-	fmt::print("SBody ({})\n\nOptions:\n", VERSION);
+void Help(double mass, double spin, double NUT, double tFinal, size_t tStepNumber, double TCal, int metric, int PN, int ray, double absAcc, double relAcc, string store_format) {
+	fmt::print("\033[1mSBODY\033[0m ({})\n", VERSION);
+	fmt::print("  A relativistic ray tracing program.\n");
+	fmt::print("\n\033[1mOPTIONS\033[0m\n");
 	fmt::print("  -m --mass   [f]: mass of the source [{}] (M_sun)\n", mass);
 	fmt::print("  -s --spin   [f]: spin of the source [{}]\n", spin);
 	fmt::print("  -l --NUT    [f]: NUT charge of the source [{}]\n", NUT);
@@ -64,8 +67,8 @@ void help(double mass, double spin, double NUT, double tFinal, size_t tStepNumbe
 	fmt::print("  -L --light     : light instead of particle\n");
 	fmt::print("  -b --bar       : show progress bar\n");
 	fmt::print("  -h --help      : this help information\n");
-	fmt::print("\nSupport:\n  github.com/Tai-Zhou/SBody");
-	exit(1);
+	fmt::print("\n\033[1mEXAMPLES\033[0m\n  $ SBody\n");
+	fmt::print("\n\033[1mSUPPORT\033[0m\n  github.com/Tai-Zhou/SBody\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -152,7 +155,7 @@ int main(int argc, char *argv[]) {
 		case 'n':
 			metric = atoi(optarg);
 			if (metric > 3)
-				help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absolute_accuracy, relative_accuracy, store_format);
+				Help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absolute_accuracy, relative_accuracy, store_format);
 			break;
 		case 'P':
 			PN = atoi(optarg);
@@ -182,7 +185,8 @@ int main(int argc, char *argv[]) {
 			ProgressBar::display_ = true;
 			break;
 		default:
-			help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absolute_accuracy, relative_accuracy, store_format);
+			Help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absolute_accuracy, relative_accuracy, store_format);
+			exit(opt == 'h' ? 0 : 1);
 		}
 	Unit::Initialize(mass);
 	tFinal *= Unit::s;
@@ -209,19 +213,19 @@ int main(int argc, char *argv[]) {
 	}
 	// Integrator integ(metric::function, metric::jacobian, metric != 0);
 	Star star_0(main_metric, Unit::R_sun, 0);
-	star_0.InitializeKeplerian(6.5, 0., inclination, periapsis, ascending_node, true_anomaly, inc, eps);
-	// star_0.InitializeGeodesic(a, inclination, periapsis, ascending_node, -0.16707659553531468, 0.3822615764261866, inc, eps);
+	// star_0.InitializeKeplerian(6.5, 0., inclination, periapsis, ascending_node, true_anomaly, inc, eps);
+	star_0.InitializeGeodesic(a, inclination, periapsis, ascending_node, -0.16707659553531468, 0.3822615764261866, inc, eps);
 	Integrator &&integrator = main_metric->GetIntegrator(metric != 0);
 	NumPy rec(main_metric->Name() + strFormat, {12});
 	vector<double> temp(12);
-	int status = 0, TUse, TLastUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
+	int status = 0;
 	double h = 1., stepPercent = 100. / tStepNumber;
 	for (int i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
 		while (status <= 0 && t < tStep)
 			status = star_0.IntegratorApply(&t, tStep, &h);
 		if (status > 0)
-			fmt::print(stderr, "[!] main status = {}\n", status);
+			fmt::print(stderr, "\033[101m[ERR]\033[0m main status = {}\n", status);
 		if (metric == 0)
 			star_0.Position(temp.data());
 		else {
@@ -242,15 +246,9 @@ int main(int argc, char *argv[]) {
 		if (ray & 2)
 			cameraPtr->TraceStar();
 		rec.Save(temp);
-		TUse = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count();
-		if (ProgressBar::display_) {
-			double percent = i * stepPercent;
-			if (percent > ProgressBar::bars_[0].current() + 0.3 || TUse >= TLastUse + 300) {
-				TLastUse = TUse;
-				ProgressBar::bars_[0].set_progress(percent);
-			}
-		}
-		if (TUse >= TCal)
+		if (ProgressBar::display_)
+			ProgressBar::bars_[0].set_progress(i * stepPercent);
+		if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count() >= TCal)
 			break;
 	}
 	if (ProgressBar::display_)

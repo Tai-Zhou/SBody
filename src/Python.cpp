@@ -176,7 +176,7 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 		while (status <= 0 && t < tPoint)
 			status = integrator.Apply(&t, tPoint, &h, star_0.position_);
 		if (status > 0)
-			py::print("[!] status =", status);
+			py::print("\033[101m[ERR]\033[0m status =", status);
 		if (metric == 0)
 			copy(star_0.position_, star_0.position_ + 8, result_ptr + (rayNO++) * 8);
 		else

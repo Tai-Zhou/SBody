@@ -174,7 +174,7 @@ namespace SBody {
 	int CartesianToSpherical(double x[], size_t dimension) {
 #ifndef GSL_RANGE_CHECK_OFF
 		if (dimension != 3 && dimension != 4 && dimension != 8) {
-			fmt::print(stderr, "[!] CartesianToSpherical dimension = {}\n", dimension);
+			fmt::print(stderr, "\033[101m[ERR]\033[0m CartesianToSpherical dimension = {}\n", dimension);
 			return GSL_EINVAL;
 		}
 #endif
@@ -217,7 +217,7 @@ namespace SBody {
 	int SphericalToCartesian(double x[], size_t dimension) {
 #ifndef GSL_RANGE_CHECK_OFF
 		if (dimension != 3 && dimension != 4 && dimension != 8) {
-			fmt::print(stderr, "[!] SphericalToCartesian dimension = {}\n", dimension);
+			fmt::print(stderr, "\033[101m[ERR]\033[0m SphericalToCartesian dimension = {}\n", dimension);
 			return GSL_EINVAL;
 		}
 #endif

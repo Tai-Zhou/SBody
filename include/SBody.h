@@ -14,7 +14,7 @@
 
 #include <string>
 
-void interruptHandler(int signum);
-void help(double mass, double spin, double NUT, double tFinal, int tStepNumber, double TCal, int metric, int PN, int ray, double absAcc, double relAcc, std::string store_format);
+void InterruptHandler(int signum);
+void Help(double mass, double spin, double NUT, double tFinal, int tStepNumber, double TCal, int metric, int PN, int ray, double absAcc, double relAcc, std::string store_format);
 
 #endif
