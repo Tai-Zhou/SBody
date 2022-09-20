@@ -33,7 +33,7 @@
 using namespace std;
 
 namespace SBody {
-	View::View(shared_ptr<Metric> metric, double r, double theta, string file_name) : metric_(move(metric)), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({8}))) {
+	View::View(shared_ptr<Metric> metric, double r, double theta, string file_name) : metric_(move(metric)), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({9}))) {
 		bar_ = make_unique<indicators::BlockProgressBar>(indicators::option::ShowElapsedTime{true},
 														 indicators::option::ShowRemainingTime{true},
 														 indicators::option::ForegroundColor{indicators::Color(4)},
@@ -127,104 +127,173 @@ namespace SBody {
 				return status;
 			}
 		}
-		double ph2[9], rec2[sample_number][3], rec3[sample_number][3], recph[3], interval = M_2PI / sample_number, time_limit = 0;
+		double photon2[9], cone_record[sample_number][3], local_cone_record[sample_number][3], area_record_initial[sample_number][3], area_record[sample_number][3], center_photon_position[3], center_photon_velocity[3], interval = M_2PI / sample_number;
+		auto photon2_position_view = gsl_vector_view_array(photon2, 4), photon2_velocity_view = gsl_vector_view_array(photon2 + 4, 4);
 		gsl_vector_set(photon, 0, 0.);
-		copy(photon->data, photon->data + 8, ph2);
-		metric_->NormalizeNullGeodesic(ph2, 1.);
-		metric_->LagrangianToHamiltonian(ph2);
+		copy(photon->data, photon->data + 8, photon2);
+		photon2[8] = 0.;
+		metric_->NormalizeNullGeodesic(photon2, 1.);
+		metric_->LagrangianToHamiltonian(photon2);
 		h = 1.;
 		int status = 0, signum;
 		integrator.Reset();
-		while (status <= 0 && ph2[1] < 1.e3)
-			status = integrator.Apply(&time_limit, -t_final_, &h, ph2);
+		while (status <= 0 && photon2[8] < 1000.)
+			status = integrator.Apply(photon2 + 8, 1000., &h, photon2);
 		if (status > 0) {
 			fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 			return status;
 		}
-		metric_->HamiltonianToLagrangian(ph2);
-		SphericalToCartesian(ph2);
-		copy(ph2 + 5, ph2 + 8, recph);
-		const double recph_norm = Norm(recph);
+		metric_->HamiltonianToLagrangian(photon2);
+		SphericalToCartesian(photon2);
+		copy(photon2 + 1, photon2 + 4, center_photon_position);
+		copy(photon2 + 5, photon2 + 8, center_photon_velocity);
+		const double photon_norm = Norm(center_photon_velocity);
 		for (int i = 0; i < 3; ++i)
-			recph[i] /= recph_norm;
-		gsl_matrix *coordinate = collector.MatrixAlloc(4, 4), *gmunu = collector.MatrixAlloc(4, 4), *coordinate_gmunu = collector.MatrixAlloc(4, 4), *coordinate_static = collector.MatrixCalloc(4, 4);
-		gsl_permutation *permutation = collector.PermutationAlloc(4);
-		star.MetricTensor(gmunu);
-		star.LocalInertialFrame(coordinate);
+			center_photon_velocity[i] /= photon_norm;
+		auto gmunu = collector.MatrixAlloc(4, 4), coordinate = collector.MatrixAlloc(4, 4), coordinate_gmunu = collector.MatrixAlloc(4, 4), coordinate_static = collector.MatrixCalloc(4, 4), coordinate_static_gmunu = collector.MatrixAlloc(4, 4);
+		auto permutation = collector.PermutationAlloc(4);
+		double deltaA[4], Gamma[4][4][4];
+		for (int i = 0; i < 4; ++i)
+			for (int j = 0; j < 4; ++j)
+				for (int k = 0; k < 4; ++k)
+					Gamma[i][j][k] = 0.;
+		Gamma[0][0][1] = Gamma[0][1][0] = 1. / (gsl_vector_get(photon, 1) * (gsl_vector_get(photon, 1) - 2.));
+		Gamma[1][0][0] = (gsl_vector_get(photon, 1) - 2.) / gsl_pow_3(gsl_vector_get(photon, 1));
+		Gamma[1][1][1] = Gamma[0][0][1];
+		Gamma[1][2][2] = 2. - gsl_vector_get(photon, 1);
+		Gamma[1][3][3] = Gamma[1][2][2] * gsl_pow_2(sin(gsl_vector_get(photon, 2)));
+		Gamma[2][1][2] = Gamma[2][2][1] = 1. / gsl_vector_get(photon, 1);
+		Gamma[2][3][3] = -sin(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2));
+		Gamma[3][1][3] = Gamma[3][3][1] = Gamma[2][1][2];
+		Gamma[3][2][3] = Gamma[3][3][2] = cos(gsl_vector_get(photon, 2)) / sin(gsl_vector_get(photon, 2));
+		metric_->MetricTensor(photon->data, gmunu);
+		metric_->LocalInertialFrame(photon->data, coordinate);
 		gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
-		gsl_linalg_LU_decomp(coordinate_gmunu, permutation, &signum);
-		gsl_matrix_set(coordinate_static, 0, 0, sqrt(-1. / gmunu->data[0]));
+		gsl_matrix_set(coordinate_static, 0, 0, -sqrt(-1. / gmunu->data[0]));
 		gsl_matrix_set(coordinate_static, 1, 1, sqrt(1. / gmunu->data[5]));
 		gsl_matrix_set(coordinate_static, 2, 2, sqrt(1. / gmunu->data[10]));
 		gsl_matrix_set(coordinate_static, 3, 3, sqrt(1. / gmunu->data[15]));
-		const double ph_reg[4] = {1., gsl_vector_get(photon, 5), gsl_vector_get(photon, 6), gsl_vector_get(photon, 7)};
-		double ph_static[4] = {
-			star.DotProduct(ph_reg, coordinate_static->data, 4),
-			star.DotProduct(ph_reg, coordinate_static->data + 4, 4),
-			star.DotProduct(ph_reg, coordinate_static->data + 8, 4),
-			star.DotProduct(ph_reg, coordinate_static->data + 12, 4)};
-		for (int i = 1; i < 4; ++i)
-			ph_static[i] /= ph_static[0];
-		double ph_coor[4] = {
-			star.DotProduct(ph_reg, coordinate->data, 4),
-			star.DotProduct(ph_reg, coordinate->data + 4, 4),
-			star.DotProduct(ph_reg, coordinate->data + 8, 4),
-			star.DotProduct(ph_reg, coordinate->data + 12, 4)};
-		for (int i = 1; i < 4; ++i)
-			ph_coor[i] /= ph_coor[0];
-		CartesianToSpherical(ph_coor, 4);
+		gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate_static, 0., coordinate_static_gmunu);
+		auto photon_transform = collector.VectorAlloc(4), photon_in_static_frame_cartesian = collector.VectorAlloc(4), photon_in_static_frame_spherical = collector.VectorAlloc(4), photon_in_star_frame_cartesian = collector.VectorAlloc(4), photon_in_star_frame_spherical = collector.VectorAlloc(4);
+		gsl_vector_set(photon_transform, 0, 1.);
+		copy(gsl_vector_ptr(photon, 5), gsl_vector_ptr(photon, 8), gsl_vector_ptr(photon_transform, 1));
+		gsl_blas_dgemv(CblasNoTrans, 1., coordinate_gmunu, photon_transform, 0., photon_in_star_frame_cartesian);
+		gsl_vector_scale(photon_in_star_frame_cartesian, 1. / gsl_vector_get(photon_in_star_frame_cartesian, 0));
+		gsl_blas_dgemv(CblasNoTrans, 1., coordinate_static_gmunu, photon_transform, 0., photon_in_static_frame_cartesian);
+		gsl_vector_scale(photon_in_static_frame_cartesian, 1. / gsl_vector_get(photon_in_static_frame_cartesian, 0));
+		CartesianToSpherical(gsl_vector_ptr(photon_in_static_frame_cartesian, 1), gsl_vector_ptr(photon_in_static_frame_spherical, 1));
+		CartesianToSpherical(gsl_vector_ptr(photon_in_star_frame_cartesian, 1), gsl_vector_ptr(photon_in_star_frame_spherical, 1));
+		gsl_linalg_LU_decomp(coordinate_gmunu, permutation, &signum);
 		for (int i = 0; i < sample_number; ++i) {
 			const double angle = i * interval, sin_angle = sin(angle), cos_angle = cos(angle);
-			copy(photon->data, photon->data + 4, ph2);
-			ph2[4] = 1.;
-			ph2[5] = cos_angle * sin_epsilon;
-			ph2[6] = sin_angle * sin_epsilon;
-			ph2[7] = cos_epsilon;
-			RotateAroundAxis(ph2 + 5, 1, ph_coor[2]);
-			RotateAroundAxis(ph2 + 5, 2, ph_coor[3]);
-			gsl_vector_view ph2_view = gsl_vector_view_array(ph2 + 4, 4);
-			gsl_linalg_LU_svx(coordinate_gmunu, permutation, &ph2_view.vector);
-			ph2[8] = 0.;
-			metric_->NormalizeNullGeodesic(ph2);
-			rec3[i][0] = star.DotProduct(ph2 + 4, coordinate_static->data + 4, 4);
-			rec3[i][1] = star.DotProduct(ph2 + 4, coordinate_static->data + 8, 4);
-			rec3[i][2] = star.DotProduct(ph2 + 4, coordinate_static->data + 12, 4);
-			const double vph_norm = star.DotProduct(ph2 + 4, coordinate_static->data, 4);
+			copy(photon->data, photon->data + 4, photon2);
+			photon2[4] = 1.;
+			photon2[5] = cos_angle * sin_epsilon;
+			photon2[6] = sin_angle * sin_epsilon;
+			photon2[7] = cos_epsilon;
+			RotateAroundAxis(photon2 + 5, 1, gsl_vector_get(photon_in_star_frame_spherical, 2));
+			RotateAroundAxis(photon2 + 5, 2, gsl_vector_get(photon_in_star_frame_spherical, 3));
+			gsl_linalg_LU_svx(coordinate_gmunu, permutation, &photon2_velocity_view.vector);
+			photon2[8] = 0.;
+			metric_->NormalizeNullGeodesic(photon2);
+			local_cone_record[i][0] = metric_->DotProduct(photon->data, photon2 + 4, coordinate_static->data + 4, 4);
+			local_cone_record[i][1] = metric_->DotProduct(photon->data, photon2 + 4, coordinate_static->data + 8, 4);
+			local_cone_record[i][2] = metric_->DotProduct(photon->data, photon2 + 4, coordinate_static->data + 12, 4);
+			const double vph_norm = metric_->DotProduct(photon->data, photon2 + 4, coordinate_static->data, 4);
 			for (int j = 0; j < 3; ++j)
-				rec3[i][j] /= vph_norm;
-			metric_->LagrangianToHamiltonian(ph2);
+				local_cone_record[i][j] /= vph_norm;
+			metric_->LagrangianToHamiltonian(photon2);
 			h = 1.;
 			int status = 0;
 			integrator.Reset();
-			while (status <= 0 && ph2[8] < time_limit)
-				status = integrator.Apply(ph2 + 8, time_limit, &h, ph2);
+			while (status <= 0 && photon2[8] < 1000.)
+				status = integrator.Apply(photon2 + 8, 1000., &h, photon2);
 			if (status > 0) {
 				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 				return status;
 			}
-			metric_->HamiltonianToLagrangian(ph2);
-			SphericalToCartesian(ph2);
-			copy(ph2 + 5, ph2 + 8, rec2[i]);
-			const double rec2_norm = Norm(rec2[i]); // TODO: == ph2[4]?
+			metric_->HamiltonianToLagrangian(photon2);
+			SphericalToCartesian(photon2);
+			copy(photon2 + 5, photon2 + 8, cone_record[i]);
+			const double rec2_norm = Norm(cone_record[i]);
 			for (int j = 0; j < 3; ++j)
-				rec2[i][j] /= rec2_norm;
+				cone_record[i][j] /= rec2_norm;
+		}
+		for (int i = 0; i < sample_number; ++i) { // FIXME: https://en.wikipedia.org/wiki/Raychaudhuri_equation
+			const double angle = i * interval, sin_angle = sin(angle), cos_angle = cos(angle);
+			photon2[0] = 0.;
+			photon2[1] = epsilon * cos_angle;
+			photon2[2] = epsilon * sin_angle;
+			photon2[3] = 0.;
+			photon2[4] = 1.;
+			RotateAroundAxis(photon2 + 1, 1, gsl_vector_get(photon_in_star_frame_spherical, 2));
+			RotateAroundAxis(photon2 + 1, 2, gsl_vector_get(photon_in_star_frame_spherical, 3));
+			gsl_linalg_LU_svx(coordinate_gmunu, permutation, &photon2_position_view.vector);
+			area_record_initial[i][0] = metric_->DotProduct(photon->data, photon2, coordinate_static->data + 4, 4);
+			area_record_initial[i][1] = metric_->DotProduct(photon->data, photon2, coordinate_static->data + 8, 4);
+			area_record_initial[i][2] = metric_->DotProduct(photon->data, photon2, coordinate_static->data + 12, 4);
+			photon2[5] = gsl_vector_get(photon_in_static_frame_cartesian, 1);
+			photon2[6] = gsl_vector_get(photon_in_static_frame_cartesian, 2);
+			photon2[7] = gsl_vector_get(photon_in_static_frame_cartesian, 3);
+			for (int j = 0; j < 4; ++j) {
+				deltaA[j] = gsl_vector_get(photon_transform, j);
+				for (int k = 0; k < 4; ++k)
+					for (int l = 0; l < 4; ++l)
+						deltaA[j] += Gamma[k][j][l] * photon2[4 + k] * photon2[l];
+			}
+			RotateAroundAxis(photon2 + 5, 2, gsl_vector_get(photon, 2));
+			RotateAroundAxis(photon2 + 5, 0, -photon2[3]);
+			RotateAroundAxis(photon2 + 5, 2, -gsl_vector_get(photon, 2) - photon2[2]);
+			photon2[1] += gsl_vector_get(photon, 1);
+			photon2[2] += gsl_vector_get(photon, 2);
+			photon2[3] += gsl_vector_get(photon, 3);
+			photon2[5] /= sqrt(photon2[1] / (photon2[1] - 2.));
+			photon2[6] /= photon2[1];
+			photon2[7] /= (photon2[1] * sin(photon2[2]));
+			photon2[5] = deltaA[1];
+			photon2[6] = deltaA[2];
+			photon2[7] = deltaA[3];
+			// SphericalToCartesian(area_record_initial[i], 3);
+			photon2[8] = 0.;
+			metric_->NormalizeNullGeodesic(photon2);
+			metric_->LagrangianToHamiltonian(photon2);
+			h = 1.;
+			int status = 0;
+			integrator.Reset();
+			while (status <= 0 && photon2[8] < 1000.)
+				status = integrator.Apply(photon2 + 8, 1000., &h, photon2);
+			if (status > 0) {
+				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
+				return status;
+			}
+			metric_->HamiltonianToLagrangian(photon2);
+			copy(photon2 + 1, photon2 + 4, area_record[i]);
+			SphericalToCartesian(area_record[i], 3);
+		}
+		double cone_solid_angle = DotCross(center_photon_velocity, cone_record[0], cone_record[sample_number - 1]);
+		double cone_local_solid_angle = DotCross(photon_in_static_frame_cartesian->data + 1, local_cone_record[0], local_cone_record[sample_number - 1]);
+		// SphericalToCartesian(gsl_vector_ptr(photon, 1), 3);
+		double cross_section_area_initial = DotCross(gsl_vector_ptr(photon_in_static_frame_cartesian, 1), area_record_initial[0], area_record_initial[sample_number - 1]);
+		double cross_section_area = TriangleArea(center_photon_position, area_record[0], area_record[sample_number - 1]);
+		for (int i = 1; i < sample_number; ++i) {
+			cone_solid_angle += DotCross(center_photon_velocity, cone_record[i], cone_record[i - 1]);
+			cone_local_solid_angle += DotCross(photon_in_static_frame_cartesian->data + 1, local_cone_record[i], local_cone_record[i - 1]);
+			cross_section_area_initial += DotCross(gsl_vector_ptr(photon_in_static_frame_cartesian, 1), area_record_initial[i], area_record_initial[i - 1]);
+			cross_section_area += TriangleArea(center_photon_position, area_record[i], area_record[i - 1]);
 		}
 		if (ray_number == 2500) {
-			NumPy cone_record("cone_record", {3});
-			cone_record.Save(recph + 5, 3);
-			for (int i = 0; i < sample_number; ++i)
-				cone_record.Save(rec2[i], 3);
-		}
-		double area = DotCross(recph + 5, rec2[0], rec2[sample_number - 1]);
-		double area2 = DotCross(ph_static + 1, rec3[0], rec3[sample_number - 1]);
-		for (int i = 1; i < sample_number; ++i) {
-			area += DotCross(recph + 5, rec2[i], rec2[i - 1]);
-			area2 += DotCross(ph_static + 1, rec3[i], rec3[i - 1]);
+			NumPy area_record_npy("area_record", {3}), cone_record_npy("cone_record", {3});
+			area_record_npy.Save(center_photon_position, 3);
+			cone_record_npy.Save(center_photon_velocity, 3);
+			for (int i = 0; i < sample_number; ++i) {
+				area_record_npy.Save(area_record[i], 3);
+				cone_record_npy.Save(cone_record[i], 3);
+			}
 		}
 #ifdef VIEW_TAU
-		output->Save({alpha1, beta1, star.RedshiftTau(photon), (photon[8] + photon[9]) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon)), sqrt(-1. / gmunu->data[0]), abs(area2) / (M_2PI * gsl_pow_2(epsilon))});
+		output->Save({alpha1, beta1, star.RedshiftTau(photon), (photon[8] + photon[9]) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, cross_section_area_initial / epsilon_circle_area});
 #else
-		output_->Save({alpha1, beta1, star.Redshift(photon->data), (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s, abs(area) / (M_2PI * gsl_pow_2(epsilon)), sqrt(-1. / gmunu->data[0]), abs(area2) / (M_2PI * gsl_pow_2(epsilon))});
+		output_->Save({alpha1, beta1, star.Redshift(photon->data), (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, 0.5 * abs(cross_section_area_initial) / epsilon_circle_area});
 #endif
 		return 0;
 	}
