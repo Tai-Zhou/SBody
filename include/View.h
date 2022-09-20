@@ -69,6 +69,8 @@ namespace SBody {
 		 * @return int
 		 */
 		int Shadow();
+
+		int OmegaTest();
 	};
 	class Camera : public View {
 	  protected:

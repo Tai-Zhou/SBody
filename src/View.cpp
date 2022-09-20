@@ -297,6 +297,100 @@ namespace SBody {
 #endif
 		return 0;
 	}
+	int View::OmegaTest() {
+		Integrator &&integrator = metric_->GetIntegrator(2);
+		double position_[8] = {0., 3., M_PI_4, 0., 0., 0., 0., 0.};
+		metric_->NormalizeTimelikeGeodesic(position_);
+		gsl_matrix *coordinate = gsl_matrix_alloc(4, 4), *gmunu = gsl_matrix_alloc(4, 4), *coordinate_gmunu = gsl_matrix_alloc(4, 4);
+		gsl_permutation *perm = gsl_permutation_alloc(4);
+		metric_->MetricTensor(position_, gmunu);
+		gsl_matrix_set_zero(coordinate);
+		gsl_matrix_set(coordinate, 0, 0, sqrt(-1. / gmunu->data[0]));
+		gsl_matrix_set(coordinate, 1, 1, sqrt(1. / gmunu->data[5]));
+		gsl_matrix_set(coordinate, 2, 2, sqrt(1. / gmunu->data[10]));
+		gsl_matrix_set(coordinate, 3, 3, sqrt(1. / gmunu->data[15]));
+		gsl_matrix_set_zero(coordinate_gmunu);
+		gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
+		int signum;
+		gsl_linalg_LU_decomp(coordinate_gmunu, perm, &signum);
+		double rec[100][3], center_ph[3];
+		double ph[9], area, h, time_limit = 0., interval = M_2PI / sample_number;
+		gsl_vector_view ph_view = gsl_vector_view_array(ph + 4, 4);
+		NumPy cone_record("Omega_record", {1});
+		ProgressBar::bars_[0].set_option(indicators::option::MaxProgress(90));
+		for (double angle = 90; angle > 0; angle -= 1) {
+			const double sina = sin(angle / 180. * M_PI), cosa = cos(angle / 180. * M_PI);
+			copy(position_, position_ + 4, ph);
+			ph[4] = 1.;
+			ph[5] = sina;
+			ph[6] = cosa;
+			ph[7] = 0.;
+			gsl_linalg_LU_svx(coordinate_gmunu, perm, &ph_view.vector);
+			metric_->NormalizeNullGeodesic(ph);
+			if (ph[5] < 0) {
+				ph[5] = -ph[5];
+				ph[6] = -ph[6];
+				ph[7] = -ph[7];
+			}
+			metric_->LagrangianToHamiltonian(ph);
+			ph[8] = 0;
+			h = 1.;
+			int status = 0;
+			integrator.Reset();
+			while (status <= 0 && ph[1] < 1.e3)
+				status = integrator.Apply(&time_limit, -t_final_, &h, ph);
+			metric_->HamiltonianToLagrangian(ph);
+			const double sin_theta = GSL_SIGN(ph[2]) * sin(ph[2]), cos_theta = GSL_SIGN(ph[2]) * cos(ph[2]), sin_phi = sin(ph[3]), cos_phi = cos(ph[3]);
+			center_ph[0] = ph[5] * sin_theta * cos_phi + ph[1] * (cos_theta * cos_phi * ph[6] - sin_theta * sin_phi * ph[7]);
+			center_ph[1] = ph[5] * sin_theta * sin_phi + ph[1] * (cos_theta * sin_phi * ph[6] + sin_theta * cos_phi * ph[7]);
+			center_ph[2] = ph[5] * cos_theta - ph[1] * sin_theta * ph[6];
+			const double vph_norm = Norm(center_ph);
+			for (int j = 0; j < 3; ++j)
+				center_ph[j] /= vph_norm;
+			for (int i = 0; i < 100; ++i) {
+				const double angle_i = i * interval, sinai = sin(angle_i), cosai = cos(angle_i);
+				copy(position_, position_ + 4, ph);
+				ph[4] = 1.;
+				ph[5] = sina - sin_epsilon * cosai * cosa;
+				ph[6] = cosa + sin_epsilon * cosai * sina;
+				ph[7] = sin_epsilon * sinai;
+				gsl_linalg_LU_svx(coordinate_gmunu, perm, &ph_view.vector);
+				metric_->NormalizeNullGeodesic(ph);
+				if (ph[5] < 0) {
+					ph[5] = -ph[5];
+					ph[6] = -ph[6];
+					ph[7] = -ph[7];
+				}
+				metric_->LagrangianToHamiltonian(ph);
+				ph[8] = 0;
+				h = 1.;
+				status = 0;
+				integrator.Reset();
+				while (status <= 0 && ph[8] < time_limit)
+					status = integrator.Apply(ph + 8, time_limit, &h, ph);
+				metric_->HamiltonianToLagrangian(ph);
+				const double sin_theta = GSL_SIGN(ph[2]) * sin(ph[2]), cos_theta = GSL_SIGN(ph[2]) * cos(ph[2]), sin_phi = sin(ph[3]), cos_phi = cos(ph[3]);
+				rec[i][0] = ph[5] * sin_theta * cos_phi + ph[1] * (cos_theta * cos_phi * ph[6] - sin_theta * sin_phi * ph[7]);
+				rec[i][1] = ph[5] * sin_theta * sin_phi + ph[1] * (cos_theta * sin_phi * ph[6] + sin_theta * cos_phi * ph[7]);
+				rec[i][2] = ph[5] * cos_theta - ph[1] * sin_theta * ph[6];
+				const double vph_norm = Norm(rec[i]);
+				for (int j = 0; j < 3; ++j)
+					rec[i][j] /= vph_norm;
+			}
+			area = DotCross(center_ph, rec[0], rec[99]);
+			for (int i = 1; i < sample_number; ++i)
+				area += DotCross(center_ph, rec[i], rec[i - 1]);
+			if (angle == 13) {
+				NumPy cone_record("cone_record13", {3});
+				cone_record.Save(center_ph, 3);
+				for (int i = 0; i < sample_number; ++i)
+					cone_record.Save(rec[i], 3);
+			}
+			cone_record.Save({abs(area) / (M_2PI * gsl_pow_2(epsilon))});
+			ProgressBar::bars_[0].tick();
+		}
+		return 0;
+	}
 	int View::Shadow() {
 		const double interval = M_2PI / sample_number;
 		NumPy rec("shadow", {2});
