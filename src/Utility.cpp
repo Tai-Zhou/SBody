@@ -149,6 +149,17 @@ namespace SBody {
 	double DotCross(const double x[], const double y[], const double z[]) {
 		return x[0] * (y[1] * z[2] - y[2] * z[1]) + x[1] * (y[2] * z[0] - y[0] * z[2]) + x[2] * (y[0] * z[1] - y[1] * z[0]);
 	}
+	double TriangleArea(const double a, const double b, const double c) {
+		const double s = 0.5 * (a + b + c);
+		return sqrt(s * (s - a) * (s - b) * (s - c));
+	}
+	double TriangleArea(const double x[], const double y[], const double z[]) {
+		const double a = sqrt(gsl_pow_2(y[0] - x[0]) + gsl_pow_2(y[1] - x[1]) + gsl_pow_2(y[2] - x[2])),
+					 b = sqrt(gsl_pow_2(z[0] - y[0]) + gsl_pow_2(z[1] - y[1]) + gsl_pow_2(z[2] - y[2])),
+					 c = sqrt(gsl_pow_2(x[0] - z[0]) + gsl_pow_2(x[1] - z[1]) + gsl_pow_2(x[2] - z[2])),
+					 s = 0.5 * (a + b + c);
+		return sqrt(s * (s - a) * (s - b) * (s - c));
+	}
 	int RotateAroundAxis(double x[], int axis, double angle) {
 		const double sin_angle = sin(angle), cos_angle = cos(angle);
 		switch (axis) {

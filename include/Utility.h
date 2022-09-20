@@ -253,6 +253,9 @@ namespace SBody {
 	 */
 	double DotCross(const double x[], const double y[], const double z[]);
 
+	double TriangleArea(const double a, const double b, const double c);
+	double TriangleArea(const double x[], const double y[], const double z[]);
+
 	/**
 	 * @brief Rotate vector `x` around the `axis` by `angle`.
 	 *
