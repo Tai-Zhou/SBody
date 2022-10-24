@@ -69,7 +69,10 @@ namespace SBody {
 		double star_position[8];
 		star.Position(star_position);
 		const double r_star = star_position[1], sin_theta_star = sin(star_position[2]), cos_theta_star = cos(star_position[2]), sin_phi_star = sin(star_position[3]), cos_phi_star = cos(star_position[3]);
-		double alpha0 = GSL_POSINF, alpha1 = (r_star + 1.) * sin_theta_star * sin_phi_star, beta0 = GSL_POSINF, beta1 = (r_star + 1.) * (cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_), cosph, h;
+		if (r_star <= 3.)
+			fmt::print(stderr, "\033[103m[WRN]\033[0m star radius = {:.6f}\n", r_star);
+		const double cos_observer_star = sin_theta_observer_ * sin_theta_star * cos_phi_star + cos_theta_observer_ * cos_theta_star;
+		double alpha0 = GSL_POSINF, alpha1 = (r_star + 1. - cos_observer_star) * sin_theta_star * sin_phi_star, beta0 = GSL_POSINF, beta1 = (r_star + 1. - cos_observer_star) * (cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_), cosph, h;
 		GslBlock collector;
 		gsl_vector *photon = collector.VectorAlloc(10), *last = collector.VectorAlloc(10);
 #ifdef RECORD_TRACE
