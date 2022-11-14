@@ -251,8 +251,10 @@ int main(int argc, char *argv[]) {
 		if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count() >= TCal)
 			break;
 	}
-	if (ProgressBar::display_)
+	if (ProgressBar::display_) {
 		ProgressBar::SetComplete(0, string("!") + strFormat);
+		indicators::show_console_cursor(true);
+	}
 	if (ray & 2)
 		cameraPtr->Save();
 	if (ray & 4)
