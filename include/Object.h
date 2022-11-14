@@ -97,6 +97,7 @@ namespace SBody {
 		int Position(double *position);
 		int InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination = 0., double observer_rotation = 0.);
 		int InitializeGeodesic(double orbital_radius, double inclination, double periapsis, double ascending_node, double v_r, double v_phi, double observer_inclination = 0., double observer_rotation = 0.);
+		int InitializeSchwarzschildKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation);
 		int IntegratorApply(double *t, double t1, double *h);
 		int IntegratorApplyFixedStep(double *t, const double h);
 
