@@ -2,6 +2,9 @@ name: Sphinx
 
 on: [push, pull_request]
 
+permissions:
+  contents: write
+
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
