@@ -142,6 +142,8 @@ namespace SBody {
 		const double inner_radius_;
 		/// outer radius
 		const double outer_radius_;
+		/// emissivity index
+		const double emissivity_index_;
 
 	  public:
 		/**
@@ -151,7 +153,7 @@ namespace SBody {
 		 * @param inner_radius
 		 * @param outer_radius
 		 */
-		Disk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius);
+		Disk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius, double emissivity_index = 0.);
 		int Hit(const double current[], const double last[] = nullptr);
 		double Redshift(const double ph[]);
 	};

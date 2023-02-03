@@ -148,7 +148,7 @@ namespace SBody {
 	double Star::CarterConstant() {
 		return metric_->CarterConstant(position_, 1.);
 	}
-	Disk::Disk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius) : Object(metric), inner_radius_(inner_radius), outer_radius_(outer_radius) {}
+	Disk::Disk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius, double emissivity_index) : Object(metric), inner_radius_(inner_radius), outer_radius_(outer_radius), emissivity_index_(emissivity_index) {}
 	int Disk::Hit(const double current[], const double last[]) {
 		if (inner_radius_ <= current[1] && current[1] <= outer_radius_ && OppositeSign(current[2] - M_PI_2, last[2] - M_PI_2))
 			return 1;

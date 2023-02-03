@@ -71,8 +71,24 @@ namespace SBody {
 		const double r_star = star_position[1], sin_theta_star = sin(star_position[2]), cos_theta_star = cos(star_position[2]), sin_phi_star = sin(star_position[3]), cos_phi_star = cos(star_position[3]);
 		if (r_star <= 3.)
 			fmt::print(stderr, "\033[103m[WRN]\033[0m star radius = {:.6f}\n", r_star);
-		const double cos_observer_star = sin_theta_observer_ * sin_theta_star * cos_phi_star + cos_theta_observer_ * cos_theta_star;
-		double alpha0 = GSL_POSINF, alpha1 = (r_star + 1. - cos_observer_star) * sin_theta_star * sin_phi_star, beta0 = GSL_POSINF, beta1 = (r_star + 1. - cos_observer_star) * (cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_), cosph, h;
+		const double alpha_coefficient = sin_theta_star * sin_phi_star, beta_coefficient = cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_, iteration_coefficient = tanh(0.05 * r_star), cos_observer_star = sin_theta_observer_ * sin_theta_star * cos_phi_star + cos_theta_observer_ * cos_theta_star, sin_observer_star = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_star = acos(cos_observer_star);
+		double alpha0 = GSL_POSINF, alpha1 = 0, beta0 = GSL_POSINF, beta1 = 0, cosph, h;
+		if (cos_observer_star <= -1.) {
+			fmt::print(stderr, "\033[103m[WRN]\033[0m star behind black hole, cos theta = {:.6f}\n", cos_observer_star);
+			alpha1 = 2. * sqrt(r_star);
+			beta1 = 0.;
+		} else if (cos_observer_star < 1.) {
+			if (theta_observer_star < M_PI_2) {
+				const double effective_radius = r_star + gsl_pow_3(theta_observer_star / M_PI_2) / sin_observer_star;
+				alpha1 = effective_radius * alpha_coefficient;
+				beta1 = effective_radius * beta_coefficient;
+			} else {
+				const double effective_radius = r_star + 0.5 * (1. + sqrt(gsl_pow_2(r_star * sin_observer_star + 1) - 16. * r_star * cos_observer_star)) / sin_observer_star;
+				// b=(r*sin(theta)+1+sqrt(gsl_pow_2(r*sin(theta)+1)-16*cos(theta)*r))/2
+				alpha1 = effective_radius * alpha_coefficient;
+				beta1 = effective_radius * beta_coefficient;
+			}
+		}
 		GslBlock collector;
 		gsl_vector *photon = collector.VectorAlloc(10), *last = collector.VectorAlloc(10);
 #ifdef RECORD_TRACE
@@ -98,7 +114,7 @@ namespace SBody {
 				else
 					status = integrator.Apply(gsl_vector_ptr(photon, 9), t_final_, &h, photon->data);
 				cosph = (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 3))) * sin_theta_observer_ + (r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * cos_theta_observer_;
-				if (cosph > r_star * relative_accuracy) {
+				if (cosph > r_star * 1e-12) {
 					gsl_vector_memcpy(photon, last);
 					h *= 0.3;
 					fixed = 1;
@@ -118,8 +134,8 @@ namespace SBody {
 					rec.save(qdq);
 #endif
 					if (cosph >= 0) {
-						alpha1 += r_star * sin_theta_star * sin_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 3)); // TODO:OPT!
-						beta1 += (r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * sin_theta_observer_ - (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 3))) * cos_theta_observer_;
+						alpha1 += iteration_coefficient * (r_star * sin_theta_star * sin_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 3))); // TODO:OPT!
+						beta1 += iteration_coefficient * ((r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * sin_theta_observer_ - (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 3))) * cos_theta_observer_);
 						metric_->HamiltonianToLagrangian(photon->data);
 						break;
 					}
@@ -222,6 +238,7 @@ namespace SBody {
 			for (int j = 0; j < 3; ++j)
 				cone_record[i][j] /= rec2_norm;
 		}
+		/*
 		for (int i = 0; i < sample_number; ++i) { // FIXME: https://en.wikipedia.org/wiki/Raychaudhuri_equation
 			const double angle = i * interval, sin_angle = sin(angle), cos_angle = cos(angle);
 			photon2[0] = 0.;
@@ -272,7 +289,7 @@ namespace SBody {
 			metric_->HamiltonianToLagrangian(photon2);
 			copy(photon2 + 1, photon2 + 4, area_record[i]);
 			SphericalToCartesian(area_record[i], 3);
-		}
+		}*/
 		double cone_solid_angle = DotCross(center_photon_velocity, cone_record[0], cone_record[sample_number - 1]);
 		double cone_local_solid_angle = DotCross(photon_in_static_frame_cartesian->data + 1, local_cone_record[0], local_cone_record[sample_number - 1]);
 		// SphericalToCartesian(gsl_vector_ptr(photon, 1), 3);
