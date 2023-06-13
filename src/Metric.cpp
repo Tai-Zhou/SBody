@@ -289,12 +289,18 @@ namespace SBody {
 		return 0;
 	}
 	Integrator Schwarzschild::GetIntegrator(int coordinate) {
-		if (mode_ == T)
+		switch (mode_) {
+		case T:
 			return Integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian, coordinate);
-		else if (mode_ == TAU)
+		case TAU:
 			return Integrator(metric::Schwarzschild::functionTau, metric::Schwarzschild::jacobianTau, coordinate);
-		else
+		case HAMILTONIAN:
 			return Integrator(metric::Schwarzschild::functionHamiltonian, metric::Schwarzschild::jacobianHamiltonian, coordinate);
+		case RIAF:
+			return Integrator(metric::Schwarzschild::functionRIAF, metric::Schwarzschild::jacobianRIAF, coordinate);
+		case HELICAL:
+			return Integrator(metric::Schwarzschild::functionHelicalWithFixedRadialSpeed, metric::Schwarzschild::jacobianHelicalWithFixedRadialSpeed, coordinate);
+		}
 	}
 
 	Kerr::Kerr(double spin, metric_mode mode, std::string name) : Schwarzschild(mode, "Kerr"), a_(spin), a2_(a_ * a_), a4_(a2_ * a2_) {}
@@ -621,6 +627,43 @@ namespace SBody {
 			int functionRIAF(double t, const double y[], double dydt[], void *params) {
 				return GSL_SUCCESS;
 			}
+			int functionHelicalWithFixedRadialSpeed(double t, const double y[], double dydt[], void *params) {
+				const double g00 = 1. - 2. / y[1], sin_theta = sin(y[2]);
+				if (g00 <= 0)
+					return GSL_FAILURE;
+				dydt[0] = y[4]; // d\tau/dt
+				dydt[1] = y[5]; // dr/dt
+				dydt[2] = 0.;	// d\theta/dt = 0.
+				dydt[3] = y[7]; // d\phi/dt
+				// d^2\tau/dt^2 = d^2\tau/dtdr * dr/dt
+				dydt[4] = ((1. + gsl_pow_2(y[5] / g00)) / gsl_pow_2(y[1]) + y[1] * gsl_pow_2(sin_theta * y[7])) * y[5] / sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * sin_theta * y[7])));
+				// d^2r/dt^2 = 0.
+				dydt[5] = 0.;
+				// d^2\theta/dt^2 = 0.
+				dydt[6] = 0.;
+				// d^2\phi/dt^2 = d(d\phi/dt)/dr * dr/dt
+				dydt[7] = -2. * y[7] / y[1] * y[5];
+				return GSL_SUCCESS;
+			}
+			int functionHelicalWithFixedRadialMomentum(double t, const double y[], double dydt[], void *params) {
+				// WIP
+				const double g00 = 1. - 2. / y[1];
+				if (g00 <= 0)
+					return GSL_FAILURE;
+				dydt[0] = sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * sin(y[2]) * y[7]))); // d\tau/dt
+				dydt[1] = y[5];																		// dr/dt
+				dydt[2] = 0.;																		// d\theta/dt = 0.
+				dydt[3] = y[7];																		// d\phi/dt
+				dydt[4] = 1.;
+				// d^2r/dt^2 = 0.
+				// g00 * dr/d\tau = C
+				// dr/d\tau = C / g00
+				// dr/dt = C / g00 * d\tau/dt
+				dydt[5] = 1.;
+				dydt[6] = 0.;
+				dydt[7] = 1.;
+				return GSL_SUCCESS;
+			}
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 				return GSL_SUCCESS;
 			}
@@ -631,6 +674,9 @@ namespace SBody {
 				return GSL_SUCCESS;
 			}
 			int jacobianRIAF(double t, const double y[], double *dfdy, double dfdt[], void *params) {
+				return GSL_SUCCESS;
+			}
+			int jacobianHelicalWithFixedRadialSpeed(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 				return GSL_SUCCESS;
 			}
 		} // namespace Schwarzschild

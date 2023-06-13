@@ -25,7 +25,9 @@ namespace SBody {
 	 */
 	enum metric_mode { T,
 					   TAU,
-					   HAMILTONIAN };
+					   HAMILTONIAN,
+					   RIAF,
+					   HELICAL };
 
 	/**
 	 * @brief
@@ -134,10 +136,12 @@ namespace SBody {
 			int functionTau(double t, const double y[], double dydt[], void *params);
 			int functionHamiltonian(double t, const double y[], double dydt[], void *params);
 			int functionRIAF(double t, const double y[], double dydt[], void *params);
+			int functionHelicalWithFixedRadialSpeed(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			int jacobianTau(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 			int jacobianRIAF(double t, const double y[], double *dfdy, double dfdt[], void *params);
+			int jacobianHelicalWithFixedRadialSpeed(double t, const double y[], double *dfdy, double dfdt[], void *params);
 		} // namespace Schwarzschild
 		namespace Kerr {
 			int function(double t, const double y[], double dydt[], void *params);

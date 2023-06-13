@@ -99,6 +99,22 @@ namespace SBody {
 		CartesianToSpherical(position_);
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
+	int Star::InitializeHelical(double r, double theta, double phi, double v_r, double v_phi) {
+		position_[0] = 0.;
+		position_[1] = r;
+		position_[2] = theta;
+		position_[3] = phi;
+		if (fixed_) {
+			position_[5] = 0.;
+			position_[6] = 0.;
+			position_[7] = 0.;
+		} else {
+			position_[5] = v_r;
+			position_[6] = 0.;
+			position_[7] = v_phi;
+		}
+		return metric_->NormalizeTimelikeGeodesic(position_);
+	}
 	int Star::IntegratorApply(double *t, double t1, double *h) {
 		if (fixed_)
 			*t = t1;

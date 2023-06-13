@@ -33,7 +33,7 @@
 using namespace std;
 
 namespace SBody {
-	View::View(shared_ptr<Metric> metric, double r, double theta, string file_name) : metric_(move(metric)), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({9}))) {
+	View::View(shared_ptr<Metric> metric, double r, double theta, string file_name) : metric_(metric), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({9}))) {
 		bar_ = make_unique<indicators::BlockProgressBar>(indicators::option::ShowElapsedTime{true},
 														 indicators::option::ShowRemainingTime{true},
 														 indicators::option::ForegroundColor{indicators::Color(4)},
@@ -83,7 +83,7 @@ namespace SBody {
 				alpha1 = effective_radius * alpha_coefficient;
 				beta1 = effective_radius * beta_coefficient;
 			} else {
-				const double effective_radius = r_star + 0.5 * (1. + sqrt(gsl_pow_2(r_star * sin_observer_star + 1) - 16. * r_star * cos_observer_star)) / sin_observer_star;
+				const double effective_radius = 0.5 * (r_star + (1. + sqrt(gsl_pow_2(r_star * sin_observer_star + 1.) - 16. * r_star * cos_observer_star)) / sin_observer_star);
 				// b=(r*sin(theta)+1+sqrt(gsl_pow_2(r*sin(theta)+1)-16*cos(theta)*r))/2
 				alpha1 = effective_radius * alpha_coefficient;
 				beta1 = effective_radius * beta_coefficient;
@@ -455,7 +455,7 @@ namespace SBody {
 			ProgressBar::SetComplete(progressBarIndex, "! Shadow");
 		return 0;
 	}
-	Camera::Camera(shared_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta, string file_name) : View(move(metric), r, theta, file_name), pixel_(pixel), half_angle_(half_angle) {
+	Camera::Camera(shared_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta, string file_name) : View(metric, r, theta, file_name), pixel_(pixel), half_angle_(half_angle) {
 		screen_ = vector<vector<double>>(pixel, vector<double>(pixel));
 		initials_ = vector<array<double, 10>>(pixel * pixel);
 		const double pixel_size = 2. * half_angle * r / pixel, t1 = r + 100.;
