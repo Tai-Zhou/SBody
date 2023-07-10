@@ -41,7 +41,7 @@ namespace SBody {
 		hr = 3600. * s;
 		day = 86400. * s;
 		yr = 365.25 * day;
-		cm = 6.772199944005381e-6 * mass;
+		cm = 6.772199944005381e-6 * M_sun;
 		m = 100. * cm;
 		km = 1000. * m;
 		R_sun = 6.957e8 * m;
