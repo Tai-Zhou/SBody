@@ -156,8 +156,8 @@ namespace SBody {
 		return 1;
 	}
 	double Newton::Energy(const double y[]) {
-		const double r = Norm(y + 1), r_1 = 1. / r, v2 = SBody::Dot(y + 5);
-		const double m_r = r_1, rdot = SBody::Dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2), v8 = gsl_pow_2(v4);
+		const double r = Norm(y + 1), r_1 = 1. / r, v2 = Dot(y + 5);
+		const double m_r = r_1, rdot = Dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2), v8 = gsl_pow_2(v4);
 		const double m_r2 = gsl_pow_2(m_r), m_r3 = gsl_pow_3(m_r), m_r4 = gsl_pow_4(m_r), rdot2 = gsl_pow_2(rdot);
 		double E = 0.5 * v2 - m_r;
 		if (PN_ & 1)
@@ -169,8 +169,8 @@ namespace SBody {
 		return E;
 	}
 	double Newton::AngularMomentum(const double y[]) {
-		const double r = Norm(y + 1), r_1 = 1. / r, v2 = SBody::Dot(y + 5);
-		const double m_r = r_1, rdot = SBody::Dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2);
+		const double r = Norm(y + 1), r_1 = 1. / r, v2 = Dot(y + 5);
+		const double m_r = r_1, rdot = Dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2);
 		const double m_r2 = gsl_pow_2(m_r), m_r3 = gsl_pow_3(m_r), rdot2 = gsl_pow_2(rdot);
 		double J[3], eff = 0;
 		Cross(y, y + 3, J);
@@ -187,17 +187,17 @@ namespace SBody {
 	double Newton::CarterConstant(const double y[], const double mu2) { // FIXME: not verified!
 		double c[3];
 		Cross(y + 1, y + 5, c);
-		return SBody::Dot(c) / gsl_pow_2(y[4]);
+		return Dot(c) / gsl_pow_2(y[4]);
 	}
 	int Newton::NormalizeTimelikeGeodesic(double y[]) { // TODO: limit the light speed
 		y[4] = 1;
-		if (SBody::Dot(y + 5) >= 1)
+		if (Dot(y + 5) >= 1)
 			return 1;
 		return 0;
 	}
 	int Newton::NormalizeNullGeodesic(double y[], double frequency) {
 		y[4] = 1;
-		const double v_1 = GSL_SIGN(y[4]) / SBody::Norm(y + 5);
+		const double v_1 = GSL_SIGN(y[4]) / Norm(y + 5);
 		for (int i = 5; i < 8; ++i)
 			y[i] *= v_1;
 		return 0;
@@ -300,6 +300,8 @@ namespace SBody {
 			return Integrator(metric::Schwarzschild::functionRIAF, metric::Schwarzschild::jacobianRIAF, coordinate);
 		case HELICAL:
 			return Integrator(metric::Schwarzschild::functionHelicalWithFixedRadialSpeed, metric::Schwarzschild::jacobianHelicalWithFixedRadialSpeed, coordinate);
+		default:
+			return Integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian, coordinate);
 		}
 	}
 
@@ -539,8 +541,8 @@ namespace SBody {
 		namespace Newton {
 			int function(double t, const double y[], double dydt[], void *params) { // FIXME: rewrite in spherical coordinates
 				class Newton *newton = reinterpret_cast<class Newton *>(params);
-				const double r = Norm(y + 1), r_1 = 1. / r, v2 = SBody::Dot(y + 5);
-				const double m_r = r_1, rdot = SBody::Dot(y + 1, y + 5) * r_1;
+				const double r = Norm(y + 1), r_1 = 1. / r, v2 = Dot(y + 5);
+				const double m_r = r_1, rdot = Dot(y + 1, y + 5) * r_1;
 				const double F = m_r * gsl_pow_2(r_1), m_r2 = gsl_pow_2(m_r), rdot2 = gsl_pow_2(rdot);
 				dydt[0] = y[4];
 				dydt[1] = y[5];
