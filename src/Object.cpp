@@ -116,18 +116,18 @@ namespace SBody {
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
 	int Star::IntegratorApply(double *t, double t1, double *h) {
-		if (fixed_)
+		if (fixed_) {
 			*t = t1;
-		else
-			integrator_.Apply(t, t1, h, position_);
-		return GSL_SUCCESS;
+			return GSL_SUCCESS;
+		}
+		return integrator_.Apply(t, t1, h, position_);
 	}
 	int Star::IntegratorApplyFixedStep(double *t, const double h) {
-		if (fixed_)
+		if (fixed_) {
 			*t += h;
-		else
-			integrator_.ApplyFixedStep(t, h, position_);
-		return GSL_SUCCESS;
+			return GSL_SUCCESS;
+		}
+		return integrator_.ApplyFixedStep(t, h, position_);
 	}
 	int Star::Hit(const double current[], const double last[]) {
 		double a2 = metric_->Distance(position_, current, 3);

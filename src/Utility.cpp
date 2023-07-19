@@ -29,7 +29,9 @@ namespace SBody {
 		gsl_odeiv2_step_free(step_);
 	}
 	int Integrator::Apply(double *t, double t1, double *h, double *y) {
-		int status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
+		int status = 0;
+		while (status <= 0 && *t < t1)
+			status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
 		if (coordinate_ == 2) {
 			if (y[2] <= -M_PI_2)
 				y[2] += M_PI;
