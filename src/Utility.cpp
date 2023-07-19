@@ -124,21 +124,26 @@ namespace SBody {
 		return permutations_.back();
 	}
 	double Dot(const double x[], const double y[], size_t dimension) {
-		if (dimension == 3) {
-			if (y == nullptr)
-				return x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
+		if (dimension == 3)
 			return x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
-		}
 		double sum = 0;
-		while (dimension--)
+		while (dimension-- > 0)
 			sum += x[dimension] * y[dimension];
+		return sum;
+	}
+	double Dot(const double x[], size_t dimension) {
+		if (dimension == 3)
+			return x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
+		double sum = 0;
+		while (dimension-- > 0)
+			sum += x[dimension] * x[dimension];
 		return sum;
 	}
 	double Norm(const double x[], size_t dimension) {
 		if (dimension == 3)
 			return sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
 		double sum = 0;
-		while (dimension--)
+		while (dimension-- > 0)
 			sum += x[dimension] * x[dimension];
 		return sqrt(sum);
 	}

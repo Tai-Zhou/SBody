@@ -215,14 +215,23 @@ namespace SBody {
 	};
 
 	/**
-	 * @brief Dot product of vector `x` and `y`, or `x` and `x` if `y == nullptr`. \f$\vec{x}\cdot\vec{y}\f$ or \f$\vec{x}\cdot\vec{x}\f$
+	 * @brief Dot product of vector `x` and `y`. \f$\vec{x}\cdot\vec{y}\f$
 	 *
 	 * @param x vector
 	 * @param y vector
 	 * @param dimension dimension of the vector
 	 * @return result
 	 */
-	double Dot(const double x[], const double y[] = nullptr, size_t dimension = 3);
+	double Dot(const double x[], const double y[], size_t dimension = 3);
+
+	/**
+	 * @brief Dot product of vector `x`. \f$\vec{x}\cdot\vec{x}\f$
+	 *
+	 * @param x vector
+	 * @param dimension dimension of the vector
+	 * @return result
+	 */
+	double Dot(const double x[], size_t dimension = 3);
 
 	/**
 	 * @brief Euclidean norm of `x`. \f$\|\vec{x}\|_2\f$.
