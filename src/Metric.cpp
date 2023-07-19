@@ -388,7 +388,7 @@ namespace SBody {
 	}
 	int Kerr::NormalizeTimelikeGeodesic(double y[]) {
 		const double r = y[1], r2 = gsl_pow_2(r), a2r2 = a2_ + r2;
-		const double sint = sin(y[2]), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
+		const double sint2 = gsl_pow_2(sin(y[2])), sint4 = gsl_pow_2(sint2);
 		const double Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
 		const double mr_rho2 = 2. * r / rho2;
 		y[7] += 2. * a_ * r / (gsl_pow_2(a2r2) - a2_ * Delta * sint2);
@@ -397,7 +397,7 @@ namespace SBody {
 	}
 	int Kerr::NormalizeNullGeodesic(double y[], double frequency) {
 		const double r = y[1], r2 = gsl_pow_2(r);
-		const double sint = sin(y[2]), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint);
+		const double sint2 = gsl_pow_2(sin(y[2])), sint4 = gsl_pow_2(sint2);
 		const double rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
 		const double mr_rho2 = 2. * r / rho2;
 		const double effa = rho2 / (r2 - 2. * r + a2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2_ + r2) * sint2 + mr_rho2 * a2_ * sint4) * gsl_pow_2(y[7]);
@@ -511,7 +511,7 @@ namespace SBody {
 	}
 	int KerrTaubNUT::NormalizeNullGeodesic(double y[], double frequency) {
 		const double r = y[1], r2 = gsl_pow_2(r);
-		const double sint = abs(sin(y[2])), sint2 = gsl_pow_2(sint), cost = GSL_SIGN(y[2]) * cos(y[2]);
+		const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
 		const double lacost = l_ + a_ * cost;
 		const double rho2 = r2 + gsl_pow_2(lacost), rho_2 = 1. / rho2;
@@ -579,7 +579,7 @@ namespace SBody {
 				dydt[1] = y[5]; // dr/dt
 				dydt[2] = y[6]; // d\theta/dt
 				dydt[3] = y[7]; // d\phi/dt
-				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]);
+				const double r = y[1], sint = abs(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
 				const double r2m = r - 2., r3m = r - 3.;
 				const double r2mr_1 = 1. / (r2m * r);
 				// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
@@ -597,7 +597,7 @@ namespace SBody {
 				dydt[1] = y[5]; // dr/d\tau
 				dydt[2] = y[6]; // d\theta/d\tau
 				dydt[3] = y[7]; // d\phi/d\tau
-				const double r = y[1], sint = sin(y[2]), cost = cos(y[2]);
+				const double r = y[1], sint = abs(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
 				const double r2m = r - 2., r_1 = 1. / r;
 				const double r2mr_1 = 1. / (r2m * r);
 				// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
@@ -612,7 +612,7 @@ namespace SBody {
 			}
 			int functionHamiltonian(double t, const double y[], double dydt[], void *params) {
 				const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), g00 = 1. - 2. * r_1, E = 1. - y[4], L2 = gsl_pow_2(y[7]);
-				const double sint_1 = 1. / sin(y[2]), sint_2 = gsl_pow_2(sint_1);
+				const double sint_1 = 1. / abs(sin(y[2])), sint_2 = gsl_pow_2(sint_1);
 				//[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
 				dydt[0] = g00 / E;						 // d\tau/dt
 				dydt[1] = g00 * y[5] * dydt[0];			 // dr/dt
@@ -628,7 +628,7 @@ namespace SBody {
 				return GSL_SUCCESS;
 			}
 			int functionHelicalWithFixedRadialSpeed(double t, const double y[], double dydt[], void *params) {
-				const double g00 = 1. - 2. / y[1], sin_theta = sin(y[2]);
+				const double g00 = 1. - 2. / y[1], sin_theta = abs(sin(y[2]));
 				if (g00 <= 0)
 					return GSL_FAILURE;
 				dydt[0] = y[4]; // d\tau/dt
@@ -688,7 +688,7 @@ namespace SBody {
 				dydt[2] = y[6]; // d\theta/dt
 				dydt[3] = y[7]; // d\phi/dt
 				const double r = y[1], r2 = gsl_pow_2(r), r4 = gsl_pow_4(r), a = kerr->a_, a2 = kerr->a2_, a4 = kerr->a4_, a2r2 = a2 + r2;
-				const double sint = sin(y[2]), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost = cos(y[2]), cost2 = gsl_pow_2(cost), sintcost = sint * cost, cott = cost / sint;
+				const double sint = abs(sin(y[2])), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost = GSL_SIGN(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost), sintcost = sint * cost, cott = cost / sint;
 				const double Delta = r2 - 2. * r + a2, Delta_1 = 1. / Delta;
 				const double rho2 = r2 + a2 * cost2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), r2a2cost2 = r2 - a2 * cost2;
 				const double dydt4 = 2. * rho_4 * (Delta_1 * a2r2 * r2a2cost2 * y[5] - 2. * a2 * r * sintcost * y[6] * (1. - a * sint2 * y[7]) - Delta_1 * a * (2. * r4 + r2 * rho2 + a2 * r2a2cost2) * sint2 * y[5] * y[7]);
@@ -709,7 +709,7 @@ namespace SBody {
 				dydt[2] = y[6]; // d\theta/d\tau
 				dydt[3] = y[7]; // d\phi/d\tau
 				const double r = y[1], r2 = gsl_pow_2(r), a = kerr->a_, a2 = kerr->a2_, a4 = kerr->a4_, a2r2 = a2 + r2;
-				const double sint = sin(y[2]), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost = cos(y[2]), cost2 = gsl_pow_2(cost), sintcost = sint * cost, cott = cost / sint;
+				const double sint = abs(sin(y[2])), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost = GSL_SIGN(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost), sintcost = sint * cost, cott = cost / sint;
 				const double Delta = r2 - 2. * r + a2, Delta_1 = 1. / Delta;
 				const double rho2 = r2 + a2 * cost2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), r2a2cost2 = r2 - a2 * cost2;
 				dydt[4] = -2. * rho_4 * (Delta_1 * a2r2 * r2a2cost2 * y[5] * (y[4] - a * sint2 * y[7]) - 2. * a2 * r * sintcost * y[6] * (y[4] - a * sint2 * y[7]) - 2. * Delta_1 * r2 * rho2 * a * sint2 * y[5] * y[7]);
@@ -725,7 +725,7 @@ namespace SBody {
 				class Kerr *kerr = reinterpret_cast<class Kerr *>(params);
 				const double r = y[1], r2 = gsl_pow_2(y[1]), a = kerr->a_, a2 = kerr->a2_, a2r2 = a2 + r2, pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]);
 				const double E = 1. - y[4], E2 = gsl_pow_2(E), deltaE2 = (2. - y[4]) * y[4], L2 = gsl_pow_2(y[7]);
-				const double sint = sin(y[2]), sint2 = gsl_pow_2(sint), sint_2 = 1. / sint2, sint_4 = gsl_pow_2(sint_2), cost = cos(y[2]), cost2 = gsl_pow_2(cost);
+				const double sint = abs(sin(y[2])), sint2 = gsl_pow_2(sint), sint_2 = 1. / sint2, sint_4 = gsl_pow_2(sint_2), cost = GSL_SIGN(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost);
 				const double Delta = a2r2 - 2. * r, Delta_1 = 1. / Delta, Delta_2 = gsl_pow_2(Delta_1);
 				const double rho2 = r2 + a2 * cost2, rho_2 = 1. / rho2, rho_4 = gsl_pow_2(rho_2);
 				const double Q = ptheta2 + cost2 * (a2 * deltaE2 + L2 * sint_2);
@@ -745,7 +745,7 @@ namespace SBody {
 				class Kerr *kerr = reinterpret_cast<class Kerr *>(params);
 				const double r = y[1], r2 = gsl_pow_2(y[1]), a = kerr->a_, a2 = kerr->a2_, a2r2 = a2 + r2, pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]);
 				const double E = 1. - y[4], E2 = gsl_pow_2(E), deltaE2 = (2. - y[4]) * y[4], L2 = gsl_pow_2(y[7]);
-				const double sint = sin(y[2]), sint2 = gsl_pow_2(sint), sint_2 = 1. / sint2, sint_4 = gsl_pow_2(sint_2), cost = cos(y[2]), cost2 = gsl_pow_2(cost);
+				const double sint = abs(sin(y[2])), sint2 = gsl_pow_2(sint), sint_2 = 1. / sint2, sint_4 = gsl_pow_2(sint_2), cost = GSL_SIGN(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost);
 				const double Delta = a2r2 - 2. * r, Delta_1 = 1. / Delta, Delta_2 = gsl_pow_2(Delta_1);
 				const double rho2 = r2 + a2 * cost2, rho_2 = 1. / rho2, rho_4 = gsl_pow_2(rho_2);
 				const double Q = ptheta2 + cost2 * (a2 * deltaE2 + L2 * sint_2);
