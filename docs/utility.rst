@@ -39,7 +39,10 @@ GslBlock
 Math
 ----
 
-.. doxygenfunction:: SBody::Dot
+.. doxygenfunction:: SBody::Dot(const double[], const double[], size_t);
+   :no-link:
+
+.. doxygenfunction:: SBody::Dot(const double[], size_t);
    :no-link:
 
 .. doxygenfunction:: SBody::Norm
