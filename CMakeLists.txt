@@ -30,7 +30,10 @@ if(NOT GSL_FOUND)
     message(FATAL_ERROR "Please install GSL")
 endif()
 
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/include fmt/include indicators/include)
+find_package(Python3 COMPONENTS Interpreter Development)
+find_package(pybind11 REQUIRED)
+
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/include fmt/include indicators/include ${Python3_INCLUDE_DIRS})
 add_subdirectory(${PROJECT_SOURCE_DIR}/fmt)
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)
 add_executable(sbody src/SBody.cpp)
