@@ -41,33 +41,39 @@ void InterruptHandler(int signum) {
 	exit(signum);
 }
 
-void Help(double mass, double spin, double NUT, double tFinal, size_t tStepNumber, double TCal, int metric, int PN, int ray, double absAcc, double relAcc, string store_format) {
+void Help() {
 	fmt::print("\033[1mSBODY\033[0m ({})\n", VERSION);
 	fmt::print("  A relativistic ray tracing program.\n");
 	fmt::print("\n\033[1mOPTIONS\033[0m\n");
-	fmt::print("  -m --mass   [f]: mass of the source [{}] (M_sun)\n", mass);
-	fmt::print("  -s --spin   [f]: spin of the source [{}]\n", spin);
-	fmt::print("  -l --NUT    [f]: NUT charge of the source [{}]\n", NUT);
-	fmt::print("  -A --sm     [f]: semimajor axis of the star (r_g)\n");
-	fmt::print("  -E --ec     [f]: eccentricity of the star\n");
-	fmt::print("  -I --in     [f]: inclination of the star (deg)\n");
-	fmt::print("  -o --pe     [f]: position angle of periapsis of the star (deg)\n");
-	fmt::print("  -O --an     [f]: ascending node of the star (deg)\n");
-	fmt::print("  -t --time   [f]: time limit [{}] (s)\n", tFinal);
-	fmt::print("  -k --rec    [i]: record number [{}] (s)\n", tStepNumber);
-	fmt::print("  -c --tcal   [f]: time limit of calculation [{}] (s)\n", TCal);
-	fmt::print("  -n --metric [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrTaubNUT (3) [{}]\n", metric);
-	fmt::print("  -P --PN     [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [{}]\n", PN);
-	fmt::print("  -R --ray    [i]: ray tracing, view (1) + shadow (4) + camera (2) [{}]\n", ray);
-	fmt::print("  -a --abs    [f]: absolute accuracy [{}]\n", absAcc);
-	fmt::print("  -r --rel    [f]: relative accuracy [{}]\n", relAcc);
-	fmt::print("  -i --inc    [f]: inclination of the BH\n");
-	fmt::print("  -e --eps    [f]: epsilon of the BH\n");
-	fmt::print("  -f --format [s]: storage format [{}]\n", store_format);
-	fmt::print("  -L --light     : light instead of particle\n");
-	fmt::print("  -b --bar       : show progress bar\n");
-	fmt::print("  -h --help      : this help information\n");
-	fmt::print("\n\033[1mEXAMPLES\033[0m\n  $ SBody\n");
+	fmt::print("  -m --mass    [f]: mass of the source [{}] (M_sun)\n", MASS);
+	fmt::print("  -s --spin    [f]: spin of the source [{}]\n", SPIN);
+	fmt::print("  -l --NUT     [f]: NUT charge of the source [{}]\n", NUT);
+	fmt::print("  -K --kepler [6f]: 6 doubles, separated by \",\", in order of:\n");
+	fmt::print("                    semimajor axis (r_g)\n");
+	fmt::print("                    eccentricity\n");
+	fmt::print("                    inclination (deg)\n");
+	fmt::print("                    position angle of periapsis (deg)\n");
+	fmt::print("                    ascending node (deg)\n");
+	fmt::print("                    true anomaly (deg)\n");
+	fmt::print("  -E --ec      [f]: eccentricity of the star\n");
+	fmt::print("  -I --in      [f]: inclination of the star (deg)\n");
+	fmt::print("  -o --pe      [f]: position angle of periapsis of the star (deg)\n");
+	fmt::print("  -O --an      [f]: ascending node of the star (deg)\n");
+	fmt::print("  -t --time    [f]: time limit [{}] (s)\n", T_FINAL);
+	fmt::print("  -k --rec     [i]: record number [{}] (s)\n", T_STEP_NUMBER);
+	fmt::print("  -c --tcal    [i]: time limit of calculation [{}] (ms)\n", T_CAL);
+	fmt::print("  -n --metric  [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrTaubNUT (3) [{}]\n", METRIC);
+	fmt::print("  -P --PN      [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [{}]\n", PN);
+	fmt::print("  -R --ray     [i]: ray tracing, view (1) + shadow (4) + camera (2) [{}]\n", RAY);
+	fmt::print("  -a --abs     [f]: absolute accuracy [{}]\n", ABS_ACC);
+	fmt::print("  -r --rel     [f]: relative accuracy [{}]\n", REL_ACC);
+	fmt::print("  -i --inc     [f]: inclination of the BH\n");
+	fmt::print("  -e --eps     [f]: epsilon of the BH\n");
+	fmt::print("  -f --format  [s]: storage format [{}]\n", FORMAT);
+	fmt::print("  -L --light      : light instead of particle\n");
+	fmt::print("  -b --bar        : show progress bar\n");
+	fmt::print("  -h --help       : this help information\n");
+	fmt::print("\n\033[1mEXAMPLE\033[0m\n  $ SBody\n");
 	fmt::print("\n\033[1mSUPPORT\033[0m\n  github.com/Tai-Zhou/SBody\n");
 }
 
@@ -76,8 +82,8 @@ int main(int argc, char *argv[]) {
 	auto TStart = chrono::steady_clock::now();
 	double mass = 4.15e6, spin = 5., charge = 0., NUT = 0.9;
 	double tFinal = 3600.; // 128.43325526 for 4.15e6 M_sun
-	size_t tStepNumber = 10000UL;
-	double TCal = 36000000;
+	size_t tStepNumber = T_STEP_NUMBER;
+	int TCal = T_CAL;
 	size_t metric = 1;
 	size_t Hamiltonian = 0;
 	size_t PN = 1;
@@ -87,17 +93,20 @@ int main(int argc, char *argv[]) {
 	string store_format = "NumPy";
 	double inc = M_PI * 40. / 180., eps = 0.;
 	// double a = 8.3, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180. + M_PI_2, ascending_node = M_PI * 25.1 / 180., true_anomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
-	double a = 9.9, e = 0., inclination = M_PI * 0. / 180., periapsis = M_PI * 0. / 180., ascending_node = M_PI * 0. / 180., true_anomaly = 0.;
+	double a = 4.999960135538237, e = 0.884649, inclination = M_PI * 134.567 / 180., periapsis = M_PI * 66.263 / 180., ascending_node = M_PI * 228.171 / 180., true_anomaly = M_PI;
+	double input_parameter[10];
 	unique_ptr<View> viewPtr;
 	unique_ptr<thread> shadowPtr;
 	unique_ptr<Camera> cameraPtr;
 	unique_ptr<thread> lensPtr;
-	const char *optShort = "m:s:l:A:E:I:o:O:t:k:c:n:P:R:a:r:i:e:f:Lbh";
+	const char *optShort = "m:s:l:K:E:I:o:O:t:k:c:n:P:R:a:r:i:e:f:Lbh";
+	const char *separator = ",";
+	char *parameter;
 	const struct option optLong[] = {
 		{"mass", required_argument, NULL, 'm'},
 		{"spin", required_argument, NULL, 's'},
 		{"NUT", required_argument, NULL, 'l'},
-		{"sm", required_argument, NULL, 'A'},
+		{"kepler", required_argument, NULL, 'K'},
 		{"ec", required_argument, NULL, 'E'},
 		{"in", required_argument, NULL, 'I'},
 		{"pe", required_argument, NULL, 'o'},
@@ -129,8 +138,10 @@ int main(int argc, char *argv[]) {
 		case 'l':
 			NUT = atof(optarg);
 			break;
-		case 'A':
-			a = atof(optarg);
+		case 'K':
+			parameter = strtok(optarg, separator);
+			for (int i = 0; i < 10 && parameter != nullptr; parameter = strtok(nullptr, separator))
+				input_parameter[i++] = atof(parameter);
 			break;
 		case 'E':
 			e = atof(optarg);
@@ -156,7 +167,7 @@ int main(int argc, char *argv[]) {
 		case 'n':
 			metric = atoi(optarg);
 			if (metric > 3)
-				Help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absolute_accuracy, relative_accuracy, store_format);
+				Help();
 			break;
 		case 'P':
 			PN = atoi(optarg);
@@ -186,7 +197,7 @@ int main(int argc, char *argv[]) {
 			ProgressBar::display_ = true;
 			break;
 		default:
-			Help(mass, spin, NUT, tFinal, tStepNumber, TCal, metric, PN, ray, absolute_accuracy, relative_accuracy, store_format);
+			Help();
 			exit(opt == 'h' ? 0 : 1);
 		}
 	Unit::Initialize(mass);
@@ -194,9 +205,9 @@ int main(int argc, char *argv[]) {
 	double t = 0, tStep = 0, tRec = tFinal / tStepNumber;
 	if (metric == 0)
 		ray = 0;
-	shared_ptr<Metric> main_metric = make_shared<Schwarzschild>(HELICAL);
+	shared_ptr<Metric> main_metric = make_shared<Schwarzschild>(T);
 	// metric::setMetric(metric, PN, mass, spin, charge, NUT);
-	string strFormat = fmt::format(" ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps);
+	string strFormat = fmt::format(" ({:f},{:f},{:f})[{:f},{:f}]", spin, charge, NUT, inc, eps);
 	if (ProgressBar::display_) {
 		indicators::show_console_cursor(false);
 		ProgressBar::bars_[0].set_option(indicators::option::ForegroundColor{indicators::Color(metric)});

@@ -23,10 +23,7 @@
 #include "Utility.h"
 
 namespace SBody {
-	Metric::Metric(metric_mode mode, std::string name) : mode_(mode), name_(name) {}
-	std::string &Metric::Name() {
-		return name_;
-	}
+	Metric::Metric(metric_mode mode) : mode_(mode) {}
 	int Metric::MetricTensor(const double position[], gsl_matrix *metric) {
 		gsl_matrix_set_zero(metric);
 		gsl_matrix_set(metric, 0, 0, -1.);
@@ -122,11 +119,11 @@ namespace SBody {
 		}
 		return isnan(gsl_matrix_get(coordinate, 3, 0)) ? 1 : 0;
 	}
-	Integrator Metric::GetIntegrator(int coordinate) {
-		return Integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian, coordinate);
-	}
 
-	Newton::Newton(int PN, metric_mode mode, std::string name) : Metric(mode, name), PN_(PN){};
+	Newton::Newton(int PN, metric_mode mode) : Metric(mode), PN_(PN){};
+	std::string Newton::Name() {
+		return "Newton";
+	}
 	int Newton::MetricTensor(const double position[], gsl_matrix *metric) { // FIXME: Check
 		gsl_matrix_set_zero(metric);
 		gsl_matrix_set(metric, 0, 0, -1.);
@@ -207,7 +204,10 @@ namespace SBody {
 		return integrator;
 	}
 
-	Schwarzschild::Schwarzschild(metric_mode mode, std::string name) : Metric(mode, name) {}
+	Schwarzschild::Schwarzschild(metric_mode mode) : Metric(mode) {}
+	std::string Schwarzschild::Name() {
+		return "Schwarzschild";
+	}
 	int Schwarzschild::MetricTensor(const double position[], gsl_matrix *metric) {
 		gsl_matrix_set_zero(metric);
 		gsl_matrix_set(metric, 0, 0, -(1. - 2. / position[1]));
@@ -305,7 +305,10 @@ namespace SBody {
 		}
 	}
 
-	Kerr::Kerr(double spin, metric_mode mode, std::string name) : Schwarzschild(mode, "Kerr"), a_(spin), a2_(a_ * a_), a4_(a2_ * a2_) {}
+	Kerr::Kerr(double spin, metric_mode mode) : Schwarzschild(mode), a_(spin), a2_(a_ * a_), a4_(a2_ * a2_) {}
+	std::string Kerr::Name() {
+		return "Kerr";
+	}
 	int Kerr::MetricTensor(const double position[], gsl_matrix *metric) {
 		const double r2 = gsl_pow_2(position[1]), Delta = r2 - 2. * position[1] + a2_, rho2 = gsl_pow_2(position[1]) + a2_ * gsl_pow_2(cos(position[2])), mr_rho2 = 2. * position[1] / rho2, sin2_theta = gsl_pow_2(sin(position[2]));
 		gsl_matrix_set_zero(metric);
@@ -421,7 +424,10 @@ namespace SBody {
 			return Integrator(metric::Kerr::functionHamiltonian, metric::Kerr::jacobianHamiltonian, coordinate, this);
 	}
 
-	KerrTaubNUT::KerrTaubNUT(double spin, double charge, double NUT, metric_mode mode, std::string name) : Kerr(spin, mode, "Kerr-Taub-NUT"), e_(charge), e2_(e_ * e_), e4_(e2_ * e2_), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
+	KerrTaubNUT::KerrTaubNUT(double spin, double charge, double NUT, metric_mode mode) : Kerr(spin, mode), e_(charge), e2_(e_ * e_), e4_(e2_ * e2_), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
+	std::string KerrTaubNUT::Name() {
+		return "Kerr-Taub-NUT";
+	}
 	int KerrTaubNUT::MetricTensor(const double position[], gsl_matrix *metric) {
 		return 1;
 	}
