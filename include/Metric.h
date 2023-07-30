@@ -54,8 +54,10 @@ namespace SBody {
 		virtual Integrator GetIntegrator(int coordinate) = 0;
 	};
 	class Newton : public Metric {
-	  public:
+	  private:
 		const int PN_;
+
+	  public:
 		Newton(int PN, metric_mode mode);
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;

@@ -200,8 +200,39 @@ namespace SBody {
 		return 0;
 	}
 	Integrator Newton::GetIntegrator(int coordinate) {
-		Integrator integrator(metric::Newton::function, metric::Newton::jacobian, coordinate, this);
-		return integrator;
+		return Integrator(
+			[](double t, const double y[], double dydt[], void *params) -> int { // FIXME: rewrite in spherical coordinates
+				int PN = *static_cast<int *>(params);
+				const double r = Norm(y + 1), r_1 = 1. / r, v2 = Dot(y + 5);
+				const double m_r = r_1, rdot = Dot(y + 1, y + 5) * r_1;
+				const double F = m_r * gsl_pow_2(r_1), m_r2 = gsl_pow_2(m_r), rdot2 = gsl_pow_2(rdot);
+				dydt[0] = y[4];
+				dydt[1] = y[5];
+				dydt[2] = y[6];
+				dydt[3] = y[7];
+				dydt[4] = 0.;
+				double A = 0, B = 0;
+				if (PN & 1) {
+					A += (v2 - 4. * m_r);
+					B += (-4. * rdot);
+				}
+				if (PN & 2) {
+					A += m_r * (-2. * rdot2 + 9. * m_r);
+					B += 2. * m_r * rdot;
+				}
+				if (PN & 8) {
+					A += -16. * gsl_pow_3(m_r) + rdot2 * m_r2;
+					B += -4. * rdot * m_r2;
+				}
+				dydt[5] = -F * (y[1] + A * y[1] + B * y[5] * r);
+				dydt[6] = -F * (y[2] + A * y[2] + B * y[6] * r);
+				dydt[7] = -F * (y[3] + A * y[3] + B * y[7] * r);
+				return GSL_SUCCESS;
+			},
+			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int {
+				return GSL_SUCCESS;
+			},
+			coordinate, this);
 	}
 
 	Schwarzschild::Schwarzschild(metric_mode mode) : Metric(mode) {}
@@ -544,43 +575,6 @@ namespace SBody {
 	}
 
 	namespace metric {
-		namespace Newton {
-			int function(double t, const double y[], double dydt[], void *params) { // FIXME: rewrite in spherical coordinates
-				class Newton *newton = reinterpret_cast<class Newton *>(params);
-				const double r = Norm(y + 1), r_1 = 1. / r, v2 = Dot(y + 5);
-				const double m_r = r_1, rdot = Dot(y + 1, y + 5) * r_1;
-				const double F = m_r * gsl_pow_2(r_1), m_r2 = gsl_pow_2(m_r), rdot2 = gsl_pow_2(rdot);
-				dydt[0] = y[4];
-				dydt[1] = y[5];
-				dydt[2] = y[6];
-				dydt[3] = y[7];
-				dydt[4] = 0.;
-				double A = 0, B = 0;
-				if (newton->PN_ & 1) {
-					A += (v2 - 4. * m_r);
-					B += (-4. * rdot);
-					if (params != nullptr) {
-						A *= *(static_cast<double *>(params));
-						B *= *(static_cast<double *>(params));
-					}
-				}
-				if (newton->PN_ & 2) {
-					A += m_r * (-2. * rdot2 + 9. * m_r);
-					B += 2. * m_r * rdot;
-				}
-				if (newton->PN_ & 8) {
-					A += -16. * gsl_pow_3(m_r) + rdot2 * m_r2;
-					B += -4. * rdot * m_r2;
-				}
-				dydt[5] = -F * (y[1] + A * y[1] + B * y[5] * r);
-				dydt[6] = -F * (y[2] + A * y[2] + B * y[6] * r);
-				dydt[7] = -F * (y[3] + A * y[3] + B * y[7] * r);
-				return GSL_SUCCESS;
-			}
-			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
-				return GSL_SUCCESS;
-			}
-		} // namespace Newton
 		namespace Schwarzschild {
 			int function(double t, const double y[], double dydt[], void *params) {
 				dydt[0] = y[4]; // d\tau/dt
