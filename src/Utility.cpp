@@ -30,8 +30,12 @@ namespace SBody {
 	}
 	int Integrator::Apply(double *t, double t1, double *h, double *y) {
 		int status = 0;
-		while (status <= 0 && *t < t1)
-			status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
+		if (*h > 0)
+			while (status <= 0 && *t < t1)
+				status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
+		else
+			while (status <= 0 && *t > t1)
+				status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
 		if (coordinate_ == 2) {
 			if (y[2] <= -M_PI_2)
 				y[2] += M_PI;
@@ -73,9 +77,9 @@ namespace SBody {
 		return status;
 	}
 	int Integrator::Reset() {
-		if (int status = gsl_odeiv2_evolve_reset(evolve_); status)
+		if (int status = gsl_odeiv2_evolve_reset(evolve_); status != GSL_SUCCESS)
 			return status;
-		if (int status = gsl_odeiv2_step_reset(step_); status)
+		if (int status = gsl_odeiv2_step_reset(step_); status != GSL_SUCCESS)
 			return status;
 		return GSL_SUCCESS;
 	}
