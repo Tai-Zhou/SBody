@@ -103,6 +103,7 @@ namespace SBody {
 		int InitializeHelical(double r, double theta, double phi, double v_r, double v_phi);
 		int IntegratorApply(double *t, double t1, double *h);
 		int IntegratorApplyFixedStep(double *t, const double h);
+		int IntegratorReset();
 
 		/**
 		 * @brief Check if the star hit by the photon

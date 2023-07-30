@@ -178,6 +178,9 @@ namespace SBody {
 		}
 		return integrator_.ApplyFixedStep(t, h, position_);
 	}
+	int Star::IntegratorReset() {
+		return integrator_.Reset();
+	}
 	int Star::Hit(const double current[], const double last[]) {
 		double a2 = metric_->Distance(position_, current, 3);
 		if (a2 <= radius_square_)
