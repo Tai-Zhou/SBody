@@ -122,14 +122,6 @@ namespace SBody {
 		Integrator GetIntegrator(int coordinate) override;
 	};
 	namespace metric {
-		// from cartesian to spherical
-		int c2s(const double x[], const double v[], double r[], double w[]);
-		int c2s(const double x[], double r[]);
-
-		// from spherical to cartesian
-		int s2c(const double r[], const double w[], double x[], double v[]);
-		int s2c(const double r[], double x[]);
-
 		namespace Newton {
 			int function(double t, const double y[], double dydt[], void *params);
 			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
