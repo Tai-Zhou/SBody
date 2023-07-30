@@ -72,6 +72,14 @@ namespace SBody {
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
 		Integrator GetIntegrator(int coordinate) override;
 	};
+	class PN1 : public Newton {
+	  private:
+		const double PN1_;
+
+	  public:
+		PN1(double fSP, metric_mode mode);
+		Integrator GetIntegrator(int coordinate) override;
+	};
 	class Schwarzschild : public Metric {
 	  public:
 		Schwarzschild(metric_mode mode);

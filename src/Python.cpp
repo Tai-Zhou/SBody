@@ -34,7 +34,7 @@ namespace py = pybind11;
 using namespace std;
 using namespace SBody;
 
-py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp, double a = 5., double e = 0.884649, double inclination = 134.567, double ascending_node = 228.171, double periapsis = 66.263) {
+py::array_t<double> MCMC(double mass, int metric, double fSP, double R, double tp, double a = 5., double e = 0.884649, double inclination = 134.567, double ascending_node = 228.171, double periapsis = 66.263) {
 	Unit::Initialize(mass);
 	a *= Unit::mas * R * Unit::pc;
 	inclination *= M_PI / 180.;
@@ -43,9 +43,14 @@ py::array_t<double> MCMC(double mass, int metric, double PN, double R, double tp
 	double true_anomaly = M_PI;
 	size_t tStepNumber = 10000;
 	double t = (tp - 2002.) * Unit::yr - M_PI * sqrt(gsl_pow_3(a)), tStep = 0., tRec = 18. * Unit::yr / tStepNumber;
-	shared_ptr<Metric> main_metric = make_shared<Newton>(1, T);
+	shared_ptr<Metric> main_metric;
+	if (metric == 0)
+		main_metric = make_shared<PN1>(fSP, T);
+	else
+		main_metric = make_shared<Schwarzschild>(T);
 	Star star_0(main_metric, Unit::R_sun, 0);
-	star_0.InitializeKeplerian(a * Unit::mpc, e, inclination, periapsis, ascending_node, true_anomaly, 0., 0.);
+	if (metric == 0)
+		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, true_anomaly, 0., 0.);
 	auto result = py::array_t<double>(tStepNumber * 9);
 	double *result_ptr = static_cast<double *>(result.request().ptr);
 	double h = -1.;

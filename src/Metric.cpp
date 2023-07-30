@@ -24,73 +24,6 @@
 
 namespace SBody {
 	Metric::Metric(metric_mode mode) : mode_(mode) {}
-	int Metric::MetricTensor(const double position[], gsl_matrix *metric) {
-		gsl_matrix_set_zero(metric);
-		gsl_matrix_set(metric, 0, 0, -1.);
-		gsl_matrix_set(metric, 1, 1, 1.);
-		gsl_matrix_set(metric, 2, 2, gsl_pow_2(position[1]));
-		gsl_matrix_set(metric, 3, 3, gsl_pow_2(position[1] * sin(position[2])));
-		return GSL_SUCCESS;
-	}
-	double Metric::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
-		if (dimension == 3)
-			return x[1] * y[1] + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
-		return -x[0] * y[0] + x[1] * y[1] + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
-	}
-	double Metric::Distance(const double x[], const double y[], const size_t dimension) {
-		if (dimension == 3)
-			return gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * PhiDifference(x[3] - y[3]));
-		return -gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * PhiDifference(x[3] - y[3]));
-	}
-	int Metric::LagrangianToHamiltonian(double y[]) {
-		if (mode_ != HAMILTONIAN)
-			return 1;
-		return 1;
-	}
-	int Metric::HamiltonianToLagrangian(double y[]) {
-		if (mode_ != HAMILTONIAN)
-			return 1;
-		return 1;
-	}
-	double Metric::Energy(const double y[]) {
-		if (mode_ == T)
-			return -y[4];
-		else if (mode_ == TAU)
-			return 1.; // TODO:
-		else
-			return 1. - y[4];
-	}
-	double Metric::AngularMomentum(const double y[]) {
-		if (mode_ == T)
-			return gsl_pow_2(y[1]) * y[7] / y[4];
-		else if (mode_ == TAU)
-			return 1.; // TODO:
-		else
-			return y[7];
-	}
-	double Metric::CarterConstant(const double y[], const double mu2) {
-		if (mode_ == T)
-			return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2]))) / gsl_pow_2(y[4]);
-		else if (mode_ == TAU)
-			return 1.; // TODO:
-		else
-			return gsl_pow_2(y[6]) + gsl_pow_2(y[7] / tan(y[2]));
-	}
-	int Metric::NormalizeTimelikeGeodesic(double y[]) {
-		const double g00 = 1. - 2. / y[1];
-		if (g00 <= 0)
-			return 1;
-		y[4] = sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
-		return std::isnan(y[4]);
-	}
-	int Metric::NormalizeNullGeodesic(double y[], double frequency) {
-		const double coefficient = GSL_SIGN(y[4]) / sqrt(gsl_pow_2(y[5]) + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7]));
-		y[4] = frequency;
-		y[5] *= coefficient;
-		y[6] *= coefficient;
-		y[7] *= coefficient;
-		return 0;
-	}
 	int Metric::LocalInertialFrame(const double position[], gsl_matrix *coordinate, const double timelike[]) {
 		GslBlock collector;
 		gsl_matrix *metric = collector.MatrixAlloc(4, 4), *product = collector.MatrixAlloc(4, 4), *product_LU = collector.MatrixAlloc(4, 4);
@@ -144,13 +77,13 @@ namespace SBody {
 	}
 	int Newton::LagrangianToHamiltonian(double y[]) {
 		if (mode_ != HAMILTONIAN)
-			return 1;
-		return 1;
+			return GSL_FAILURE;
+		return GSL_FAILURE;
 	}
 	int Newton::HamiltonianToLagrangian(double y[]) {
 		if (mode_ != HAMILTONIAN)
-			return 1;
-		return 1;
+			return GSL_FAILURE;
+		return GSL_FAILURE;
 	}
 	double Newton::Energy(const double y[]) {
 		const double r = Norm(y + 1), r_1 = 1. / r, v2 = Dot(y + 5);
@@ -189,15 +122,15 @@ namespace SBody {
 	int Newton::NormalizeTimelikeGeodesic(double y[]) { // TODO: limit the light speed
 		y[4] = 1;
 		if (Dot(y + 5) >= 1)
-			return 1;
-		return 0;
+			return GSL_FAILURE;
+		return GSL_SUCCESS;
 	}
 	int Newton::NormalizeNullGeodesic(double y[], double frequency) {
 		y[4] = 1;
 		const double v_1 = GSL_SIGN(y[4]) / Norm(y + 5);
 		for (int i = 5; i < 8; ++i)
 			y[i] *= v_1;
-		return 0;
+		return GSL_SUCCESS;
 	}
 	Integrator Newton::GetIntegrator(int coordinate) {
 		return Integrator(
@@ -211,7 +144,7 @@ namespace SBody {
 				dydt[2] = y[6];
 				dydt[3] = y[7];
 				dydt[4] = 0.;
-				double A = 0, B = 0;
+				double A = 0., B = 0.;
 				if (PN & 1) {
 					A += (v2 - 4. * m_r);
 					B += (-4. * rdot);
@@ -232,7 +165,31 @@ namespace SBody {
 			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int {
 				return GSL_SUCCESS;
 			},
-			coordinate, this);
+			coordinate, const_cast<int *>(&this->PN_));
+	}
+	PN1::PN1(double fSP, metric_mode mode) : Newton(0, mode), PN1_(fSP){};
+	Integrator PN1::GetIntegrator(int coordinate) {
+		return Integrator(
+			[](double t, const double y[], double dydt[], void *params) -> int { // FIXME: rewrite in spherical coordinates
+				double PN1 = *static_cast<const double *>(params);
+				const double r = Norm(y + 1), r_1 = 1. / r, v2 = Dot(y + 5);
+				const double m_r = r_1, rdot = Dot(y + 1, y + 5) * r_1;
+				const double F = m_r * gsl_pow_2(r_1);
+				dydt[0] = y[4];
+				dydt[1] = y[5];
+				dydt[2] = y[6];
+				dydt[3] = y[7];
+				dydt[4] = 0.;
+				const double A = (v2 - 4. * m_r) * PN1, B = (-4. * rdot) * PN1;
+				dydt[5] = -F * (y[1] + A * y[1] + B * y[5] * r);
+				dydt[6] = -F * (y[2] + A * y[2] + B * y[6] * r);
+				dydt[7] = -F * (y[3] + A * y[3] + B * y[7] * r);
+				return GSL_SUCCESS;
+			},
+			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int {
+				return GSL_SUCCESS;
+			},
+			coordinate, const_cast<double *>(&this->PN1_));
 	}
 
 	Schwarzschild::Schwarzschild(metric_mode mode) : Metric(mode) {}
