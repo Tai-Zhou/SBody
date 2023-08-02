@@ -44,15 +44,18 @@ namespace SBody {
 		}
 		if (coordinate_ > 0)
 			y[3] = ModBy2Pi(y[3]);
-		/*if (!cartesian) {
-			y[2] = ModBy2Pi(y[2]);
-			if (y[2] >= M_PI) {
-				y[2] = M_2PI - y[2];
-				y[6] = -y[6];
-				y[3] += M_PI;
-			}
+		return status;
+	}
+	int Integrator::ApplyStep(double *t, double t1, double *h, double *y) {
+		int status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
+		if (coordinate_ == 2) {
+			if (y[2] <= -M_PI_2)
+				y[2] += M_PI;
+			if (y[2] > M_PI_2)
+				y[2] -= M_PI;
+		}
+		if (coordinate_ > 0)
 			y[3] = ModBy2Pi(y[3]);
-		}*/
 		return status;
 	}
 	int Integrator::ApplyFixedStep(double *t, const double h, double *y) {

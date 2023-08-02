@@ -95,6 +95,17 @@ namespace SBody {
 		int Apply(double *t, double t1, double *h, double *y);
 
 		/**
+		 * @brief `gsl_odeiv2_evolve_apply`.
+		 *
+		 * @param t time.
+		 * @param t1 maximum time not to be exceeded by the time step.
+		 * @param h step size.
+		 * @param y values of the integrated system.
+		 * @return status
+		 */
+		int ApplyStep(double *t, double t1, double *h, double *y);
+
+		/**
 		 * @brief `gsl_odeiv2_evolve_apply_fixed_step`.
 		 *
 		 * @param t time.
