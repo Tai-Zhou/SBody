@@ -33,7 +33,9 @@
 using namespace std;
 
 namespace SBody {
-	View::View(shared_ptr<Metric> metric, double r, double theta, string file_name) : metric_(metric), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.), output_(make_unique<NumPy>(file_name, vector<int>({9}))) {
+	View::View(shared_ptr<Metric> metric, double r, double theta, string file_name) : metric_(metric), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.) {
+		if (!file_name.empty())
+			output_ = make_unique<NumPy>(file_name, vector<int>({9}));
 		bar_ = make_unique<indicators::BlockProgressBar>(indicators::option::ShowElapsedTime{true},
 														 indicators::option::ShowRemainingTime{true},
 														 indicators::option::ForegroundColor{indicators::Color(4)},
@@ -65,12 +67,12 @@ namespace SBody {
 		}
 		return metric_->NormalizeNullGeodesic(photon, 1.);
 	}
-	int View::TraceStar(Star &star, int ray_number) { // FIXME:!!!!
+	int View::TraceStar(Star &star, int ray_number, double record[]) { // FIXME:!!!!
 		double star_position[8];
 		star.Position(star_position);
 		const double r_star = star_position[1], sin_theta_star = sin(star_position[2]), cos_theta_star = cos(star_position[2]), sin_phi_star = sin(star_position[3]), cos_phi_star = cos(star_position[3]);
 		if (r_star <= 3.)
-			fmt::print(stderr, "\033[103m[WRN]\033[0m star radius = {:.6f}\n", r_star);
+			fmt::print(stderr, "\033[103m[WRN]\033[0m star orbit radius = {:.6f}\n", r_star);
 		const double alpha_coefficient = sin_theta_star * sin_phi_star, beta_coefficient = cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_, iteration_coefficient = tanh(0.05 * r_star), cos_observer_star = sin_theta_observer_ * sin_theta_star * cos_phi_star + cos_theta_observer_ * cos_theta_star, sin_observer_star = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_star = acos(cos_observer_star);
 		double alpha0 = GSL_POSINF, alpha1 = 0, beta0 = GSL_POSINF, beta1 = 0, cosph, h;
 		if (cos_observer_star <= -1.) {
@@ -112,7 +114,7 @@ namespace SBody {
 				if (fixed)
 					status = integrator.ApplyFixedStep(gsl_vector_ptr(photon, 9), h, photon->data);
 				else
-					status = integrator.Apply(gsl_vector_ptr(photon, 9), t_final_, &h, photon->data);
+					status = integrator.ApplyStep(gsl_vector_ptr(photon, 9), t_final_, &h, photon->data);
 				cosph = (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 3))) * sin_theta_observer_ + (r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * cos_theta_observer_;
 				if (cosph > r_star * 1e-12) {
 					gsl_vector_memcpy(photon, last);
@@ -146,6 +148,15 @@ namespace SBody {
 				return status;
 			}
 		}
+		if (record == nullptr)
+			output_->Save({alpha1, beta1, star.Redshift(photon->data), (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s});
+		else {
+			record[0] = alpha1;
+			record[1] = beta1;
+			record[2] = star.Redshift(photon->data);
+			record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
+		}
+		return GSL_SUCCESS;
 		double photon2[9], cone_record[sample_number][3], local_cone_record[sample_number][3], area_record_initial[sample_number][3], area_record[sample_number][3], center_photon_position[3], center_photon_velocity[3], interval = M_2PI / sample_number;
 		auto photon2_position_view = gsl_vector_view_array(photon2, 4), photon2_velocity_view = gsl_vector_view_array(photon2 + 4, 4);
 		gsl_vector_set(photon, 0, 0.);
@@ -313,7 +324,14 @@ namespace SBody {
 #ifdef VIEW_TAU
 		output->Save({alpha1, beta1, star.RedshiftTau(photon), (photon[8] + photon[9]) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, cross_section_area_initial / epsilon_circle_area});
 #else
-		output_->Save({alpha1, beta1, star.Redshift(photon->data), (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, 0.5 * abs(cross_section_area_initial) / epsilon_circle_area});
+		if (record == nullptr)
+			output_->Save({alpha1, beta1, star.Redshift(photon->data), (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, 0.5 * abs(cross_section_area_initial) / epsilon_circle_area});
+		else {
+			record[0] = alpha1;
+			record[1] = beta1;
+			record[2] = star.Redshift(photon->data);
+			record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
+		}
 #endif
 		return 0;
 	}

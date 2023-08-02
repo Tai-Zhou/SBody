@@ -80,7 +80,7 @@ void Help() {
 int main(int argc, char *argv[]) {
 	// Application Entry
 	auto TStart = chrono::steady_clock::now();
-	double mass = 4.15e6, spin = 5., charge = 0., NUT = 0.9;
+	double mass = 4.261e6, spin = 0., charge = 0., NUT = 0.;
 	double tFinal = 3600.; // 128.43325526 for 4.15e6 M_sun
 	size_t tStepNumber = T_STEP_NUMBER;
 	int TCal = T_CAL;
@@ -89,9 +89,9 @@ int main(int argc, char *argv[]) {
 	size_t PN = 1;
 	size_t ray = 1;
 	int rest_mass = 1;
-	ProgressBar::display_ = false;
+	ProgressBar::display_ = true;
 	string store_format = "NumPy";
-	double inc = M_PI * 40. / 180., eps = 0.;
+	double inc = M_PI * 0. / 180., eps = 0.;
 	// double a = 8.3, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180. + M_PI_2, ascending_node = M_PI * 25.1 / 180., true_anomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
 	double a = 4.999960135538237, e = 0.884649, inclination = M_PI * 134.567 / 180., periapsis = M_PI * 66.263 / 180., ascending_node = M_PI * 228.171 / 180., true_anomaly = M_PI;
 	double input_parameter[10];
@@ -202,7 +202,8 @@ int main(int argc, char *argv[]) {
 		}
 	Unit::Initialize(mass);
 	tFinal *= Unit::s;
-	double t = 0, tStep = 0, tRec = tFinal / tStepNumber;
+	tFinal = 18 * Unit::yr;
+	double t = 8.3564958220072 * Unit::yr, tStep = 0., tRec = tFinal / tStepNumber;
 	if (metric == 0)
 		ray = 0;
 	shared_ptr<Metric> main_metric = make_shared<Schwarzschild>(T);
@@ -216,7 +217,8 @@ int main(int argc, char *argv[]) {
 	if (ray & 5) {
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps));
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view helical({:.2f},{:.6f},{:.6f},{:.6f},{:.6f})[{:f},{:f}]", 10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6, inc, eps));
-		viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view helical({:.2f},{:.6f},{:.6f},{:.6f},{:.6f})[{:f},{:f}]", a, inclination, periapsis, e, ascending_node, inc, eps));
+		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view helical({:f},{:f},{:f},{:f},{:f})[{:f},{:f}]", a, inclination, periapsis, e, ascending_node, inc, eps));
+		viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view S2H"));
 		if (ray & 4)
 			shadowPtr = make_unique<thread>(&View::Shadow, viewPtr.get());
 	}
@@ -227,21 +229,23 @@ int main(int argc, char *argv[]) {
 	}
 	// Integrator integ(metric::function, metric::jacobian, metric != 0);
 	Star star_0(main_metric, Unit::R_sun, 0);
-	// star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, true_anomaly, inc, eps);
+	star_0.InitializeSchwarzschildKeplerianApocenter(a * Unit::mpc, e, inclination, periapsis, ascending_node, inc, eps);
 	// star_0.InitializeGeodesic(a, inclination, periapsis, ascending_node, -0.16707659553531468, 0.3822615764261866, inc, eps);
-	// star_0.InitializeSchwarzschildKeplerian(a, e, inclination, periapsis, ascending_node, inc, eps);
-	star_0.InitializeHelical(10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6);
-	Integrator &&integrator = main_metric->GetIntegrator(metric != 0);
+	// star_0.InitializeSchwarzschildKeplerianApocenterHarmonic(a * Unit::mpc, e, inclination, periapsis, ascending_node, inc, eps);
+	// star_0.InitializeHelical(10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6);
+	// Integrator &&integrator = main_metric->GetIntegrator(metric != 0);
 	// NumPy rec(main_metric->Name() + strFormat, {12});
 	// NumPy rec(fmt::format("HotSpot a={:.1f} e={:.2f} i={:.6f} o={:.2f}", a, e, inclination, periapsis), {12});
-	NumPy rec(fmt::format("HotSpot r={:.1f} theta={:.2f} phi={:.6f} vr={:.2f}, vphi={:.2f}", a, inclination, periapsis, e, ascending_node), {12});
+	NumPy rec(fmt::format("mcmc test", a, inclination, periapsis, e, ascending_node), {12});
 	vector<double> temp(12);
 	int status = 0;
 	double h = 1., stepPercent = 100. / tStepNumber;
+	h = -1;
+	status = star_0.IntegratorApply(&t, 0., &h);
+	h = 1;
 	for (int i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
-		while (status <= 0 && t < tStep)
-			status = star_0.IntegratorApply(&t, tStep, &h);
+		status = star_0.IntegratorApply(&t, tStep, &h);
 		if (status > 0)
 			fmt::print(stderr, "\033[101m[ERR]\033[0m main status = {}\n", status);
 		if (metric == 0)
@@ -260,7 +264,7 @@ int main(int argc, char *argv[]) {
 		temp[10] = star_0.AngularMomentum();
 		temp[11] = star_0.CarterConstant();
 		if (ray & 1)
-			viewPtr->TraceStar(star_0, i);
+			viewPtr->TraceStar(star_0, i, nullptr);
 		if (ray & 2)
 			cameraPtr->TraceStar();
 		rec.Save(temp);

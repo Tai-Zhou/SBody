@@ -18,6 +18,7 @@
 #include <thread>
 #include <vector>
 
+#include <fmt/core.h>
 #include <gsl/gsl_math.h>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
@@ -44,6 +45,7 @@ py::array_t<double> MCMC(double mass, int metric, double fSP, double R, double t
 	size_t tStepNumber = 10000;
 	double t = (tp - 2002.) * Unit::yr - M_PI * sqrt(gsl_pow_3(a)), tStep = 0., tRec = 18. * Unit::yr / tStepNumber;
 	shared_ptr<Metric> main_metric;
+	unique_ptr<View> viewPtr;
 	if (metric == 0)
 		main_metric = make_shared<PN1>(fSP, T);
 	else
@@ -51,7 +53,11 @@ py::array_t<double> MCMC(double mass, int metric, double fSP, double R, double t
 	Star star_0(main_metric, Unit::R_sun, 0);
 	if (metric == 0)
 		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, true_anomaly, 0., 0.);
-	auto result = py::array_t<double>(tStepNumber * 9);
+	else {
+		star_0.InitializeSchwarzschildKeplerianApocenter(a, e, inclination, periapsis, ascending_node, 0., 0.);
+		viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, 0., fmt::format(""));
+	}
+	auto result = py::array_t<double>(tStepNumber * 14);
 	double *result_ptr = static_cast<double *>(result.request().ptr);
 	double h = -1.;
 	int status = 0;
@@ -65,13 +71,16 @@ py::array_t<double> MCMC(double mass, int metric, double fSP, double R, double t
 		if (status = star_0.IntegratorApply(&t, tStep, &h); status != 0)
 			py::print("[!] IntegratorApply status =", status);
 		star_0.Position(result_ptr);
-		if (metric != 0)
+		if (metric != 0) {
 			SphericalToCartesian(result_ptr);
+			viewPtr->TraceStar(star_0, i, result_ptr + 10);
+		}
+		result_ptr[8] = tStep / Unit::s;
 		const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
-		result_ptr[8] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1) * 299792.458;
-		result_ptr += 9;
+		result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1) * 299792.458;
+		result_ptr += 14;
 	}
-	return result.reshape({tStepNumber, 9UL});
+	return result.reshape({tStepNumber, 14UL});
 }
 
 PYBIND11_MODULE(SBoPy, m) {

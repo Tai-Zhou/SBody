@@ -61,7 +61,7 @@ namespace SBody {
 		 * @return int
 		 */
 
-		int TraceStar(Star &star, int ray_number);
+		int TraceStar(Star &star, int ray_number, double record[]);
 
 		/**
 		 * @brief
