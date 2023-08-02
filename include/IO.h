@@ -72,7 +72,7 @@ namespace SBody {
 		 * @param length Length of the data
 		 * @return int
 		 */
-		virtual int Save(const double *data, size_t length) = 0;
+		virtual int Save(const double data[], uint length) = 0;
 	};
 	/**
 	 * @brief
@@ -98,7 +98,7 @@ namespace SBody {
 		/// Destroy the NumPy object
 		~NumPy();
 		int Save(const std::vector<double> &data);
-		int Save(const double *data, size_t length);
+		int Save(const double *data, uint length);
 	};
 	/**
 	 * @brief
