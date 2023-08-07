@@ -132,9 +132,10 @@ namespace SBody {
 		return Integrator(
 			[](double t, const double y[], double dydt[], void *params) -> int {
 				int PN = *static_cast<int *>(params);
-				const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2]));
-				const double v2 = gsl_pow_2(y[5]) + gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
+				const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+				const double v_tan2 = gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
 				const double rdot = y[5], rdot2 = gsl_pow_2(y[5]);
+				const double v2 = rdot2 + v_tan2;
 				dydt[0] = y[4];
 				dydt[1] = y[5];
 				dydt[2] = y[6];
@@ -153,9 +154,10 @@ namespace SBody {
 					A += -16. * gsl_pow_3(r_1) + rdot2 * r_2;
 					B += -4. * rdot * r_2;
 				}
-				dydt[5] = -r_2 * (A + B * y[5]);
-				dydt[6] = -r_1 * B * y[6];
-				dydt[7] = -r_1 * B * sin_theta * y[7];
+				const double B_r2 = B * r_2;
+				dydt[5] = r_1 * v_tan2 - r_2 * A - B_r2 * y[5];
+				dydt[6] = sin_theta * cos_theta * gsl_pow_2(y[7]) - (2. * y[5] * r_1 + B_r2) * y[6];
+				dydt[7] = -(2. * cos_theta / sin_theta * y[6] + 2. * y[5] * r_1 + B_r2) * y[7];
 				return GSL_SUCCESS;
 			},
 			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int {
@@ -168,17 +170,18 @@ namespace SBody {
 		return Integrator(
 			[](double t, const double y[], double dydt[], void *params) -> int {
 				const double PN1 = *static_cast<const double *>(params);
-				const double r = y[1], r_1 = 1. / r, sin_theta = abs(sin(y[2]));
-				const double v2 = gsl_pow_2(y[5]) + gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
+				const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+				const double v_tan2 = gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
+				const double v2 = gsl_pow_2(y[5]) + v_tan2;
 				dydt[0] = y[4];
 				dydt[1] = y[5];
 				dydt[2] = y[6];
 				dydt[3] = y[7];
 				dydt[4] = 0.;
-				const double A = 1. + (v2 - 4. * r_1) * PN1, B = (-4. * y[5]) * PN1;
-				dydt[5] = -gsl_pow_2(r_1) * (A + B * y[5]);
-				dydt[6] = -r_1 * B * y[6];
-				dydt[7] = -r_1 * B * sin_theta * y[7];
+				const double A = 1. + (v2 - 4. * r_1) * PN1, B_r2 = -4. * y[5] * PN1 * r_2;
+				dydt[5] = r_1 * v_tan2 - r_2 * A - B_r2 * y[5];
+				dydt[6] = sin_theta * cos_theta * gsl_pow_2(y[7]) - (2. * y[5] * r_1 + B_r2) * y[6];
+				dydt[7] = -(2. * cos_theta / sin_theta * y[6] + 2. * y[5] * r_1 + B_r2) * y[7];
 				return GSL_SUCCESS;
 			},
 			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int {
