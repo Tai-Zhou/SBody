@@ -42,39 +42,39 @@ void InterruptHandler(int signum) {
 }
 
 void Help() {
-	fmt::print("\033[1mSBODY\033[0m ({})\n", VERSION);
-	fmt::print("  A relativistic ray tracing program.\n");
-	fmt::print("\n\033[1mOPTIONS\033[0m\n");
-	fmt::print("  -m --mass    [f]: mass of the source [{}] (M_sun)\n", MASS);
-	fmt::print("  -s --spin    [f]: spin of the source [{}]\n", SPIN);
-	fmt::print("  -l --NUT     [f]: NUT charge of the source [{}]\n", NUT);
-	fmt::print("  -K --kepler [6f]: 6 doubles, separated by \",\", in order of:\n");
-	fmt::print("                    semimajor axis (r_g)\n");
-	fmt::print("                    eccentricity\n");
-	fmt::print("                    inclination (deg)\n");
-	fmt::print("                    position angle of periapsis (deg)\n");
-	fmt::print("                    ascending node (deg)\n");
-	fmt::print("                    true anomaly (deg)\n");
-	fmt::print("  -E --ec      [f]: eccentricity of the star\n");
-	fmt::print("  -I --in      [f]: inclination of the star (deg)\n");
-	fmt::print("  -o --pe      [f]: position angle of periapsis of the star (deg)\n");
-	fmt::print("  -O --an      [f]: ascending node of the star (deg)\n");
-	fmt::print("  -t --time    [f]: time limit [{}] (s)\n", T_FINAL);
-	fmt::print("  -k --rec     [i]: record number [{}] (s)\n", T_STEP_NUMBER);
-	fmt::print("  -c --tcal    [i]: time limit of calculation [{}] (ms)\n", T_CAL);
-	fmt::print("  -n --metric  [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrTaubNUT (3) [{}]\n", METRIC);
-	fmt::print("  -P --PN      [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [{}]\n", PN);
-	fmt::print("  -R --ray     [i]: ray tracing, view (1) + shadow (4) + camera (2) [{}]\n", RAY);
-	fmt::print("  -a --abs     [f]: absolute accuracy [{}]\n", ABS_ACC);
-	fmt::print("  -r --rel     [f]: relative accuracy [{}]\n", REL_ACC);
-	fmt::print("  -i --inc     [f]: inclination of the BH\n");
-	fmt::print("  -e --eps     [f]: epsilon of the BH\n");
-	fmt::print("  -f --format  [s]: storage format [{}]\n", FORMAT);
-	fmt::print("  -L --light      : light instead of particle\n");
-	fmt::print("  -b --bar        : show progress bar\n");
-	fmt::print("  -h --help       : this help information\n");
-	fmt::print("\n\033[1mEXAMPLE\033[0m\n  $ SBody\n");
-	fmt::print("\n\033[1mSUPPORT\033[0m\n  github.com/Tai-Zhou/SBody\n");
+	PrintlnBold("\n{}SBODY{} ({})", VERSION);
+	fmt::println("  A relativistic ray tracing program.");
+	PrintlnBold("\n{}OPTIONS{}");
+	fmt::println("  -m --mass    [f]: mass of the source [{}] (M_sun)", MASS);
+	fmt::println("  -s --spin    [f]: spin of the source [{}]", SPIN);
+	fmt::println("  -l --NUT     [f]: NUT charge of the source [{}]", NUT);
+	fmt::println("  -K --kepler [6f]: 6 doubles, separated by \",\", in order of:");
+	fmt::println("                    semimajor axis (r_g)");
+	fmt::println("                    eccentricity");
+	fmt::println("                    inclination (deg)");
+	fmt::println("                    position angle of periapsis (deg)");
+	fmt::println("                    ascending node (deg)");
+	fmt::println("                    true anomaly (deg)");
+	fmt::println("  -E --ec      [f]: eccentricity of the star");
+	fmt::println("  -I --in      [f]: inclination of the star (deg)");
+	fmt::println("  -o --pe      [f]: position angle of periapsis of the star (deg)");
+	fmt::println("  -O --an      [f]: ascending node of the star (deg)");
+	fmt::println("  -t --time    [f]: time limit [{}] (s)", T_FINAL);
+	fmt::println("  -k --rec     [i]: record number [{}] (s)", T_STEP_NUMBER);
+	fmt::println("  -c --tcal    [i]: time limit of calculation [{}] (ms)", T_CAL);
+	fmt::println("  -n --metric  [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrTaubNUT (3) [{}]", METRIC);
+	fmt::println("  -P --PN      [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [{}]", PN);
+	fmt::println("  -R --ray     [i]: ray tracing, view (1) + shadow (4) + camera (2) [{}]", RAY);
+	fmt::println("  -a --abs     [f]: absolute accuracy [{}]", ABS_ACC);
+	fmt::println("  -r --rel     [f]: relative accuracy [{}]", REL_ACC);
+	fmt::println("  -i --inc     [f]: inclination of the BH");
+	fmt::println("  -e --eps     [f]: epsilon of the BH");
+	fmt::println("  -f --format  [s]: storage format [{}]", FORMAT);
+	fmt::println("  -L --light      : light instead of particle");
+	fmt::println("  -b --bar        : show progress bar");
+	fmt::println("  -h --help       : this help information");
+	PrintlnBold("\n{}EXAMPLE{}\n  $ sbody"); // TODO: add example
+	PrintlnBold("\n{}SUPPORT{}\n  github.com/Tai-Zhou/SBody");
 }
 
 int main(int argc, char *argv[]) {
@@ -241,24 +241,20 @@ int main(int argc, char *argv[]) {
 	int status = 0;
 	double h = 1., stepPercent = 100. / tStepNumber;
 	h = -1;
-	status = star_0.IntegratorApply(&t, 0., &h);
+	if (status = star_0.IntegratorApply(&t, 0., &h); status != 0)
+		PrintlnWarning("star_0.IntegratorApply() = {}", status);
 	h = 1;
+	if (status = star_0.IntegratorReset(); status != 0)
+		PrintlnWarning("star_0.IntegratorReset() = {}", status);
 	for (int i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
 		status = star_0.IntegratorApply(&t, tStep, &h);
 		if (status > 0)
-			fmt::print(stderr, "\033[101m[ERR]\033[0m main status = {}\n", status);
-		if (metric == 0)
-			star_0.Position(temp.data());
-		else {
-			if (Hamiltonian) {
-				star_0.Position(temp.data());
-				main_metric->HamiltonianToLagrangian(temp.data()); // TODO: might need s2c()
-			} else {
-				star_0.Position(temp.data());
-				SphericalToCartesian(temp.data());
-			}
-		}
+			PrintlnError("main status = {}", status);
+		star_0.Position(temp.data());
+		if (Hamiltonian)
+			main_metric->HamiltonianToLagrangian(temp.data());
+		SphericalToCartesian(temp.data());
 		temp[8] = t / Unit::s;
 		temp[9] = star_0.Energy();
 		temp[10] = star_0.AngularMomentum();

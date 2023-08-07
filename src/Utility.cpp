@@ -18,6 +18,8 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_math.h>
 
+#include "IO.h"
+
 namespace SBody {
 	double absolute_accuracy = 1e-15, relative_accuracy = 1e-15;
 	Integrator::Integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params, const gsl_odeiv2_step_type *type) : coordinate_(coordinate), control_(gsl_odeiv2_control_y_new(absolute_accuracy, relative_accuracy)), evolve_(gsl_odeiv2_evolve_alloc(8)), step_(gsl_odeiv2_step_alloc(type, 8)) {
@@ -199,7 +201,7 @@ namespace SBody {
 	int CartesianToSpherical(double x[], size_t dimension) {
 #ifndef GSL_RANGE_CHECK_OFF
 		if (dimension != 3 && dimension != 4 && dimension != 8) {
-			fmt::print(stderr, "\033[101m[ERR]\033[0m CartesianToSpherical dimension = {}\n", dimension);
+			PrintlnError("CartesianToSpherical dimension = {}", dimension);
 			return GSL_EINVAL;
 		}
 #endif
@@ -239,7 +241,7 @@ namespace SBody {
 	int SphericalToCartesian(double x[], size_t dimension) {
 #ifndef GSL_RANGE_CHECK_OFF
 		if (dimension != 3 && dimension != 4 && dimension != 8) {
-			fmt::print(stderr, "\033[101m[ERR]\033[0m SphericalToCartesian dimension = {}\n", dimension);
+			PrintlnError("SphericalToCartesian dimension = {}", dimension);
 			return GSL_EINVAL;
 		}
 #endif
