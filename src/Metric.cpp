@@ -86,80 +86,76 @@ namespace SBody {
 		return GSL_FAILURE;
 	}
 	double Newton::Energy(const double y[]) {
-		const double r = Norm(y + 1), r_1 = 1. / r, v2 = Dot(y + 5);
-		const double m_r = r_1, rdot = Dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2), v8 = gsl_pow_2(v4);
-		const double m_r2 = gsl_pow_2(m_r), m_r3 = gsl_pow_3(m_r), m_r4 = gsl_pow_4(m_r), rdot2 = gsl_pow_2(rdot);
-		double E = 0.5 * v2 - m_r;
+		const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), r_3 = gsl_pow_3(r_1), r_4 = gsl_pow_2(r_2);
+		const double v2 = gsl_pow_2(y[5]) + gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin(y[2]) * y[7])), v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2), v8 = gsl_pow_2(v4);
+		const double rdot = y[5], rdot2 = gsl_pow_2(rdot);
+		double E = 0.5 * v2 - r_1;
 		if (PN_ & 1)
-			E += 0.5 * m_r2 + 0.375 * v4 + 1.5 * v2 * m_r;
+			E += 0.5 * r_2 + 0.375 * v4 + 1.5 * r_1 * v2;
 		if (PN_ & 2)
-			E += -0.5 * m_r3 + 0.3125 * v6 + 1.75 * m_r2 * v2 + 0.5 * m_r2 * rdot2 + 2.625 * m_r * v4;
+			E += -0.5 * r_3 + 0.3125 * v6 + 1.75 * r_2 * v2 + 0.5 * r_2 * rdot2 + 2.625 * r_1 * v4;
 		if (PN_ & 8)
-			E += 0.375 * m_r4 + 1.25 * m_r3 * v2 + 1.5 * m_r3 * rdot2 + 0.2734375 * v8 + 8.4375 * m_r2 * v4 + 0.75 * m_r2 * v2 * rdot2 + 3.4375 * m_r * v6;
+			E += 0.375 * r_4 + 1.25 * r_3 * v2 + 1.5 * r_3 * rdot2 + 0.2734375 * v8 + 8.4375 * r_2 * v4 + 0.75 * r_2 * v2 * rdot2 + 3.4375 * r_1 * v6;
 		return E;
 	}
 	double Newton::AngularMomentum(const double y[]) {
-		const double r = Norm(y + 1), r_1 = 1. / r, v2 = Dot(y + 5);
-		const double m_r = r_1, rdot = Dot(y + 1, y + 5) * r_1, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2);
-		const double m_r2 = gsl_pow_2(m_r), m_r3 = gsl_pow_3(m_r), rdot2 = gsl_pow_2(rdot);
-		double J[3], eff = 0;
-		Cross(y, y + 3, J);
+		const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), r_3 = gsl_pow_3(r_1);
+		const double v_tan2 = gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin(y[2]) * y[7]));
+		const double v2 = gsl_pow_2(y[5]) + v_tan2, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2);
+		const double rdot = y[5], rdot2 = gsl_pow_2(rdot);
+		double eff = 1.;
 		if (PN_ & 1)
-			eff += 3. * m_r + 0.5 * v2;
+			eff += 3. * r_1 + 0.5 * v2;
 		if (PN_ & 2)
-			eff += 3.5 * m_r2 + 0.375 * v4 + 3.5 * m_r * v2;
+			eff += 3.5 * r_2 + 0.375 * v4 + 3.5 * r_1 * v2;
 		if (PN_ & 8)
-			eff += 2.5 * m_r3 + 0.3125 * v6 + 11.25 * m_r2 * v2 + 0.5 * m_r2 * rdot2 + 4.125 * m_r * v4;
-		for (int i = 0; i < 3; ++i)
-			J[i] += J[i] * eff;
-		return Norm(J);
+			eff += 2.5 * r_3 + 0.3125 * v6 + 11.25 * r_2 * v2 + 0.5 * r_2 * rdot2 + 4.125 * r_1 * v4;
+		return y[1] * sqrt(v_tan2) * eff;
 	}
 	double Newton::CarterConstant(const double y[], const double mu2) { // FIXME: not verified!
-		double c[3];
-		Cross(y + 1, y + 5, c);
-		return Dot(c) / gsl_pow_2(y[4]);
+		return gsl_pow_2(AngularMomentum(y));
 	}
-	int Newton::NormalizeTimelikeGeodesic(double y[]) { // TODO: limit the light speed
+	int Newton::NormalizeTimelikeGeodesic(double y[]) {
 		y[4] = 1;
-		if (Dot(y + 5) >= 1)
+		if (gsl_pow_2(y[5]) + gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin(y[2]) * y[7])) >= 1)
 			return GSL_FAILURE;
 		return GSL_SUCCESS;
 	}
 	int Newton::NormalizeNullGeodesic(double y[], double frequency) {
 		y[4] = 1;
-		const double v_1 = GSL_SIGN(y[4]) / Norm(y + 5);
+		const double v_1 = 1. / sqrt(gsl_pow_2(y[5]) + gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin(y[2]) * y[7])));
 		for (int i = 5; i < 8; ++i)
 			y[i] *= v_1;
 		return GSL_SUCCESS;
 	}
 	Integrator Newton::GetIntegrator(int coordinate) {
 		return Integrator(
-			[](double t, const double y[], double dydt[], void *params) -> int { // FIXME: rewrite in spherical coordinates
+			[](double t, const double y[], double dydt[], void *params) -> int {
 				int PN = *static_cast<int *>(params);
-				const double r = Norm(y + 1), r_1 = 1. / r, v2 = Dot(y + 5);
-				const double m_r = r_1, rdot = Dot(y + 1, y + 5) * r_1;
-				const double F = m_r * gsl_pow_2(r_1), m_r2 = gsl_pow_2(m_r), rdot2 = gsl_pow_2(rdot);
+				const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2]));
+				const double v2 = gsl_pow_2(y[5]) + gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
+				const double rdot = y[5], rdot2 = gsl_pow_2(y[5]);
 				dydt[0] = y[4];
 				dydt[1] = y[5];
 				dydt[2] = y[6];
 				dydt[3] = y[7];
 				dydt[4] = 0.;
-				double A = 0., B = 0.;
+				double A = 1., B = 0.;
 				if (PN & 1) {
-					A += (v2 - 4. * m_r);
-					B += (-4. * rdot);
+					A += v2 - 4. * r_1;
+					B += -4. * rdot;
 				}
 				if (PN & 2) {
-					A += m_r * (-2. * rdot2 + 9. * m_r);
-					B += 2. * m_r * rdot;
+					A += r_1 * (-2. * rdot2 + 9. * r_1);
+					B += 2. * r_1 * rdot;
 				}
 				if (PN & 8) {
-					A += -16. * gsl_pow_3(m_r) + rdot2 * m_r2;
-					B += -4. * rdot * m_r2;
+					A += -16. * gsl_pow_3(r_1) + rdot2 * r_2;
+					B += -4. * rdot * r_2;
 				}
-				dydt[5] = -F * (y[1] + A * y[1] + B * y[5] * r);
-				dydt[6] = -F * (y[2] + A * y[2] + B * y[6] * r);
-				dydt[7] = -F * (y[3] + A * y[3] + B * y[7] * r);
+				dydt[5] = -r_2 * (A + B * y[5]);
+				dydt[6] = -r_1 * B * y[6];
+				dydt[7] = -r_1 * B * sin_theta * y[7];
 				return GSL_SUCCESS;
 			},
 			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int {
@@ -170,20 +166,19 @@ namespace SBody {
 	PN1::PN1(double fSP, metric_mode mode) : Newton(0, mode), PN1_(fSP){};
 	Integrator PN1::GetIntegrator(int coordinate) {
 		return Integrator(
-			[](double t, const double y[], double dydt[], void *params) -> int { // FIXME: rewrite in spherical coordinates
-				double PN1 = *static_cast<const double *>(params);
-				const double r = Norm(y + 1), r_1 = 1. / r, v2 = Dot(y + 5);
-				const double m_r = r_1, rdot = Dot(y + 1, y + 5) * r_1;
-				const double F = m_r * gsl_pow_2(r_1);
+			[](double t, const double y[], double dydt[], void *params) -> int {
+				const double PN1 = *static_cast<const double *>(params);
+				const double r = y[1], r_1 = 1. / r, sin_theta = abs(sin(y[2]));
+				const double v2 = gsl_pow_2(y[5]) + gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
 				dydt[0] = y[4];
 				dydt[1] = y[5];
 				dydt[2] = y[6];
 				dydt[3] = y[7];
 				dydt[4] = 0.;
-				const double A = (v2 - 4. * m_r) * PN1, B = (-4. * rdot) * PN1;
-				dydt[5] = -F * (y[1] + A * y[1] + B * y[5] * r);
-				dydt[6] = -F * (y[2] + A * y[2] + B * y[6] * r);
-				dydt[7] = -F * (y[3] + A * y[3] + B * y[7] * r);
+				const double A = 1. + (v2 - 4. * r_1) * PN1, B = (-4. * y[5]) * PN1;
+				dydt[5] = -gsl_pow_2(r_1) * (A + B * y[5]);
+				dydt[6] = -r_1 * B * y[6];
+				dydt[7] = -r_1 * B * sin_theta * y[7];
 				return GSL_SUCCESS;
 			},
 			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int {

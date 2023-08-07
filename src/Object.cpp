@@ -51,7 +51,7 @@ namespace SBody {
 			position_[6] = xp6 * cos(observer_rotation) - xp5 * sin(observer_rotation);
 			position_[7] = xp7 * cos(observer_inclination) - (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * sin(observer_inclination);
 		}
-		// CartesianToSpherical(position_);
+		CartesianToSpherical(position_);
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
 	int Star::InitializeGeodesic(double orbital_radius, double inclination, double periapsis, double ascending_node, double v_r, double v_phi, double observer_inclination, double observer_rotation) {
