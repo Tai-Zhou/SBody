@@ -206,15 +206,12 @@ namespace SBody {
 		if (dimension == 3) {
 			const double position[3] = {x[0], x[1], x[2]};
 			return CartesianToSpherical(position, x);
-		} else {
-			const double position[3] = {x[1], x[2], x[3]};
-			if (dimension == 4)
-				return CartesianToSpherical(position, x + 1);
-			else {
-				const double velocity[3] = {x[5], x[6], x[7]};
-				return CartesianToSpherical(position, velocity, x + 1, x + 5);
-			}
 		}
+		const double position[3] = {x[1], x[2], x[3]};
+		if (dimension == 4)
+			return CartesianToSpherical(position, x + 1);
+		const double velocity[3] = {x[5], x[6], x[7]};
+		return CartesianToSpherical(position, velocity, x + 1, x + 5);
 	}
 	int CartesianToSpherical(const double cartesian[], double spherical[]) {
 		if (spherical[0] = Norm(cartesian); spherical[0] < epsilon)
@@ -249,15 +246,12 @@ namespace SBody {
 		if (dimension == 3) {
 			const double position[3] = {x[0], x[1], x[2]};
 			return SphericalToCartesian(position, x);
-		} else {
-			const double position[3] = {x[1], x[2], x[3]};
-			if (dimension == 4)
-				return SphericalToCartesian(position, x + 1);
-			else {
-				const double velocity[3] = {x[5], x[6], x[7]};
-				return SphericalToCartesian(position, velocity, x + 1, x + 5);
-			}
 		}
+		const double position[3] = {x[1], x[2], x[3]};
+		if (dimension == 4)
+			return SphericalToCartesian(position, x + 1);
+		const double velocity[3] = {x[5], x[6], x[7]};
+		return SphericalToCartesian(position, velocity, x + 1, x + 5);
 	}
 	int SphericalToCartesian(const double spherical[], double cartesian[]) {
 		const double sin_theta = sin(spherical[1]);
