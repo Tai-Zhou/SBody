@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) {
 		temp[10] = star_0.AngularMomentum();
 		temp[11] = star_0.CarterConstant();
 		if (ray & 1)
-			viewPtr->TraceStar(star_0, i, nullptr);
+			viewPtr->TraceStar(star_0, t, i, nullptr);
 		if (ray & 2)
 			cameraPtr->TraceStar();
 		rec.Save(temp);

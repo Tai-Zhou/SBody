@@ -128,7 +128,7 @@ namespace SBody {
 			y[i] *= v_1;
 		return GSL_SUCCESS;
 	}
-	Integrator Newton::GetIntegrator(int coordinate) {
+	Integrator Newton::GetIntegrator() {
 		return Integrator(
 			[](double t, const double y[], double dydt[], void *params) -> int {
 				int PN = *static_cast<int *>(params);
@@ -163,10 +163,10 @@ namespace SBody {
 			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int {
 				return GSL_SUCCESS;
 			},
-			coordinate, const_cast<int *>(&this->PN_));
+			const_cast<int *>(&this->PN_));
 	}
 	PN1::PN1(double fSP, metric_mode mode) : Newton(0, mode), PN1_(fSP){};
-	Integrator PN1::GetIntegrator(int coordinate) {
+	Integrator PN1::GetIntegrator() {
 		return Integrator(
 			[](double t, const double y[], double dydt[], void *params) -> int {
 				const double PN1 = *static_cast<const double *>(params);
@@ -187,7 +187,7 @@ namespace SBody {
 			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int {
 				return GSL_SUCCESS;
 			},
-			coordinate, const_cast<double *>(&this->PN1_));
+			const_cast<double *>(&this->PN1_));
 	}
 
 	Schwarzschild::Schwarzschild(metric_mode mode) : Metric(mode) {}
@@ -274,20 +274,20 @@ namespace SBody {
 		y[7] *= coefficient;
 		return 0;
 	}
-	Integrator Schwarzschild::GetIntegrator(int coordinate) {
+	Integrator Schwarzschild::GetIntegrator() {
 		switch (mode_) {
 		case T:
-			return Integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian, coordinate);
+			return Integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian);
 		case TAU:
-			return Integrator(metric::Schwarzschild::functionTau, metric::Schwarzschild::jacobianTau, coordinate);
+			return Integrator(metric::Schwarzschild::functionTau, metric::Schwarzschild::jacobianTau);
 		case HAMILTONIAN:
-			return Integrator(metric::Schwarzschild::functionHamiltonian, metric::Schwarzschild::jacobianHamiltonian, coordinate);
+			return Integrator(metric::Schwarzschild::functionHamiltonian, metric::Schwarzschild::jacobianHamiltonian);
 		case RIAF:
-			return Integrator(metric::Schwarzschild::functionRIAF, metric::Schwarzschild::jacobianRIAF, coordinate);
+			return Integrator(metric::Schwarzschild::functionRIAF, metric::Schwarzschild::jacobianRIAF);
 		case HELICAL:
-			return Integrator(metric::Schwarzschild::functionHelicalWithFixedRadialSpeed, metric::Schwarzschild::jacobianHelicalWithFixedRadialSpeed, coordinate);
+			return Integrator(metric::Schwarzschild::functionHelicalWithFixedRadialSpeed, metric::Schwarzschild::jacobianHelicalWithFixedRadialSpeed);
 		default:
-			return Integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian, coordinate);
+			return Integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian);
 		}
 	}
 
@@ -401,13 +401,13 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	Integrator Kerr::GetIntegrator(int coordinate) {
+	Integrator Kerr::GetIntegrator() {
 		if (mode_ == T)
-			return Integrator(metric::Kerr::function, metric::Kerr::jacobian, coordinate, this);
+			return Integrator(metric::Kerr::function, metric::Kerr::jacobian, this);
 		else if (mode_ == TAU)
-			return Integrator(metric::Kerr::functionTau, metric::Kerr::jacobianTau, coordinate, this);
+			return Integrator(metric::Kerr::functionTau, metric::Kerr::jacobianTau, this);
 		else
-			return Integrator(metric::Kerr::functionHamiltonian, metric::Kerr::jacobianHamiltonian, coordinate, this);
+			return Integrator(metric::Kerr::functionHamiltonian, metric::Kerr::jacobianHamiltonian, this);
 	}
 
 	KerrTaubNUT::KerrTaubNUT(double spin, double charge, double NUT, metric_mode mode) : Kerr(spin, mode), e_(charge), e2_(e_ * e_), e4_(e2_ * e2_), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
@@ -520,13 +520,13 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	Integrator KerrTaubNUT::GetIntegrator(int coordinate) {
+	Integrator KerrTaubNUT::GetIntegrator() {
 		if (mode_ == T)
-			return Integrator(metric::KerrTaubNUT::function, metric::KerrTaubNUT::jacobian, coordinate, this);
+			return Integrator(metric::KerrTaubNUT::function, metric::KerrTaubNUT::jacobian, this);
 		else if (mode_ == TAU)
-			return Integrator(metric::KerrTaubNUT::functionTau, metric::KerrTaubNUT::jacobianTau, coordinate, this);
+			return Integrator(metric::KerrTaubNUT::functionTau, metric::KerrTaubNUT::jacobianTau, this);
 		else
-			return Integrator(metric::KerrTaubNUT::functionHamiltonian, metric::KerrTaubNUT::jacobianHamiltonian, coordinate, this);
+			return Integrator(metric::KerrTaubNUT::functionHamiltonian, metric::KerrTaubNUT::jacobianHamiltonian, this);
 	}
 
 	namespace metric {

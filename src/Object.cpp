@@ -22,7 +22,7 @@ namespace SBody {
 	Object::Object(std::shared_ptr<Metric> metric) : metric_(metric) {
 		object_list_.push_back(this);
 	}
-	Star::Star(std::shared_ptr<Metric> metric, double radius, bool fixed) : Object(metric), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)), integrator_(metric->GetIntegrator(metric->Name() != "Newton")) {
+	Star::Star(std::shared_ptr<Metric> metric, double radius, bool fixed) : Object(metric), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)), integrator_(metric->GetIntegrator()) {
 		for (int i = 0; i < 8; ++i)
 			position_[i] = 0;
 	}
@@ -44,7 +44,7 @@ namespace SBody {
 			position_[6] = 0.;
 			position_[7] = 0.;
 		} else {
-			const double vphi = sqrt((1 - e * e) * a) / r, vr = GSL_SIGN(M_PI - ModBy2Pi(true_anomaly)) * sqrt(std::max(0., 2. / r - 1. / a - vphi * vphi));
+			const double vphi = sqrt((1 - e * e) * a) / r, vr = GSL_SIGN(PhiDifference(true_anomaly)) * sqrt(std::max(0., 2. / r - 1. / a - vphi * vphi));
 			const double tp5 = vphi * sin(periapsis) - vr * cos(periapsis), tp6 = -(vphi * cos(periapsis) + vr * sin(periapsis)) * cos(inclination);
 			const double xp5 = tp5 * cos(ascending_node) - tp6 * sin(ascending_node), xp6 = tp5 * sin(ascending_node) + tp6 * cos(ascending_node), xp7 = -(vphi * cos(periapsis) + vr * sin(periapsis)) * sin(inclination);
 			position_[5] = (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * cos(observer_inclination) + xp7 * sin(observer_inclination);

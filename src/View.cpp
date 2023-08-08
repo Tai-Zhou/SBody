@@ -51,11 +51,11 @@ namespace SBody {
 			const double k = gsl_hypot(alpha, beta);
 			if (theta_ < M_PI_2) {
 				photon[2] = 1e-15;
-				photon[3] = ModBy2Pi(atan2(alpha, -beta));
+				photon[3] = atan2(alpha, -beta);
 				photon[6] = -k / gsl_pow_2(r_);
 			} else {
 				photon[2] = M_PI - 1e-15;
-				photon[3] = ModBy2Pi(atan2(alpha, beta));
+				photon[3] = atan2(alpha, beta);
 				photon[6] = k / gsl_pow_2(r_);
 			}
 			photon[7] = 0.;
@@ -67,7 +67,7 @@ namespace SBody {
 		}
 		return metric_->NormalizeNullGeodesic(photon, 1.);
 	}
-	int View::TraceStar(Star &star, int ray_number, double record[]) { // FIXME:!!!!
+	int View::TraceStar(Star &star, double t, int ray_number, double record[]) { // FIXME:!!!!
 		double star_position[8];
 		star.Position(star_position);
 		const double r_star = star_position[1], sin_theta_star = sin(star_position[2]), cos_theta_star = cos(star_position[2]), sin_phi_star = sin(star_position[3]), cos_phi_star = cos(star_position[3]);
@@ -98,7 +98,7 @@ namespace SBody {
 		vector<double> qdq(12);
 		IO::NumPy rec("Trace " + to_string(ray_number), 12);
 #endif
-		Integrator &&integrator = metric_->GetIntegrator(2);
+		Integrator &&integrator = metric_->GetIntegrator();
 		while (gsl_hypot(alpha1 - alpha0, beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
 			alpha0 = alpha1;
 			beta0 = beta1;
@@ -337,7 +337,7 @@ namespace SBody {
 		return 0;
 	}
 	int View::OmegaTest() {
-		Integrator &&integrator = metric_->GetIntegrator(2);
+		Integrator &&integrator = metric_->GetIntegrator();
 		double position_[8] = {0., 3., M_PI_4, 0., 0., 0., 0., 0.};
 		metric_->NormalizeTimelikeGeodesic(position_);
 		gsl_matrix *coordinate = gsl_matrix_alloc(4, 4), *gmunu = gsl_matrix_alloc(4, 4), *coordinate_gmunu = gsl_matrix_alloc(4, 4);
@@ -434,7 +434,7 @@ namespace SBody {
 		const double interval = M_2PI / sample_number;
 		NumPy rec("shadow", {2});
 		double h, rin = 2., rout = 10., rmid = 6., photon[10];
-		Integrator &&integrator = metric_->GetIntegrator(2);
+		Integrator &&integrator = metric_->GetIntegrator();
 		bar_->set_option(indicators::option::MaxProgress(sample_number));
 		bar_->set_option(indicators::option::PrefixText("? Shadow"));
 		int progressBarIndex = ProgressBar::bars_.push_back(*bar_);
@@ -485,7 +485,7 @@ namespace SBody {
 		for (int p = pixel * pixel - 1; p >= 0; --p) {
 			int status = 0;
 			initials_[p][9] = -1.;
-			Integrator &&integrator = metric_->GetIntegrator(2);
+			Integrator &&integrator = metric_->GetIntegrator();
 			metric_->NormalizeNullGeodesic(initials_[p].data(), 1.);
 			metric_->LagrangianToHamiltonian(initials_[p].data());
 			while (status <= 0 && initials_[p][8] > t1 && initials_[p][1] > 100)
@@ -503,7 +503,7 @@ namespace SBody {
 			double ph[10], last[10];
 			int status = 0;
 			copy(initials_[p].begin(), initials_[p].end(), ph);
-			Integrator &&integrator = metric_->GetIntegrator(2);
+			Integrator &&integrator = metric_->GetIntegrator();
 			while (status <= 0 && ph[8] > t1) {
 				copy(ph, ph + 10, last);
 				status = integrator.Apply(ph + 8, t1, ph + 9, ph);
@@ -529,7 +529,7 @@ namespace SBody {
 				double ph[10];
 				int status = 0;
 				copy(initials_[i * pixel_ + j].begin(), initials_[i * pixel_ + j].end(), ph);
-				Integrator &&integrator = metric_->GetIntegrator(2);
+				Integrator &&integrator = metric_->GetIntegrator();
 				while (status <= 0 && ph[8] > t1 && ph[1] > 3. && ph[1] < 3.e2)
 					status = integrator.Apply(ph + 8, t1, ph + 9, ph);
 				if (status > 0)

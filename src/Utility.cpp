@@ -22,7 +22,7 @@
 
 namespace SBody {
 	double absolute_accuracy = 1e-15, relative_accuracy = 1e-15;
-	Integrator::Integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params, const gsl_odeiv2_step_type *type) : coordinate_(coordinate), control_(gsl_odeiv2_control_y_new(absolute_accuracy, relative_accuracy)), evolve_(gsl_odeiv2_evolve_alloc(8)), step_(gsl_odeiv2_step_alloc(type, 8)) {
+	Integrator::Integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), void *params, const gsl_odeiv2_step_type *type) : control_(gsl_odeiv2_control_y_new(absolute_accuracy, relative_accuracy)), evolve_(gsl_odeiv2_evolve_alloc(8)), step_(gsl_odeiv2_step_alloc(type, 8)) {
 		system_ = gsl_odeiv2_system{function, jacobian, 8UL, params};
 	}
 	Integrator::~Integrator() {
@@ -38,47 +38,20 @@ namespace SBody {
 		else
 			while (status <= 0 && *t > t1)
 				status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
-		if (coordinate_ == 2) {
-			if (y[2] <= -M_PI_2)
-				y[2] += M_PI;
-			if (y[2] > M_PI_2)
-				y[2] -= M_PI;
-		}
-		if (coordinate_ > 0)
-			y[3] = ModBy2Pi(y[3]);
+		MapTheta(y[2]);
+		ModBy2Pi(y[3]);
 		return status;
 	}
 	int Integrator::ApplyStep(double *t, double t1, double *h, double *y) {
 		int status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
-		if (coordinate_ == 2) {
-			if (y[2] <= -M_PI_2)
-				y[2] += M_PI;
-			if (y[2] > M_PI_2)
-				y[2] -= M_PI;
-		}
-		if (coordinate_ > 0)
-			y[3] = ModBy2Pi(y[3]);
+		MapTheta(y[2]);
+		ModBy2Pi(y[3]);
 		return status;
 	}
 	int Integrator::ApplyFixedStep(double *t, const double h, double *y) {
 		int status = gsl_odeiv2_evolve_apply_fixed_step(evolve_, control_, step_, &system_, t, h, y);
-		if (coordinate_ == 2) {
-			if (y[2] <= -M_PI_2)
-				y[2] += M_PI;
-			if (y[2] > M_PI_2)
-				y[2] -= M_PI;
-		}
-		if (coordinate_ > 0)
-			y[3] = ModBy2Pi(y[3]);
-		/*if (!cartesian) {
-			y[2] = ModBy2Pi(y[2]);
-			if (y[2] >= M_PI) {
-				y[2] = M_2PI - y[2];
-				y[6] = -y[6];
-				y[3] += M_PI;
-			}
-			y[3] = ModBy2Pi(y[3]);
-		}*/
+		MapTheta(y[2]);
+		ModBy2Pi(y[3]);
 		return status;
 	}
 	int Integrator::Reset() {
@@ -219,7 +192,7 @@ namespace SBody {
 		if (spherical[0] = Norm(cartesian); spherical[0] < epsilon)
 			return GSL_EZERODIV;
 		spherical[1] = acos(cartesian[2] / spherical[0]);
-		spherical[2] = ModBy2Pi(atan2(cartesian[1], cartesian[0]));
+		spherical[2] = atan2(cartesian[1], cartesian[0]);
 		return GSL_SUCCESS;
 	}
 	int CartesianToSpherical(const double cartesian_position[], const double cartesian_velocity[], double spherical_position[], double spherical_velocity[]) {
@@ -228,11 +201,11 @@ namespace SBody {
 		spherical_position[1] = acos(cartesian_position[2] / spherical_position[0]);
 		spherical_velocity[0] = SBody::Dot(cartesian_position, cartesian_velocity) / spherical_position[0];
 		if (const double norm_x_y = Norm(cartesian_position, 2); norm_x_y < epsilon) {
-			spherical_position[2] = ModBy2Pi(atan2(cartesian_velocity[1], cartesian_velocity[0]));
+			spherical_position[2] = atan2(cartesian_velocity[1], cartesian_velocity[0]);
 			spherical_velocity[1] = GSL_SIGN(cartesian_position[2]) * Norm(cartesian_velocity, 2) / spherical_position[0];
 			spherical_velocity[2] = 0;
 		} else {
-			spherical_position[2] = ModBy2Pi(atan2(cartesian_position[1], cartesian_position[0]));
+			spherical_position[2] = atan2(cartesian_position[1], cartesian_position[0]);
 			spherical_velocity[1] = (-cartesian_velocity[2] + cartesian_position[2] / spherical_position[0] * spherical_velocity[0]) / norm_x_y;
 			spherical_velocity[2] = (cartesian_velocity[1] * cartesian_position[0] - cartesian_velocity[0] * cartesian_position[1]) / gsl_pow_2(norm_x_y);
 		}
@@ -277,19 +250,24 @@ namespace SBody {
 	int OppositeSign(double x, double y) {
 		return (x >= 0. && y <= 0.) || (x <= 0. && y >= 0.);
 	}
-	double ModBy2Pi(double x) {
-		while (x < 0)
-			x += M_2PI;
-		while (x >= M_2PI)
-			x -= M_2PI;
-		return x;
+	void MapTheta(double &theta) {
+		if (theta <= -M_PI_2)
+			theta += M_PI;
+		else if (theta > M_PI_2)
+			theta -= M_PI;
 	}
-	double PhiDifference(double x) {
-		while (x <= -M_PI)
-			x += M_2PI;
-		while (x > M_PI)
-			x -= M_2PI;
-		return x;
+	void ModBy2Pi(double &phi) {
+		while (phi < 0)
+			phi += M_2PI;
+		while (phi >= M_2PI)
+			phi -= M_2PI;
+	}
+	double PhiDifference(double phi) {
+		while (phi <= -M_PI)
+			phi += M_2PI;
+		while (phi > M_PI)
+			phi -= M_2PI;
+		return phi;
 	}
 	double _0x(double x) {
 		return x > 0 ? x : 0;

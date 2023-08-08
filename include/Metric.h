@@ -51,7 +51,7 @@ namespace SBody {
 		virtual double CarterConstant(const double y[], const double mu2) = 0;
 		virtual int NormalizeTimelikeGeodesic(double y[]) = 0;
 		virtual int NormalizeNullGeodesic(double y[], double frequency = 1.) = 0;
-		virtual Integrator GetIntegrator(int coordinate) = 0;
+		virtual Integrator GetIntegrator() = 0;
 	};
 	class Newton : public Metric {
 	  private:
@@ -70,7 +70,7 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator(int coordinate) override;
+		Integrator GetIntegrator() override;
 	};
 	class PN1 : public Newton {
 	  private:
@@ -78,7 +78,7 @@ namespace SBody {
 
 	  public:
 		PN1(double fSP, metric_mode mode);
-		Integrator GetIntegrator(int coordinate) override;
+		Integrator GetIntegrator() override;
 	};
 	class Schwarzschild : public Metric {
 	  public:
@@ -94,7 +94,7 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator(int coordinate) override;
+		Integrator GetIntegrator() override;
 	};
 	class Kerr : public Schwarzschild {
 	  public:
@@ -111,7 +111,7 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator(int coordinate) override;
+		Integrator GetIntegrator() override;
 	};
 	class KerrTaubNUT : public Kerr {
 	  public:
@@ -129,7 +129,7 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator(int coordinate) override;
+		Integrator GetIntegrator() override;
 	};
 	namespace metric {
 		namespace Newton {

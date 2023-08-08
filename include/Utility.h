@@ -55,8 +55,6 @@ namespace SBody {
 	class Integrator {
 	  private:
 		///
-		const int coordinate_;
-		///
 		gsl_odeiv2_control *control_;
 		///
 		gsl_odeiv2_evolve *evolve_;
@@ -78,7 +76,7 @@ namespace SBody {
 		 * @param params The parameters passed to the function, like the PN parameter, or the spin of the black hole.
 		 * @param type Type of the algorithms. Explicit embedded Runge-Kutta Prince-Dormand (8, 9) method is set by default.
 		 */
-		Integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), int coordinate, void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
+		Integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd);
 
 		/// Destructor
 		~Integrator();
@@ -354,20 +352,26 @@ namespace SBody {
 	int OppositeSign(double x, double y);
 
 	/**
-	 * @brief Return `x` in \f$[0, 2\pi)\f$.
+	 * @brief Map `theta` from \f$(\pi/2, \pi]\f$ to \f$(-\pi/2, 0]\f$.
 	 *
-	 * @param x
-	 * @return result
+	 * @param theta
 	 */
-	double ModBy2Pi(double x);
+	void MapTheta(double &theta);
 
 	/**
-	 * @brief Similar to `ModBy2Pi`, but return `x` in \f$(-\pi, \pi]\f$.
+	 * @brief Return `phi` in \f$[0, 2\pi)\f$.
 	 *
-	 * @param x
+	 * @param phi
+	 */
+	void ModBy2Pi(double &phi);
+
+	/**
+	 * @brief Similar to `ModBy2Pi`, but return `phi` in \f$(-\pi, \pi]\f$.
+	 *
+	 * @param phi
 	 * @return result
 	 */
-	double PhiDifference(double x);
+	double PhiDifference(double phi);
 
 	/**
 	 * @brief
