@@ -74,6 +74,7 @@ namespace SBody {
 	 */
 	class Star : public Object {
 	  protected:
+		coordinate_system coordinate_;
 		/// 8 dimensional information
 		double position_[8];
 		/// if the position fixed
@@ -93,8 +94,9 @@ namespace SBody {
 		 * @param radius radius
 		 * @param fixed whether the position of the star is fixed
 		 */
-		Star(std::shared_ptr<Metric> metric, double radius = 0, bool fixed = false);
+		Star(std::shared_ptr<Metric> metric, coordinate_system coordinate, motion_mode motion, double radius = 0, bool fixed = false);
 		int Position(double *position);
+		int Position(double *position, double t);
 		int InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination = 0., double observer_rotation = 0.);
 		int InitializeGeodesic(double orbital_radius, double inclination, double periapsis, double ascending_node, double v_r, double v_phi, double observer_inclination = 0., double observer_rotation = 0.);
 		int InitializeSchwarzschildKeplerianPericenter(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation);
@@ -135,73 +137,6 @@ namespace SBody {
 		double Energy();
 		double AngularMomentum();
 		double CarterConstant();
-	};
-	/**
-	 * @brief
-	 *
-	 */
-	class Disk : public Object {
-	  protected:
-		/// inner radius
-		const double inner_radius_;
-		/// outer radius
-		const double outer_radius_;
-		/// emissivity index
-		const double emissivity_index_;
-
-	  public:
-		/**
-		 * @brief Construct a new Disk object
-		 *
-		 * @param metric
-		 * @param inner_radius
-		 * @param outer_radius
-		 */
-		Disk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius, double emissivity_index = 0.);
-		int Hit(const double current[], const double last[] = nullptr);
-		double Redshift(const double ph[]);
-	};
-	/**
-	 * @brief
-	 *
-	 */
-	class ThickDisk : public Disk {
-	  protected:
-		const double half_angle_;
-
-	  public:
-		/**
-		 * @brief Construct a new Thick Disk object
-		 *
-		 * @param metric
-		 * @param inner_radius
-		 * @param outer_radius
-		 * @param half_angle
-		 */
-		ThickDisk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius, double half_angle);
-		int Hit(const double current[], const double last[] = nullptr);
-		double Redshift(const double ph[]);
-	};
-	/**
-	 * @brief
-	 *
-	 */
-	class Torus : public Object {
-	  protected:
-		const double major_radius_;
-		const double minor_radius_;
-
-	  public:
-		/**
-		 * @brief Construct a new Torus object
-		 *
-		 * @param metric
-		 * @param major_radius
-		 * @param minor_radius
-		 */
-		Torus(std::shared_ptr<Metric> metric, double major_radius, double minor_radius);
-		int Hit(const double current[], const double last[] = nullptr);
-		double Redshift(const double ph[]);
 	};
 } // namespace SBody
 

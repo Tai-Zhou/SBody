@@ -23,9 +23,11 @@ namespace SBody {
 	 * @brief
 	 *
 	 */
-	enum metric_mode { T,
-					   TAU,
-					   HAMILTONIAN,
+	enum coordinate_system { BASE,
+							 LAGRANGIAN,
+							 HAMILTONIAN };
+
+	enum motion_mode { GEODESIC,
 					   RIAF,
 					   HELICAL };
 
@@ -34,108 +36,100 @@ namespace SBody {
 	 *
 	 */
 	class Metric {
-	  protected:
-		int mode_;
-
 	  public:
-		Metric(metric_mode mode);
 		virtual std::string Name() = 0;
 		virtual int MetricTensor(const double position[], gsl_matrix *metric) = 0;
 		virtual double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) = 0;
 		virtual double Distance(const double x[], const double y[], const size_t dimension) = 0;
 		int LocalInertialFrame(const double position[], gsl_matrix *coordinate, const double timelike[] = nullptr);
-		virtual int LagrangianToHamiltonian(double y[]) = 0;
-		virtual int HamiltonianToLagrangian(double y[]) = 0;
-		virtual double Energy(const double y[]) = 0;
-		virtual double AngularMomentum(const double y[]) = 0;
-		virtual double CarterConstant(const double y[], const double mu2) = 0;
+		virtual int BaseToHamiltonian(double y[]) = 0;
+		virtual int HamiltonianToBase(double y[]) = 0;
+		virtual double Energy(const double y[], coordinate_system coordinate) = 0;
+		virtual double AngularMomentum(const double y[], coordinate_system coordinate) = 0;
+		virtual double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) = 0;
 		virtual int NormalizeTimelikeGeodesic(double y[]) = 0;
 		virtual int NormalizeNullGeodesic(double y[], double frequency = 1.) = 0;
-		virtual Integrator GetIntegrator() = 0;
+		virtual Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) = 0;
 	};
 	class Newton : public Metric {
 	  private:
 		const int PN_;
 
 	  public:
-		Newton(int PN, metric_mode mode);
+		Newton(int PN);
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;
 		double Distance(const double x[], const double y[], const size_t dimension) override;
-		int LagrangianToHamiltonian(double y[]) override;
-		int HamiltonianToLagrangian(double y[]) override;
-		double Energy(const double y[]) override;
-		double AngularMomentum(const double y[]) override;
-		double CarterConstant(const double y[], const double mu2) override;
+		int BaseToHamiltonian(double y[]) override;
+		int HamiltonianToBase(double y[]) override;
+		double Energy(const double y[], coordinate_system coordinate) override;
+		double AngularMomentum(const double y[], coordinate_system coordinate) override;
+		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator() override;
+		Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class PN1 : public Newton {
 	  private:
 		const double PN1_;
 
 	  public:
-		PN1(double fSP, metric_mode mode);
-		Integrator GetIntegrator() override;
+		PN1(double fSP);
+		Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class Schwarzschild : public Metric {
 	  public:
-		Schwarzschild(metric_mode mode);
+		Schwarzschild();
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;
 		double Distance(const double x[], const double y[], const size_t dimension) override;
-		int LagrangianToHamiltonian(double y[]) override;
-		int HamiltonianToLagrangian(double y[]) override;
-		double Energy(const double y[]) override;
-		double AngularMomentum(const double y[]) override;
-		double CarterConstant(const double y[], const double mu2) override;
+		int BaseToHamiltonian(double y[]) override;
+		int HamiltonianToBase(double y[]) override;
+		double Energy(const double y[], coordinate_system coordinate) override;
+		double AngularMomentum(const double y[], coordinate_system coordinate) override;
+		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator() override;
+		Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class Kerr : public Schwarzschild {
 	  public:
 		const double a_, a2_, a4_;
-		Kerr(double spin, metric_mode mode);
+		Kerr(double spin);
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;
 		double Distance(const double x[], const double y[], const size_t dimension) override;
-		int LagrangianToHamiltonian(double y[]) override;
-		int HamiltonianToLagrangian(double y[]) override;
-		double Energy(const double y[]) override;
-		double AngularMomentum(const double y[]) override;
-		double CarterConstant(const double y[], const double mu2) override;
+		int BaseToHamiltonian(double y[]) override;
+		int HamiltonianToBase(double y[]) override;
+		double Energy(const double y[], coordinate_system coordinate) override;
+		double AngularMomentum(const double y[], coordinate_system coordinate) override;
+		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator() override;
+		Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class KerrTaubNUT : public Kerr {
 	  public:
 		const double e_, e2_, e4_;
 		const double l_, l2_, l4_;
-		KerrTaubNUT(double spin, double charge, double NUT, metric_mode mode);
+		KerrTaubNUT(double spin, double charge, double NUT);
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;
 		double Distance(const double x[], const double y[], const size_t dimension) override;
-		int LagrangianToHamiltonian(double y[]) override;
-		int HamiltonianToLagrangian(double y[]) override;
-		double Energy(const double y[]) override;
-		double AngularMomentum(const double y[]) override;
-		double CarterConstant(const double y[], const double mu2) override;
+		int BaseToHamiltonian(double y[]) override;
+		int HamiltonianToBase(double y[]) override;
+		double Energy(const double y[], coordinate_system coordinate) override;
+		double AngularMomentum(const double y[], coordinate_system coordinate) override;
+		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator() override;
+		Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	namespace metric {
-		namespace Newton {
-			int function(double t, const double y[], double dydt[], void *params);
-			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
-		} // namespace Newton
 		namespace Schwarzschild {
 			int function(double t, const double y[], double dydt[], void *params);
 			int functionTau(double t, const double y[], double dydt[], void *params);

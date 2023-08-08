@@ -20,10 +20,10 @@
 #include <gsl/gsl_permutation.h>
 #include <gsl/gsl_vector.h>
 
+#include "IO.h"
 #include "Utility.h"
 
 namespace SBody {
-	Metric::Metric(metric_mode mode) : mode_(mode) {}
 	int Metric::LocalInertialFrame(const double position[], gsl_matrix *coordinate, const double timelike[]) {
 		GslBlock collector;
 		gsl_matrix *metric = collector.MatrixAlloc(4, 4), *product = collector.MatrixAlloc(4, 4), *product_LU = collector.MatrixAlloc(4, 4);
@@ -53,7 +53,7 @@ namespace SBody {
 		return isnan(gsl_matrix_get(coordinate, 3, 0)) ? 1 : 0;
 	}
 
-	Newton::Newton(int PN, metric_mode mode) : Metric(mode), PN_(PN){};
+	Newton::Newton(int PN) : PN_(PN){};
 	std::string Newton::Name() {
 		return "Newton";
 	}
@@ -75,17 +75,13 @@ namespace SBody {
 			return gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[2] - y[2]) + gsl_pow_2(x[3] - y[3]);
 		return -gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[2] - y[2]) + gsl_pow_2(x[3] - y[3]);
 	}
-	int Newton::LagrangianToHamiltonian(double y[]) {
-		if (mode_ != HAMILTONIAN)
-			return GSL_FAILURE;
+	int Newton::BaseToHamiltonian(double y[]) {
 		return GSL_FAILURE;
 	}
-	int Newton::HamiltonianToLagrangian(double y[]) {
-		if (mode_ != HAMILTONIAN)
-			return GSL_FAILURE;
+	int Newton::HamiltonianToBase(double y[]) {
 		return GSL_FAILURE;
 	}
-	double Newton::Energy(const double y[]) {
+	double Newton::Energy(const double y[], coordinate_system coordinate) {
 		const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), r_3 = gsl_pow_3(r_1), r_4 = gsl_pow_2(r_2);
 		const double v2 = gsl_pow_2(y[5]) + gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin(y[2]) * y[7])), v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2), v8 = gsl_pow_2(v4);
 		const double rdot = y[5], rdot2 = gsl_pow_2(rdot);
@@ -98,7 +94,7 @@ namespace SBody {
 			E += 0.375 * r_4 + 1.25 * r_3 * v2 + 1.5 * r_3 * rdot2 + 0.2734375 * v8 + 8.4375 * r_2 * v4 + 0.75 * r_2 * v2 * rdot2 + 3.4375 * r_1 * v6;
 		return E;
 	}
-	double Newton::AngularMomentum(const double y[]) {
+	double Newton::AngularMomentum(const double y[], coordinate_system coordinate) {
 		const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), r_3 = gsl_pow_3(r_1);
 		const double v_tan2 = gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin(y[2]) * y[7]));
 		const double v2 = gsl_pow_2(y[5]) + v_tan2, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2);
@@ -112,8 +108,8 @@ namespace SBody {
 			eff += 2.5 * r_3 + 0.3125 * v6 + 11.25 * r_2 * v2 + 0.5 * r_2 * rdot2 + 4.125 * r_1 * v4;
 		return y[1] * sqrt(v_tan2) * eff;
 	}
-	double Newton::CarterConstant(const double y[], const double mu2) { // FIXME: not verified!
-		return gsl_pow_2(AngularMomentum(y));
+	double Newton::CarterConstant(const double y[], const double mu2, coordinate_system coordinate) { // FIXME: not verified!
+		return gsl_pow_2(AngularMomentum(y, coordinate));
 	}
 	int Newton::NormalizeTimelikeGeodesic(double y[]) {
 		y[4] = 1;
@@ -128,7 +124,7 @@ namespace SBody {
 			y[i] *= v_1;
 		return GSL_SUCCESS;
 	}
-	Integrator Newton::GetIntegrator() {
+	Integrator Newton::GetIntegrator(coordinate_system coordinate, motion_mode motion) {
 		return Integrator(
 			[](double t, const double y[], double dydt[], void *params) -> int {
 				int PN = *static_cast<int *>(params);
@@ -165,8 +161,8 @@ namespace SBody {
 			},
 			const_cast<int *>(&this->PN_));
 	}
-	PN1::PN1(double fSP, metric_mode mode) : Newton(0, mode), PN1_(fSP){};
-	Integrator PN1::GetIntegrator() {
+	PN1::PN1(double fSP) : Newton(1), PN1_(fSP){};
+	Integrator PN1::GetIntegrator(coordinate_system coordinate, motion_mode motion) {
 		return Integrator(
 			[](double t, const double y[], double dydt[], void *params) -> int {
 				const double PN1 = *static_cast<const double *>(params);
@@ -190,7 +186,7 @@ namespace SBody {
 			const_cast<double *>(&this->PN1_));
 	}
 
-	Schwarzschild::Schwarzschild(metric_mode mode) : Metric(mode) {}
+	Schwarzschild::Schwarzschild() {}
 	std::string Schwarzschild::Name() {
 		return "Schwarzschild";
 	}
@@ -212,9 +208,7 @@ namespace SBody {
 			return x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2.) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * PhiDifference(x[3] - y[3]));
 		return -(1. - 2. / x[1]) * gsl_pow_2(x[0] - y[0]) + x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2.) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * PhiDifference(x[3] - y[3]));
 	}
-	int Schwarzschild::LagrangianToHamiltonian(double y[]) {
-		if (mode_ != HAMILTONIAN)
-			return 1;
+	int Schwarzschild::BaseToHamiltonian(double y[]) {
 		const double dtdtau = 1. / y[4], r2 = gsl_pow_2(y[1]);
 		y[4] = (y[4] - 1. + 2. / y[1]) * dtdtau; // 1 + p_t
 		y[5] *= y[1] / (y[1] - 2.) * dtdtau;
@@ -222,9 +216,7 @@ namespace SBody {
 		y[7] *= r2 * gsl_pow_2(sin(y[2])) * dtdtau;
 		return 0;
 	}
-	int Schwarzschild::HamiltonianToLagrangian(double y[]) {
-		if (mode_ != HAMILTONIAN)
-			return 1;
+	int Schwarzschild::HamiltonianToBase(double y[]) {
 		const double r_1 = 1. / y[1], g00 = 1. - 2. * r_1;
 		y[4] = -g00 / (y[4] - 1.);
 		y[5] *= g00 * y[4];
@@ -232,26 +224,26 @@ namespace SBody {
 		y[7] *= gsl_pow_2(r_1 / sin(y[2])) * y[4];
 		return 0;
 	}
-	double Schwarzschild::Energy(const double y[]) {
-		if (mode_ == T)
+	double Schwarzschild::Energy(const double y[], coordinate_system coordinate) {
+		if (coordinate == BASE)
 			return (y[1] - 2.) / (y[1] * y[4]);
-		else if (mode_ == TAU)
+		else if (coordinate == LAGRANGIAN)
 			return 1.; // TODO:
 		else
 			return 1. - y[4];
 	}
-	double Schwarzschild::AngularMomentum(const double y[]) {
-		if (mode_ == T)
+	double Schwarzschild::AngularMomentum(const double y[], coordinate_system coordinate) {
+		if (coordinate == BASE)
 			return gsl_pow_2(y[1]) * y[7] / y[4];
-		else if (mode_ == TAU)
+		else if (coordinate == LAGRANGIAN)
 			return 1.; // TODO:
 		else
 			return y[7];
 	}
-	double Schwarzschild::CarterConstant(const double y[], const double mu2) {
-		if (mode_ == T)
+	double Schwarzschild::CarterConstant(const double y[], const double mu2, coordinate_system coordinate) {
+		if (coordinate == BASE)
 			return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2]))) / gsl_pow_2(y[4]);
-		else if (mode_ == TAU)
+		else if (coordinate == LAGRANGIAN)
 			return 1.; // TODO:
 		else
 			return gsl_pow_2(y[6]) + gsl_pow_2(y[7] / tan(y[2]));
@@ -274,24 +266,19 @@ namespace SBody {
 		y[7] *= coefficient;
 		return 0;
 	}
-	Integrator Schwarzschild::GetIntegrator() {
-		switch (mode_) {
-		case T:
-			return Integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian);
-		case TAU:
+	Integrator Schwarzschild::GetIntegrator(coordinate_system coordinate, motion_mode motion) {
+		if (coordinate == LAGRANGIAN)
 			return Integrator(metric::Schwarzschild::functionTau, metric::Schwarzschild::jacobianTau);
-		case HAMILTONIAN:
+		if (coordinate == HAMILTONIAN)
 			return Integrator(metric::Schwarzschild::functionHamiltonian, metric::Schwarzschild::jacobianHamiltonian);
-		case RIAF:
+		if (motion == RIAF)
 			return Integrator(metric::Schwarzschild::functionRIAF, metric::Schwarzschild::jacobianRIAF);
-		case HELICAL:
+		if (motion == HELICAL)
 			return Integrator(metric::Schwarzschild::functionHelicalWithFixedRadialSpeed, metric::Schwarzschild::jacobianHelicalWithFixedRadialSpeed);
-		default:
-			return Integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian);
-		}
+		return Integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian);
 	}
 
-	Kerr::Kerr(double spin, metric_mode mode) : Schwarzschild(mode), a_(spin), a2_(a_ * a_), a4_(a2_ * a2_) {}
+	Kerr::Kerr(double spin) : a_(spin), a2_(a_ * a_), a4_(a2_ * a2_) {}
 	std::string Kerr::Name() {
 		return "Kerr";
 	}
@@ -324,9 +311,7 @@ namespace SBody {
 			return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + ((r2 + a2_) * sint2 + 2. * r * a2_ * gsl_pow_2(sint2) / rho2) * gsl_pow_2(d3);
 		return (mr_rho2 - 1.) * gsl_pow_2(d0) - 2. * mr_rho2 * a_ * sint2 * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + ((r2 + a2_) * sint2 + mr_rho2 * a2_ * gsl_pow_2(sint2)) * gsl_pow_2(d3);
 	}
-	int Kerr::LagrangianToHamiltonian(double y[]) {
-		if (mode_ != HAMILTONIAN)
-			return 1;
+	int Kerr::BaseToHamiltonian(double y[]) {
 		const double dtdtau = 1. / y[4], r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2]));
 		const double Delta = r2 - 2. * y[1] + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
 		const double mr_rho2 = 2. * y[1] / rho2;
@@ -336,9 +321,7 @@ namespace SBody {
 		y[7] = (-mr_rho2 * a_ + (a2_ + r2 + mr_rho2 * a2_ * sint2) * y[7]) * sint2 * dtdtau;
 		return 0;
 	}
-	int Kerr::HamiltonianToLagrangian(double y[]) {
-		if (mode_ != HAMILTONIAN)
-			return 1;
+	int Kerr::HamiltonianToBase(double y[]) {
 		const double pt = y[4] - 1., r2 = gsl_pow_2(y[1]);
 		const double Delta = r2 - 2. * y[1] + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
 		const double rho_2 = 1. / rho2, mr_rho2 = 2. * y[1] * rho_2;
@@ -348,31 +331,31 @@ namespace SBody {
 		y[7] = (-mr_rho2 * a_ * pt + (1. - mr_rho2) / gsl_pow_2(sin(y[2])) * y[7]) / Delta * y[4];
 		return 0;
 	}
-	double Kerr::Energy(const double y[]) {
-		if (mode_ == T)
+	double Kerr::Energy(const double y[], coordinate_system coordinate) {
+		if (coordinate == BASE)
 			return (1. - 2. * y[1] / (gsl_pow_2(y[1]) + a2_ * gsl_pow_2(cos(y[2]))) * (1. - a_ * gsl_pow_2(sin(y[2])) * y[7])) / y[4];
-		else if (mode_ == TAU)
+		else if (coordinate == LAGRANGIAN)
 			return 1.; // TODO:
 		else
 			return 1. - y[4];
 	}
-	double Kerr::AngularMomentum(const double y[]) {
+	double Kerr::AngularMomentum(const double y[], coordinate_system coordinate) {
 		const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2]));
 		const double mr_rho2 = 2. * y[1] / (r2 + a2_ * gsl_pow_2(cos(y[2])));
-		if (mode_ == T)
+		if (coordinate == BASE)
 			return (-mr_rho2 * a_ + (a2_ + r2 + mr_rho2 * a2_ * sint2) * y[7]) * sint2 / y[4];
-		else if (mode_ == TAU)
+		else if (coordinate == LAGRANGIAN)
 			return 1.; // TODO:
 		else
 			return y[7];
 	}
-	double Kerr::CarterConstant(const double y[], const double mu2) {
+	double Kerr::CarterConstant(const double y[], const double mu2, coordinate_system coordinate) {
 		const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2])), cost2 = gsl_pow_2(cos(y[2]));
 		const double rho2 = r2 + a2_ * cost2;
 		const double mr_rho2 = 2. * y[1] / rho2;
-		if (mode_ == T)
+		if (coordinate == BASE)
 			return mu2 * cost2 * a2_ + (gsl_pow_2(rho2 * y[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a_ + (a2_ + r2 + mr_rho2 * a2_ * sint2) * y[7]) * sint2 - a2_ * gsl_pow_2(mr_rho2 * (1. - a_ * sint2 * y[7]) - 1.))) / gsl_pow_2(y[4]);
-		else if (mode_ == TAU)
+		else if (coordinate == LAGRANGIAN)
 			return 1.; // TODO:
 		else
 			return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (a2_ * (mu2 - gsl_pow_2(1. - y[4])) + gsl_pow_2(y[7] / sin(y[2])));
@@ -401,16 +384,17 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	Integrator Kerr::GetIntegrator() {
-		if (mode_ == T)
+	Integrator Kerr::GetIntegrator(coordinate_system coordinate, motion_mode motion) {
+		if (motion != GEODESIC)
+			PrintlnError("Motion not supported!");
+		if (coordinate == BASE)
 			return Integrator(metric::Kerr::function, metric::Kerr::jacobian, this);
-		else if (mode_ == TAU)
+		if (coordinate == LAGRANGIAN)
 			return Integrator(metric::Kerr::functionTau, metric::Kerr::jacobianTau, this);
-		else
-			return Integrator(metric::Kerr::functionHamiltonian, metric::Kerr::jacobianHamiltonian, this);
+		return Integrator(metric::Kerr::functionHamiltonian, metric::Kerr::jacobianHamiltonian, this);
 	}
 
-	KerrTaubNUT::KerrTaubNUT(double spin, double charge, double NUT, metric_mode mode) : Kerr(spin, mode), e_(charge), e2_(e_ * e_), e4_(e2_ * e2_), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
+	KerrTaubNUT::KerrTaubNUT(double spin, double charge, double NUT) : Kerr(spin), e_(charge), e2_(e_ * e_), e4_(e2_ * e2_), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
 	std::string KerrTaubNUT::Name() {
 		return "Kerr-Taub-NUT";
 	}
@@ -435,9 +419,7 @@ namespace SBody {
 			return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + (gsl_pow_2(rho2 + a_ * chi) * sint2 - gsl_pow_2(chi) * Delta) * rho_2 * gsl_pow_2(d3);
 		return (a2_ * sint2 - Delta) * rho_2 * gsl_pow_2(d0) - 4. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) * rho_2 * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + (gsl_pow_2(rho2 + a_ * chi) * sint2 - gsl_pow_2(chi) * Delta) * rho_2 * gsl_pow_2(d3);
 	}
-	int KerrTaubNUT::LagrangianToHamiltonian(double y[]) {
-		if (mode_ != HAMILTONIAN)
-			return 1;
+	int KerrTaubNUT::BaseToHamiltonian(double y[]) {
 		const double dtdtau = 1. / y[4], r = y[1], r2 = gsl_pow_2(r);
 		const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
@@ -448,9 +430,7 @@ namespace SBody {
 		y[7] = (-2. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) + (gsl_pow_2(r2 + l2_ + a2_) * sint2 - gsl_pow_2(a_ * sint2 - 2. * l_ * cost) * Delta) * y[7]) * rho_2 * dtdtau;
 		return 0;
 	}
-	int KerrTaubNUT::HamiltonianToLagrangian(double y[]) {
-		if (mode_ != HAMILTONIAN)
-			return 1;
+	int KerrTaubNUT::HamiltonianToBase(double y[]) {
 		const double pt = y[4] - 1., r = y[1], r2 = gsl_pow_2(r);
 		const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
@@ -461,35 +441,35 @@ namespace SBody {
 		y[7] = (-2. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) * pt + (Delta - a2_ * sint2) * y[7]) / (Delta * rho2 * sint2) * y[4];
 		return 0;
 	}
-	double KerrTaubNUT::Energy(const double y[]) {
+	double KerrTaubNUT::Energy(const double y[], coordinate_system coordinate) {
 		const double r = y[1], r2 = gsl_pow_2(r);
 		const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
-		if (mode_ == T)
+		if (coordinate == BASE)
 			return (Delta - a2_ * sint2 + 2. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) * y[7]) / ((r2 + gsl_pow_2(l_ + a_ * cost)) * y[4]);
-		else if (mode_ == TAU)
+		else if (coordinate == LAGRANGIAN)
 			return 1.; // TODO:
 		else
 			return 1. - y[4];
 	}
-	double KerrTaubNUT::AngularMomentum(const double y[]) {
+	double KerrTaubNUT::AngularMomentum(const double y[], coordinate_system coordinate) {
 		const double r = y[1], r2 = gsl_pow_2(r);
 		const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
-		if (mode_ == T)
+		if (coordinate == BASE)
 			return (-2. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) + (gsl_pow_2(r2 + l2_ + a2_) * sint2 - gsl_pow_2(a_ * sint2 - 2. * l_ * cost) * Delta) * y[7]) / ((r2 + gsl_pow_2(l_ + a_ * cost)) * y[4]);
-		else if (mode_ == TAU)
+		else if (coordinate == LAGRANGIAN)
 			return 1.; // TODO:
 		else
 			return y[7];
 	}
-	double KerrTaubNUT::CarterConstant(const double y[], const double mu2) { // TODO:
+	double KerrTaubNUT::CarterConstant(const double y[], const double mu2, coordinate_system coordinate) { // TODO:
 		const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2])), cost2 = gsl_pow_2(cos(y[2]));
 		const double rho2 = r2 + a2_ * cost2;
 		const double mr_rho2 = 2. * y[1] / rho2;
-		if (mode_ == T)
+		if (coordinate == BASE)
 			return mu2 * cost2 * a2_ + (gsl_pow_2(rho2 * y[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a_ + (a2_ + r2 + mr_rho2 * a2_ * sint2) * y[7]) * sint2 - a2_ * gsl_pow_2(mr_rho2 * (1. - a_ * sint2 * y[7]) - 1.))) / gsl_pow_2(y[4]);
-		else if (mode_ == TAU)
+		else if (coordinate == LAGRANGIAN)
 			return 1.;
 		else
 			return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (a2_ * (mu2 - gsl_pow_2(1. - y[4])) + gsl_pow_2(y[7] / sin(y[2])));
@@ -520,13 +500,12 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	Integrator KerrTaubNUT::GetIntegrator() {
-		if (mode_ == T)
+	Integrator KerrTaubNUT::GetIntegrator(coordinate_system coordinate, motion_mode motion) {
+		if (coordinate == BASE)
 			return Integrator(metric::KerrTaubNUT::function, metric::KerrTaubNUT::jacobian, this);
-		else if (mode_ == TAU)
+		if (coordinate == LAGRANGIAN)
 			return Integrator(metric::KerrTaubNUT::functionTau, metric::KerrTaubNUT::jacobianTau, this);
-		else
-			return Integrator(metric::KerrTaubNUT::functionHamiltonian, metric::KerrTaubNUT::jacobianHamiltonian, this);
+		return Integrator(metric::KerrTaubNUT::functionHamiltonian, metric::KerrTaubNUT::jacobianHamiltonian, this);
 	}
 
 	namespace metric {

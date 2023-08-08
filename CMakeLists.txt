@@ -6,7 +6,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL Linux)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fPIC")
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")

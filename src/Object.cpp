@@ -22,7 +22,7 @@ namespace SBody {
 	Object::Object(std::shared_ptr<Metric> metric) : metric_(metric) {
 		object_list_.push_back(this);
 	}
-	Star::Star(std::shared_ptr<Metric> metric, double radius, bool fixed) : Object(metric), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)), integrator_(metric->GetIntegrator()) {
+	Star::Star(std::shared_ptr<Metric> metric, coordinate_system coordinate, motion_mode motion, double radius, bool fixed) : Object(metric), coordinate_(coordinate), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)), integrator_(metric->GetIntegrator(coordinate, motion)) {
 		for (int i = 0; i < 8; ++i)
 			position_[i] = 0;
 	}
@@ -208,43 +208,12 @@ namespace SBody {
 		return metric_->LocalInertialFrame(position_, coordinate);
 	}
 	double Star::Energy() {
-		return metric_->Energy(position_);
+		return metric_->Energy(position_, coordinate_);
 	}
 	double Star::AngularMomentum() {
-		return metric_->AngularMomentum(position_);
+		return metric_->AngularMomentum(position_, coordinate_);
 	}
 	double Star::CarterConstant() {
-		return metric_->CarterConstant(position_, 1.);
-	}
-	Disk::Disk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius, double emissivity_index) : Object(metric), inner_radius_(inner_radius), outer_radius_(outer_radius), emissivity_index_(emissivity_index) {}
-	int Disk::Hit(const double current[], const double last[]) {
-		if (inner_radius_ <= current[1] && current[1] <= outer_radius_ && OppositeSign(current[2] - M_PI_2, last[2] - M_PI_2))
-			return 1;
-		// if min distance between current and last < radius, return 1;
-		return 0;
-	}
-	double Disk::Redshift(const double ph[]) {
-		return 1.;
-	}
-	ThickDisk::ThickDisk(std::shared_ptr<Metric> metric, double inner_radius, double outer_radius, double half_angle) : Disk(metric, inner_radius, outer_radius), half_angle_(half_angle) {}
-	int ThickDisk::Hit(const double current[], const double last[]) { // TODO: need update
-		if (inner_radius_ <= current[1] && current[1] <= outer_radius_ && OppositeSign(current[2] - M_PI_2, last[2] - M_PI_2))
-			return 1;
-		// if min distance between current and last < radius, return 1;
-		return 0;
-	}
-	double ThickDisk::Redshift(const double ph[]) {
-		return 1.;
-	}
-	Torus::Torus(std::shared_ptr<Metric> metric, double major_radius, double minor_radius) : Object(metric), major_radius_(major_radius), minor_radius_(minor_radius) {}
-	int Torus::Hit(const double current[], const double last[]) {
-		const double rc[4] = {0, major_radius_, M_PI_2, current[3]};
-		if (metric_->Distance(rc, current, 3) <= minor_radius_) // FIXME:not accurate if minorRadius not << majorRadius
-			return 1;
-		// if min distance between current and last < radius, return 1;
-		return 0;
-	}
-	double Torus::Redshift(const double ph[]) {
-		return 1.;
+		return metric_->CarterConstant(position_, 1., coordinate_);
 	}
 } // namespace SBody

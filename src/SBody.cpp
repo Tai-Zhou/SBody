@@ -13,7 +13,6 @@
 
 #include <array>
 #include <chrono>
-#include <cmath>
 #include <csignal>
 #include <memory>
 #include <string>
@@ -206,7 +205,7 @@ int main(int argc, char *argv[]) {
 	double t = 8.3564958220072 * Unit::yr, tStep = 0., tRec = tFinal / tStepNumber;
 	if (metric == 0)
 		ray = 0;
-	shared_ptr<Metric> main_metric = make_shared<Schwarzschild>(T);
+	shared_ptr<Metric> main_metric = make_shared<Schwarzschild>();
 	// metric::setMetric(metric, PN, mass, spin, charge, NUT);
 	string strFormat = fmt::format(" ({:f},{:f},{:f})[{:f},{:f}]", spin, charge, NUT, inc, eps);
 	if (ProgressBar::display_) {
@@ -218,17 +217,17 @@ int main(int argc, char *argv[]) {
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps));
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view helical({:.2f},{:.6f},{:.6f},{:.6f},{:.6f})[{:f},{:f}]", 10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6, inc, eps));
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view helical({:f},{:f},{:f},{:f},{:f})[{:f},{:f}]", a, inclination, periapsis, e, ascending_node, inc, eps));
-		viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view S2H"));
+		viewPtr = make_unique<View>(make_unique<Schwarzschild>(), 8180. * Unit::pc, inc, fmt::format("view S2H"));
 		if (ray & 4)
 			shadowPtr = make_unique<thread>(&View::Shadow, viewPtr.get());
 	}
 	if (ray & 10) {
-		cameraPtr = make_unique<Camera>(make_unique<Schwarzschild>(HAMILTONIAN), 1000, 5e-2, 1.e3, inc, fmt::format("camera ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps));
+		cameraPtr = make_unique<Camera>(make_unique<Schwarzschild>(), 1000, 5e-2, 1.e3, inc, fmt::format("camera ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps));
 		if (ray & 8)
 			lensPtr = make_unique<thread>(&Camera::Lens, cameraPtr.get());
 	}
 	// Integrator integ(metric::function, metric::jacobian, metric != 0);
-	Star star_0(main_metric, Unit::R_sun, 0);
+	Star star_0(main_metric, BASE, GEODESIC, Unit::R_sun, 0);
 	star_0.InitializeSchwarzschildKeplerianApocenter(a * Unit::mpc, e, inclination, periapsis, ascending_node, inc, eps);
 	// star_0.InitializeGeodesic(a, inclination, periapsis, ascending_node, -0.16707659553531468, 0.3822615764261866, inc, eps);
 	// star_0.InitializeSchwarzschildKeplerianApocenterHarmonic(a * Unit::mpc, e, inclination, periapsis, ascending_node, inc, eps);
@@ -253,14 +252,14 @@ int main(int argc, char *argv[]) {
 			PrintlnError("main status = {}", status);
 		star_0.Position(temp.data());
 		if (Hamiltonian)
-			main_metric->HamiltonianToLagrangian(temp.data());
+			main_metric->HamiltonianToBase(temp.data());
 		SphericalToCartesian(temp.data());
 		temp[8] = t / Unit::s;
 		temp[9] = star_0.Energy();
 		temp[10] = star_0.AngularMomentum();
 		temp[11] = star_0.CarterConstant();
 		if (ray & 1)
-			viewPtr->TraceStar(star_0, t, i, nullptr);
+			viewPtr->TraceStar(star_0, nullptr, i, nullptr);
 		if (ray & 2)
 			cameraPtr->TraceStar();
 		rec.Save(temp);
