@@ -182,10 +182,10 @@ namespace SBody {
 		return integrator_.Reset();
 	}
 	int Star::Hit(const double current[], const double last[]) {
-		double a2 = metric_->Distance(position_, current, 3);
+		double a2 = metric_->DistanceSquare(position_, current, 3);
 		if (a2 <= radius_square_)
 			return 1;
-		double b2 = metric_->Distance(position_, last, 3), c2 = metric_->Distance(current, last, 3);
+		double b2 = metric_->DistanceSquare(position_, last, 3), c2 = metric_->DistanceSquare(current, last, 3);
 		if (a2 + c2 > b2 && b2 + c2 > a2 && 2 * a2 * c2 - gsl_pow_2(a2 - b2 + c2) <= 4 * c2 * radius_square_)
 			return 1; // if min distance between current and last < radius, return 1;
 		return 0;

@@ -40,7 +40,7 @@ namespace SBody {
 		virtual std::string Name() = 0;
 		virtual int MetricTensor(const double position[], gsl_matrix *metric) = 0;
 		virtual double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) = 0;
-		virtual double Distance(const double x[], const double y[], const size_t dimension) = 0;
+		virtual double DistanceSquare(const double x[], const double y[], const size_t dimension) = 0;
 		int LocalInertialFrame(const double position[], gsl_matrix *coordinate, const double timelike[] = nullptr);
 		virtual int BaseToHamiltonian(double y[]) = 0;
 		virtual int HamiltonianToBase(double y[]) = 0;
@@ -52,15 +52,13 @@ namespace SBody {
 		virtual Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) = 0;
 	};
 	class Newton : public Metric {
-	  private:
-		const int PN_;
-
 	  public:
+		const int PN_;
 		Newton(int PN);
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;
-		double Distance(const double x[], const double y[], const size_t dimension) override;
+		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int BaseToHamiltonian(double y[]) override;
 		int HamiltonianToBase(double y[]) override;
 		double Energy(const double y[], coordinate_system coordinate) override;
@@ -71,10 +69,8 @@ namespace SBody {
 		Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class PN1 : public Newton {
-	  private:
-		const double PN1_;
-
 	  public:
+		const double PN1_;
 		PN1(double fSP);
 		Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
@@ -84,7 +80,7 @@ namespace SBody {
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;
-		double Distance(const double x[], const double y[], const size_t dimension) override;
+		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int BaseToHamiltonian(double y[]) override;
 		int HamiltonianToBase(double y[]) override;
 		double Energy(const double y[], coordinate_system coordinate) override;
@@ -101,7 +97,7 @@ namespace SBody {
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;
-		double Distance(const double x[], const double y[], const size_t dimension) override;
+		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int BaseToHamiltonian(double y[]) override;
 		int HamiltonianToBase(double y[]) override;
 		double Energy(const double y[], coordinate_system coordinate) override;
@@ -113,13 +109,12 @@ namespace SBody {
 	};
 	class KerrTaubNUT : public Kerr {
 	  public:
-		const double e_, e2_, e4_;
 		const double l_, l2_, l4_;
-		KerrTaubNUT(double spin, double charge, double NUT);
+		KerrTaubNUT(double spin, double NUT);
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;
-		double Distance(const double x[], const double y[], const size_t dimension) override;
+		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int BaseToHamiltonian(double y[]) override;
 		int HamiltonianToBase(double y[]) override;
 		double Energy(const double y[], coordinate_system coordinate) override;

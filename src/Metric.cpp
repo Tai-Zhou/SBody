@@ -67,13 +67,13 @@ namespace SBody {
 	}
 	double Newton::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
 		if (dimension == 3)
-			return x[1] * y[1] + x[2] * y[2] + x[3] * y[3];
-		return -x[0] * y[0] + x[1] * y[1] + x[2] * y[2] + x[3] * y[3];
+			return x[1] * y[1] + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
+		return -x[0] * y[0] + x[1] * y[1] + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
 	}
-	double Newton::Distance(const double x[], const double y[], const size_t dimension) {
+	double Newton::DistanceSquare(const double x[], const double y[], const size_t dimension) {
 		if (dimension == 3)
-			return gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[2] - y[2]) + gsl_pow_2(x[3] - y[3]);
-		return -gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[2] - y[2]) + gsl_pow_2(x[3] - y[3]);
+			return gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * (x[3] - y[3]));
+		return -gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * (x[3] - y[3]));
 	}
 	int Newton::BaseToHamiltonian(double y[]) {
 		return GSL_FAILURE;
@@ -203,7 +203,7 @@ namespace SBody {
 			return position[1] * x[1] * y[1] / (position[1] - 2.) + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
 		return -(1. - 2. / position[1]) * x[0] * y[0] + position[1] * x[1] * y[1] / (position[1] - 2.) + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
 	}
-	double Schwarzschild::Distance(const double x[], const double y[], const size_t dimension) {
+	double Schwarzschild::DistanceSquare(const double x[], const double y[], const size_t dimension) {
 		if (dimension == 3)
 			return x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2.) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * PhiDifference(x[3] - y[3]));
 		return -(1. - 2. / x[1]) * gsl_pow_2(x[0] - y[0]) + x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2.) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * PhiDifference(x[3] - y[3]));
@@ -302,7 +302,7 @@ namespace SBody {
 			return (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2_) * sint2 + mr_rho2 * a2_ * gsl_pow_2(sint2)) * x[3] * y[3];
 		return (mr_rho2 - 1.) * x[0] * y[0] - mr_rho2 * a_ * sint2 * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2_) * sint2 + mr_rho2 * a2_ * gsl_pow_2(sint2)) * x[3] * y[3];
 	}
-	double Kerr::Distance(const double x[], const double y[], const size_t dimension) {
+	double Kerr::DistanceSquare(const double x[], const double y[], const size_t dimension) {
 		const double r = x[1], r2 = gsl_pow_2(r), d0 = x[0] - y[0], d3 = PhiDifference(x[3] - y[3]);
 		const double sint = sin(x[2]), sint2 = gsl_pow_2(sint), cost = cos(x[2]), cost2 = gsl_pow_2(cost);
 		const double Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * cost2;
@@ -394,7 +394,7 @@ namespace SBody {
 		return Integrator(metric::Kerr::functionHamiltonian, metric::Kerr::jacobianHamiltonian, this);
 	}
 
-	KerrTaubNUT::KerrTaubNUT(double spin, double charge, double NUT) : Kerr(spin), e_(charge), e2_(e_ * e_), e4_(e2_ * e2_), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
+	KerrTaubNUT::KerrTaubNUT(double spin, double NUT) : Kerr(spin), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
 	std::string KerrTaubNUT::Name() {
 		return "Kerr-Taub-NUT";
 	}
@@ -410,7 +410,7 @@ namespace SBody {
 			return (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + (gsl_pow_2(rho2 + a_ * chi) * sint2 - chi * chi * Delta) * rho_2 * x[3] * y[3];
 		return (a2_ * sint2 - Delta) * rho_2 * x[0] * y[0] - 2. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) * rho_2 * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + (gsl_pow_2(rho2 + a_ * chi) * sint2 - chi * chi * Delta) * rho_2 * x[3] * y[3];
 	}
-	double KerrTaubNUT::Distance(const double x[], const double y[], const size_t dimension) {
+	double KerrTaubNUT::DistanceSquare(const double x[], const double y[], const size_t dimension) {
 		const double r = x[1], sint = sin(x[2]), cost = cos(x[2]), d0 = x[0] - y[0], d3 = PhiDifference(x[3] - y[3]);
 		const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint);
 		const double Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + gsl_pow_2(l_ + a_ * cost), chi = a_ * sint2 - 2. * l_ * cost;
