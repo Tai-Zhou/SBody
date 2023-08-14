@@ -130,13 +130,13 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 	return result.reshape({size, 14UL});
 }
 
-double Chi2(py::array_t<double> x, int metric, bool gr_redshift, bool light_bending, bool gr_time_delay, py::array_t<double> obs_time, py::array_t<double> obs_redshift, double redshift_sigma, py::array_t<double> obs_ra, double ra_sigma, py::array_t<double> obs_dec, double dec_sigma) {
+double Chi2(py::array_t<double> x, int metric, int gr_switch, py::array_t<double> obs_time, py::array_t<double> obs_redshift, double redshift_sigma, py::array_t<double> obs_ra, double ra_sigma, py::array_t<double> obs_dec, double dec_sigma) {
 	if (x.at(9) > 0.99)
 		return GSL_NEGINF;
-	auto obs_data = CalculateOrbit(x.at(0), metric, x.at(7), x.at(3), x.at(13), x.at(8), x.at(9), x.at(10), x.at(11), x.at(12), gr_redshift || light_bending || gr_time_delay, gr_time_delay, obs_time);
+	auto obs_data = CalculateOrbit(x.at(0), metric, x.at(7), x.at(3), x.at(13), x.at(8), x.at(9), x.at(10), x.at(11), x.at(12), gr_switch > 0, (gr_switch & 4) > 0, obs_time);
 	double redshift_prob = 0., ra_prob = 0., dec_prob = 0.;
 	const int size = obs_redshift.size();
-	if (gr_redshift)
+	if (gr_switch & 1)
 		for (int i = 0; i < size; ++i) {
 			redshift_prob -= gsl_pow_2(obs_redshift.at(i) - (obs_data.at(i, 12) - 1.) * 299792.458 - x.at(6));
 #ifndef GSL_RANGE_CHECK_OFF
@@ -146,7 +146,7 @@ double Chi2(py::array_t<double> x, int metric, bool gr_redshift, bool light_bend
 	else
 		for (int i = 0; i < size; ++i)
 			redshift_prob -= gsl_pow_2(obs_redshift.at(i) - obs_data.at(i, 9) - x.at(6));
-	if (light_bending)
+	if (gr_switch & 2)
 		for (int i = 0; i < size; ++i) {
 			ra_prob -= gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 10) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - obs_time.at(i) * x.at(5));
 			dec_prob -= gsl_pow_2(obs_dec.at(i) - obs_data.at(i, 11) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - obs_time.at(i) * x.at(4));
