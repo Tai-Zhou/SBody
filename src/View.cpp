@@ -73,14 +73,12 @@ namespace SBody {
 			star.Position(position);
 		}
 		const double r_star = position[1], sin_theta_star = abs(sin(position[2])), cos_theta_star = GSL_SIGN(position[2]) * cos(position[2]), sin_phi_star = sin(position[3]), cos_phi_star = cos(position[3]);
-		delete[] position;
 		if (r_star <= 3.)
 			PrintlnWarning("star orbit radius = {:.6f}", r_star);
 		const double alpha_coefficient = sin_theta_star * sin_phi_star, beta_coefficient = cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_, iteration_coefficient = tanh(0.05 * r_star), cos_observer_star = sin_theta_observer_ * sin_theta_star * cos_phi_star + cos_theta_observer_ * cos_theta_star, sin_observer_star = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_star = acos(cos_observer_star);
 		double alpha0 = GSL_POSINF, alpha1 = 0, beta0 = GSL_POSINF, beta1 = 0, cosph, h;
 		if (cos_observer_star <= -1.) {
 			PrintlnWarning("star behind black hole, cos(theta) = {:.6f}\n", cos_observer_star);
-			fmt::print(stderr, "\033[103m[WRN]\033[0m star behind black hole, cos theta = {:.6f}\n", cos_observer_star);
 			alpha1 = 2. * sqrt(r_star);
 			beta1 = 0.;
 		} else if (cos_observer_star < 1.) {
