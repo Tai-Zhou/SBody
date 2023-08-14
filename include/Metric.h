@@ -14,11 +14,15 @@
 
 #include <string>
 
+#include <fmt/format.h>
 #include <gsl/gsl_matrix.h>
 
 #include "Utility.h"
 
 namespace SBody {
+	enum time_system { T,
+					   TAU };
+
 	/**
 	 * @brief
 	 *
@@ -30,7 +34,10 @@ namespace SBody {
 	enum motion_mode { GEODESIC,
 					   RIAF,
 					   HELICAL };
-
+	template <typename T>
+	auto format_as(T e) {
+		return fmt::underlying(e);
+	}
 	/**
 	 * @brief
 	 *
@@ -49,7 +56,7 @@ namespace SBody {
 		virtual double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) = 0;
 		virtual int NormalizeTimelikeGeodesic(double y[]) = 0;
 		virtual int NormalizeNullGeodesic(double y[], double frequency = 1.) = 0;
-		virtual Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) = 0;
+		virtual Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) = 0;
 	};
 	class Newton : public Metric {
 	  public:
@@ -66,13 +73,13 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+		Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class PN1 : public Newton {
 	  public:
 		const double PN1_;
 		PN1(double fSP);
-		Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+		Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class Schwarzschild : public Metric {
 	  public:
@@ -88,7 +95,7 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+		Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class Kerr : public Schwarzschild {
 	  public:
@@ -105,7 +112,7 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+		Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class KerrTaubNUT : public Kerr {
 	  public:
@@ -122,21 +129,9 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator(coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+		Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	namespace metric {
-		namespace Schwarzschild {
-			int function(double t, const double y[], double dydt[], void *params);
-			int functionTau(double t, const double y[], double dydt[], void *params);
-			int functionHamiltonian(double t, const double y[], double dydt[], void *params);
-			int functionRIAF(double t, const double y[], double dydt[], void *params);
-			int functionHelicalWithFixedRadialSpeed(double t, const double y[], double dydt[], void *params);
-			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
-			int jacobianTau(double t, const double y[], double *dfdy, double dfdt[], void *params);
-			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params);
-			int jacobianRIAF(double t, const double y[], double *dfdy, double dfdt[], void *params);
-			int jacobianHelicalWithFixedRadialSpeed(double t, const double y[], double *dfdy, double dfdt[], void *params);
-		} // namespace Schwarzschild
 		namespace Kerr {
 			int function(double t, const double y[], double dydt[], void *params);
 			int functionTau(double t, const double y[], double dydt[], void *params);

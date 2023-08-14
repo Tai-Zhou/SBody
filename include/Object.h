@@ -94,7 +94,7 @@ namespace SBody {
 		 * @param radius radius
 		 * @param fixed whether the position of the star is fixed
 		 */
-		Star(std::shared_ptr<Metric> metric, coordinate_system coordinate, motion_mode motion, double radius = 0, bool fixed = false);
+		Star(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, motion_mode motion, double radius = 0, bool fixed = false);
 		int Position(double *position);
 		int Position(double *position, double t);
 		int InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination = 0., double observer_rotation = 0.);

@@ -227,7 +227,7 @@ int main(int argc, char *argv[]) {
 			lensPtr = make_unique<thread>(&Camera::Lens, cameraPtr.get());
 	}
 	// Integrator integ(metric::function, metric::jacobian, metric != 0);
-	Star star_0(main_metric, BASE, GEODESIC, Unit::R_sun, 0);
+	Star star_0(main_metric, T, LAGRANGIAN, GEODESIC, Unit::R_sun, 0);
 	star_0.InitializeSchwarzschildKeplerianApocenter(a * Unit::mpc, e, inclination, periapsis, ascending_node, inc, eps);
 	// star_0.InitializeGeodesic(a, inclination, periapsis, ascending_node, -0.16707659553531468, 0.3822615764261866, inc, eps);
 	// star_0.InitializeSchwarzschildKeplerianApocenterHarmonic(a * Unit::mpc, e, inclination, periapsis, ascending_node, inc, eps);

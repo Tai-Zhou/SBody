@@ -124,7 +124,11 @@ namespace SBody {
 			y[i] *= v_1;
 		return GSL_SUCCESS;
 	}
-	Integrator Newton::GetIntegrator(coordinate_system coordinate, motion_mode motion) {
+	Integrator Newton::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+		if (time != T || coordinate != LAGRANGIAN || motion != GEODESIC) {
+			PrintlnError("Newton::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
+			exit(GSL_EINVAL);
+		}
 		return Integrator(
 			[](double t, const double y[], double dydt[], void *params) -> int {
 				int PN = *static_cast<int *>(params);
@@ -156,13 +160,15 @@ namespace SBody {
 				dydt[7] = -(2. * cos_theta / sin_theta * y[6] + 2. * y[5] * r_1 + B_r2) * y[7];
 				return GSL_SUCCESS;
 			},
-			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int {
-				return GSL_SUCCESS;
-			},
+			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; },
 			const_cast<int *>(&this->PN_));
 	}
 	PN1::PN1(double fSP) : Newton(1), PN1_(fSP){};
-	Integrator PN1::GetIntegrator(coordinate_system coordinate, motion_mode motion) {
+	Integrator PN1::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+		if (time != T || coordinate != LAGRANGIAN || motion != GEODESIC) {
+			PrintlnError("PN1::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
+			exit(GSL_EINVAL);
+		}
 		return Integrator(
 			[](double t, const double y[], double dydt[], void *params) -> int {
 				const double PN1 = *static_cast<const double *>(params);
@@ -180,9 +186,7 @@ namespace SBody {
 				dydt[7] = -(2. * cos_theta / sin_theta * y[6] + 2. * y[5] * r_1 + B_r2) * y[7];
 				return GSL_SUCCESS;
 			},
-			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int {
-				return GSL_SUCCESS;
-			},
+			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; },
 			const_cast<double *>(&this->PN1_));
 	}
 
@@ -266,16 +270,98 @@ namespace SBody {
 		y[7] *= coefficient;
 		return 0;
 	}
-	Integrator Schwarzschild::GetIntegrator(coordinate_system coordinate, motion_mode motion) {
-		if (coordinate == LAGRANGIAN)
-			return Integrator(metric::Schwarzschild::functionTau, metric::Schwarzschild::jacobianTau);
-		if (coordinate == HAMILTONIAN)
-			return Integrator(metric::Schwarzschild::functionHamiltonian, metric::Schwarzschild::jacobianHamiltonian);
-		if (motion == RIAF)
-			return Integrator(metric::Schwarzschild::functionRIAF, metric::Schwarzschild::jacobianRIAF);
-		if (motion == HELICAL)
-			return Integrator(metric::Schwarzschild::functionHelicalWithFixedRadialSpeed, metric::Schwarzschild::jacobianHelicalWithFixedRadialSpeed);
-		return Integrator(metric::Schwarzschild::function, metric::Schwarzschild::jacobian);
+	Integrator Schwarzschild::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+		if (time == T) {
+			if (coordinate == LAGRANGIAN) {
+				if (motion == GEODESIC)
+					return Integrator(
+						[](double t, const double y[], double dydt[], void *params) -> int {
+							dydt[0] = y[4]; // d\tau/dt
+							dydt[1] = y[5]; // dr/dt
+							dydt[2] = y[6]; // d\theta/dt
+							dydt[3] = y[7]; // d\phi/dt
+							const double r = y[1], sint = abs(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
+							const double r2m = r - 2., r3m = r - 3.;
+							const double r2mr_1 = 1. / (r2m * r);
+							// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
+							dydt[4] = 2. * y[5] * r2mr_1 * y[4];
+							// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+							dydt[5] = -r2m / gsl_pow_3(r) + 3. * r2mr_1 * gsl_pow_2(y[5]) + r2m * (gsl_pow_2(y[6]) + gsl_pow_2(sint * y[7]));
+							// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+							dydt[6] = -2. * r3m * r2mr_1 * y[5] * y[6] + sint * cost * gsl_pow_2(y[7]);
+							// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+							dydt[7] = -2. * (r3m * r2mr_1 * y[5] + cost / sint * y[6]) * y[7];
+							return GSL_SUCCESS;
+						},
+						[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+				if (motion == RIAF)
+					return Integrator(
+						[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
+						[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+				if (motion == HELICAL)
+					return Integrator(
+						[](double t, const double y[], double dydt[], void *params) -> int {
+							const double g00 = 1. - 2. / y[1], sin_theta = abs(sin(y[2]));
+							if (g00 <= 0)
+								return GSL_FAILURE;
+							dydt[0] = y[4]; // d\tau/dt
+							dydt[1] = y[5]; // dr/dt
+							dydt[2] = 0.;	// d\theta/dt = 0.
+							dydt[3] = y[7]; // d\phi/dt
+							// d^2\tau/dt^2 = d^2\tau/dtdr * dr/dt
+							dydt[4] = ((1. + gsl_pow_2(y[5] / g00)) / gsl_pow_2(y[1]) + y[1] * gsl_pow_2(sin_theta * y[7])) * y[5] / sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * sin_theta * y[7])));
+							// d^2r/dt^2 = 0.
+							dydt[5] = 0.;
+							// d^2\theta/dt^2 = 0.
+							dydt[6] = 0.;
+							// d^2\phi/dt^2 = d(d\phi/dt)/dr * dr/dt
+							dydt[7] = -2. * y[7] / y[1] * y[5];
+							return GSL_SUCCESS;
+						},
+						[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+			}
+			if (coordinate == HAMILTONIAN && motion == GEODESIC)
+				return Integrator(
+					[](double t, const double y[], double dydt[], void *params) -> int {
+						const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), g00 = 1. - 2. * r_1, E = 1. - y[4], L2 = gsl_pow_2(y[7]);
+						const double sint_1 = 1. / abs(sin(y[2])), sint_2 = gsl_pow_2(sint_1);
+						//[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
+						dydt[0] = g00 / E;						 // d\tau/dt
+						dydt[1] = g00 * y[5] * dydt[0];			 // dr/dt
+						dydt[2] = y[6] * r_2 * dydt[0];			 // d\theta/dt
+						dydt[3] = y[7] * sint_2 * r_2 * dydt[0]; // d\phi/dt
+						dydt[4] = 0.;
+						dydt[5] = (-(gsl_pow_2(y[5]) + gsl_pow_2(E) / gsl_pow_2(g00)) + (gsl_pow_2(y[6]) + L2 * sint_2) * r_1) * r_2 * dydt[0];
+						dydt[6] = sint_2 * L2 * cos(y[2]) * sint_1 * r_2 * dydt[0];
+						dydt[7] = 0.;
+						return GSL_SUCCESS;
+					},
+					[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+		}
+		if (time == TAU && coordinate == LAGRANGIAN && motion == GEODESIC)
+			return Integrator(
+				[](double t, const double y[], double dydt[], void *params) -> int {
+					dydt[0] = y[4]; // dt/d\tau
+					dydt[1] = y[5]; // dr/d\tau
+					dydt[2] = y[6]; // d\theta/d\tau
+					dydt[3] = y[7]; // d\phi/d\tau
+					const double r = y[1], sint = abs(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
+					const double r2m = r - 2., r_1 = 1. / r;
+					const double r2mr_1 = 1. / (r2m * r);
+					// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
+					dydt[4] = -2. * y[5] * r2mr_1 * y[4];
+					// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+					dydt[5] = -r2m * gsl_pow_3(r_1) * gsl_pow_2(y[4]) + r2mr_1 * gsl_pow_2(y[5]) + r2m * (gsl_pow_2(y[6]) + gsl_pow_2(sint * y[7]));
+					// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+					dydt[6] = -2. * r_1 * y[5] * y[6] + sint * cost * gsl_pow_2(y[7]);
+					// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+					dydt[7] = -2. * (r_1 * y[5] + cost / sint * y[6]) * y[7];
+					return GSL_SUCCESS;
+				},
+				[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+		return Integrator(
+			[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
+			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
 	}
 
 	Kerr::Kerr(double spin) : a_(spin), a2_(a_ * a_), a4_(a2_ * a2_) {}
@@ -384,7 +470,7 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	Integrator Kerr::GetIntegrator(coordinate_system coordinate, motion_mode motion) {
+	Integrator Kerr::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
 		if (motion != GEODESIC)
 			PrintlnError("Motion not supported!");
 		if (coordinate == BASE)
@@ -500,7 +586,7 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	Integrator KerrTaubNUT::GetIntegrator(coordinate_system coordinate, motion_mode motion) {
+	Integrator KerrTaubNUT::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
 		if (coordinate == BASE)
 			return Integrator(metric::KerrTaubNUT::function, metric::KerrTaubNUT::jacobian, this);
 		if (coordinate == LAGRANGIAN)
@@ -509,113 +595,6 @@ namespace SBody {
 	}
 
 	namespace metric {
-		namespace Schwarzschild {
-			int function(double t, const double y[], double dydt[], void *params) {
-				dydt[0] = y[4]; // d\tau/dt
-				dydt[1] = y[5]; // dr/dt
-				dydt[2] = y[6]; // d\theta/dt
-				dydt[3] = y[7]; // d\phi/dt
-				const double r = y[1], sint = abs(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
-				const double r2m = r - 2., r3m = r - 3.;
-				const double r2mr_1 = 1. / (r2m * r);
-				// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
-				dydt[4] = 2. * y[5] * r2mr_1 * y[4];
-				// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-				dydt[5] = -r2m / gsl_pow_3(r) + 3. * r2mr_1 * gsl_pow_2(y[5]) + r2m * (gsl_pow_2(y[6]) + gsl_pow_2(sint * y[7]));
-				// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-				dydt[6] = -2. * r3m * r2mr_1 * y[5] * y[6] + sint * cost * gsl_pow_2(y[7]);
-				// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-				dydt[7] = -2. * (r3m * r2mr_1 * y[5] + cost / sint * y[6]) * y[7];
-				return GSL_SUCCESS;
-			}
-			int functionTau(double t, const double y[], double dydt[], void *params) {
-				dydt[0] = y[4]; // dt/d\tau
-				dydt[1] = y[5]; // dr/d\tau
-				dydt[2] = y[6]; // d\theta/d\tau
-				dydt[3] = y[7]; // d\phi/d\tau
-				const double r = y[1], sint = abs(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
-				const double r2m = r - 2., r_1 = 1. / r;
-				const double r2mr_1 = 1. / (r2m * r);
-				// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
-				dydt[4] = -2. * y[5] * r2mr_1 * y[4];
-				// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-				dydt[5] = -r2m * gsl_pow_3(r_1) * gsl_pow_2(y[4]) + r2mr_1 * gsl_pow_2(y[5]) + r2m * (gsl_pow_2(y[6]) + gsl_pow_2(sint * y[7]));
-				// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-				dydt[6] = -2. * r_1 * y[5] * y[6] + sint * cost * gsl_pow_2(y[7]);
-				// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-				dydt[7] = -2. * (r_1 * y[5] + cost / sint * y[6]) * y[7];
-				return GSL_SUCCESS;
-			}
-			int functionHamiltonian(double t, const double y[], double dydt[], void *params) {
-				const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), g00 = 1. - 2. * r_1, E = 1. - y[4], L2 = gsl_pow_2(y[7]);
-				const double sint_1 = 1. / abs(sin(y[2])), sint_2 = gsl_pow_2(sint_1);
-				//[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
-				dydt[0] = g00 / E;						 // d\tau/dt
-				dydt[1] = g00 * y[5] * dydt[0];			 // dr/dt
-				dydt[2] = y[6] * r_2 * dydt[0];			 // d\theta/dt
-				dydt[3] = y[7] * sint_2 * r_2 * dydt[0]; // d\phi/dt
-				dydt[4] = 0.;
-				dydt[5] = (-(gsl_pow_2(y[5]) + gsl_pow_2(E) / gsl_pow_2(g00)) + (gsl_pow_2(y[6]) + L2 * sint_2) * r_1) * r_2 * dydt[0];
-				dydt[6] = sint_2 * L2 * cos(y[2]) * sint_1 * r_2 * dydt[0];
-				dydt[7] = 0.;
-				return GSL_SUCCESS;
-			}
-			int functionRIAF(double t, const double y[], double dydt[], void *params) {
-				return GSL_SUCCESS;
-			}
-			int functionHelicalWithFixedRadialSpeed(double t, const double y[], double dydt[], void *params) {
-				const double g00 = 1. - 2. / y[1], sin_theta = abs(sin(y[2]));
-				if (g00 <= 0)
-					return GSL_FAILURE;
-				dydt[0] = y[4]; // d\tau/dt
-				dydt[1] = y[5]; // dr/dt
-				dydt[2] = 0.;	// d\theta/dt = 0.
-				dydt[3] = y[7]; // d\phi/dt
-				// d^2\tau/dt^2 = d^2\tau/dtdr * dr/dt
-				dydt[4] = ((1. + gsl_pow_2(y[5] / g00)) / gsl_pow_2(y[1]) + y[1] * gsl_pow_2(sin_theta * y[7])) * y[5] / sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * sin_theta * y[7])));
-				// d^2r/dt^2 = 0.
-				dydt[5] = 0.;
-				// d^2\theta/dt^2 = 0.
-				dydt[6] = 0.;
-				// d^2\phi/dt^2 = d(d\phi/dt)/dr * dr/dt
-				dydt[7] = -2. * y[7] / y[1] * y[5];
-				return GSL_SUCCESS;
-			}
-			int functionHelicalWithFixedRadialMomentum(double t, const double y[], double dydt[], void *params) {
-				// WIP
-				const double g00 = 1. - 2. / y[1];
-				if (g00 <= 0)
-					return GSL_FAILURE;
-				dydt[0] = sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * sin(y[2]) * y[7]))); // d\tau/dt
-				dydt[1] = y[5];																		// dr/dt
-				dydt[2] = 0.;																		// d\theta/dt = 0.
-				dydt[3] = y[7];																		// d\phi/dt
-				dydt[4] = 1.;
-				// d^2r/dt^2 = 0.
-				// g00 * dr/d\tau = C
-				// dr/d\tau = C / g00
-				// dr/dt = C / g00 * d\tau/dt
-				dydt[5] = 1.;
-				dydt[6] = 0.;
-				dydt[7] = 1.;
-				return GSL_SUCCESS;
-			}
-			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
-				return GSL_SUCCESS;
-			}
-			int jacobianTau(double t, const double y[], double *dfdy, double dfdt[], void *params) {
-				return GSL_SUCCESS;
-			}
-			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
-				return GSL_SUCCESS;
-			}
-			int jacobianRIAF(double t, const double y[], double *dfdy, double dfdt[], void *params) {
-				return GSL_SUCCESS;
-			}
-			int jacobianHelicalWithFixedRadialSpeed(double t, const double y[], double *dfdy, double dfdt[], void *params) {
-				return GSL_SUCCESS;
-			}
-		} // namespace Schwarzschild
 		namespace Kerr {
 			int function(double t, const double y[], double dydt[], void *params) {
 				class Kerr *kerr = reinterpret_cast<class Kerr *>(params);

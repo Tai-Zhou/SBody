@@ -49,7 +49,7 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 		main_metric = make_shared<PN1>(fSP);
 	else
 		main_metric = make_shared<Schwarzschild>();
-	Star star_0(main_metric, BASE, GEODESIC, Unit::R_sun, false);
+	Star star_0(main_metric, T, LAGRANGIAN, GEODESIC, Unit::R_sun, false);
 	double position[8], z0, last_obs_time = 0., this_obs_time;
 	star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, 0., 0., 0.);
 	star_0.Position(position);
