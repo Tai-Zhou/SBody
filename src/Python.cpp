@@ -48,9 +48,11 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 	double t = (tp - 2002.) * Unit::yr - M_PI * sqrt(gsl_pow_3(a)), tStep = 0., tRec = 18. * Unit::yr / tStepNumber;
 	shared_ptr<Metric> main_metric;
 	unique_ptr<View> viewPtr;
-	if (metric == 0)
+	if (metric == 0) {
 		main_metric = make_shared<PN1>(fSP);
-	else {
+		ray_tracing = false;
+		gr_time_delay = false;
+	} else {
 		main_metric = make_shared<Schwarzschild>();
 		viewPtr = make_unique<View>(make_unique<Schwarzschild>(), R, 0., "");
 	}
@@ -116,7 +118,7 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 				result_ptr[8] = (tStep - tRec * coeff1 * coeff3) / Unit::s;
 			}
 			const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
-			result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1) * 299792.458;
+			result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
 #ifndef GSL_RANGE_CHECK_OFF
 			py::print(result_ptr[0], result_ptr[1], result_ptr[2], result_ptr[3], result_ptr[4], result_ptr[5], result_ptr[6], result_ptr[7], result_ptr[8], result_ptr[9], result_ptr[10], result_ptr[11], result_ptr[12], result_ptr[13]);
 #endif
@@ -133,6 +135,8 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 double Chi2(py::array_t<double> x, int metric, int gr_switch, py::array_t<double> obs_time, py::array_t<double> obs_redshift, double redshift_sigma, py::array_t<double> obs_ra, double ra_sigma, py::array_t<double> obs_dec, double dec_sigma) {
 	if (x.at(9) > 0.99)
 		return GSL_NEGINF;
+	if (metric == 0)
+		gr_switch = 0;
 	auto obs_data = CalculateOrbit(x.at(0), metric, x.at(7), x.at(3), x.at(13), x.at(8), x.at(9), x.at(10), x.at(11), x.at(12), gr_switch > 0, (gr_switch & 4) > 0, obs_time);
 	double redshift_prob = 0., ra_prob = 0., dec_prob = 0.;
 	const int size = obs_redshift.size();
