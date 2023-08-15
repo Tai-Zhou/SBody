@@ -31,7 +31,6 @@ namespace SBody {
 		const double cos_theta_observer_;
 		const double t_final_;
 		std::unique_ptr<indicators::BlockProgressBar> bar_;
-		std::unique_ptr<File> output_;
 
 	  public:
 		/**
@@ -41,7 +40,7 @@ namespace SBody {
 		 * @param theta
 		 * @param file_name
 		 */
-		View(std::shared_ptr<Metric> metric, double r, double theta, std::string file_name);
+		View(std::shared_ptr<Metric> metric, double r, double theta);
 
 		/**
 		 * @brief
@@ -68,7 +67,7 @@ namespace SBody {
 		 *
 		 * @return int
 		 */
-		int Shadow();
+		int Shadow(std::string file_name);
 
 		int OmegaTest();
 	};
@@ -89,7 +88,7 @@ namespace SBody {
 		 * @param theta
 		 * @param file_name
 		 */
-		Camera(std::shared_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta, std::string file_name);
+		Camera(std::shared_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta);
 
 		/**
 		 * @brief
@@ -110,7 +109,7 @@ namespace SBody {
 		 *
 		 * @return int
 		 */
-		int Save();
+		int Save(std::string file_name);
 	};
 } // namespace SBody
 

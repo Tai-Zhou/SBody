@@ -79,7 +79,7 @@ void Help() {
 int main(int argc, char *argv[]) {
 	// Application Entry
 	auto TStart = chrono::steady_clock::now();
-	double mass = 4.261e6, spin = 0., charge = 0., NUT = 0.;
+	double mass = 4.261e6, spin = 0., NUT = 0.;
 	double tFinal = 3600.; // 128.43325526 for 4.15e6 M_sun
 	size_t tStepNumber = T_STEP_NUMBER;
 	int TCal = T_CAL;
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
 		ray = 0;
 	shared_ptr<Metric> main_metric = make_shared<Schwarzschild>();
 	// metric::setMetric(metric, PN, mass, spin, charge, NUT);
-	string strFormat = fmt::format(" ({:f},{:f},{:f})[{:f},{:f}]", spin, charge, NUT, inc, eps);
+	string strFormat = fmt::format(" ({:f},{:f})[{:f},{:f}]", spin, NUT, inc, eps);
 	if (ProgressBar::display_) {
 		indicators::show_console_cursor(false);
 		ProgressBar::bars_[0].set_option(indicators::option::ForegroundColor{indicators::Color(metric)});
@@ -217,12 +217,12 @@ int main(int argc, char *argv[]) {
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps));
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view helical({:.2f},{:.6f},{:.6f},{:.6f},{:.6f})[{:f},{:f}]", 10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6, inc, eps));
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view helical({:f},{:f},{:f},{:f},{:f})[{:f},{:f}]", a, inclination, periapsis, e, ascending_node, inc, eps));
-		viewPtr = make_unique<View>(make_unique<Schwarzschild>(), 8180. * Unit::pc, inc, fmt::format("view S2H"));
+		viewPtr = make_unique<View>(make_unique<Schwarzschild>(), 8180. * Unit::pc, inc);
 		if (ray & 4)
-			shadowPtr = make_unique<thread>(&View::Shadow, viewPtr.get());
+			shadowPtr = make_unique<thread>(&View::Shadow, viewPtr.get(), "shadow");
 	}
 	if (ray & 10) {
-		cameraPtr = make_unique<Camera>(make_unique<Schwarzschild>(), 1000, 5e-2, 1.e3, inc, fmt::format("camera ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps));
+		cameraPtr = make_unique<Camera>(make_unique<Schwarzschild>(), 1000, 5e-2, 1.e3, inc);
 		if (ray & 8)
 			lensPtr = make_unique<thread>(&Camera::Lens, cameraPtr.get());
 	}
@@ -235,8 +235,8 @@ int main(int argc, char *argv[]) {
 	// Integrator &&integrator = main_metric->GetIntegrator(metric != 0);
 	// NumPy rec(main_metric->Name() + strFormat, {12});
 	// NumPy rec(fmt::format("HotSpot a={:.1f} e={:.2f} i={:.6f} o={:.2f}", a, e, inclination, periapsis), {12});
-	NumPy rec(fmt::format("mcmc test", a, inclination, periapsis, e, ascending_node), {12});
-	vector<double> temp(12);
+	NumPy rec(fmt::format("mcmc test", a, inclination, periapsis, e, ascending_node), {16});
+	vector<double> temp(16);
 	int status = 0;
 	double h = 1., stepPercent = 100. / tStepNumber;
 	h = -1;
@@ -259,7 +259,7 @@ int main(int argc, char *argv[]) {
 		temp[10] = star_0.AngularMomentum();
 		temp[11] = star_0.CarterConstant();
 		if (ray & 1)
-			viewPtr->TraceStar(star_0, nullptr, i, nullptr);
+			viewPtr->TraceStar(star_0, nullptr, i, temp.data() + 12);
 		if (ray & 2)
 			cameraPtr->TraceStar();
 		rec.Save(temp);
@@ -273,7 +273,7 @@ int main(int argc, char *argv[]) {
 		indicators::show_console_cursor(true);
 	}
 	if (ray & 2)
-		cameraPtr->Save();
+		cameraPtr->Save("camera");
 	if (ray & 4)
 		shadowPtr->join();
 	if (ray & 8)

@@ -33,9 +33,7 @@
 using namespace std;
 
 namespace SBody {
-	View::View(shared_ptr<Metric> metric, double r, double theta, string file_name) : metric_(metric), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.) {
-		if (!file_name.empty())
-			output_ = make_unique<NumPy>(file_name, vector<int>({9}));
+	View::View(shared_ptr<Metric> metric, double r, double theta) : metric_(metric), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.) {
 		bar_ = make_unique<indicators::BlockProgressBar>(indicators::option::ShowElapsedTime{true},
 														 indicators::option::ShowRemainingTime{true},
 														 indicators::option::ForegroundColor{indicators::Color(4)},
@@ -151,14 +149,10 @@ namespace SBody {
 				return status;
 			}
 		}
-		if (record == nullptr)
-			output_->Save({alpha, beta, star.Redshift(photon->data), (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s});
-		else {
-			record[0] = alpha;
-			record[1] = beta;
-			record[2] = star.Redshift(photon->data);
-			record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
-		}
+		record[0] = alpha;
+		record[1] = beta;
+		record[2] = star.Redshift(photon->data);
+		record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
 		return GSL_SUCCESS;
 		double photon2[9], cone_record[sample_number][3], local_cone_record[sample_number][3], area_record_initial[sample_number][3], area_record[sample_number][3], center_photon_position[3], center_photon_velocity[3], interval = M_2PI / sample_number;
 		auto photon2_position_view = gsl_vector_view_array(photon2, 4), photon2_velocity_view = gsl_vector_view_array(photon2 + 4, 4);
@@ -327,14 +321,15 @@ namespace SBody {
 #ifdef VIEW_TAU
 		output->Save({alpha, beta, star.RedshiftTau(photon), (photon[8] + photon[9]) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, cross_section_area_initial / epsilon_circle_area});
 #else
-		if (record == nullptr)
-			output_->Save({alpha, beta, star.Redshift(photon->data), (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, 0.5 * abs(cross_section_area_initial) / epsilon_circle_area});
-		else {
-			record[0] = alpha;
-			record[1] = beta;
-			record[2] = star.Redshift(photon->data);
-			record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
-		}
+		record[0] = alpha;
+		record[1] = beta;
+		record[2] = star.Redshift(photon->data);
+		record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
+		record[4] = 0.5 * abs(cone_solid_angle) / epsilon_circle_area;
+		record[5] = sqrt(-1. / gmunu->data[0]);
+		record[6] = 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area;
+		record[7] = cross_section_area / epsilon_circle_area;
+		record[8] = 0.5 * abs(cross_section_area_initial) / epsilon_circle_area;
 #endif
 		return 0;
 	}
@@ -432,9 +427,9 @@ namespace SBody {
 		}
 		return 0;
 	}
-	int View::Shadow() {
+	int View::Shadow(string file_name) {
 		const double interval = M_2PI / sample_number;
-		NumPy rec("shadow", {2});
+		NumPy record(file_name, {2});
 		double h, rin = 2., rout = 10., rmid = 6., photon[10];
 		Integrator &&integrator = metric_->GetIntegrator(T, HAMILTONIAN);
 		bar_->set_option(indicators::option::MaxProgress(sample_number));
@@ -468,7 +463,7 @@ namespace SBody {
 			}
 			rin -= 2. * interval * rmid;
 			rout += 2. * interval * rmid;
-			rec.Save({rmid * cosa, rmid * sina});
+			record.Save({rmid * cosa, rmid * sina});
 			if (ProgressBar::display_)
 				ProgressBar::bars_[progressBarIndex].tick();
 		}
@@ -476,7 +471,7 @@ namespace SBody {
 			ProgressBar::SetComplete(progressBarIndex, "! Shadow");
 		return 0;
 	}
-	Camera::Camera(shared_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta, string file_name) : View(metric, r, theta, file_name), pixel_(pixel), half_angle_(half_angle) {
+	Camera::Camera(shared_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta) : View(metric, r, theta), pixel_(pixel), half_angle_(half_angle) {
 		screen_ = vector<vector<double>>(pixel, vector<double>(pixel));
 		initials_ = vector<array<double, 10>>(pixel * pixel);
 		const double pixel_size = 2. * half_angle * r / pixel, t1 = r + 100.;
@@ -552,9 +547,10 @@ namespace SBody {
 			ProgressBar::SetComplete(progressBarIndex, "! lens");
 		return 0;
 	}
-	int Camera::Save() {
+	int Camera::Save(string file_name) {
+		NumPy record(file_name, {2});
 		for (const vector<double> &line : screen_)
-			output_->Save(line);
+			record.Save(line);
 		return 0;
 	}
 } // namespace SBody

@@ -54,7 +54,7 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 		gr_time_delay = false;
 	} else {
 		main_metric = make_shared<Schwarzschild>();
-		viewPtr = make_unique<View>(make_unique<Schwarzschild>(), R, 0., "");
+		viewPtr = make_unique<View>(make_unique<Schwarzschild>(), R, 0.);
 	}
 	Star star_0(main_metric, T, LAGRANGIAN, GEODESIC, Unit::R_sun, false);
 	double position[12], z0, t0, last_obs_time = 2002., this_obs_time;
