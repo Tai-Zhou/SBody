@@ -52,6 +52,13 @@ namespace SBody {
 		}
 		return isnan(gsl_matrix_get(coordinate, 3, 0)) ? 1 : 0;
 	}
+	double Metric::Redshift(const double y[], const double photon[], time_system time) {
+		if (time == T) {
+			const double u[4] = {1., y[5], y[6], y[7]}, v[4] = {1., photon[5], photon[6], photon[7]};
+			return -DotProduct(y, u, v, 4) / (y[4] * photon[4]);
+		}
+		return -DotProduct(y, y + 4, photon + 4, 4);
+	}
 
 	Newton::Newton(int PN) : PN_(PN){};
 	std::string Newton::Name() {
@@ -110,6 +117,10 @@ namespace SBody {
 	}
 	double Newton::CarterConstant(const double y[], const double mu2, coordinate_system coordinate) { // FIXME: not verified!
 		return gsl_pow_2(AngularMomentum(y, coordinate));
+	}
+	double Newton::Redshift(const double y[], const double photon[], time_system time) {
+		const double delta_epsilon = 1. - 2. / y[1];
+		return (1. - DotProduct(y, y + 4, photon + 4, 3) / sqrt(delta_epsilon)) / sqrt(delta_epsilon - gsl_pow_2(y[5]) - gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin(y[2]) * y[7])));
 	}
 	int Newton::NormalizeTimelikeGeodesic(double y[]) {
 		y[4] = 1;

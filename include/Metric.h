@@ -54,6 +54,7 @@ namespace SBody {
 		virtual double Energy(const double y[], coordinate_system coordinate) = 0;
 		virtual double AngularMomentum(const double y[], coordinate_system coordinate) = 0;
 		virtual double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) = 0;
+		virtual double Redshift(const double y[], const double photon[], time_system time = T);
 		virtual int NormalizeTimelikeGeodesic(double y[]) = 0;
 		virtual int NormalizeNullGeodesic(double y[], double frequency = 1.) = 0;
 		virtual Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) = 0;
@@ -71,6 +72,7 @@ namespace SBody {
 		double Energy(const double y[], coordinate_system coordinate) override;
 		double AngularMomentum(const double y[], coordinate_system coordinate) override;
 		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
+		double Redshift(const double y[], const double photon[], time_system time = T) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
 		Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
