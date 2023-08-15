@@ -58,7 +58,10 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 	}
 	Star star_0(main_metric, T, LAGRANGIAN, GEODESIC, Unit::R_sun, false);
 	double position[12], z0, t0, last_obs_time = 2002., this_obs_time;
-	star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, 0., 0., 0.);
+	if (metric == 2)
+		star_0.InitializeKeplerianHarmonic(a, e, inclination, periapsis, ascending_node, 0., 0., 0.);
+	else
+		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, 0., 0., 0.);
 	star_0.Position(position);
 #ifndef GSL_RANGE_CHECK_OFF
 	py::print(position[0], position[1], position[2], position[3], position[4], position[5], position[6], position[7]);
@@ -68,7 +71,10 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 		viewPtr->TraceStar(star_0, nullptr, 0, position + 8);
 		t0 = position[11];
 	}
-	star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
+	if (metric == 2)
+		star_0.InitializeKeplerianHarmonic(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
+	else
+		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
 	double h = -1.;
 	int status = 0;
 	if (status = star_0.IntegratorApply(&t, 0., &h); status != 0)
@@ -85,13 +91,20 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 		if (status = star_0.IntegratorApply(&t, tStep, &h); status != 0)
 			py::print("[!] IntegratorApply status =", status);
 		star_0.Position(this_position);
-		if (this_obs_time = (t + z0 - this_position[1] * GSL_SIGN(this_position[2]) * cos(this_position[2])) / Unit::yr + 2002.; this_obs_time > obs_time.at(idx)) {
+		if (metric == 2)
+			this_obs_time = (t + z0 - (this_position[1] - 1.) * GSL_SIGN(this_position[2]) * cos(this_position[2])) / Unit::yr + 2002.;
+		else
+			this_obs_time = (t + z0 - this_position[1] * GSL_SIGN(this_position[2]) * cos(this_position[2])) / Unit::yr + 2002.;
+		if (this_obs_time > obs_time.at(idx)) {
 #ifndef GSL_RANGE_CHECK_OFF
 			py::print("obs_time: ", idx, last_obs_time, obs_time.at(idx), this_obs_time);
 #endif
 			if (gr_time_delay) {
 				viewPtr->TraceStar(star_0, last_position, i, last_position + 8);
 				viewPtr->TraceStar(star_0, this_position, i, this_position + 8);
+#ifndef GSL_RANGE_CHECK_OFF
+				py::print("gr_redshift: ", idx, last_position[10], this_position[10]);
+#endif
 				double this_gr_obs_time = (t + (t0 - this_position[11]) * Unit::s) / Unit::yr + 2002.;
 				double last_gr_obs_time = (t - tRec + (t0 - last_position[11]) * Unit::s) / Unit::yr + 2002.;
 #ifndef GSL_RANGE_CHECK_OFF
@@ -111,9 +124,24 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 				const double coeff1 = this_obs_time - obs_time.at(idx), coeff2 = obs_time.at(idx) - last_obs_time, coeff3 = 1. / (this_obs_time - last_obs_time);
 				for (int j = 0; j < 8; ++j)
 					interpolation_position[j] = (coeff1 * last_position[j] + coeff2 * this_position[j]) * coeff3;
+#ifndef GSL_RANGE_CHECK_OFF
+				py::print("last_position:", last_position[0], last_position[1], last_position[2], last_position[3], last_position[4], last_position[5], last_position[6], last_position[7]);
+				py::print("this_position:", this_position[0], this_position[1], this_position[2], this_position[3], this_position[4], this_position[5], this_position[6], this_position[7]);
+				SphericalToCartesian(last_position);
+				SphericalToCartesian(this_position);
+				double interpolation_position2[12], interpolation_position3[8];
+				for (int j = 0; j < 8; ++j)
+					interpolation_position3[j] = interpolation_position2[j] = (coeff1 * last_position[j] + coeff2 * this_position[j]) * coeff3;
+				CartesianToSpherical(this_position);
+				CartesianToSpherical(interpolation_position3);
+				viewPtr->TraceStar(star_0, interpolation_position3, i, interpolation_position2 + 8);
+				py::print("interpolation_position2:", interpolation_position2[0], interpolation_position2[1], interpolation_position2[2], interpolation_position2[3], interpolation_position2[4], interpolation_position2[5], interpolation_position2[6], interpolation_position2[7], interpolation_position2[8], interpolation_position2[9], interpolation_position2[10], interpolation_position2[11]);
+#endif
 				if (ray_tracing)
 					viewPtr->TraceStar(star_0, interpolation_position, i, result_ptr + 10);
 				copy(interpolation_position, interpolation_position + 8, result_ptr);
+				if (metric == 2)
+					result_ptr[1] -= 1.;
 				SphericalToCartesian(result_ptr);
 				result_ptr[8] = (tStep - tRec * coeff1 * coeff3) / Unit::s;
 			}
