@@ -68,7 +68,7 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 #endif
 	z0 = position[1] * GSL_SIGN(position[2]) * cos(position[2]);
 	if (gr_time_delay) {
-		viewPtr->TraceStar(star_0, nullptr, 0, position + 8);
+		viewPtr->TraceStar(position, 0, position + 8);
 		t0 = position[11];
 	}
 	if (metric == 2)
@@ -100,8 +100,8 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 			py::print("obs_time: ", idx, last_obs_time, obs_time.at(idx), this_obs_time);
 #endif
 			if (gr_time_delay) {
-				viewPtr->TraceStar(star_0, last_position, i, last_position + 8);
-				viewPtr->TraceStar(star_0, this_position, i, this_position + 8);
+				viewPtr->TraceStar(last_position, i, last_position + 8);
+				viewPtr->TraceStar(this_position, i, this_position + 8);
 #ifndef GSL_RANGE_CHECK_OFF
 				py::print("gr_redshift: ", idx, last_position[10], this_position[10]);
 #endif
@@ -138,7 +138,7 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 				py::print("interpolation_position2:", interpolation_position2[0], interpolation_position2[1], interpolation_position2[2], interpolation_position2[3], interpolation_position2[4], interpolation_position2[5], interpolation_position2[6], interpolation_position2[7], interpolation_position2[8], interpolation_position2[9], interpolation_position2[10], interpolation_position2[11]);
 #endif
 				if (ray_tracing)
-					viewPtr->TraceStar(star_0, interpolation_position, i, result_ptr + 10);
+					viewPtr->TraceStar(interpolation_position, i, result_ptr + 10);
 				copy(interpolation_position, interpolation_position + 8, result_ptr);
 				if (metric == 2)
 					result_ptr[1] -= 1.;

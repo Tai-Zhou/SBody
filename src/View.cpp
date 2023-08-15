@@ -65,11 +65,7 @@ namespace SBody {
 		}
 		return metric_->NormalizeNullGeodesic(photon, 1.);
 	}
-	int View::TraceStar(Star &star, double position[], int ray_number, double record[]) { // FIXME:!!!!
-		if (position == nullptr) {
-			position = new double[8];
-			star.Position(position);
-		}
+	int View::TraceStar(double position[], int ray_number, double record[]) { // FIXME:!!!!
 		const double r_star = position[1], sin_theta_star = abs(sin(position[2])), cos_theta_star = GSL_SIGN(position[2]) * cos(position[2]), sin_phi_star = sin(position[3]), cos_phi_star = cos(position[3]);
 		if (r_star <= 3.)
 			PrintlnWarning("star orbit radius = {:.6f}", r_star);
@@ -151,7 +147,7 @@ namespace SBody {
 		}
 		record[0] = alpha;
 		record[1] = beta;
-		record[2] = star.Redshift(photon->data);
+		record[2] = metric_->Redshift(position, photon->data);
 		record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
 		return GSL_SUCCESS;
 		double photon2[9], cone_record[sample_number][3], local_cone_record[sample_number][3], area_record_initial[sample_number][3], area_record[sample_number][3], center_photon_position[3], center_photon_velocity[3], interval = M_2PI / sample_number;
@@ -321,10 +317,6 @@ namespace SBody {
 #ifdef VIEW_TAU
 		output->Save({alpha, beta, star.RedshiftTau(photon), (photon[8] + photon[9]) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, cross_section_area_initial / epsilon_circle_area});
 #else
-		record[0] = alpha;
-		record[1] = beta;
-		record[2] = star.Redshift(photon->data);
-		record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
 		record[4] = 0.5 * abs(cone_solid_angle) / epsilon_circle_area;
 		record[5] = sqrt(-1. / gmunu->data[0]);
 		record[6] = 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area;

@@ -253,15 +253,15 @@ int main(int argc, char *argv[]) {
 		star_0.Position(temp.data());
 		if (Hamiltonian)
 			main_metric->HamiltonianToBase(temp.data());
+		if (ray & 1)
+			viewPtr->TraceStar(temp.data(), i, temp.data() + 12);
+		if (ray & 2)
+			cameraPtr->TraceStar();
 		SphericalToCartesian(temp.data());
 		temp[8] = t / Unit::s;
 		temp[9] = star_0.Energy();
 		temp[10] = star_0.AngularMomentum();
 		temp[11] = star_0.CarterConstant();
-		if (ray & 1)
-			viewPtr->TraceStar(star_0, nullptr, i, temp.data() + 12);
-		if (ray & 2)
-			cameraPtr->TraceStar();
 		rec.Save(temp);
 		if (ProgressBar::display_)
 			ProgressBar::bars_[0].set_progress(i * stepPercent);
