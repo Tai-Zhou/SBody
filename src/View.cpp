@@ -76,21 +76,21 @@ namespace SBody {
 		if (r_star <= 3.)
 			PrintlnWarning("star orbit radius = {:.6f}", r_star);
 		const double alpha_coefficient = sin_theta_star * sin_phi_star, beta_coefficient = cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_, iteration_coefficient = tanh(0.05 * r_star), cos_observer_star = sin_theta_observer_ * sin_theta_star * cos_phi_star + cos_theta_observer_ * cos_theta_star, sin_observer_star = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_star = acos(cos_observer_star);
-		double alpha0 = GSL_POSINF, alpha1 = 0, beta0 = GSL_POSINF, beta1 = 0, cosph, h;
+		double alpha = 0, beta = 0, cosph, h;
 		if (cos_observer_star <= -1.) {
 			PrintlnWarning("star behind black hole, cos(theta) = {:.6f}\n", cos_observer_star);
-			alpha1 = 2. * sqrt(r_star);
-			beta1 = 0.;
+			alpha = 2. * sqrt(r_star);
+			beta = 0.;
 		} else if (cos_observer_star < 1.) {
 			if (theta_observer_star < M_PI_2) {
 				const double effective_radius = r_star + gsl_pow_3(theta_observer_star / M_PI_2) / sin_observer_star;
-				alpha1 = effective_radius * alpha_coefficient;
-				beta1 = effective_radius * beta_coefficient;
+				alpha = effective_radius * alpha_coefficient;
+				beta = effective_radius * beta_coefficient;
 			} else {
 				const double effective_radius = 0.5 * (r_star + (1. + sqrt(gsl_pow_2(r_star * sin_observer_star + 1.) - 16. * r_star * cos_observer_star)) / sin_observer_star);
 				// b=(r*sin(theta)+1+sqrt(gsl_pow_2(r*sin(theta)+1)-16*cos(theta)*r))/2
-				alpha1 = effective_radius * alpha_coefficient;
-				beta1 = effective_radius * beta_coefficient;
+				alpha = effective_radius * alpha_coefficient;
+				beta = effective_radius * beta_coefficient;
 			}
 		}
 		GslBlock collector;
@@ -100,10 +100,8 @@ namespace SBody {
 		IO::NumPy rec("Trace " + to_string(ray_number), 12);
 #endif
 		Integrator &&integrator = metric_->GetIntegrator(T, HAMILTONIAN);
-		while (gsl_hypot(alpha1 - alpha0, beta1 - beta0) > epsilon * (1. + gsl_hypot(alpha1, beta1))) {
-			alpha0 = alpha1;
-			beta0 = beta1;
-			InitializePhoton(photon->data, alpha0, beta0);
+		while (true) {
+			InitializePhoton(photon->data, alpha, beta);
 			metric_->BaseToHamiltonian(photon->data);
 			int status = 0, fixed = 0;
 			h = -1.;
@@ -138,8 +136,11 @@ namespace SBody {
 					rec.save(qdq);
 #endif
 					if (cosph >= 0) {
-						alpha1 += iteration_coefficient * (r_star * sin_theta_star * sin_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 3))); // TODO:OPT!
-						beta1 += iteration_coefficient * ((r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * sin_theta_observer_ - (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 3))) * cos_theta_observer_);
+						const double delta_alpha = iteration_coefficient * (r_star * sin_theta_star * sin_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 3))), delta_beta = iteration_coefficient * ((r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * sin_theta_observer_ - (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 3))) * cos_theta_observer_);
+						if (gsl_hypot(delta_alpha, delta_beta) <= epsilon * (1. + gsl_hypot(alpha, beta)))
+							break;
+						alpha += delta_alpha;
+						beta += delta_beta;
 						metric_->HamiltonianToBase(photon->data);
 						break;
 					}
@@ -151,10 +152,10 @@ namespace SBody {
 			}
 		}
 		if (record == nullptr)
-			output_->Save({alpha1, beta1, star.Redshift(photon->data), (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s});
+			output_->Save({alpha, beta, star.Redshift(photon->data), (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s});
 		else {
-			record[0] = alpha1;
-			record[1] = beta1;
+			record[0] = alpha;
+			record[1] = beta;
 			record[2] = star.Redshift(photon->data);
 			record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
 		}
@@ -324,13 +325,13 @@ namespace SBody {
 			}
 		}
 #ifdef VIEW_TAU
-		output->Save({alpha1, beta1, star.RedshiftTau(photon), (photon[8] + photon[9]) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, cross_section_area_initial / epsilon_circle_area});
+		output->Save({alpha, beta, star.RedshiftTau(photon), (photon[8] + photon[9]) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, cross_section_area_initial / epsilon_circle_area});
 #else
 		if (record == nullptr)
-			output_->Save({alpha1, beta1, star.Redshift(photon->data), (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, 0.5 * abs(cross_section_area_initial) / epsilon_circle_area});
+			output_->Save({alpha, beta, star.Redshift(photon->data), (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, 0.5 * abs(cross_section_area_initial) / epsilon_circle_area});
 		else {
-			record[0] = alpha1;
-			record[1] = beta1;
+			record[0] = alpha;
+			record[1] = beta;
 			record[2] = star.Redshift(photon->data);
 			record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
 		}
