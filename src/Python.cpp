@@ -129,13 +129,9 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 				py::print("this_position:", this_position[0], this_position[1], this_position[2], this_position[3], this_position[4], this_position[5], this_position[6], this_position[7]);
 				SphericalToCartesian(last_position);
 				SphericalToCartesian(this_position);
-				double interpolation_position2[12], interpolation_position3[8];
-				for (int j = 0; j < 8; ++j)
-					interpolation_position3[j] = interpolation_position2[j] = (coeff1 * last_position[j] + coeff2 * this_position[j]) * coeff3;
+				py::print("last_position:", last_position[0], last_position[1], last_position[2], last_position[3], last_position[4], last_position[5], last_position[6], last_position[7]);
+				py::print("this_position:", this_position[0], this_position[1], this_position[2], this_position[3], this_position[4], this_position[5], this_position[6], this_position[7]);
 				CartesianToSpherical(this_position);
-				CartesianToSpherical(interpolation_position3);
-				viewPtr->TraceStar(star_0, interpolation_position3, i, interpolation_position2 + 8);
-				py::print("interpolation_position2:", interpolation_position2[0], interpolation_position2[1], interpolation_position2[2], interpolation_position2[3], interpolation_position2[4], interpolation_position2[5], interpolation_position2[6], interpolation_position2[7], interpolation_position2[8], interpolation_position2[9], interpolation_position2[10], interpolation_position2[11]);
 #endif
 				if (ray_tracing)
 					viewPtr->TraceStar(interpolation_position, i, result_ptr + 10);
@@ -180,16 +176,16 @@ double Chi2(py::array_t<double> x, int metric, int gr_switch, py::array_t<double
 			redshift_prob -= gsl_pow_2(obs_redshift.at(i) - obs_data.at(i, 9) - x.at(6));
 	if (gr_switch & 2)
 		for (int i = 0; i < size; ++i) {
-			ra_prob -= gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 10) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - obs_time.at(i) * x.at(5));
-			dec_prob -= gsl_pow_2(obs_dec.at(i) - obs_data.at(i, 11) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - obs_time.at(i) * x.at(4));
+			ra_prob -= gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 10) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
+			dec_prob -= gsl_pow_2(obs_dec.at(i) - obs_data.at(i, 11) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
 		}
 	else
 		for (int i = 0; i < size; ++i) {
-			ra_prob -= gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - obs_time.at(i) * x.at(5));
-			dec_prob -= gsl_pow_2(obs_dec.at(i) + obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - obs_time.at(i) * x.at(4));
+			ra_prob -= gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
+			dec_prob -= gsl_pow_2(obs_dec.at(i) + obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
 #ifndef GSL_RANGE_CHECK_OFF
-			py::print(obs_ra.at(i), obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - obs_time.at(i) * x.at(5));
-			py::print(obs_dec.at(i), obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - obs_time.at(i) * x.at(4));
+			py::print(obs_ra.at(i), obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
+			py::print(obs_dec.at(i), obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
 #endif
 		}
 #ifndef GSL_RANGE_CHECK_OFF
