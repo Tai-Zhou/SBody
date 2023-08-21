@@ -159,8 +159,10 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 double Chi2(py::array_t<double> x, int metric, int gr_switch, py::array_t<double> obs_time, py::array_t<double> obs_redshift, double redshift_sigma, py::array_t<double> obs_ra, double ra_sigma, py::array_t<double> obs_dec, double dec_sigma) {
 	if (x.at(9) > 0.99)
 		return GSL_NEGINF;
-	if (metric == 0)
+	if (metric == 0 && gr_switch > 0) {
+		x.mutable_at(7) = 1.;
 		gr_switch = 0;
+	}
 	auto obs_data = CalculateOrbit(x.at(0), metric, x.at(7), x.at(3), x.at(13), x.at(8), x.at(9), x.at(10), x.at(11), x.at(12), gr_switch > 0, (gr_switch & 4) > 0, obs_time);
 	double redshift_prob = 0., ra_prob = 0., dec_prob = 0.;
 	const int size = obs_redshift.size();
