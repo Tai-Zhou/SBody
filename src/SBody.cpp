@@ -235,8 +235,8 @@ int main(int argc, char *argv[]) {
 	// Integrator &&integrator = main_metric->GetIntegrator(metric != 0);
 	// NumPy rec(main_metric->Name() + strFormat, {12});
 	// NumPy rec(fmt::format("HotSpot a={:.1f} e={:.2f} i={:.6f} o={:.2f}", a, e, inclination, periapsis), {12});
-	NumPy rec(fmt::format("mcmc test", a, inclination, periapsis, e, ascending_node), {16});
-	vector<double> temp(16);
+	NumPy rec(fmt::format("mcmc test", a, inclination, periapsis, e, ascending_node), {17});
+	vector<double> temp(17);
 	int status = 0;
 	double h = 1., stepPercent = 100. / tStepNumber;
 	h = -1;
@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
 		if (Hamiltonian)
 			main_metric->HamiltonianToBase(temp.data());
 		if (ray & 1)
-			viewPtr->TraceStar(temp.data(), i, temp.data() + 12);
+			viewPtr->TraceStar(temp.data(), i, temp.data() + 12, true);
 		if (ray & 2)
 			cameraPtr->TraceStar();
 		SphericalToCartesian(temp.data());

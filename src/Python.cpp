@@ -44,7 +44,7 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 	inclination *= M_PI / 180.;
 	ascending_node *= M_PI / 180.;
 	periapsis *= M_PI / 180.;
-	size_t tStepNumber = 10000;
+	size_t tStepNumber = 20000;
 	double t = (tp - 2002.) * Unit::yr - M_PI * sqrt(gsl_pow_3(a)), tStep = 0., tRec = 18. * Unit::yr / tStepNumber;
 	shared_ptr<Metric> main_metric;
 	unique_ptr<View> viewPtr;
@@ -68,7 +68,7 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 #endif
 	z0 = position[1] * GSL_SIGN(position[2]) * cos(position[2]);
 	if (gr_time_delay) {
-		viewPtr->TraceStar(position, 0, position + 8);
+		viewPtr->TraceStar(position, 0, position + 8, false);
 		t0 = position[11];
 	}
 	if (metric == 2)
@@ -100,8 +100,8 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 			py::print("obs_time: ", idx, last_obs_time, obs_time.at(idx), this_obs_time);
 #endif
 			if (gr_time_delay) {
-				viewPtr->TraceStar(last_position, i, last_position + 8);
-				viewPtr->TraceStar(this_position, i, this_position + 8);
+				viewPtr->TraceStar(last_position, i, last_position + 8, false);
+				viewPtr->TraceStar(this_position, i, this_position + 8, false);
 #ifndef GSL_RANGE_CHECK_OFF
 				py::print("gr_redshift: ", idx, last_position[10], this_position[10]);
 #endif
@@ -134,7 +134,7 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 				CartesianToSpherical(this_position);
 #endif
 				if (ray_tracing)
-					viewPtr->TraceStar(interpolation_position, i, result_ptr + 10);
+					viewPtr->TraceStar(interpolation_position, i, result_ptr + 10, false);
 				copy(interpolation_position, interpolation_position + 8, result_ptr);
 				if (metric == 2)
 					result_ptr[1] -= 1.;
@@ -156,13 +156,23 @@ py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R
 	return result.reshape({size, 14UL});
 }
 
-double Chi2(py::array_t<double> x, int metric, int gr_switch, py::array_t<double> obs_time, py::array_t<double> obs_redshift, double redshift_sigma, py::array_t<double> obs_ra, double ra_sigma, py::array_t<double> obs_dec, double dec_sigma) {
+double Chi2(py::array_t<double> x, int metric, int gr_switch, int fix_switch, py::array_t<double> obs_time, py::array_t<double> obs_redshift, double redshift_sigma, py::array_t<double> obs_ra, double ra_sigma, py::array_t<double> obs_dec, double dec_sigma) {
 	if (x.at(9) > 0.99)
 		return GSL_NEGINF;
 	if (metric == 0 && gr_switch > 0) {
 		x.mutable_at(7) = 1.;
 		gr_switch = 0;
 	}
+	if (fix_switch & 1)
+		x.mutable_at(1) = 0.07;
+	if (fix_switch & 2)
+		x.mutable_at(2) = -0.9;
+	if (fix_switch & 4)
+		x.mutable_at(4) = 0.0341;
+	if (fix_switch & 8)
+		x.mutable_at(5) = 0.080;
+	if (fix_switch & 16)
+		x.mutable_at(6) = -1.6;
 	auto obs_data = CalculateOrbit(x.at(0), metric, x.at(7), x.at(3), x.at(13), x.at(8), x.at(9), x.at(10), x.at(11), x.at(12), gr_switch > 0, (gr_switch & 4) > 0, obs_time);
 	double redshift_prob = 0., ra_prob = 0., dec_prob = 0.;
 	const int size = obs_redshift.size();

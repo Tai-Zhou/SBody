@@ -65,7 +65,7 @@ namespace SBody {
 		}
 		return metric_->NormalizeNullGeodesic(photon, 1.);
 	}
-	int View::TraceStar(double position[], int ray_number, double record[]) { // FIXME:!!!!
+	int View::TraceStar(double position[], int ray_number, double record[], bool luminosity) { // FIXME:!!!!
 		const double r_star = position[1], sin_theta_star = abs(sin(position[2])), cos_theta_star = GSL_SIGN(position[2]) * cos(position[2]), sin_phi_star = sin(position[3]), cos_phi_star = cos(position[3]);
 		if (r_star <= 3.)
 			PrintlnWarning("star orbit radius = {:.6f}", r_star);
@@ -137,7 +137,8 @@ namespace SBody {
 		record[1] = beta;
 		record[2] = metric_->Redshift(position, photon->data);
 		record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
-		return GSL_SUCCESS;
+		if (!luminosity)
+			return GSL_SUCCESS;
 		double photon2[9], cone_record[sample_number][3], local_cone_record[sample_number][3], area_record_initial[sample_number][3], area_record[sample_number][3], center_photon_position[3], center_photon_velocity[3], interval = M_2PI / sample_number;
 		auto photon2_position_view = gsl_vector_view_array(photon2, 4), photon2_velocity_view = gsl_vector_view_array(photon2 + 4, 4);
 		gsl_vector_set(photon, 0, 0.);
@@ -306,12 +307,12 @@ namespace SBody {
 		output->Save({alpha, beta, star.RedshiftTau(photon), (photon[8] + photon[9]) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, cross_section_area_initial / epsilon_circle_area});
 #else
 		record[4] = 0.5 * abs(cone_solid_angle) / epsilon_circle_area;
-		record[5] = sqrt(-1. / gmunu->data[0]);
-		record[6] = 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area;
-		record[7] = cross_section_area / epsilon_circle_area;
-		record[8] = 0.5 * abs(cross_section_area_initial) / epsilon_circle_area;
+		// record[5] = sqrt(-1. / gmunu->data[0]);
+		// record[6] = 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area;
+		// record[7] = cross_section_area / epsilon_circle_area;
+		// record[8] = 0.5 * abs(cross_section_area_initial) / epsilon_circle_area;
 #endif
-		return 0;
+		return GSL_SUCCESS;
 	}
 	int View::OmegaTest() {
 		Integrator &&integrator = metric_->GetIntegrator(T, HAMILTONIAN);
