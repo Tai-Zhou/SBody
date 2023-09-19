@@ -34,6 +34,61 @@ namespace py = pybind11;
 using namespace std;
 using namespace SBody;
 
+py::array_t<double> CalculateFullOrbit(double mass, int metric, double fSP, double R, double tp, double a, double e, double inclination, double ascending_node, double periapsis) {
+	Unit::Initialize(mass);
+	R *= Unit::pc;
+	a *= R * Unit::mas;
+	inclination *= M_PI / 180.;
+	ascending_node *= M_PI / 180.;
+	periapsis *= M_PI / 180.;
+	size_t tStepNumber = 10000;
+	double t = (tp - 2002.) * Unit::yr - M_PI * sqrt(gsl_pow_3(a)), tStep = 0., tRec = 18. * Unit::yr / tStepNumber;
+	shared_ptr<Metric> main_metric;
+	unique_ptr<View> viewPtr;
+	if (metric == 0) {
+		main_metric = make_shared<PN1>(fSP);
+	} else {
+		main_metric = make_shared<Schwarzschild>();
+		viewPtr = make_unique<View>(make_unique<Schwarzschild>(), R, 0.);
+	}
+	Star star_0(main_metric, T, LAGRANGIAN, GEODESIC, Unit::R_sun, false);
+	if (metric == 2)
+		star_0.InitializeKeplerianHarmonic(a, e, inclination, periapsis, ascending_node, 0., 0., 0.);
+	else
+		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, 0., 0., 0.);
+#ifndef GSL_RANGE_CHECK_OFF
+	py::print(position[0], position[1], position[2], position[3], position[4], position[5], position[6], position[7]);
+#endif
+	if (metric == 2)
+		star_0.InitializeKeplerianHarmonic(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
+	else
+		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
+	double h = -1.;
+	int status = 0;
+	if (status = star_0.IntegratorApply(&t, 0., &h); status != 0)
+		py::print("[!] IntegratorApply status =", status);
+	h = 1.;
+	if (status = star_0.IntegratorReset(); status != 0)
+		py::print("[!] IntegratorReset status =", status);
+	auto result = py::array_t<double>(tStepNumber * 14);
+	double *result_ptr = const_cast<double *>(result.data());
+	for (int i = 0; i < tStepNumber; ++i) {
+		tStep += tRec;
+		status = star_0.IntegratorApply(&t, tStep, &h);
+		if (status > 0)
+			PrintlnError("main status = {}", status);
+		star_0.Position(result_ptr);
+		SphericalToCartesian(result_ptr);
+		result_ptr[8] = t / Unit::s;
+		const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
+		result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
+		if (metric)
+			viewPtr->TraceStar(result_ptr, i, result_ptr + 10, false);
+		result_ptr += 14;
+	}
+	return result.reshape({tStepNumber, 14UL});
+}
+
 py::array_t<double> CalculateOrbit(double mass, int metric, double fSP, double R, double tp, double a, double e, double inclination, double ascending_node, double periapsis, bool ray_tracing, bool gr_time_delay, const py::array_t<double> &obs_time) {
 #ifndef GSL_RANGE_CHECK_OFF
 	py::print(mass, metric, fSP, R, tp, a, e, inclination, ascending_node, periapsis, ray_tracing, gr_time_delay);
@@ -220,6 +275,10 @@ PYBIND11_MODULE(SBoPy, m) {
            add
            subtract
     )pbdoc";
+
+	m.def("CalculateFullOrbit", &CalculateFullOrbit, R"pbdoc(
+		Get trajectory, redshift, apparent position with orbital parameters
+	)pbdoc");
 
 	m.def("CalculateOrbit", &CalculateOrbit, R"pbdoc(
 		Get trajectory, redshift, apparent position with orbital parameters
