@@ -34,7 +34,26 @@ namespace py = pybind11;
 using namespace std;
 using namespace SBody;
 
-py::array_t<double> CalculateFullStarOrbit(double mass, int metric, double fSP, double R, double tp, double a, double e, double inclination, double ascending_node, double periapsis) {
+int InterpolatePosition(double result[], double position0[], const double position1[], double time_diff0, double time_diff1) {
+#ifndef GSL_RANGE_CHECK_OFF
+	py::print("last_position:", position0[0], position0[1], position0[2], position0[3], position0[4], position0[5], position0[6], position0[7]);
+	py::print("this_position:", position1[0], position1[1], position1[2], position1[3], position1[4], position1[5], position1[6], position1[7]);
+#endif
+	const double coeff = 1. / (time_diff0 + time_diff1);
+	copy(position1, position1 + 8, result);
+	SphericalToCartesian(position0);
+	SphericalToCartesian(result);
+#ifndef GSL_RANGE_CHECK_OFF
+	py::print("last_position:", position0[0], position0[1], position0[2], position0[3], position0[4], position0[5], position0[6], position0[7]);
+	py::print("this_position:", result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7]);
+#endif
+	for (int i = 0; i < 8; ++i)
+		result[i] = (time_diff1 * position0[i] + time_diff0 * result[i]) * coeff;
+	return GSL_SUCCESS;
+}
+
+py::array_t<double>
+CalculateFullStarOrbit(double mass, int metric, double fSP, double R, double tp, double a, double e, double inclination, double ascending_node, double periapsis) {
 	Unit::Initialize(mass);
 	R *= Unit::pc;
 	a *= R * Unit::mas;
@@ -124,7 +143,7 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
 	double h = -1.;
 	int status = 0;
-	if (status = star_0.IntegratorApply(&t, 30. * Unit::yr, &h); status != 0)
+	if (status = star_0.IntegratorApply(&t, 0., &h); status != 0)
 		py::print("[!] IntegratorApply status =", status);
 	h = 1.;
 	if (status = star_0.IntegratorReset(); status != 0)
@@ -132,7 +151,7 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 	size_t idx = 0, size = obs_time.size();
 	auto result = py::array_t<double>(size * 14);
 	double *result_ptr = const_cast<double *>(result.data());
-	double *last_position = new double[12], *this_position = new double[12], interpolation_position[8];
+	double *last_position = new double[12], *this_position = new double[12];
 	for (int i = 0;; ++i) {
 		tStep += tRec;
 		if (status = star_0.IntegratorApply(&t, tStep, &h); status != 0)
@@ -157,36 +176,26 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 #ifndef GSL_RANGE_CHECK_OFF
 				py::print("gr_obs_time: ", idx, last_gr_obs_time, obs_time.at(idx), this_gr_obs_time);
 #endif
-				const double coeff1 = this_gr_obs_time - obs_time.at(idx), coeff2 = obs_time.at(idx) - last_gr_obs_time, coeff3 = 1. / (this_gr_obs_time - last_gr_obs_time);
+				const double time_diff0 = obs_time.at(idx) - last_gr_obs_time, time_diff1 = this_gr_obs_time - obs_time.at(idx), coeff = 1. / (this_gr_obs_time - last_gr_obs_time);
 #ifndef GSL_RANGE_CHECK_OFF
-				py::print(last_gr_obs_time, obs_time.at(idx), this_gr_obs_time, coeff1, coeff2);
+				py::print(last_gr_obs_time, obs_time.at(idx), this_gr_obs_time, time_diff1, time_diff0);
 #endif
-				for (int j = 0; j < 8; ++j)
-					result_ptr[j] = (coeff1 * last_position[j] + coeff2 * this_position[j]) * coeff3;
-				SphericalToCartesian(result_ptr);
-				result_ptr[8] = (tStep - tRec * coeff1 * coeff3) / Unit::s;
+				InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
+				result_ptr[8] = (tStep - tRec * time_diff1 * coeff) / Unit::s;
 				for (int j = 0; j < 4; ++j)
-					result_ptr[10 + j] = (coeff1 * last_position[j + 8] + coeff2 * this_position[j + 8]) * coeff3;
+					result_ptr[10 + j] = (time_diff1 * last_position[j + 8] + time_diff0 * this_position[j + 8]) * coeff;
 			} else {
-				const double coeff1 = this_obs_time - obs_time.at(idx), coeff2 = obs_time.at(idx) - last_obs_time, coeff3 = 1. / (this_obs_time - last_obs_time);
-				for (int j = 0; j < 8; ++j)
-					interpolation_position[j] = (coeff1 * last_position[j] + coeff2 * this_position[j]) * coeff3;
-#ifndef GSL_RANGE_CHECK_OFF
-				py::print("last_position:", last_position[0], last_position[1], last_position[2], last_position[3], last_position[4], last_position[5], last_position[6], last_position[7]);
-				py::print("this_position:", this_position[0], this_position[1], this_position[2], this_position[3], this_position[4], this_position[5], this_position[6], this_position[7]);
-				SphericalToCartesian(last_position);
-				SphericalToCartesian(this_position);
-				py::print("last_position:", last_position[0], last_position[1], last_position[2], last_position[3], last_position[4], last_position[5], last_position[6], last_position[7]);
-				py::print("this_position:", this_position[0], this_position[1], this_position[2], this_position[3], this_position[4], this_position[5], this_position[6], this_position[7]);
-				CartesianToSpherical(this_position);
-#endif
-				if (ray_tracing)
-					viewPtr->TraceStar(interpolation_position, i, result_ptr + 10, false);
-				copy(interpolation_position, interpolation_position + 8, result_ptr);
-				if (metric == 2)
-					result_ptr[1] -= 1.;
-				SphericalToCartesian(result_ptr);
-				result_ptr[8] = (tStep - tRec * coeff1 * coeff3) / Unit::s;
+				const double time_diff0 = obs_time.at(idx) - last_obs_time, time_diff1 = this_obs_time - obs_time.at(idx), coeff = 1. / (this_obs_time - last_obs_time);
+				InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
+				if (ray_tracing || metric == 2) {
+					CartesianToSpherical(result_ptr);
+					if (ray_tracing)
+						viewPtr->TraceStar(result_ptr, i, result_ptr + 10, false);
+					if (metric == 2)
+						result_ptr[1] -= 1.;
+					SphericalToCartesian(result_ptr);
+				}
+				result_ptr[8] = (tStep - tRec * time_diff1 * coeff) / Unit::s;
 			}
 			const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
 			result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
@@ -312,24 +321,23 @@ py::array_t<double> CalculateHSOrbit(double mass, int metric, int mode, double f
 				viewPtr->TraceStar(this_position, i, this_position + 8, false);
 				double this_gr_obs_time = (t + (t0 - this_position[11]) * Unit::s) / Unit::yr + 2002.;
 				double last_gr_obs_time = (t - tRec + (t0 - last_position[11]) * Unit::s) / Unit::yr + 2002.;
-				const double coeff1 = this_gr_obs_time - obs_time.at(idx), coeff2 = obs_time.at(idx) - last_gr_obs_time, coeff3 = 1. / (this_gr_obs_time - last_gr_obs_time);
-				for (int j = 0; j < 8; ++j)
-					result_ptr[j] = (coeff1 * last_position[j] + coeff2 * this_position[j]) * coeff3;
-				SphericalToCartesian(result_ptr);
-				result_ptr[8] = (tStep - tRec * coeff1 * coeff3) / Unit::s;
+				const double time_diff0 = obs_time.at(idx) - last_gr_obs_time, time_diff1 = this_gr_obs_time - obs_time.at(idx), coeff = 1. / (this_gr_obs_time - last_gr_obs_time);
+				InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
+				result_ptr[8] = (tStep - tRec * time_diff1 * coeff) / Unit::s;
 				for (int j = 0; j < 4; ++j)
-					result_ptr[10 + j] = (coeff1 * last_position[j + 8] + coeff2 * this_position[j + 8]) * coeff3;
+					result_ptr[10 + j] = (time_diff1 * last_position[j + 8] + time_diff0 * this_position[j + 8]) * coeff;
 			} else {
-				const double coeff1 = this_obs_time - obs_time.at(idx), coeff2 = obs_time.at(idx) - last_obs_time, coeff3 = 1. / (this_obs_time - last_obs_time);
-				for (int j = 0; j < 8; ++j)
-					interpolation_position[j] = (coeff1 * last_position[j] + coeff2 * this_position[j]) * coeff3;
-				if (ray_tracing)
-					viewPtr->TraceStar(interpolation_position, i, result_ptr + 10, true);
-				copy(interpolation_position, interpolation_position + 8, result_ptr);
-				if (metric == 2)
-					result_ptr[1] -= 1.;
-				SphericalToCartesian(result_ptr);
-				result_ptr[8] = (tStep - tRec * coeff1 * coeff3) / Unit::s;
+				const double time_diff0 = obs_time.at(idx) - last_obs_time, time_diff1 = this_obs_time - obs_time.at(idx), coeff = 1. / (this_obs_time - last_obs_time);
+				InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
+				if (ray_tracing || metric == 2) {
+					CartesianToSpherical(result_ptr);
+					if (ray_tracing)
+						viewPtr->TraceStar(result_ptr, i, result_ptr + 10, false);
+					if (metric == 2)
+						result_ptr[1] -= 1.;
+					SphericalToCartesian(result_ptr);
+				}
+				result_ptr[8] = (tStep - tRec * time_diff1 * coeff) / Unit::s;
 			}
 			const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
 			result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
