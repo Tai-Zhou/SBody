@@ -234,23 +234,23 @@ double StarChi2(py::array_t<double> x, int metric, int gr_switch, int fix_switch
 	const int size = obs_redshift.size();
 	if (gr_switch & 1)
 		for (int i = 0; i < size; ++i) {
-			redshift_prob -= gsl_pow_2(obs_redshift.at(i) - (obs_data.at(i, 12) - 1.) * 299792.458 - x.at(6));
+			redshift_prob += gsl_pow_2(obs_redshift.at(i) - (obs_data.at(i, 12) - 1.) * 299792.458 - x.at(6));
 #ifndef GSL_RANGE_CHECK_OFF
 			py::print(obs_redshift.at(i), (obs_data.at(i, 12) - 1.) * 299792.458 - x.at(6));
 #endif
 		}
 	else
 		for (int i = 0; i < size; ++i)
-			redshift_prob -= gsl_pow_2(obs_redshift.at(i) - obs_data.at(i, 9) - x.at(6));
+			redshift_prob += gsl_pow_2(obs_redshift.at(i) - obs_data.at(i, 9) - x.at(6));
 	if (gr_switch & 2)
 		for (int i = 0; i < size; ++i) {
-			ra_prob -= gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 10) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
-			dec_prob -= gsl_pow_2(obs_dec.at(i) - obs_data.at(i, 11) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
+			ra_prob += gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 10) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
+			dec_prob += gsl_pow_2(obs_dec.at(i) - obs_data.at(i, 11) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
 		}
 	else
 		for (int i = 0; i < size; ++i) {
-			ra_prob -= gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
-			dec_prob -= gsl_pow_2(obs_dec.at(i) + obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
+			ra_prob += gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
+			dec_prob += gsl_pow_2(obs_dec.at(i) + obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
 #ifndef GSL_RANGE_CHECK_OFF
 			py::print(obs_ra.at(i), obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
 			py::print(obs_dec.at(i), obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
@@ -259,11 +259,11 @@ double StarChi2(py::array_t<double> x, int metric, int gr_switch, int fix_switch
 #ifndef GSL_RANGE_CHECK_OFF
 	py::print(">>>", redshift_prob / gsl_pow_2(redshift_sigma), ra_prob / gsl_pow_2(ra_sigma), dec_prob / gsl_pow_2(dec_sigma));
 #endif
-	double ans = redshift_prob / gsl_pow_2(redshift_sigma) + ra_prob / gsl_pow_2(ra_sigma) + dec_prob / gsl_pow_2(dec_sigma);
-	if (isnan(ans))
+	double chi2 = redshift_prob / gsl_pow_2(redshift_sigma) + ra_prob / gsl_pow_2(ra_sigma) + dec_prob / gsl_pow_2(dec_sigma);
+	if (isnan(chi2))
 		for (int i = 0; i < 14; ++i)
 			py::print(x.at(i));
-	return ans;
+	return chi2;
 }
 
 py::array_t<double> CalculateHSOrbit(double mass, int metric, int mode, double fSP, double R, double r, double theta, double phi, double v_r, double v_phi, double inclination, bool ray_tracing, bool gr_time_delay, const py::array_t<double> &obs_time) {
@@ -363,30 +363,30 @@ double HSChi2(py::array_t<double> x, int metric, int mode, int gr_switch, int fi
 	const int size = obs_flux.size();
 	if (gr_switch & 1)
 		for (int i = 0; i < size; ++i) {
-			flux_prob -= gsl_pow_2(obs_flux.at(i) - (obs_data.at(i, 12) - 1.) * 299792.458 - x.at(6));
+			flux_prob += gsl_pow_2(obs_flux.at(i) - (obs_data.at(i, 12) - 1.) * 299792.458 - x.at(6));
 		}
 	else
 		for (int i = 0; i < size; ++i)
-			flux_prob -= gsl_pow_2(obs_flux.at(i) - obs_data.at(i, 9) - x.at(6));
+			flux_prob += gsl_pow_2(obs_flux.at(i) - obs_data.at(i, 9) - x.at(6));
 	if (gr_switch & 2)
 		for (int i = 0; i < size; ++i) {
-			ra_prob -= gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 10) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
-			dec_prob -= gsl_pow_2(obs_dec.at(i) - obs_data.at(i, 11) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
+			ra_prob += gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 10) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
+			dec_prob += gsl_pow_2(obs_dec.at(i) - obs_data.at(i, 11) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
 		}
 	else
 		for (int i = 0; i < size; ++i) {
-			ra_prob -= gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
-			dec_prob -= gsl_pow_2(obs_dec.at(i) + obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
+			ra_prob += gsl_pow_2(obs_ra.at(i) + obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
+			dec_prob += gsl_pow_2(obs_dec.at(i) + obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
 #ifndef GSL_RANGE_CHECK_OFF
 			py::print(obs_ra.at(i), obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5));
 			py::print(obs_dec.at(i), obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4));
 #endif
 		}
-	double ans = flux_prob / gsl_pow_2(flux_sigma) + ra_prob / gsl_pow_2(ra_sigma) + dec_prob / gsl_pow_2(dec_sigma);
-	if (isnan(ans))
+	double chi2 = flux_prob / gsl_pow_2(flux_sigma) + ra_prob / gsl_pow_2(ra_sigma) + dec_prob / gsl_pow_2(dec_sigma);
+	if (isnan(chi2))
 		for (int i = 0; i < 14; ++i)
 			py::print(x.at(i));
-	return ans;
+	return chi2;
 }
 
 PYBIND11_MODULE(SBoPy, m) {
