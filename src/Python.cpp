@@ -111,7 +111,11 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 	inclination *= M_PI / 180.;
 	ascending_node *= M_PI / 180.;
 	periapsis *= M_PI / 180.;
-	double t = (tp - 2002.) * Unit::yr - M_PI * sqrt(gsl_pow_3(a)), tStep = 0., tRec = 0.001 * Unit::yr;
+	double t, tStep = 0., tRec = 0.001 * Unit::yr;
+	if (metric == 1)
+		t = (tp - 2002.) * Unit::yr - M_PI * sqrt(gsl_pow_3(a - 1.));
+	else
+		t = (tp - 2002.) * Unit::yr - M_PI * sqrt(gsl_pow_3(a));
 	shared_ptr<Metric> main_metric;
 	unique_ptr<View> viewPtr;
 	if (metric == 0) {
@@ -362,9 +366,8 @@ double HSChi2(py::array_t<double> x, int metric, int mode, int gr_switch, int fi
 	double flux_prob = 0., ra_prob = 0., dec_prob = 0.;
 	const int size = obs_flux.size();
 	if (gr_switch & 1)
-		for (int i = 0; i < size; ++i) {
+		for (int i = 0; i < size; ++i)
 			flux_prob += gsl_pow_2(obs_flux.at(i) - (obs_data.at(i, 12) - 1.) * 299792.458 - x.at(6));
-		}
 	else
 		for (int i = 0; i < size; ++i)
 			flux_prob += gsl_pow_2(obs_flux.at(i) - obs_data.at(i, 9) - x.at(6));
