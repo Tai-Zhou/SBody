@@ -343,7 +343,7 @@ namespace SBody {
 						dydt[3] = y[7] * sint_2 * r_2 * dydt[0]; // d\phi/dt
 						dydt[4] = 0.;
 						dydt[5] = (-(gsl_pow_2(y[5]) + gsl_pow_2(E) / gsl_pow_2(g00)) + (gsl_pow_2(y[6]) + L2 * sint_2) * r_1) * r_2 * dydt[0];
-						dydt[6] = sint_2 * L2 * cos(y[2]) * sint_1 * r_2 * dydt[0];
+						dydt[6] = sint_2 * L2 * GSL_SIGN(y[2]) * cos(y[2]) * sint_1 * r_2 * dydt[0];
 						dydt[7] = 0.;
 						return GSL_SUCCESS;
 					},
