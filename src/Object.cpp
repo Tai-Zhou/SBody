@@ -22,7 +22,7 @@ namespace SBody {
 	Object::Object(std::shared_ptr<Metric> metric) : metric_(metric) {
 		object_list_.push_back(this);
 	}
-	Star::Star(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, motion_mode motion, double radius, bool fixed) : Object(metric), coordinate_(coordinate), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)), integrator_(metric->GetIntegrator(time, coordinate, motion)) {
+	Star::Star(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double radius, bool fixed) : Object(metric), time_(time), coordinate_(coordinate), radius_(radius), radius_square_(gsl_pow_2(radius)), fixed_(fixed) {
 		for (int i = 0; i < 8; ++i)
 			position_[i] = 0;
 	}
@@ -31,6 +31,7 @@ namespace SBody {
 		return GSL_SUCCESS;
 	}
 	int Star::InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination, double observer_rotation) {
+		integrator_ = std::make_unique<Integrator>(metric_->GetIntegrator(time_, coordinate_, GEODESIC));
 		position_[0] = 0.;
 		periapsis += true_anomaly;
 		double r = a * (1. - e * e) / (1. + e * cos(true_anomaly));
@@ -55,6 +56,7 @@ namespace SBody {
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
 	int Star::InitializeGeodesic(double orbital_radius, double inclination, double periapsis, double ascending_node, double v_r, double v_phi, double observer_inclination, double observer_rotation) {
+		integrator_ = std::make_unique<Integrator>(metric_->GetIntegrator(time_, coordinate_, GEODESIC));
 		position_[0] = 0.;
 		const double tp1 = -orbital_radius * cos(periapsis), tp2 = -orbital_radius * sin(periapsis) * cos(inclination);
 		const double xp1 = tp1 * cos(ascending_node) - tp2 * sin(ascending_node), xp2 = tp2 * cos(ascending_node) + tp1 * sin(ascending_node), xp3 = -orbital_radius * sin(periapsis) * sin(inclination);
@@ -76,6 +78,7 @@ namespace SBody {
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
 	int Star::InitializeSchwarzschildKeplerianPericenter(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation) {
+		integrator_ = std::make_unique<Integrator>(metric_->GetIntegrator(time_, coordinate_, GEODESIC));
 		position_[0] = 0.;
 		double r = a * (1. - e); // pericenter
 		const double tp1 = -r * cos(periapsis), tp2 = -r * sin(periapsis) * cos(inclination);
@@ -100,6 +103,7 @@ namespace SBody {
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
 	int Star::InitializeSchwarzschildKeplerianApocenter(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation) {
+		integrator_ = std::make_unique<Integrator>(metric_->GetIntegrator(time_, coordinate_, GEODESIC));
 		position_[0] = 0.;
 		double r = a * (1. + e); // apocenter
 		const double tp1 = r * cos(periapsis), tp2 = r * sin(periapsis) * cos(inclination);
@@ -130,6 +134,7 @@ namespace SBody {
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
 	int Star::InitializeHelical(double r, double theta, double phi, double v_r, double v_phi) {
+		integrator_ = std::make_unique<Integrator>(metric_->GetIntegrator(time_, coordinate_, HELICAL));
 		position_[0] = 0.;
 		position_[1] = r;
 		position_[2] = theta;
@@ -150,17 +155,17 @@ namespace SBody {
 			*t = t1;
 			return GSL_SUCCESS;
 		}
-		return integrator_.Apply(t, t1, h, position_);
+		return integrator_->Apply(t, t1, h, position_);
 	}
 	int Star::IntegratorApplyFixedStep(double *t, const double h) {
 		if (fixed_) {
 			*t += h;
 			return GSL_SUCCESS;
 		}
-		return integrator_.ApplyFixedStep(t, h, position_);
+		return integrator_->ApplyFixedStep(t, h, position_);
 	}
 	int Star::IntegratorReset() {
-		return integrator_.Reset();
+		return integrator_->Reset();
 	}
 	int Star::Hit(const double current[], const double last[]) {
 		double a2 = metric_->DistanceSquare(position_, current, 3);
