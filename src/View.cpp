@@ -33,7 +33,7 @@
 using namespace std;
 
 namespace SBody {
-	View::View(shared_ptr<Metric> metric, double r, double theta) : metric_(metric), r_(r), theta_(theta), sin_theta_observer_(sin(theta)), cos_theta_observer_(cos(theta)), t_final_(-r - 2e4 * 1.) {
+	View::View(shared_ptr<Metric> metric, double r, double theta, double iota) : metric_(metric), r_(r), theta_(theta), sin_theta_(sin(theta)), cos_theta_(cos(theta)), iota_(iota), sin_iota_(sin(iota)), cos_iota_(cos(iota)), t_final_(-r - 2e4 * 1.) {
 		bar_ = make_unique<indicators::BlockProgressBar>(indicators::option::ShowElapsedTime{true},
 														 indicators::option::ShowRemainingTime{true},
 														 indicators::option::ForegroundColor{indicators::Color(4)},
@@ -45,7 +45,7 @@ namespace SBody {
 		photon[5] = 1.;
 		photon[8] = 0.;
 		photon[9] = 0.;
-		if (sin_theta_observer_ < epsilon) {
+		if (sin_theta_ < epsilon) {
 			const double k = gsl_hypot(alpha, beta);
 			if (theta_ < M_PI_2) {
 				photon[2] = 1e-15;
@@ -61,16 +61,19 @@ namespace SBody {
 			photon[2] = theta_;
 			photon[3] = 0.,
 			photon[6] = beta / gsl_pow_2(r_);
-			photon[7] = -alpha / (gsl_pow_2(r_) * sin_theta_observer_);
+			photon[7] = -alpha / (gsl_pow_2(r_) * sin_theta_);
 		}
 		return metric_->NormalizeNullGeodesic(photon, 1.);
 	}
 	int View::TraceStar(double position[], int ray_number, double record[], bool luminosity) { // FIXME:!!!!
 		const double r_star = position[1], sin_theta_star = abs(sin(position[2])), cos_theta_star = GSL_SIGN(position[2]) * cos(position[2]), sin_phi_star = sin(position[3]), cos_phi_star = cos(position[3]);
-		if (r_star <= 3.)
+		if (r_star <= 3.) {
 			PrintlnWarning("star orbit radius = {:.6f}", r_star);
-		const double alpha_coefficient = sin_theta_star * sin_phi_star, beta_coefficient = cos_theta_star * sin_theta_observer_ - sin_theta_star * cos_phi_star * cos_theta_observer_, iteration_coefficient = tanh(0.05 * r_star), cos_observer_star = sin_theta_observer_ * sin_theta_star * cos_phi_star + cos_theta_observer_ * cos_theta_star, sin_observer_star = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_star = acos(cos_observer_star);
-		double alpha = 0, delta_alpha, beta = 0, delta_beta, h;
+			if (r_star < 0)
+				return GSL_FAILURE;
+		}
+		const double alpha_coefficient = sin_theta_star * sin_phi_star, beta_coefficient = cos_theta_star * sin_theta_ - sin_theta_star * cos_phi_star * cos_theta_, iteration_coefficient = tanh(0.05 * r_star), cos_observer_star = sin_theta_ * sin_theta_star * cos_phi_star + cos_theta_ * cos_theta_star, sin_observer_star = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_star = acos(cos_observer_star);
+		double alpha, delta_alpha, beta, delta_beta, h;
 		if (cos_observer_star <= -1.) {
 			PrintlnWarning("star behind black hole, cos(theta) = {:.6f}\n", cos_observer_star);
 			alpha = 2. * sqrt(r_star);
@@ -93,30 +96,35 @@ namespace SBody {
 		vector<double> qdq(12);
 		IO::NumPy rec("Trace " + to_string(ray_number), 12);
 #endif
-		Integrator &&integrator = metric_->GetIntegrator(T, HAMILTONIAN);
+		unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
 		while (true) {
 			InitializePhoton(photon->data, alpha, beta);
 			metric_->BaseToHamiltonian(photon->data);
 			int status = 0, fixed = 0;
 			h = -1.;
 			while (status <= 0) {
+				for (int i = 0; i < 8; ++i)
+					if (isnan(gsl_vector_get(photon, i))) {
+						PrintlnError("NaN! alpha = {}, beta = {}", alpha, beta);
+						return GSL_FAILURE;
+					}
 				if (status == GSL_FAILURE) {
 					h *= 0.5;
 					fixed = 0;
 				}
 				gsl_vector_memcpy(last, photon);
 				if (fixed)
-					status = integrator.ApplyFixedStep(gsl_vector_ptr(photon, 9), h, photon->data);
+					status = integrator->ApplyFixedStep(gsl_vector_ptr(photon, 9), h, photon->data);
 				else
-					status = integrator.ApplyStep(gsl_vector_ptr(photon, 9), t_final_, &h, photon->data);
-				if (const double cosph = (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 3))) * sin_theta_observer_ + (r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * cos_theta_observer_; cosph > r_star * 1e-12) {
+					status = integrator->ApplyStep(gsl_vector_ptr(photon, 9), t_final_, &h, photon->data);
+				if (const double cosph = (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * abs(sin(gsl_vector_get(photon, 2))) * cos(gsl_vector_get(photon, 3))) * sin_theta_ + (r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * cos_theta_; cosph > r_star * 1e-12) {
 					gsl_vector_memcpy(photon, last);
 					h *= 0.3;
 					fixed = 1;
-					integrator.Reset();
+					integrator->Reset();
 				} else if (cosph >= 0) {
-					delta_alpha = iteration_coefficient * (r_star * sin_theta_star * sin_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 3)));
-					delta_beta = iteration_coefficient * ((r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * sin_theta_observer_ - (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * sin(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 3))) * cos_theta_observer_);
+					delta_alpha = iteration_coefficient * (r_star * sin_theta_star * sin_phi_star - gsl_vector_get(photon, 1) * abs(sin(gsl_vector_get(photon, 2))) * sin(gsl_vector_get(photon, 3)));
+					delta_beta = iteration_coefficient * ((r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * sin_theta_ - (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * abs(sin(gsl_vector_get(photon, 2))) * cos(gsl_vector_get(photon, 3))) * cos_theta_);
 					alpha += delta_alpha;
 					beta += delta_beta;
 					metric_->HamiltonianToBase(photon->data);
@@ -124,17 +132,19 @@ namespace SBody {
 				} else if (gsl_vector_get(photon, 9) < t_final_ * 1e-8) {
 					gsl_vector_set(photon, 8, gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9));
 					gsl_vector_set(photon, 9, 0);
+					if (gsl_vector_get(photon, 8) <= t_final_)
+						return GSL_FAILURE;
 				}
 			}
 			if (status > 0) {
-				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
+				PrintlnWarning("view::traceStar status = {}\n", status);
 				return status;
 			}
 			if (gsl_hypot(delta_alpha, delta_beta) <= epsilon * (1. + gsl_hypot(alpha, beta)))
 				break;
 		}
-		record[0] = alpha;
-		record[1] = beta;
+		record[0] = alpha * cos_iota_ - beta * sin_iota_;
+		record[1] = beta * cos_iota_ + alpha * sin_iota_;
 		record[2] = metric_->Redshift(position, photon->data);
 		record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
 		if (!luminosity)
@@ -148,9 +158,9 @@ namespace SBody {
 		metric_->BaseToHamiltonian(photon2);
 		h = 1.;
 		int status = 0, signum;
-		integrator.Reset();
+		integrator->Reset();
 		while (status <= 0 && photon2[8] < 1000.)
-			status = integrator.Apply(photon2 + 8, 1000., &h, photon2);
+			status = integrator->Apply(photon2 + 8, 1000., &h, photon2);
 		if (status > 0) {
 			fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 			return status;
@@ -217,9 +227,9 @@ namespace SBody {
 			metric_->BaseToHamiltonian(photon2);
 			h = 1.;
 			int status = 0;
-			integrator.Reset();
+			integrator->Reset();
 			while (status <= 0 && photon2[8] < 1000.)
-				status = integrator.Apply(photon2 + 8, 1000., &h, photon2);
+				status = integrator->Apply(photon2 + 8, 1000., &h, photon2);
 			if (status > 0) {
 				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 				return status;
@@ -272,9 +282,9 @@ namespace SBody {
 			metric_->BaseToHamiltonian(photon2);
 			h = 1.;
 			int status = 0;
-			integrator.Reset();
+			integrator->Reset();
 			while (status <= 0 && photon2[8] < 1000.)
-				status = integrator.Apply(photon2 + 8, 1000., &h, photon2);
+				status = integrator->Apply(photon2 + 8, 1000., &h, photon2);
 			if (status > 0) {
 				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 				return status;
@@ -294,6 +304,7 @@ namespace SBody {
 			cross_section_area_initial += DotCross(gsl_vector_ptr(photon_in_static_frame_cartesian, 1), area_record_initial[i], area_record_initial[i - 1]);
 			cross_section_area += TriangleArea(center_photon_position, area_record[i], area_record[i - 1]);
 		}
+#ifdef RECORD_TRACE
 		if (ray_number == 2500) {
 			NumPy area_record_npy("area_record", {3}), cone_record_npy("cone_record", {3});
 			area_record_npy.Save(center_photon_position, 3);
@@ -303,6 +314,7 @@ namespace SBody {
 				cone_record_npy.Save(cone_record[i], 3);
 			}
 		}
+#endif
 #ifdef VIEW_TAU
 		output->Save({alpha, beta, star.RedshiftTau(photon), (photon[8] + photon[9]) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, cross_section_area_initial / epsilon_circle_area});
 #else
@@ -315,7 +327,7 @@ namespace SBody {
 		return GSL_SUCCESS;
 	}
 	int View::OmegaTest() {
-		Integrator &&integrator = metric_->GetIntegrator(T, HAMILTONIAN);
+		unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
 		double position_[8] = {0., 3., M_PI_4, 0., 0., 0., 0., 0.};
 		metric_->NormalizeTimelikeGeodesic(position_);
 		gsl_matrix *coordinate = gsl_matrix_alloc(4, 4), *gmunu = gsl_matrix_alloc(4, 4), *coordinate_gmunu = gsl_matrix_alloc(4, 4);
@@ -353,9 +365,9 @@ namespace SBody {
 			ph[8] = 0;
 			h = 1.;
 			int status = 0;
-			integrator.Reset();
+			integrator->Reset();
 			while (status <= 0 && ph[1] < 1.e3)
-				status = integrator.Apply(&time_limit, -t_final_, &h, ph);
+				status = integrator->Apply(&time_limit, -t_final_, &h, ph);
 			metric_->HamiltonianToBase(ph);
 			const double sin_theta = GSL_SIGN(ph[2]) * sin(ph[2]), cos_theta = GSL_SIGN(ph[2]) * cos(ph[2]), sin_phi = sin(ph[3]), cos_phi = cos(ph[3]);
 			center_ph[0] = ph[5] * sin_theta * cos_phi + ph[1] * (cos_theta * cos_phi * ph[6] - sin_theta * sin_phi * ph[7]);
@@ -382,9 +394,9 @@ namespace SBody {
 				ph[8] = 0;
 				h = 1.;
 				status = 0;
-				integrator.Reset();
+				integrator->Reset();
 				while (status <= 0 && ph[8] < time_limit)
-					status = integrator.Apply(ph + 8, time_limit, &h, ph);
+					status = integrator->Apply(ph + 8, time_limit, &h, ph);
 				metric_->HamiltonianToBase(ph);
 				const double sin_theta = GSL_SIGN(ph[2]) * sin(ph[2]), cos_theta = GSL_SIGN(ph[2]) * cos(ph[2]), sin_phi = sin(ph[3]), cos_phi = cos(ph[3]);
 				rec[i][0] = ph[5] * sin_theta * cos_phi + ph[1] * (cos_theta * cos_phi * ph[6] - sin_theta * sin_phi * ph[7]);
@@ -412,19 +424,19 @@ namespace SBody {
 		const double interval = M_2PI / sample_number;
 		NumPy record(file_name, {2});
 		double h, rin = 2., rout = 10., rmid = 6., photon[10];
-		Integrator &&integrator = metric_->GetIntegrator(T, HAMILTONIAN);
+		unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
 		bar_->set_option(indicators::option::MaxProgress(sample_number));
 		bar_->set_option(indicators::option::PrefixText("? Shadow"));
 		int progressBarIndex = ProgressBar::bars_.push_back(*bar_);
 		for (int i = 0; i < sample_number; ++i) {
-			const double angle = i * interval, sina = sin(angle), cosa = cos(angle);
+			const double angle = i * interval, sin_angle = sin(angle), cos_angle = cos(angle);
 			int status = 0;
 			while (rout - rin > epsilon * (rin + rout)) {
 				rmid = 0.5 * (rin + rout);
-				InitializePhoton(photon, rmid * cosa, rmid * sina);
+				InitializePhoton(photon, rmid * cos_angle, rmid * sin_angle);
 				h = -1.;
 				while (status <= 0 && photon[8] + photon[9] > t_final_) {
-					status = integrator.Apply(photon + 9, t_final_, &h, photon);
+					status = integrator->Apply(photon + 9, t_final_, &h, photon);
 					if (photon[9] < t_final_ * 1e-8) {
 						photon[8] += photon[9];
 						photon[9] = 0.;
@@ -440,11 +452,11 @@ namespace SBody {
 					rout = rmid;
 				else
 					rin = rmid;
-				integrator.Reset();
+				integrator->Reset();
 			}
 			rin -= 2. * interval * rmid;
 			rout += 2. * interval * rmid;
-			record.Save({rmid * cosa, rmid * sina});
+			record.Save({rmid * (cos_angle * cos_iota_ - sin_angle * sin_iota_), rmid * (sin_angle * cos_iota_ + cos_angle * sin_iota_)});
 			if (ProgressBar::display_)
 				ProgressBar::bars_[progressBarIndex].tick();
 		}
@@ -452,7 +464,7 @@ namespace SBody {
 			ProgressBar::SetComplete(progressBarIndex, "! Shadow");
 		return 0;
 	}
-	Camera::Camera(shared_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta) : View(metric, r, theta), pixel_(pixel), half_angle_(half_angle) {
+	Camera::Camera(shared_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta, double iota) : View(metric, r, theta, iota), pixel_(pixel), half_angle_(half_angle) {
 		screen_ = vector<vector<double>>(pixel, vector<double>(pixel));
 		initials_ = vector<array<double, 10>>(pixel * pixel);
 		const double pixel_size = 2. * half_angle * r / pixel, t1 = r + 100.;
@@ -463,11 +475,11 @@ namespace SBody {
 		for (int p = pixel * pixel - 1; p >= 0; --p) {
 			int status = 0;
 			initials_[p][9] = -1.;
-			Integrator &&integrator = metric_->GetIntegrator(T, HAMILTONIAN);
+			unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
 			metric_->NormalizeNullGeodesic(initials_[p].data(), 1.);
 			metric_->BaseToHamiltonian(initials_[p].data());
 			while (status <= 0 && initials_[p][8] > t1 && initials_[p][1] > 100)
-				status = integrator.Apply(initials_[p].data() + 8, t1, initials_[p].data() + 9, initials_[p].data());
+				status = integrator->Apply(initials_[p].data() + 8, t1, initials_[p].data() + 9, initials_[p].data());
 			if (status > 0)
 				fmt::print(stderr, "[!] camera::initialize status = {}\n", status);
 		}
@@ -481,10 +493,10 @@ namespace SBody {
 			double ph[10], last[10];
 			int status = 0;
 			copy(initials_[p].begin(), initials_[p].end(), ph);
-			Integrator &&integrator = metric_->GetIntegrator(T, HAMILTONIAN);
+			unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
 			while (status <= 0 && ph[8] > t1) {
 				copy(ph, ph + 10, last);
-				status = integrator.Apply(ph + 8, t1, ph + 9, ph);
+				status = integrator->Apply(ph + 8, t1, ph + 9, ph);
 				for (auto objP : Object::object_list_)
 					if (objP->Hit(ph, last))
 						screen_[i][j] = objP->Redshift(ph); // FIXME: if multi objects
@@ -507,9 +519,9 @@ namespace SBody {
 				double ph[10];
 				int status = 0;
 				copy(initials_[i * pixel_ + j].begin(), initials_[i * pixel_ + j].end(), ph);
-				Integrator &&integrator = metric_->GetIntegrator(T, HAMILTONIAN);
+				unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
 				while (status <= 0 && ph[8] > t1 && ph[1] > 3. && ph[1] < 3.e2)
-					status = integrator.Apply(ph + 8, t1, ph + 9, ph);
+					status = integrator->Apply(ph + 8, t1, ph + 9, ph);
 				if (status > 0)
 					fmt::print(stderr, "[!] camera::lens status = {}\n", status);
 				if (ph[1] <= 3.)
@@ -519,7 +531,7 @@ namespace SBody {
 					if (ph[2] < 0)
 						ph[2] += M_PI;
 					SphericalToCartesian(ph);
-					rec.Save({ph[6] * pixelPerAngle, (ph[7] * sin_theta_observer_ - ph[5] * cos_theta_observer_) * pixelPerAngle});
+					rec.Save({ph[6] * pixelPerAngle, (ph[7] * sin_theta_ - ph[5] * cos_theta_) * pixelPerAngle});
 				}
 				if (ProgressBar::display_)
 					ProgressBar::bars_[progressBarIndex].tick();

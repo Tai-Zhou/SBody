@@ -25,10 +25,16 @@ namespace SBody {
 	class View {
 	  protected:
 		std::shared_ptr<Metric> metric_;
+		/// Distance to the center black hole
 		const double r_;
+		/// Angle between the observer and the \f$z\f$ axis.
 		const double theta_;
-		const double sin_theta_observer_;
-		const double cos_theta_observer_;
+		const double sin_theta_;
+		const double cos_theta_;
+		/// Rotational angle of the coordiante of the view.
+		const double iota_;
+		const double sin_iota_;
+		const double cos_iota_;
 		const double t_final_;
 		std::unique_ptr<indicators::BlockProgressBar> bar_;
 
@@ -40,7 +46,7 @@ namespace SBody {
 		 * @param theta
 		 * @param file_name
 		 */
-		View(std::shared_ptr<Metric> metric, double r, double theta);
+		View(std::shared_ptr<Metric> metric, double r, double theta, double iota);
 
 		/**
 		 * @brief
@@ -88,7 +94,7 @@ namespace SBody {
 		 * @param theta
 		 * @param file_name
 		 */
-		Camera(std::shared_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta);
+		Camera(std::shared_ptr<Metric> metric, size_t pixel, double half_angle, double r, double theta, double iota);
 
 		/**
 		 * @brief

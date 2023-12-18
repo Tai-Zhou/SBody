@@ -217,17 +217,17 @@ int main(int argc, char *argv[]) {
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps));
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view helical({:.2f},{:.6f},{:.6f},{:.6f},{:.6f})[{:f},{:f}]", 10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6, inc, eps));
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view helical({:f},{:f},{:f},{:f},{:f})[{:f},{:f}]", a, inclination, periapsis, e, ascending_node, inc, eps));
-		viewPtr = make_unique<View>(make_unique<Schwarzschild>(), 8180. * Unit::pc, inc);
+		viewPtr = make_unique<View>(make_unique<Schwarzschild>(), 8180. * Unit::pc, inc, eps);
 		if (ray & 4)
 			shadowPtr = make_unique<thread>(&View::Shadow, viewPtr.get(), "shadow");
 	}
 	if (ray & 10) {
-		cameraPtr = make_unique<Camera>(make_unique<Schwarzschild>(), 1000, 5e-2, 1.e3, inc);
+		cameraPtr = make_unique<Camera>(make_unique<Schwarzschild>(), 1000, 5e-2, 1.e3, inc, eps);
 		if (ray & 8)
 			lensPtr = make_unique<thread>(&Camera::Lens, cameraPtr.get());
 	}
 	// Integrator integ(metric::function, metric::jacobian, metric != 0);
-	Star star_0(main_metric, T, LAGRANGIAN, GEODESIC, Unit::R_sun, 0);
+	Star star_0(main_metric, T, LAGRANGIAN, Unit::R_sun, 0);
 	star_0.InitializeSchwarzschildKeplerianApocenter(a * Unit::mpc, e, inclination, periapsis, ascending_node, inc, eps);
 	// star_0.InitializeGeodesic(a, inclination, periapsis, ascending_node, -0.16707659553531468, 0.3822615764261866, inc, eps);
 	// star_0.InitializeSchwarzschildKeplerianApocenterHarmonic(a * Unit::mpc, e, inclination, periapsis, ascending_node, inc, eps);
