@@ -135,12 +135,12 @@ namespace SBody {
 			y[i] *= v_1;
 		return GSL_SUCCESS;
 	}
-	Integrator Newton::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+	std::unique_ptr<Integrator> Newton::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
 		if (time != T || coordinate != LAGRANGIAN || motion != GEODESIC) {
 			PrintlnError("Newton::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
 			exit(GSL_EINVAL);
 		}
-		return Integrator(
+		return std::make_unique<Integrator>(
 			[](double t, const double y[], double dydt[], void *params) -> int {
 				int PN = *static_cast<int *>(params);
 				const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
@@ -175,12 +175,12 @@ namespace SBody {
 			const_cast<int *>(&this->PN_));
 	}
 	PN1::PN1(double fSP) : Newton(1), PN1_(fSP){};
-	Integrator PN1::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+	std::unique_ptr<Integrator> PN1::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
 		if (time != T || coordinate != LAGRANGIAN || motion != GEODESIC) {
 			PrintlnError("PN1::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
 			exit(GSL_EINVAL);
 		}
-		return Integrator(
+		return std::make_unique<Integrator>(
 			[](double t, const double y[], double dydt[], void *params) -> int {
 				const double PN1 = *static_cast<const double *>(params);
 				const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
@@ -281,11 +281,11 @@ namespace SBody {
 		y[7] *= coefficient;
 		return 0;
 	}
-	Integrator Schwarzschild::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+	std::unique_ptr<Integrator> Schwarzschild::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
 		if (time == T) {
 			if (coordinate == LAGRANGIAN) {
 				if (motion == GEODESIC)
-					return Integrator(
+					return std::make_unique<Integrator>(
 						[](double t, const double y[], double dydt[], void *params) -> int {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = y[5]; // dr/dt
@@ -305,12 +305,26 @@ namespace SBody {
 							return GSL_SUCCESS;
 						},
 						[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+				if (motion == CIRCULAR)
+					return std::make_unique<Integrator>(
+						[](double t, const double y[], double dydt[], void *params) -> int {
+							dydt[0] = y[4]; // d\tau/dt
+							dydt[1] = y[5]; // dr/dt
+							dydt[2] = y[6]; // d\theta/dt
+							dydt[3] = y[7]; // d\phi/dt
+							dydt[4] = 0.;
+							dydt[5] = 0.;
+							dydt[6] = 0.;
+							dydt[7] = 0.;
+							return GSL_SUCCESS;
+						},
+						[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
 				if (motion == RIAF)
-					return Integrator(
+					return std::make_unique<Integrator>(
 						[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
 						[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
 				if (motion == HELICAL)
-					return Integrator(
+					return std::make_unique<Integrator>(
 						[](double t, const double y[], double dydt[], void *params) -> int {
 							const double g00 = 1. - 2. / y[1], sin_theta = abs(sin(y[2]));
 							if (g00 <= 0)
@@ -332,7 +346,7 @@ namespace SBody {
 						[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
 			}
 			if (coordinate == HAMILTONIAN && motion == GEODESIC)
-				return Integrator(
+				return std::make_unique<Integrator>(
 					[](double t, const double y[], double dydt[], void *params) -> int {
 						const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), g00 = 1. - 2. * r_1, E = 1. - y[4], L2 = gsl_pow_2(y[7]);
 						const double sint_1 = 1. / abs(sin(y[2])), sint_2 = gsl_pow_2(sint_1);
@@ -350,7 +364,7 @@ namespace SBody {
 					[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
 		}
 		if (time == TAU && coordinate == LAGRANGIAN && motion == GEODESIC)
-			return Integrator(
+			return std::make_unique<Integrator>(
 				[](double t, const double y[], double dydt[], void *params) -> int {
 					dydt[0] = y[4]; // dt/d\tau
 					dydt[1] = y[5]; // dr/d\tau
@@ -370,7 +384,7 @@ namespace SBody {
 					return GSL_SUCCESS;
 				},
 				[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
-		return Integrator(
+		return std::make_unique<Integrator>(
 			[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
 			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
 	}
@@ -481,14 +495,14 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	Integrator Kerr::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+	std::unique_ptr<Integrator> Kerr::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
 		if (motion != GEODESIC)
 			PrintlnError("Motion not supported!");
 		if (coordinate == BASE)
-			return Integrator(metric::Kerr::function, metric::Kerr::jacobian, this);
+			return std::make_unique<Integrator>(metric::Kerr::function, metric::Kerr::jacobian, this);
 		if (coordinate == LAGRANGIAN)
-			return Integrator(metric::Kerr::functionTau, metric::Kerr::jacobianTau, this);
-		return Integrator(metric::Kerr::functionHamiltonian, metric::Kerr::jacobianHamiltonian, this);
+			return std::make_unique<Integrator>(metric::Kerr::functionTau, metric::Kerr::jacobianTau, this);
+		return std::make_unique<Integrator>(metric::Kerr::functionHamiltonian, metric::Kerr::jacobianHamiltonian, this);
 	}
 
 	KerrTaubNUT::KerrTaubNUT(double spin, double NUT) : Kerr(spin), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
@@ -597,12 +611,12 @@ namespace SBody {
 		y[7] *= eff;
 		return 0;
 	}
-	Integrator KerrTaubNUT::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+	std::unique_ptr<Integrator> KerrTaubNUT::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
 		if (coordinate == BASE)
-			return Integrator(metric::KerrTaubNUT::function, metric::KerrTaubNUT::jacobian, this);
+			return std::make_unique<Integrator>(metric::KerrTaubNUT::function, metric::KerrTaubNUT::jacobian, this);
 		if (coordinate == LAGRANGIAN)
-			return Integrator(metric::KerrTaubNUT::functionTau, metric::KerrTaubNUT::jacobianTau, this);
-		return Integrator(metric::KerrTaubNUT::functionHamiltonian, metric::KerrTaubNUT::jacobianHamiltonian, this);
+			return std::make_unique<Integrator>(metric::KerrTaubNUT::functionTau, metric::KerrTaubNUT::jacobianTau, this);
+		return std::make_unique<Integrator>(metric::KerrTaubNUT::functionHamiltonian, metric::KerrTaubNUT::jacobianHamiltonian, this);
 	}
 
 	namespace metric {

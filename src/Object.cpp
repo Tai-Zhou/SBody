@@ -31,7 +31,7 @@ namespace SBody {
 		return GSL_SUCCESS;
 	}
 	int Star::InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination, double observer_rotation) {
-		integrator_ = std::make_unique<Integrator>(metric_->GetIntegrator(time_, coordinate_, GEODESIC));
+		integrator_ = metric_->GetIntegrator(time_, coordinate_, GEODESIC);
 		position_[0] = 0.;
 		periapsis += true_anomaly;
 		double r = a * (1. - e * e) / (1. + e * cos(true_anomaly));
@@ -56,7 +56,7 @@ namespace SBody {
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
 	int Star::InitializeGeodesic(double orbital_radius, double inclination, double periapsis, double ascending_node, double v_r, double v_phi, double observer_inclination, double observer_rotation) {
-		integrator_ = std::make_unique<Integrator>(metric_->GetIntegrator(time_, coordinate_, GEODESIC));
+		integrator_ = metric_->GetIntegrator(time_, coordinate_, GEODESIC);
 		position_[0] = 0.;
 		const double tp1 = -orbital_radius * cos(periapsis), tp2 = -orbital_radius * sin(periapsis) * cos(inclination);
 		const double xp1 = tp1 * cos(ascending_node) - tp2 * sin(ascending_node), xp2 = tp2 * cos(ascending_node) + tp1 * sin(ascending_node), xp3 = -orbital_radius * sin(periapsis) * sin(inclination);
@@ -78,7 +78,7 @@ namespace SBody {
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
 	int Star::InitializeSchwarzschildKeplerianPericenter(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation) {
-		integrator_ = std::make_unique<Integrator>(metric_->GetIntegrator(time_, coordinate_, GEODESIC));
+		integrator_ = metric_->GetIntegrator(time_, coordinate_, GEODESIC);
 		position_[0] = 0.;
 		double r = a * (1. - e); // pericenter
 		const double tp1 = -r * cos(periapsis), tp2 = -r * sin(periapsis) * cos(inclination);
@@ -103,7 +103,7 @@ namespace SBody {
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
 	int Star::InitializeSchwarzschildKeplerianApocenter(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation) {
-		integrator_ = std::make_unique<Integrator>(metric_->GetIntegrator(time_, coordinate_, GEODESIC));
+		integrator_ = metric_->GetIntegrator(time_, coordinate_, GEODESIC);
 		position_[0] = 0.;
 		double r = a * (1. + e); // apocenter
 		const double tp1 = r * cos(periapsis), tp2 = r * sin(periapsis) * cos(inclination);
@@ -133,8 +133,25 @@ namespace SBody {
 		position_[1] += 1.;
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
+	int Star::InitializeCircular(double r, double phi, double v_phi_ratio) {
+		integrator_ = metric_->GetIntegrator(time_, coordinate_, CIRCULAR);
+		position_[0] = 0.;
+		position_[1] = r;
+		position_[2] = M_PI_2;
+		position_[3] = phi;
+		if (fixed_) {
+			position_[5] = 0.;
+			position_[6] = 0.;
+			position_[7] = 0.;
+		} else {
+			position_[5] = 0.;
+			position_[6] = 0.;
+			position_[7] = v_phi_ratio / (r * sqrt(r));
+		}
+		return metric_->NormalizeTimelikeGeodesic(position_);
+	}
 	int Star::InitializeHelical(double r, double theta, double phi, double v_r, double v_phi) {
-		integrator_ = std::make_unique<Integrator>(metric_->GetIntegrator(time_, coordinate_, HELICAL));
+		integrator_ = metric_->GetIntegrator(time_, coordinate_, HELICAL);
 		position_[0] = 0.;
 		position_[1] = r;
 		position_[2] = theta;

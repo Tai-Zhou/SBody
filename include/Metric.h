@@ -32,6 +32,7 @@ namespace SBody {
 							 HAMILTONIAN };
 
 	enum motion_mode { GEODESIC,
+					   CIRCULAR,
 					   RIAF,
 					   HELICAL };
 	template <typename T>
@@ -51,13 +52,13 @@ namespace SBody {
 		int LocalInertialFrame(const double position[], gsl_matrix *coordinate, const double timelike[] = nullptr);
 		virtual int BaseToHamiltonian(double y[]) = 0;
 		virtual int HamiltonianToBase(double y[]) = 0;
-		virtual double Energy(const double y[], coordinate_system coordinate) = 0;
-		virtual double AngularMomentum(const double y[], coordinate_system coordinate) = 0;
-		virtual double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) = 0;
-		virtual double Redshift(const double y[], const double photon[], time_system time = T);
+		virtual double Energy(const double y[], coordinate_system coordinate) = 0;							 // TODO: add time
+		virtual double AngularMomentum(const double y[], coordinate_system coordinate) = 0;					 // TODO: add time
+		virtual double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) = 0; // TODO: add time
+		virtual double Redshift(const double y[], const double photon[], time_system time = T);				 // TODO: add coordinate
 		virtual int NormalizeTimelikeGeodesic(double y[]) = 0;
 		virtual int NormalizeNullGeodesic(double y[], double frequency = 1.) = 0;
-		virtual Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) = 0;
+		virtual std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) = 0;
 	};
 	class Newton : public Metric {
 	  public:
@@ -75,13 +76,13 @@ namespace SBody {
 		double Redshift(const double y[], const double photon[], time_system time = T) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class PN1 : public Newton {
 	  public:
 		const double PN1_;
 		PN1(double fSP);
-		Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class Schwarzschild : public Metric {
 	  public:
@@ -97,7 +98,7 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class Kerr : public Schwarzschild {
 	  public:
@@ -114,7 +115,7 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	class KerrTaubNUT : public Kerr {
 	  public:
@@ -131,7 +132,7 @@ namespace SBody {
 		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
-		Integrator GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
 	namespace metric {
 		namespace Kerr {

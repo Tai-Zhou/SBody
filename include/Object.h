@@ -103,6 +103,7 @@ namespace SBody {
 		int InitializeSchwarzschildKeplerianPericenter(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation);
 		int InitializeSchwarzschildKeplerianApocenter(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation);
 		int InitializeKeplerianHarmonic(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination, double observer_rotation);
+		int InitializeCircular(double r, double phi, double v_phi_ratio);
 		int InitializeHelical(double r, double theta, double phi, double v_r, double v_phi);
 		int IntegratorApply(double *t, double t1, double *h);
 		int IntegratorApplyFixedStep(double *t, const double h);
