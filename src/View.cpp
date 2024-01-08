@@ -104,11 +104,6 @@ namespace SBody {
 			int status = 0, fixed = 0;
 			h = -1.;
 			while (status <= 0) {
-				for (int i = 0; i < 8; ++i)
-					if (isnan(gsl_vector_get(photon, i))) {
-						PrintlnError("NaN! alpha = {}, beta = {}", alpha, beta);
-						return GSL_FAILURE;
-					}
 				if (status == GSL_FAILURE) {
 					h *= 0.5;
 					fixed = 0;
@@ -118,17 +113,14 @@ namespace SBody {
 					status = integrator->ApplyFixedStep(gsl_vector_ptr(photon, 9), h, photon->data);
 				else
 					status = integrator->ApplyStep(gsl_vector_ptr(photon, 9), t_final_, &h, photon->data);
-				if (const double cosph = (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * abs(sin(gsl_vector_get(photon, 2))) * cos(gsl_vector_get(photon, 3))) * sin_theta_ + (r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * cos_theta_; cosph > r_star * 1e-12) {
+				if (const double cosph = (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * abs(sin(gsl_vector_get(photon, 2))) * cos(gsl_vector_get(photon, 3))) * sin_theta_ + (r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * cos_theta_; cosph > r_star * epsilon) {
 					gsl_vector_memcpy(photon, last);
 					h *= 0.3;
 					fixed = 1;
 					integrator->Reset();
 				} else if (cosph >= 0) {
-					delta_alpha = iteration_coefficient * (r_star * sin_theta_star * sin_phi_star - gsl_vector_get(photon, 1) * abs(sin(gsl_vector_get(photon, 2))) * sin(gsl_vector_get(photon, 3)));
-					delta_beta = iteration_coefficient * ((r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * sin_theta_ - (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * abs(sin(gsl_vector_get(photon, 2))) * cos(gsl_vector_get(photon, 3))) * cos_theta_);
-					alpha += delta_alpha;
-					beta += delta_beta;
-					metric_->HamiltonianToBase(photon->data);
+					delta_alpha = r_star * sin_theta_star * sin_phi_star - gsl_vector_get(photon, 1) * abs(sin(gsl_vector_get(photon, 2))) * sin(gsl_vector_get(photon, 3));
+					delta_beta = (r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * sin_theta_ - (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * abs(sin(gsl_vector_get(photon, 2))) * cos(gsl_vector_get(photon, 3))) * cos_theta_;
 					break;
 				} else if (gsl_vector_get(photon, 9) < t_final_ * 1e-8) {
 					gsl_vector_set(photon, 8, gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9));
@@ -141,8 +133,13 @@ namespace SBody {
 				PrintlnWarning("view::traceStar status = {}\n", status);
 				return status;
 			}
-			if (gsl_hypot(delta_alpha, delta_beta) <= epsilon * (1. + gsl_hypot(alpha, beta)))
+			if (gsl_hypot(delta_alpha, delta_beta) <= epsilon * (1. + gsl_hypot(alpha, beta))) {
+				metric_->HamiltonianToBase(photon->data);
 				break;
+			}
+			alpha += iteration_coefficient * delta_alpha;
+			beta += iteration_coefficient * delta_beta;
+			integrator->Reset();
 		}
 		record[0] = alpha * cos_iota_ - beta * sin_iota_;
 		record[1] = beta * cos_iota_ + alpha * sin_iota_;
