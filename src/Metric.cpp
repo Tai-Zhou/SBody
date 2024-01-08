@@ -274,7 +274,7 @@ namespace SBody {
 		const double g00 = 1. - 2. / y[1];
 		if (g00 <= 0)
 			return 1;
-		const double coefficient = GSL_SIGN(y[4]) * g00 / sqrt(gsl_pow_2(y[5]) + g00 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+		const double coefficient = GSL_SIGN(frequency) * g00 / sqrt(gsl_pow_2(y[5]) + g00 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
 		y[4] = frequency;
 		y[5] *= coefficient;
 		y[6] *= coefficient;
@@ -488,7 +488,7 @@ namespace SBody {
 		const double effa = rho2 / (r2 - 2. * r + a2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2_ + r2) * sint2 + mr_rho2 * a2_ * sint4) * gsl_pow_2(y[7]);
 		const double effb = -2. * mr_rho2 * a_ * sint2 * y[7];
 		const double effc = mr_rho2 - 1.;
-		const double eff = GSL_SIGN(y[4]) * 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
+		const double eff = GSL_SIGN(frequency) * 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
 		y[4] = frequency;
 		y[5] *= eff;
 		y[6] *= eff;
@@ -604,7 +604,7 @@ namespace SBody {
 		const double effa = rho2 / Delta * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + rho_2 * (gsl_pow_2(rho2achi) * sint2 - gsl_pow_2(chi) * Delta) * gsl_pow_2(y[7]);
 		const double effb = -4. * rho_2 * ((r + l2_) * chi + l_ * cost * rho2achi) * y[7];
 		const double effc = -rho_2 * (Delta - a2_ * sint2);
-		const double eff = GSL_SIGN(y[4]) * 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
+		const double eff = GSL_SIGN(frequency) * 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
 		y[4] = frequency;
 		y[5] *= eff;
 		y[6] *= eff;

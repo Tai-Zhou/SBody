@@ -42,6 +42,7 @@ namespace SBody {
 	int View::InitializePhoton(double *photon, double alpha, double beta) {
 		photon[0] = 0.;
 		photon[1] = r_;
+		photon[4] = 1.;
 		photon[5] = 1.;
 		photon[8] = 0.;
 		photon[9] = 0.;
