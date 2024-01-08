@@ -22,7 +22,7 @@ namespace SBody {
 	Object::Object(std::shared_ptr<Metric> metric) : metric_(metric) {
 		object_list_.push_back(this);
 	}
-	Star::Star(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double radius, bool fixed) : Object(metric), time_(time), coordinate_(coordinate), radius_(radius), radius_square_(gsl_pow_2(radius)), fixed_(fixed) {
+	Star::Star(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double radius, bool fixed) : Object(metric), time_(time), coordinate_(coordinate), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)) {
 		for (int i = 0; i < 8; ++i)
 			position_[i] = 0;
 	}
