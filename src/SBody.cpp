@@ -37,7 +37,7 @@ using namespace SBody;
 void InterruptHandler(int signum) {
 	fmt::print("\r\033[KSBody exiting...\n");
 	indicators::show_console_cursor(true);
-	exit(signum);
+	SBodyExit(signum);
 }
 
 void Help() {
@@ -70,15 +70,52 @@ void Help() {
 	fmt::println("  -e --eps     [f]: epsilon of the BH");
 	fmt::println("  -f --format  [s]: storage format [{}]", FORMAT);
 	fmt::println("  -L --light      : light instead of particle");
-	fmt::println("  -b --bar        : show progress bar");
-	fmt::println("  -h --help       : this help information");
+	fmt::println("  -b --bar        : display progress bar");
+	fmt::println("  -B --bench      : run benchmark");
+	fmt::println("  -h --help       : show this help information");
 	PrintlnBold("\n{}EXAMPLE{}\n  $ sbody"); // TODO: add example
 	PrintlnBold("\n{}SUPPORT{}\n  github.com/Tai-Zhou/SBody");
+}
+
+int Benchmark() {
+	auto t_start = chrono::steady_clock::now();
+	Unit::Initialize(4.261e6);
+	double t = 0., t1 = 0., t_step = 3600. * Unit::s / T_STEP_NUMBER;
+	shared_ptr<Metric> main_metric = make_shared<Kerr>(0.3);
+	unique_ptr<View> view_ptr = make_unique<View>(make_unique<Kerr>(0.3), 8180. * Unit::pc, M_PI_4, 0.);
+	Star star_0(main_metric, T, LAGRANGIAN, Unit::R_sun, 0);
+	star_0.InitializeKeplerian(10., 0.1, M_PI * 30. / 180., 0., 0., 0., M_PI_4);
+	double temp[17];
+	int status = 0;
+	double h = 1., stepPercent = 100. / T_STEP_NUMBER;
+	indicators::show_console_cursor(false);
+	ProgressBar::bars_[0].set_option(indicators::option::PrefixText{string("Benchmarking...")});
+	for (int i = 1; i <= T_STEP_NUMBER; ++i) {
+		t1 += t_step;
+		status = star_0.IntegratorApply(&t, t1, &h);
+		if (status > 0) {
+			PrintlnError("Benchmark error, main status = {}", status);
+			return GSL_FAILURE;
+		}
+		star_0.Position(temp);
+		temp[8] = t / Unit::s;
+		temp[9] = star_0.Energy();
+		temp[10] = star_0.AngularMomentum();
+		temp[11] = star_0.CarterConstant();
+		view_ptr->TraceStar(temp, i, temp + 12, true);
+		SphericalToCartesian(temp);
+		ProgressBar::bars_[0].set_progress(i * stepPercent);
+		ProgressBar::bars_[0].set_option(indicators::option::PrefixText{fmt::format("Anticipated score is: {}? ", i * 200000000ul / (T_STEP_NUMBER * chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count()))});
+	}
+	ProgressBar::SetComplete(0, fmt::format("Final score is: {}! ", 200000000ul / chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count()));
+	indicators::show_console_cursor(true);
+	return GSL_SUCCESS;
 }
 
 int main(int argc, char *argv[]) {
 	// Application Entry
 	auto TStart = chrono::steady_clock::now();
+	signal(SIGINT, InterruptHandler);
 	double mass = 4.261e6, spin = 0., NUT = 0.;
 	double tFinal = 3600.; // 128.43325526 for 4.15e6 M_sun
 	size_t tStepNumber = T_STEP_NUMBER;
@@ -98,7 +135,7 @@ int main(int argc, char *argv[]) {
 	unique_ptr<thread> shadowPtr;
 	unique_ptr<Camera> cameraPtr;
 	unique_ptr<thread> lensPtr;
-	const char *optShort = "m:s:l:K:E:I:o:O:t:k:c:n:P:R:a:r:i:e:f:Lbh";
+	const char *optShort = "m:s:l:K:E:I:o:O:t:k:c:n:P:R:a:r:i:e:f:LbBh";
 	const char *separator = ",";
 	char *parameter;
 	const struct option optLong[] = {
@@ -123,6 +160,7 @@ int main(int argc, char *argv[]) {
 		{"format", required_argument, NULL, 'f'},
 		{"light", no_argument, NULL, 'L'},
 		{"bar", no_argument, NULL, 'b'},
+		{"bench", no_argument, NULL, 'B'},
 		{"help", no_argument, NULL, 'h'},
 		{NULL, 0, NULL, 0}};
 	int opt;
@@ -195,9 +233,11 @@ int main(int argc, char *argv[]) {
 		case 'b':
 			ProgressBar::display_ = true;
 			break;
+		case 'B':
+			return Benchmark();
 		default:
 			Help();
-			exit(opt == 'h' ? 0 : 1);
+			return opt != 'h';
 		}
 	Unit::Initialize(mass);
 	tFinal *= Unit::s;
@@ -245,7 +285,7 @@ int main(int argc, char *argv[]) {
 	h = 1;
 	if (status = star_0.IntegratorReset(); status != 0)
 		PrintlnWarning("star_0.IntegratorReset() = {}", status);
-	for (int i = 0; i < tStepNumber; ++i) {
+	for (int i = 1; i <= tStepNumber; ++i) {
 		tStep += tRec;
 		status = star_0.IntegratorApply(&t, tStep, &h);
 		if (status > 0)
