@@ -22,6 +22,12 @@
 #include <indicators/dynamic_progress.hpp>
 
 namespace SBody {
+	/**
+	 * @brief Make sure the console cursor is not hidden.
+	 *
+	 * @param code exit code
+	 */
+	void SBodyExit(int code);
 	template <typename... T>
 	void PrintlnBold(std::string format, T &&...args) {
 		fmt::println(format, "\033[1m", "\033[0m", std::forward<T>(args)...);

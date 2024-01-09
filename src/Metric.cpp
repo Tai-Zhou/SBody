@@ -138,7 +138,7 @@ namespace SBody {
 	std::unique_ptr<Integrator> Newton::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
 		if (time != T || coordinate != LAGRANGIAN || motion != GEODESIC) {
 			PrintlnError("Newton::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
-			exit(GSL_EINVAL);
+			SBodyExit(GSL_EINVAL);
 		}
 		return std::make_unique<Integrator>(
 			[](double t, const double y[], double dydt[], void *params) -> int {
@@ -178,7 +178,7 @@ namespace SBody {
 	std::unique_ptr<Integrator> PN1::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
 		if (time != T || coordinate != LAGRANGIAN || motion != GEODESIC) {
 			PrintlnError("PN1::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
-			exit(GSL_EINVAL);
+			SBodyExit(GSL_EINVAL);
 		}
 		return std::make_unique<Integrator>(
 			[](double t, const double y[], double dydt[], void *params) -> int {

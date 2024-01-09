@@ -20,6 +20,11 @@
 using namespace std;
 
 namespace SBody {
+	void SBodyExit(int code) {
+		if (ProgressBar::display_)
+			indicators::show_console_cursor(true);
+		exit(code);
+	}
 	bool ProgressBar::display_ = false;
 	indicators::BlockProgressBar main_bar{
 		indicators::option::ShowElapsedTime{true},
@@ -38,7 +43,7 @@ namespace SBody {
 			file_buffer_.open("../data/" + file_name, mode);
 		if (!file_buffer_.is_open()) {
 			PrintlnError("IO file not open");
-			exit(1);
+			SBodyExit(1);
 		}
 	}
 	File::~File() {
