@@ -498,11 +498,19 @@ namespace SBody {
 	std::unique_ptr<Integrator> Kerr::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
 		if (motion != GEODESIC)
 			PrintlnError("Motion not supported!");
-		if (coordinate == BASE)
-			return std::make_unique<Integrator>(metric::Kerr::function, metric::Kerr::jacobian, this);
-		if (coordinate == LAGRANGIAN)
-			return std::make_unique<Integrator>(metric::Kerr::functionTau, metric::Kerr::jacobianTau, this);
-		return std::make_unique<Integrator>(metric::Kerr::functionHamiltonian, metric::Kerr::jacobianHamiltonian, this);
+		if (time == T) {
+			if (coordinate == LAGRANGIAN)
+				return std::make_unique<Integrator>(metric::Kerr::function, metric::Kerr::jacobian, this);
+			else if (coordinate == HAMILTONIAN)
+				return std::make_unique<Integrator>(metric::Kerr::functionHamiltonian, metric::Kerr::jacobianHamiltonian, this);
+		} else if (time == TAU) {
+			if (coordinate == LAGRANGIAN)
+				return std::make_unique<Integrator>(metric::Kerr::functionTau, metric::Kerr::jacobianTau, this);
+		}
+		PrintlnError("Time system not supported!");
+		return std::make_unique<Integrator>(
+			[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
+			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
 	}
 
 	KerrTaubNUT::KerrTaubNUT(double spin, double NUT) : Kerr(spin), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
@@ -612,11 +620,20 @@ namespace SBody {
 		return 0;
 	}
 	std::unique_ptr<Integrator> KerrTaubNUT::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
-		if (coordinate == BASE)
-			return std::make_unique<Integrator>(metric::KerrTaubNUT::function, metric::KerrTaubNUT::jacobian, this);
-		if (coordinate == LAGRANGIAN)
+		if (motion != GEODESIC)
+			PrintlnError("Motion not supported!");
+		if (time == T) {
+			if (coordinate == LAGRANGIAN)
+				return std::make_unique<Integrator>(metric::KerrTaubNUT::function, metric::KerrTaubNUT::jacobian, this);
+			else if (coordinate == HAMILTONIAN)
+				return std::make_unique<Integrator>(metric::KerrTaubNUT::functionHamiltonian, metric::KerrTaubNUT::jacobianHamiltonian, this);
+		} else if (time == TAU) {
 			return std::make_unique<Integrator>(metric::KerrTaubNUT::functionTau, metric::KerrTaubNUT::jacobianTau, this);
-		return std::make_unique<Integrator>(metric::KerrTaubNUT::functionHamiltonian, metric::KerrTaubNUT::jacobianHamiltonian, this);
+		}
+		PrintlnError("Time system not supported!");
+		return std::make_unique<Integrator>(
+			[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
+			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
 	}
 
 	namespace metric {
