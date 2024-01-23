@@ -32,25 +32,28 @@ namespace SBody {
 	}
 	int Integrator::Apply(double *t, double t1, double *h, double *y) {
 		int status = 0;
+		double theta_0 = y[2];
 		if (*h > 0)
 			while (status <= 0 && *t < t1)
 				status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
 		else
 			while (status <= 0 && *t > t1)
 				status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
-		MapTheta(y[2]);
+		MapTheta(theta_0, y);
 		ModBy2Pi(y[3]);
 		return status;
 	}
 	int Integrator::ApplyStep(double *t, double t1, double *h, double *y) {
+		double theta_0 = y[2];
 		int status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
-		MapTheta(y[2]);
+		MapTheta(theta_0, y);
 		ModBy2Pi(y[3]);
 		return status;
 	}
 	int Integrator::ApplyFixedStep(double *t, const double h, double *y) {
+		double theta_0 = y[2];
 		int status = gsl_odeiv2_evolve_apply_fixed_step(evolve_, control_, step_, &system_, t, h, y);
-		MapTheta(y[2]);
+		MapTheta(theta_0, y);
 		ModBy2Pi(y[3]);
 		return status;
 	}
@@ -248,13 +251,17 @@ namespace SBody {
 		return GSL_SUCCESS;
 	}
 	int OppositeSign(double x, double y) {
-		return (x >= 0. && y <= 0.) || (x <= 0. && y >= 0.);
+		return (x > 0. && y < 0.) || (x < 0. && y > 0.);
 	}
-	void MapTheta(double &theta) {
-		if (theta <= -M_PI_2)
-			theta += M_PI;
-		else if (theta > M_PI_2)
-			theta -= M_PI;
+	void MapTheta(const double theta_0, double *y) {
+		if (OppositeSign(theta_0, y[2])) {
+			y[2] = -y[2];
+			y[3] += M_PI;
+			y[6] = -y[6];
+		} else if (y[2] <= -M_PI_2)
+			y[2] += M_PI;
+		else if (y[2] > M_PI_2)
+			y[2] -= M_PI;
 	}
 	void ModBy2Pi(double &phi) {
 		while (phi < 0)

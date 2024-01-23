@@ -354,9 +354,10 @@ namespace SBody {
 	/**
 	 * @brief Map `theta` from \f$(\pi/2, \pi]\f$ to \f$(-\pi/2, 0]\f$.
 	 *
-	 * @param theta
+	 * @param theta_0
+	 * @param y
 	 */
-	void MapTheta(double &theta);
+	void MapTheta(const double theta_0, double *y);
 
 	/**
 	 * @brief Return `phi` in \f$[0, 2\pi)\f$.
