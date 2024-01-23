@@ -134,25 +134,14 @@ namespace SBody {
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
 		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
-	namespace metric {
-		namespace Kerr {
-			int function(double t, const double y[], double dydt[], void *params);
-			int functionTau(double t, const double y[], double dydt[], void *params);
-			int functionHamiltonian(double t, const double y[], double dydt[], void *params);
-			int functionHamiltonianTau(double t, const double y[], double dydt[], void *params);
-			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
-			int jacobianTau(double t, const double y[], double *dfdy, double dfdt[], void *params);
-			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params);
-		} // namespace Kerr
-		namespace KerrTaubNUT {
-			int function(double t, const double y[], double dydt[], void *params);
-			int functionTau(double t, const double y[], double dydt[], void *params);
-			int functionHamiltonian(double t, const double y[], double dydt[], void *params);
-			int jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
-			int jacobianTau(double t, const double y[], double *dfdy, double dfdt[], void *params);
-			int jacobianHamiltonian(double t, const double y[], double *dfdy, double dfdt[], void *params);
-		} // namespace KerrTaubNUT
-	}	  // namespace metric
+	int KerrTLagrangianGeodesic(double t, const double y[], double dydt[], void *params);
+	int KerrTauLagrangianGeodesic(double t, const double y[], double dydt[], void *params);
+	int KerrTHamiltonianGeodesic(double t, const double y[], double dydt[], void *params);
+	int KerrTauHamiltonianGeodesic(double t, const double y[], double dydt[], void *params);
+	int KerrTaubNutTLagrangianGeodesic(double t, const double y[], double dydt[], void *params);
+	int KerrTaubNutTauLagrangianGeodesic(double t, const double y[], double dydt[], void *params);
+	int KerrTaubNutTHamiltonianGeodesic(double t, const double y[], double dydt[], void *params);
+	int Jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params);
 } // namespace SBody
 
 #endif
