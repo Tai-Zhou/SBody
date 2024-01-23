@@ -33,7 +33,7 @@
 using namespace std;
 
 namespace SBody {
-	View::View(shared_ptr<Metric> metric, double r, double theta, double iota) : metric_(metric), r_(r), theta_(theta), sin_theta_(sin(theta)), cos_theta_(cos(theta)), iota_(iota), sin_iota_(sin(iota)), cos_iota_(cos(iota)), t_final_(-r - 2e4 * 1.) {
+	View::View(shared_ptr<Metric> metric, double r, double theta, double iota) : metric_(metric), r_(r), theta_(theta), sin_theta_(sin(theta)), cos_theta_(cos(theta)), iota_(iota), sin_iota_(sin(iota)), cos_iota_(cos(iota)), t_final_(-r - 2e4) {
 		bar_ = make_unique<indicators::BlockProgressBar>(indicators::option::ShowElapsedTime{true},
 														 indicators::option::ShowRemainingTime{true},
 														 indicators::option::ForegroundColor{indicators::Color(4)},
@@ -67,14 +67,16 @@ namespace SBody {
 		return metric_->NormalizeNullGeodesic(photon, 1.);
 	}
 	int View::TraceStar(double position[], int ray_number, double record[], bool luminosity) { // FIXME:!!!!
+		auto t_start = chrono::steady_clock::now();
 		const double r_star = position[1], sin_theta_star = abs(sin(position[2])), cos_theta_star = GSL_SIGN(position[2]) * cos(position[2]), sin_phi_star = sin(position[3]), cos_phi_star = cos(position[3]);
 		if (r_star <= 3.) {
 			PrintlnWarning("star orbit radius = {:.6f}", r_star);
 			if (r_star < 0)
 				return GSL_FAILURE;
 		}
-		const double alpha_coefficient = sin_theta_star * sin_phi_star, beta_coefficient = cos_theta_star * sin_theta_ - sin_theta_star * cos_phi_star * cos_theta_, iteration_coefficient = tanh(0.05 * r_star), cos_observer_star = sin_theta_ * sin_theta_star * cos_phi_star + cos_theta_ * cos_theta_star, sin_observer_star = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_star = acos(cos_observer_star);
+		const double alpha_coefficient = sin_theta_star * sin_phi_star, beta_coefficient = cos_theta_star * sin_theta_ - sin_theta_star * cos_phi_star * cos_theta_, cos_observer_star = sin_theta_ * sin_theta_star * cos_phi_star + cos_theta_ * cos_theta_star, sin_observer_star = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_star = acos(cos_observer_star), iteration_coefficient = tanh((2. + cos_observer_star) * 0.02 * r_star);
 		double alpha, delta_alpha, beta, delta_beta, h;
+		int retry = 0;
 		if (cos_observer_star <= -1.) {
 			PrintlnWarning("star behind black hole, cos(theta) = {:.6f}\n", cos_observer_star);
 			alpha = 2. * sqrt(r_star);
@@ -85,8 +87,9 @@ namespace SBody {
 				alpha = effective_radius * alpha_coefficient;
 				beta = effective_radius * beta_coefficient;
 			} else {
-				const double effective_radius = 0.5 * (r_star + (1. + sqrt(gsl_pow_2(r_star * sin_observer_star + 1.) - 16. * r_star * cos_observer_star)) / sin_observer_star);
-				// b=(r*sin(theta)+1+sqrt(gsl_pow_2(r*sin(theta)+1)-16*cos(theta)*r))/2
+				const double effective_radius = 1. / sin_observer_star + 0.5 * (M_PI * r_star - 6. * cos_observer_star) / (M_PI - theta_observer_star - sin_observer_star * cos_observer_star);
+				// b-r*sin(theta)=(b-1.)*(2.*theta/pi-1.)+1.+(b-4.)/pi*sin(theta*2.)
+				// b=(r*sin(theta)*M_PI+M_2_PI-2.*theta-8.*sin(theta)*cos(theta))/(2.*(M_PI-theta-sin(theta)*cos(theta)))
 				alpha = effective_radius * alpha_coefficient;
 				beta = effective_radius * beta_coefficient;
 			}
@@ -104,6 +107,17 @@ namespace SBody {
 			int status = 0, fixed = 0;
 			h = -1.;
 			while (status <= 0) {
+#ifndef GSL_RANGE_CHECK_OFF
+				if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(1000)) {
+#else
+				if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(5)) {
+#endif
+					PrintlnWarning("Trace star timeout! Star position is:");
+					for (int i = 0; i < 8; ++i)
+						printf("x[%d]=%f\n", i, position[i]);
+					printf("alpha=%f, beta=%f\n", alpha, beta);
+					return GSL_FAILURE;
+				}
 				if (status == GSL_FAILURE) {
 					h *= 0.5;
 					fixed = 0;
@@ -125,8 +139,18 @@ namespace SBody {
 				} else if (gsl_vector_get(photon, 9) < t_final_ * 1e-8) {
 					gsl_vector_set(photon, 8, gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9));
 					gsl_vector_set(photon, 9, 0);
-					if (gsl_vector_get(photon, 8) <= t_final_)
-						return GSL_FAILURE;
+					if (gsl_vector_get(photon, 8) <= t_final_) {
+						if (++retry == 3) {
+							PrintlnWarning("Trace star failed! Star position is:");
+							for (int i = 0; i < 8; ++i)
+								printf("x[%d]=%f\n", i, position[i]);
+							printf("alpha=%f, beta=%f\n", alpha, beta);
+							return GSL_FAILURE;
+						}
+						delta_alpha = alpha * 0.2;
+						delta_beta = beta * 0.2;
+						break;
+					}
 				}
 			}
 			if (status > 0) {
@@ -226,8 +250,7 @@ namespace SBody {
 			h = 1.;
 			int status = 0;
 			integrator->Reset();
-			while (status <= 0 && photon2[8] < 1000.)
-				status = integrator->Apply(photon2 + 8, 1000., &h, photon2);
+			status = integrator->Apply(photon2 + 8, 1000., &h, photon2);
 			if (status > 0) {
 				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 				return status;
