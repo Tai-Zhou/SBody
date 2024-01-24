@@ -52,10 +52,10 @@ namespace SBody {
 		int LocalInertialFrame(const double position[], gsl_matrix *coordinate, const double timelike[] = nullptr);
 		virtual int BaseToHamiltonian(double y[]) = 0;
 		virtual int HamiltonianToBase(double y[]) = 0;
-		virtual double Energy(const double y[], coordinate_system coordinate) = 0;							 // TODO: add time
-		virtual double AngularMomentum(const double y[], coordinate_system coordinate) = 0;					 // TODO: add time
-		virtual double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) = 0; // TODO: add time
-		virtual double Redshift(const double y[], const double photon[], time_system time = T);				 // TODO: add coordinate
+		virtual double Energy(const double y[], time_system time, coordinate_system coordinate) = 0;
+		virtual double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) = 0;
+		virtual double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) = 0;
+		virtual double Redshift(const double y[], const double photon[], time_system time = T); // TODO: add coordinate
 		virtual int NormalizeTimelikeGeodesic(double y[]) = 0;
 		virtual int NormalizeNullGeodesic(double y[], double frequency = 1.) = 0;
 		virtual std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) = 0;
@@ -70,9 +70,9 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int BaseToHamiltonian(double y[]) override;
 		int HamiltonianToBase(double y[]) override;
-		double Energy(const double y[], coordinate_system coordinate) override;
-		double AngularMomentum(const double y[], coordinate_system coordinate) override;
-		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
+		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
+		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
+		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
 		double Redshift(const double y[], const double photon[], time_system time = T) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
@@ -93,9 +93,9 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int BaseToHamiltonian(double y[]) override;
 		int HamiltonianToBase(double y[]) override;
-		double Energy(const double y[], coordinate_system coordinate) override;
-		double AngularMomentum(const double y[], coordinate_system coordinate) override;
-		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
+		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
+		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
+		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
 		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
@@ -110,9 +110,9 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int BaseToHamiltonian(double y[]) override;
 		int HamiltonianToBase(double y[]) override;
-		double Energy(const double y[], coordinate_system coordinate) override;
-		double AngularMomentum(const double y[], coordinate_system coordinate) override;
-		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
+		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
+		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
+		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
 		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
@@ -127,9 +127,9 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int BaseToHamiltonian(double y[]) override;
 		int HamiltonianToBase(double y[]) override;
-		double Energy(const double y[], coordinate_system coordinate) override;
-		double AngularMomentum(const double y[], coordinate_system coordinate) override;
-		double CarterConstant(const double y[], const double mu2, coordinate_system coordinate) override;
+		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
+		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
+		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
 		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;

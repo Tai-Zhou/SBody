@@ -211,12 +211,12 @@ namespace SBody {
 		return metric_->LocalInertialFrame(position_, coordinate);
 	}
 	double Star::Energy() {
-		return metric_->Energy(position_, coordinate_);
+		return metric_->Energy(position_, time_, coordinate_);
 	}
 	double Star::AngularMomentum() {
-		return metric_->AngularMomentum(position_, coordinate_);
+		return metric_->AngularMomentum(position_, time_, coordinate_);
 	}
 	double Star::CarterConstant() {
-		return metric_->CarterConstant(position_, 1., coordinate_);
+		return metric_->CarterConstant(position_, 1., time_, coordinate_);
 	}
 } // namespace SBody
