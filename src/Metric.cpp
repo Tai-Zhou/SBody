@@ -171,7 +171,7 @@ namespace SBody {
 				dydt[7] = -(2. * cos_theta / sin_theta * y[6] + 2. * y[5] * r_1 + B_r2) * y[7];
 				return GSL_SUCCESS;
 			},
-			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; },
+			Jacobian,
 			const_cast<int *>(&this->PN_));
 	}
 	PN1::PN1(double fSP) : Newton(1), PN1_(fSP){};
@@ -197,7 +197,7 @@ namespace SBody {
 				dydt[7] = -(2. * cos_theta / sin_theta * y[6] + 2. * y[5] * r_1 + B_r2) * y[7];
 				return GSL_SUCCESS;
 			},
-			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; },
+			Jacobian,
 			const_cast<double *>(&this->PN1_));
 	}
 
@@ -224,11 +224,11 @@ namespace SBody {
 		return -(1. - 2. / x[1]) * gsl_pow_2(x[0] - y[0]) + x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2.) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * PhiDifference(x[3] - y[3]));
 	}
 	int Schwarzschild::BaseToHamiltonian(double y[]) {
-		const double dtdtau = 1. / y[4], r2 = gsl_pow_2(y[1]);
-		y[4] = (y[4] - 1. + 2. / y[1]) * dtdtau; // 1 + p_t
-		y[5] *= y[1] / (y[1] - 2.) * dtdtau;
-		y[6] *= r2 * dtdtau;
-		y[7] *= r2 * gsl_pow_2(sin(y[2])) * dtdtau;
+		const double dt_dtau = 1. / y[4], r2 = gsl_pow_2(y[1]);
+		y[4] = (y[4] - 1. + 2. / y[1]) * dt_dtau; // 1 + p_t
+		y[5] *= y[1] / (y[1] - 2.) * dt_dtau;
+		y[6] *= r2 * dt_dtau;
+		y[7] *= r2 * gsl_pow_2(sin(y[2])) * dt_dtau;
 		return 0;
 	}
 	int Schwarzschild::HamiltonianToBase(double y[]) {
@@ -291,20 +291,20 @@ namespace SBody {
 							dydt[1] = y[5]; // dr/dt
 							dydt[2] = y[6]; // d\theta/dt
 							dydt[3] = y[7]; // d\phi/dt
-							const double r = y[1], sint = abs(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
+							const double r = y[1], sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
 							const double r2m = r - 2., r3m = r - 3.;
 							const double r2mr_1 = 1. / (r2m * r);
 							// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 							dydt[4] = 2. * y[5] * r2mr_1 * y[4];
 							// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-							dydt[5] = -r2m / gsl_pow_3(r) + 3. * r2mr_1 * gsl_pow_2(y[5]) + r2m * (gsl_pow_2(y[6]) + gsl_pow_2(sint * y[7]));
+							dydt[5] = -r2m / gsl_pow_3(r) + 3. * r2mr_1 * gsl_pow_2(y[5]) + r2m * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
 							// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-							dydt[6] = -2. * r3m * r2mr_1 * y[5] * y[6] + sint * cost * gsl_pow_2(y[7]);
+							dydt[6] = -2. * r3m * r2mr_1 * y[5] * y[6] + sin_theta * cos_theta * gsl_pow_2(y[7]);
 							// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-							dydt[7] = -2. * (r3m * r2mr_1 * y[5] + cost / sint * y[6]) * y[7];
+							dydt[7] = -2. * (r3m * r2mr_1 * y[5] + cos_theta / sin_theta * y[6]) * y[7];
 							return GSL_SUCCESS;
 						},
-						[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+						Jacobian);
 				if (motion == CIRCULAR)
 					return std::make_unique<Integrator>(
 						[](double t, const double y[], double dydt[], void *params) -> int {
@@ -318,11 +318,11 @@ namespace SBody {
 							dydt[7] = 0.;
 							return GSL_SUCCESS;
 						},
-						[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+						Jacobian);
 				if (motion == RIAF)
 					return std::make_unique<Integrator>(
 						[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
-						[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+						Jacobian);
 				if (motion == HELICAL)
 					return std::make_unique<Integrator>(
 						[](double t, const double y[], double dydt[], void *params) -> int {
@@ -343,25 +343,25 @@ namespace SBody {
 							dydt[7] = -2. * y[7] / y[1] * y[5];
 							return GSL_SUCCESS;
 						},
-						[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+						Jacobian);
 			}
 			if (coordinate == HAMILTONIAN && motion == GEODESIC)
 				return std::make_unique<Integrator>(
 					[](double t, const double y[], double dydt[], void *params) -> int {
 						const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), g00 = 1. - 2. * r_1, E = 1. - y[4], L2 = gsl_pow_2(y[7]);
-						const double sint_1 = 1. / abs(sin(y[2])), sint_2 = gsl_pow_2(sint_1);
+						const double sin_1_theta = 1. / abs(sin(y[2])), sin_2_theta = gsl_pow_2(sin_1_theta);
 						//[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
-						dydt[0] = g00 / E;						 // d\tau/dt
-						dydt[1] = g00 * y[5] * dydt[0];			 // dr/dt
-						dydt[2] = y[6] * r_2 * dydt[0];			 // d\theta/dt
-						dydt[3] = y[7] * sint_2 * r_2 * dydt[0]; // d\phi/dt
+						dydt[0] = g00 / E;							  // d\tau/dt
+						dydt[1] = g00 * y[5] * dydt[0];				  // dr/dt
+						dydt[2] = y[6] * r_2 * dydt[0];				  // d\theta/dt
+						dydt[3] = y[7] * sin_2_theta * r_2 * dydt[0]; // d\phi/dt
 						dydt[4] = 0.;
-						dydt[5] = (-(gsl_pow_2(y[5]) + gsl_pow_2(E) / gsl_pow_2(g00)) + (gsl_pow_2(y[6]) + L2 * sint_2) * r_1) * r_2 * dydt[0];
-						dydt[6] = sint_2 * L2 * GSL_SIGN(y[2]) * cos(y[2]) * sint_1 * r_2 * dydt[0];
+						dydt[5] = (-(gsl_pow_2(y[5]) + gsl_pow_2(E) / gsl_pow_2(g00)) + (gsl_pow_2(y[6]) + L2 * sin_2_theta) * r_1) * r_2 * dydt[0];
+						dydt[6] = sin_2_theta * L2 * GSL_SIGN(y[2]) * cos(y[2]) * sin_1_theta * r_2 * dydt[0];
 						dydt[7] = 0.;
 						return GSL_SUCCESS;
 					},
-					[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+					Jacobian);
 		}
 		if (time == TAU && coordinate == LAGRANGIAN && motion == GEODESIC)
 			return std::make_unique<Integrator>(
@@ -370,23 +370,23 @@ namespace SBody {
 					dydt[1] = y[5]; // dr/d\tau
 					dydt[2] = y[6]; // d\theta/d\tau
 					dydt[3] = y[7]; // d\phi/d\tau
-					const double r = y[1], sint = abs(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
+					const double r = y[1], sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
 					const double r2m = r - 2., r_1 = 1. / r;
 					const double r2mr_1 = 1. / (r2m * r);
 					// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 					dydt[4] = -2. * y[5] * r2mr_1 * y[4];
 					// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-					dydt[5] = -r2m * gsl_pow_3(r_1) * gsl_pow_2(y[4]) + r2mr_1 * gsl_pow_2(y[5]) + r2m * (gsl_pow_2(y[6]) + gsl_pow_2(sint * y[7]));
+					dydt[5] = -r2m * gsl_pow_3(r_1) * gsl_pow_2(y[4]) + r2mr_1 * gsl_pow_2(y[5]) + r2m * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
 					// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-					dydt[6] = -2. * r_1 * y[5] * y[6] + sint * cost * gsl_pow_2(y[7]);
+					dydt[6] = -2. * r_1 * y[5] * y[6] + sin_theta * cos_theta * gsl_pow_2(y[7]);
 					// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-					dydt[7] = -2. * (r_1 * y[5] + cost / sint * y[6]) * y[7];
+					dydt[7] = -2. * (r_1 * y[5] + cos_theta / sin_theta * y[6]) * y[7];
 					return GSL_SUCCESS;
 				},
-				[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+				Jacobian);
 		return std::make_unique<Integrator>(
 			[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
-			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+			Jacobian);
 	}
 
 	Kerr::Kerr(double spin) : a_(spin), a2_(a_ * a_), a4_(a2_ * a2_) {}
@@ -394,52 +394,52 @@ namespace SBody {
 		return "Kerr";
 	}
 	int Kerr::MetricTensor(const double position[], gsl_matrix *metric) {
-		const double r2 = gsl_pow_2(position[1]), Delta = r2 - 2. * position[1] + a2_, rho2 = gsl_pow_2(position[1]) + a2_ * gsl_pow_2(cos(position[2])), mr_rho2 = 2. * position[1] / rho2, sin2_theta = gsl_pow_2(sin(position[2]));
+		const double r2 = gsl_pow_2(position[1]), Delta = r2 - 2. * position[1] + a2_, rho2 = gsl_pow_2(position[1]) + a2_ * gsl_pow_2(cos(position[2])), r_rho_2 = 2. * position[1] / rho2, sin2_theta = gsl_pow_2(sin(position[2]));
 		gsl_matrix_set_zero(metric);
-		gsl_matrix_set(metric, 0, 0, -(1. - mr_rho2));
-		gsl_matrix_set(metric, 0, 3, -mr_rho2 * a_ * sin2_theta);
+		gsl_matrix_set(metric, 0, 0, -(1. - r_rho_2));
+		gsl_matrix_set(metric, 0, 3, -r_rho_2 * a_ * sin2_theta);
 		gsl_matrix_set(metric, 1, 1, rho2 / Delta);
 		gsl_matrix_set(metric, 2, 2, rho2);
-		gsl_matrix_set(metric, 3, 0, -mr_rho2 * a_ * sin2_theta);
-		gsl_matrix_set(metric, 3, 3, (r2 + a2_ * (1. + mr_rho2 * sin2_theta)) * sin2_theta);
+		gsl_matrix_set(metric, 3, 0, -r_rho_2 * a_ * sin2_theta);
+		gsl_matrix_set(metric, 3, 3, (r2 + a2_ * (1. + r_rho_2 * sin2_theta)) * sin2_theta);
 		return rho2 == 0. || Delta == 0. ? 1 : 0;
 	}
 	double Kerr::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
 		const double r = position[1], r2 = gsl_pow_2(r);
-		const double sint = sin(position[2]), sint2 = gsl_pow_2(sint), cost = cos(position[2]), cost2 = gsl_pow_2(cost);
-		const double Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * cost2;
-		const double mr_rho2 = 2. * r / rho2;
+		const double sin_theta = sin(position[2]), sin2_theta = gsl_pow_2(sin_theta), cos_theta = cos(position[2]), cos2_theta = gsl_pow_2(cos_theta);
+		const double Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * cos2_theta;
+		const double r_rho_2 = 2. * r / rho2;
 		if (dimension == 3)
-			return (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2_) * sint2 + mr_rho2 * a2_ * gsl_pow_2(sint2)) * x[3] * y[3];
-		return (mr_rho2 - 1.) * x[0] * y[0] - mr_rho2 * a_ * sint2 * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2_) * sint2 + mr_rho2 * a2_ * gsl_pow_2(sint2)) * x[3] * y[3];
+			return (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * gsl_pow_2(sin2_theta)) * x[3] * y[3];
+		return (r_rho_2 - 1.) * x[0] * y[0] - r_rho_2 * a_ * sin2_theta * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * gsl_pow_2(sin2_theta)) * x[3] * y[3];
 	}
 	double Kerr::DistanceSquare(const double x[], const double y[], const size_t dimension) {
 		const double r = x[1], r2 = gsl_pow_2(r), d0 = x[0] - y[0], d3 = PhiDifference(x[3] - y[3]);
-		const double sint = sin(x[2]), sint2 = gsl_pow_2(sint), cost = cos(x[2]), cost2 = gsl_pow_2(cost);
-		const double Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * cost2;
-		const double mr_rho2 = 2. * r / rho2;
+		const double sin_theta = sin(x[2]), sin2_theta = gsl_pow_2(sin_theta), cos_theta = cos(x[2]), cos2_theta = gsl_pow_2(cos_theta);
+		const double Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * cos2_theta;
+		const double r_rho_2 = 2. * r / rho2;
 		if (dimension == 3)
-			return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + ((r2 + a2_) * sint2 + 2. * r * a2_ * gsl_pow_2(sint2) / rho2) * gsl_pow_2(d3);
-		return (mr_rho2 - 1.) * gsl_pow_2(d0) - 2. * mr_rho2 * a_ * sint2 * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + ((r2 + a2_) * sint2 + mr_rho2 * a2_ * gsl_pow_2(sint2)) * gsl_pow_2(d3);
+			return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + 2. * r * a2_ * gsl_pow_2(sin2_theta) / rho2) * gsl_pow_2(d3);
+		return (r_rho_2 - 1.) * gsl_pow_2(d0) - 2. * r_rho_2 * a_ * sin2_theta * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * gsl_pow_2(sin2_theta)) * gsl_pow_2(d3);
 	}
 	int Kerr::BaseToHamiltonian(double y[]) {
-		const double dtdtau = 1. / y[4], r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2]));
+		const double dt_dtau = 1. / y[4], r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2]));
 		const double Delta = r2 - 2. * y[1] + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
-		const double mr_rho2 = 2. * y[1] / rho2;
-		y[4] = (y[4] - 1. + mr_rho2 * (1. - a_ * sint2 * y[7])) * dtdtau; // 1 + p_t
-		y[5] *= rho2 / Delta * dtdtau;
-		y[6] *= rho2 * dtdtau;
-		y[7] = (-mr_rho2 * a_ + (a2_ + r2 + mr_rho2 * a2_ * sint2) * y[7]) * sint2 * dtdtau;
+		const double r_rho_2 = 2. * y[1] / rho2;
+		y[4] = (y[4] - 1. + r_rho_2 * (1. - a_ * sin2_theta * y[7])) * dt_dtau; // 1 + p_t
+		y[5] *= rho2 / Delta * dt_dtau;
+		y[6] *= rho2 * dt_dtau;
+		y[7] = (-r_rho_2 * a_ + (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * y[7]) * sin2_theta * dt_dtau;
 		return 0;
 	}
 	int Kerr::HamiltonianToBase(double y[]) {
 		const double pt = y[4] - 1., r2 = gsl_pow_2(y[1]);
 		const double Delta = r2 - 2. * y[1] + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
-		const double rho_2 = 1. / rho2, mr_rho2 = 2. * y[1] * rho_2;
-		y[4] = -Delta / ((Delta + mr_rho2 * (a2_ + r2)) * pt + mr_rho2 * a_ * y[7]);
+		const double rho_2 = 1. / rho2, r_rho_2 = 2. * y[1] * rho_2;
+		y[4] = -Delta / ((Delta + r_rho_2 * (a2_ + r2)) * pt + r_rho_2 * a_ * y[7]);
 		y[5] *= Delta * y[4] * rho_2;
 		y[6] *= y[4] * rho_2;
-		y[7] = (-mr_rho2 * a_ * pt + (1. - mr_rho2) / gsl_pow_2(sin(y[2])) * y[7]) / Delta * y[4];
+		y[7] = (-r_rho_2 * a_ * pt + (1. - r_rho_2) / gsl_pow_2(sin(y[2])) * y[7]) / Delta * y[4];
 		return 0;
 	}
 	double Kerr::Energy(const double y[], coordinate_system coordinate) {
@@ -451,43 +451,43 @@ namespace SBody {
 			return 1. - y[4];
 	}
 	double Kerr::AngularMomentum(const double y[], coordinate_system coordinate) {
-		const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2]));
-		const double mr_rho2 = 2. * y[1] / (r2 + a2_ * gsl_pow_2(cos(y[2])));
+		const double r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2]));
+		const double r_rho_2 = 2. * y[1] / (r2 + a2_ * gsl_pow_2(cos(y[2])));
 		if (coordinate == BASE)
-			return (-mr_rho2 * a_ + (a2_ + r2 + mr_rho2 * a2_ * sint2) * y[7]) * sint2 / y[4];
+			return (-r_rho_2 * a_ + (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * y[7]) * sin2_theta / y[4];
 		else if (coordinate == LAGRANGIAN)
 			return 1.; // TODO:
 		else
 			return y[7];
 	}
 	double Kerr::CarterConstant(const double y[], const double mu2, coordinate_system coordinate) {
-		const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2])), cost2 = gsl_pow_2(cos(y[2]));
-		const double rho2 = r2 + a2_ * cost2;
-		const double mr_rho2 = 2. * y[1] / rho2;
+		const double r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2])), cos2_theta = gsl_pow_2(cos(y[2]));
+		const double rho2 = r2 + a2_ * cos2_theta;
+		const double r_rho_2 = 2. * y[1] / rho2;
 		if (coordinate == BASE)
-			return mu2 * cost2 * a2_ + (gsl_pow_2(rho2 * y[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a_ + (a2_ + r2 + mr_rho2 * a2_ * sint2) * y[7]) * sint2 - a2_ * gsl_pow_2(mr_rho2 * (1. - a_ * sint2 * y[7]) - 1.))) / gsl_pow_2(y[4]);
+			return mu2 * cos2_theta * a2_ + (gsl_pow_2(rho2 * y[6]) + cos2_theta * (gsl_pow_2(-r_rho_2 * a_ + (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * y[7]) * sin2_theta - a2_ * gsl_pow_2(r_rho_2 * (1. - a_ * sin2_theta * y[7]) - 1.))) / gsl_pow_2(y[4]);
 		else if (coordinate == LAGRANGIAN)
 			return 1.; // TODO:
 		else
 			return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (a2_ * (mu2 - gsl_pow_2(1. - y[4])) + gsl_pow_2(y[7] / sin(y[2])));
 	}
 	int Kerr::NormalizeTimelikeGeodesic(double y[]) {
-		const double r = y[1], r2 = gsl_pow_2(r), a2r2 = a2_ + r2;
-		const double sint2 = gsl_pow_2(sin(y[2])), sint4 = gsl_pow_2(sint2);
+		const double r = y[1], r2 = gsl_pow_2(r), a2_r2 = a2_ + r2;
+		const double sin2_theta = gsl_pow_2(sin(y[2])), sin4_theta = gsl_pow_2(sin2_theta);
 		const double Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
-		const double mr_rho2 = 2. * r / rho2;
-		y[7] += 2. * a_ * r / (gsl_pow_2(a2r2) - a2_ * Delta * sint2);
-		y[4] = sqrt(1. - mr_rho2 + 2. * mr_rho2 * a_ * sint2 * y[7] - (rho2 / (r2 - 2. * r + a2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + (a2r2 * sint2 + mr_rho2 * a2_ * sint4) * gsl_pow_2(y[7])));
+		const double r_rho_2 = 2. * r / rho2;
+		y[7] += 2. * a_ * r / (gsl_pow_2(a2_r2) - a2_ * Delta * sin2_theta);
+		y[4] = sqrt(1. - r_rho_2 + 2. * r_rho_2 * a_ * sin2_theta * y[7] - (rho2 / (r2 - 2. * r + a2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + (a2_r2 * sin2_theta + r_rho_2 * a2_ * sin4_theta) * gsl_pow_2(y[7])));
 		return std::isnan(y[4]);
 	}
 	int Kerr::NormalizeNullGeodesic(double y[], double frequency) {
 		const double r = y[1], r2 = gsl_pow_2(r);
-		const double sint2 = gsl_pow_2(sin(y[2])), sint4 = gsl_pow_2(sint2);
+		const double sin2_theta = gsl_pow_2(sin(y[2])), sin4_theta = gsl_pow_2(sin2_theta);
 		const double rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
-		const double mr_rho2 = 2. * r / rho2;
-		const double effa = rho2 / (r2 - 2. * r + a2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2_ + r2) * sint2 + mr_rho2 * a2_ * sint4) * gsl_pow_2(y[7]);
-		const double effb = -2. * mr_rho2 * a_ * sint2 * y[7];
-		const double effc = mr_rho2 - 1.;
+		const double r_rho_2 = 2. * r / rho2;
+		const double effa = rho2 / (r2 - 2. * r + a2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2_ + r2) * sin2_theta + r_rho_2 * a2_ * sin4_theta) * gsl_pow_2(y[7]);
+		const double effb = -2. * r_rho_2 * a_ * sin2_theta * y[7];
+		const double effc = r_rho_2 - 1.;
 		const double eff = GSL_SIGN(frequency) * 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
 		y[4] = frequency;
 		y[5] *= eff;
@@ -512,7 +512,7 @@ namespace SBody {
 		PrintlnError("Time system not supported!");
 		return std::make_unique<Integrator>(
 			[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
-			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_FAILURE; });
 	}
 
 	KerrTaubNUT::KerrTaubNUT(double spin, double NUT) : Kerr(spin), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
@@ -523,51 +523,51 @@ namespace SBody {
 		return 1;
 	}
 	double KerrTaubNUT::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
-		const double r = position[1], sint = sin(position[2]), cost = cos(position[2]);
-		const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint);
-		const double Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + gsl_pow_2(l_ + a_ * cost), chi = a_ * sint2 - 2. * l_ * cost;
+		const double r = position[1], sin_theta = sin(position[2]), cos_theta = cos(position[2]);
+		const double r2 = gsl_pow_2(r), sin2_theta = gsl_pow_2(sin_theta);
+		const double Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta), chi = a_ * sin2_theta - 2. * l_ * cos_theta;
 		const double rho_2 = 1. / rho2;
 		if (dimension == 3)
-			return (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + (gsl_pow_2(rho2 + a_ * chi) * sint2 - chi * chi * Delta) * rho_2 * x[3] * y[3];
-		return (a2_ * sint2 - Delta) * rho_2 * x[0] * y[0] - 2. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) * rho_2 * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + (gsl_pow_2(rho2 + a_ * chi) * sint2 - chi * chi * Delta) * rho_2 * x[3] * y[3];
+			return (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + (gsl_pow_2(rho2 + a_ * chi) * sin2_theta - chi * chi * Delta) * rho_2 * x[3] * y[3];
+		return (a2_ * sin2_theta - Delta) * rho_2 * x[0] * y[0] - 2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * rho_2 * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + (gsl_pow_2(rho2 + a_ * chi) * sin2_theta - chi * chi * Delta) * rho_2 * x[3] * y[3];
 	}
 	double KerrTaubNUT::DistanceSquare(const double x[], const double y[], const size_t dimension) {
-		const double r = x[1], sint = sin(x[2]), cost = cos(x[2]), d0 = x[0] - y[0], d3 = PhiDifference(x[3] - y[3]);
-		const double r2 = gsl_pow_2(r), sint2 = gsl_pow_2(sint);
-		const double Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + gsl_pow_2(l_ + a_ * cost), chi = a_ * sint2 - 2. * l_ * cost;
+		const double r = x[1], sin_theta = sin(x[2]), cos_theta = cos(x[2]), d0 = x[0] - y[0], d3 = PhiDifference(x[3] - y[3]);
+		const double r2 = gsl_pow_2(r), sin2_theta = gsl_pow_2(sin_theta);
+		const double Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta), chi = a_ * sin2_theta - 2. * l_ * cos_theta;
 		const double rho_2 = 1. / rho2;
 		if (dimension == 3)
-			return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + (gsl_pow_2(rho2 + a_ * chi) * sint2 - gsl_pow_2(chi) * Delta) * rho_2 * gsl_pow_2(d3);
-		return (a2_ * sint2 - Delta) * rho_2 * gsl_pow_2(d0) - 4. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) * rho_2 * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + (gsl_pow_2(rho2 + a_ * chi) * sint2 - gsl_pow_2(chi) * Delta) * rho_2 * gsl_pow_2(d3);
+			return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + (gsl_pow_2(rho2 + a_ * chi) * sin2_theta - gsl_pow_2(chi) * Delta) * rho_2 * gsl_pow_2(d3);
+		return (a2_ * sin2_theta - Delta) * rho_2 * gsl_pow_2(d0) - 4. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * rho_2 * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + (gsl_pow_2(rho2 + a_ * chi) * sin2_theta - gsl_pow_2(chi) * Delta) * rho_2 * gsl_pow_2(d3);
 	}
 	int KerrTaubNUT::BaseToHamiltonian(double y[]) {
-		const double dtdtau = 1. / y[4], r = y[1], r2 = gsl_pow_2(r);
-		const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
+		const double dt_dtau = 1. / y[4], r = y[1], r2 = gsl_pow_2(r);
+		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
-		const double rho2 = r2 + gsl_pow_2(l_ + a_ * cost), rho_2 = 1. / rho2;
-		y[4] = (y[4] * rho2 - Delta + a2_ * sint2 - 2. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) * y[7]) * rho_2 * dtdtau; // 1 + p_t
-		y[5] *= rho2 / Delta * dtdtau;
-		y[6] *= rho2 * dtdtau;
-		y[7] = (-2. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) + (gsl_pow_2(r2 + l2_ + a2_) * sint2 - gsl_pow_2(a_ * sint2 - 2. * l_ * cost) * Delta) * y[7]) * rho_2 * dtdtau;
+		const double rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta), rho_2 = 1. / rho2;
+		y[4] = (y[4] * rho2 - Delta + a2_ * sin2_theta - 2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * y[7]) * rho_2 * dt_dtau; // 1 + p_t
+		y[5] *= rho2 / Delta * dt_dtau;
+		y[6] *= rho2 * dt_dtau;
+		y[7] = (-2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) + (gsl_pow_2(r2 + l2_ + a2_) * sin2_theta - gsl_pow_2(a_ * sin2_theta - 2. * l_ * cos_theta) * Delta) * y[7]) * rho_2 * dt_dtau;
 		return 0;
 	}
 	int KerrTaubNUT::HamiltonianToBase(double y[]) {
 		const double pt = y[4] - 1., r = y[1], r2 = gsl_pow_2(r);
-		const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
+		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
-		const double rho2 = r2 + gsl_pow_2(l_ + a_ * cost), rho_2 = 1. / rho2;
-		y[4] = Delta * rho2 * sint2 / ((Delta * gsl_pow_2(a_ * sint2 - 2. * l_ * cost) - gsl_pow_2(r2 + l2_ + a2_) * sint2) * pt - 2. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) * y[7]);
+		const double rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta), rho_2 = 1. / rho2;
+		y[4] = Delta * rho2 * sin2_theta / ((Delta * gsl_pow_2(a_ * sin2_theta - 2. * l_ * cos_theta) - gsl_pow_2(r2 + l2_ + a2_) * sin2_theta) * pt - 2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * y[7]);
 		y[5] *= Delta * rho_2 * y[4];
 		y[6] *= rho_2 * y[4];
-		y[7] = (-2. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) * pt + (Delta - a2_ * sint2) * y[7]) / (Delta * rho2 * sint2) * y[4];
+		y[7] = (-2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * pt + (Delta - a2_ * sin2_theta) * y[7]) / (Delta * rho2 * sin2_theta) * y[4];
 		return 0;
 	}
 	double KerrTaubNUT::Energy(const double y[], coordinate_system coordinate) {
 		const double r = y[1], r2 = gsl_pow_2(r);
-		const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
+		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
 		if (coordinate == BASE)
-			return (Delta - a2_ * sint2 + 2. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) * y[7]) / ((r2 + gsl_pow_2(l_ + a_ * cost)) * y[4]);
+			return (Delta - a2_ * sin2_theta + 2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * y[7]) / ((r2 + gsl_pow_2(l_ + a_ * cos_theta)) * y[4]);
 		else if (coordinate == LAGRANGIAN)
 			return 1.; // TODO:
 		else
@@ -575,21 +575,21 @@ namespace SBody {
 	}
 	double KerrTaubNUT::AngularMomentum(const double y[], coordinate_system coordinate) {
 		const double r = y[1], r2 = gsl_pow_2(r);
-		const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
+		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
 		if (coordinate == BASE)
-			return (-2. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) + (gsl_pow_2(r2 + l2_ + a2_) * sint2 - gsl_pow_2(a_ * sint2 - 2. * l_ * cost) * Delta) * y[7]) / ((r2 + gsl_pow_2(l_ + a_ * cost)) * y[4]);
+			return (-2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) + (gsl_pow_2(r2 + l2_ + a2_) * sin2_theta - gsl_pow_2(a_ * sin2_theta - 2. * l_ * cos_theta) * Delta) * y[7]) / ((r2 + gsl_pow_2(l_ + a_ * cos_theta)) * y[4]);
 		else if (coordinate == LAGRANGIAN)
 			return 1.; // TODO:
 		else
 			return y[7];
 	}
 	double KerrTaubNUT::CarterConstant(const double y[], const double mu2, coordinate_system coordinate) { // TODO:
-		const double r2 = gsl_pow_2(y[1]), sint2 = gsl_pow_2(sin(y[2])), cost2 = gsl_pow_2(cos(y[2]));
-		const double rho2 = r2 + a2_ * cost2;
-		const double mr_rho2 = 2. * y[1] / rho2;
+		const double r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2])), cos2_theta = gsl_pow_2(cos(y[2]));
+		const double rho2 = r2 + a2_ * cos2_theta;
+		const double r_rho_2 = 2. * y[1] / rho2;
 		if (coordinate == BASE)
-			return mu2 * cost2 * a2_ + (gsl_pow_2(rho2 * y[6]) + cost2 * (gsl_pow_2(-mr_rho2 * a_ + (a2_ + r2 + mr_rho2 * a2_ * sint2) * y[7]) * sint2 - a2_ * gsl_pow_2(mr_rho2 * (1. - a_ * sint2 * y[7]) - 1.))) / gsl_pow_2(y[4]);
+			return mu2 * cos2_theta * a2_ + (gsl_pow_2(rho2 * y[6]) + cos2_theta * (gsl_pow_2(-r_rho_2 * a_ + (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * y[7]) * sin2_theta - a2_ * gsl_pow_2(r_rho_2 * (1. - a_ * sin2_theta * y[7]) - 1.))) / gsl_pow_2(y[4]);
 		else if (coordinate == LAGRANGIAN)
 			return 1.;
 		else
@@ -597,23 +597,23 @@ namespace SBody {
 	}
 	int KerrTaubNUT::NormalizeTimelikeGeodesic(double y[]) {
 		const double r = y[1], r2 = gsl_pow_2(r);
-		const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
+		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
-		const double rho2 = r2 + gsl_pow_2(l_ + a_ * cost);
-		y[7] += 2. * a_ * r / (gsl_pow_2(a2_ + r2) - a2_ * Delta * sint2);
-		y[4] = sqrt(((Delta - a2_ * sint2) + 4. * ((r + l2_) * a_ * sint2 + Delta * l_ * cost) * y[7] - (gsl_pow_2(r2 + l2_ + a2_) * sint2 - gsl_pow_2(a_ * sint2 - 2. * l_ * cost) * Delta) * gsl_pow_2(y[7])) / rho2 - rho2 * (gsl_pow_2(y[5]) / Delta + gsl_pow_2(y[6])));
+		const double rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta);
+		y[7] += 2. * a_ * r / (gsl_pow_2(a2_ + r2) - a2_ * Delta * sin2_theta);
+		y[4] = sqrt(((Delta - a2_ * sin2_theta) + 4. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * y[7] - (gsl_pow_2(r2 + l2_ + a2_) * sin2_theta - gsl_pow_2(a_ * sin2_theta - 2. * l_ * cos_theta) * Delta) * gsl_pow_2(y[7])) / rho2 - rho2 * (gsl_pow_2(y[5]) / Delta + gsl_pow_2(y[6])));
 		return std::isnan(y[4]);
 	}
 	int KerrTaubNUT::NormalizeNullGeodesic(double y[], double frequency) {
 		const double r = y[1], r2 = gsl_pow_2(r);
-		const double sint2 = gsl_pow_2(sin(y[2])), cost = GSL_SIGN(y[2]) * cos(y[2]);
+		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
-		const double lacost = l_ + a_ * cost;
-		const double rho2 = r2 + gsl_pow_2(lacost), rho_2 = 1. / rho2;
-		const double chi = a_ * sint2 - 2. * l_ * cost, rho2achi = r2 + l2_ + a2_;
-		const double effa = rho2 / Delta * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + rho_2 * (gsl_pow_2(rho2achi) * sint2 - gsl_pow_2(chi) * Delta) * gsl_pow_2(y[7]);
-		const double effb = -4. * rho_2 * ((r + l2_) * chi + l_ * cost * rho2achi) * y[7];
-		const double effc = -rho_2 * (Delta - a2_ * sint2);
+		const double l_a_cos_theta = l_ + a_ * cos_theta;
+		const double rho2 = r2 + gsl_pow_2(l_a_cos_theta), rho_2 = 1. / rho2;
+		const double chi = a_ * sin2_theta - 2. * l_ * cos_theta, rho2_a_chi = r2 + l2_ + a2_;
+		const double effa = rho2 / Delta * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + rho_2 * (gsl_pow_2(rho2_a_chi) * sin2_theta - gsl_pow_2(chi) * Delta) * gsl_pow_2(y[7]);
+		const double effb = -4. * rho_2 * ((r + l2_) * chi + l_ * cos_theta * rho2_a_chi) * y[7];
+		const double effc = -rho_2 * (Delta - a2_ * sin2_theta);
 		const double eff = GSL_SIGN(frequency) * 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
 		y[4] = frequency;
 		y[5] *= eff;
@@ -635,7 +635,7 @@ namespace SBody {
 		PrintlnError("Time system not supported!");
 		return std::make_unique<Integrator>(
 			[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
-			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_SUCCESS; });
+			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_FAILURE; });
 	}
 
 	int KerrTLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
@@ -644,19 +644,19 @@ namespace SBody {
 		dydt[1] = y[5]; // dr/dt
 		dydt[2] = y[6]; // d\theta/dt
 		dydt[3] = y[7]; // d\phi/dt
-		const double r = y[1], r2 = gsl_pow_2(r), r4 = gsl_pow_4(r), a = kerr->a_, a2 = kerr->a2_, a4 = kerr->a4_, a2r2 = a2 + r2;
-		const double sint = abs(sin(y[2])), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost = GSL_SIGN(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost), sintcost = sint * cost, cott = cost / sint;
+		const double r = y[1], r2 = gsl_pow_2(r), r4 = gsl_pow_4(r), a = kerr->a_, a2 = kerr->a2_, a4 = kerr->a4_, a2_r2 = a2 + r2;
+		const double sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin4_theta = gsl_pow_2(sin2_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta), sin_theta_cos_theta = sin_theta * cos_theta, cot_theta = cos_theta / sin_theta;
 		const double Delta = r2 - 2. * r + a2, Delta_1 = 1. / Delta;
-		const double rho2 = r2 + a2 * cost2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), r2a2cost2 = r2 - a2 * cost2;
-		const double dydt4 = 2. * rho_4 * (Delta_1 * a2r2 * r2a2cost2 * y[5] - 2. * a2 * r * sintcost * y[6] * (1. - a * sint2 * y[7]) - Delta_1 * a * (2. * r4 + r2 * rho2 + a2 * r2a2cost2) * sint2 * y[5] * y[7]);
+		const double rho2 = r2 + a2 * cos2_theta, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), r2_a2_cos2_theta = r2 - a2 * cos2_theta;
+		const double dydt4 = 2. * rho_4 * (Delta_1 * a2_r2 * r2_a2_cos2_theta * y[5] - 2. * a2 * r * sin_theta_cos_theta * y[6] * (1. - a * sin2_theta * y[7]) - Delta_1 * a * (2. * r4 + r2 * rho2 + a2 * r2_a2_cos2_theta) * sin2_theta * y[5] * y[7]);
 		// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 		dydt[4] = dydt4 * y[4];
 		// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[5] = (-Delta * r2a2cost2 * gsl_pow_2(1. - a * sint2 * y[7]) - (r * (a2 * sint2 - r) + a2 * cost2) * Delta_1 * rho4 * gsl_pow_2(y[5]) + 2. * a2 * sintcost * rho4 * y[5] * y[6] + r * Delta * rho4 * gsl_pow_2(y[6]) + Delta * sint2 * r * rho4 * gsl_pow_2(y[7])) * rho_6 + dydt4 * y[5];
+		dydt[5] = (-Delta * r2_a2_cos2_theta * gsl_pow_2(1. - a * sin2_theta * y[7]) - (r * (a2 * sin2_theta - r) + a2 * cos2_theta) * Delta_1 * rho4 * gsl_pow_2(y[5]) + 2. * a2 * sin_theta_cos_theta * rho4 * y[5] * y[6] + r * Delta * rho4 * gsl_pow_2(y[6]) + Delta * sin2_theta * r * rho4 * gsl_pow_2(y[7])) * rho_6 + dydt4 * y[5];
 		// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[6] = (2. * a2 * r * sintcost - a2 * sintcost * rho4 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho4 * y[5] * y[6] - 4. * a * r * sintcost * a2r2 * y[7] + sintcost * (2. * a4 * r * sint4 + 4. * a2 * r * sint2 * rho2 + a2r2 * rho4) * gsl_pow_2(y[7])) * rho_6 + dydt4 * y[6];
+		dydt[6] = (2. * a2 * r * sin_theta_cos_theta - a2 * sin_theta_cos_theta * rho4 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho4 * y[5] * y[6] - 4. * a * r * sin_theta_cos_theta * a2_r2 * y[7] + sin_theta_cos_theta * (2. * a4 * r * sin4_theta + 4. * a2 * r * sin2_theta * rho2 + a2_r2 * rho4) * gsl_pow_2(y[7])) * rho_6 + dydt4 * y[6];
 		// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[7] = (-2. * a * r2a2cost2 * Delta_1 * y[5] + 4. * a * r * cott * y[6] - 2. * Delta_1 * (r * rho4 - 2. * r2 * rho2 - r2a2cost2 * a2 * sint2) * y[5] * y[7] - 2. * cott * (rho4 + 2. * a2 * r * sint2) * y[6] * y[7]) * rho_4 + dydt4 * y[7];
+		dydt[7] = (-2. * a * r2_a2_cos2_theta * Delta_1 * y[5] + 4. * a * r * cot_theta * y[6] - 2. * Delta_1 * (r * rho4 - 2. * r2 * rho2 - r2_a2_cos2_theta * a2 * sin2_theta) * y[5] * y[7] - 2. * cot_theta * (rho4 + 2. * a2 * r * sin2_theta) * y[6] * y[7]) * rho_4 + dydt4 * y[7];
 		return GSL_SUCCESS;
 	}
 	int KerrTauLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
@@ -665,56 +665,56 @@ namespace SBody {
 		dydt[1] = y[5]; // dr/d\tau
 		dydt[2] = y[6]; // d\theta/d\tau
 		dydt[3] = y[7]; // d\phi/d\tau
-		const double r = y[1], r2 = gsl_pow_2(r), a = kerr->a_, a2 = kerr->a2_, a4 = kerr->a4_, a2r2 = a2 + r2;
-		const double sint = abs(sin(y[2])), sint2 = gsl_pow_2(sint), sint4 = gsl_pow_4(sint), cost = GSL_SIGN(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost), sintcost = sint * cost, cott = cost / sint;
+		const double r = y[1], r2 = gsl_pow_2(r), a = kerr->a_, a2 = kerr->a2_, a4 = kerr->a4_, a2_r2 = a2 + r2;
+		const double sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin4_theta = gsl_pow_4(sin_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta), sin_theta_cos_theta = sin_theta * cos_theta, cot_theta = cos_theta / sin_theta;
 		const double Delta = r2 - 2. * r + a2, Delta_1 = 1. / Delta;
-		const double rho2 = r2 + a2 * cost2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), r2a2cost2 = r2 - a2 * cost2;
-		dydt[4] = -2. * rho_4 * (Delta_1 * a2r2 * r2a2cost2 * y[5] * (y[4] - a * sint2 * y[7]) - 2. * a2 * r * sintcost * y[6] * (y[4] - a * sint2 * y[7]) - 2. * Delta_1 * r2 * rho2 * a * sint2 * y[5] * y[7]);
+		const double rho2 = r2 + a2 * cos2_theta, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), r2_a2_cos2_theta = r2 - a2 * cos2_theta;
+		dydt[4] = -2. * rho_4 * (Delta_1 * a2_r2 * r2_a2_cos2_theta * y[5] * (y[4] - a * sin2_theta * y[7]) - 2. * a2 * r * sin_theta_cos_theta * y[6] * (y[4] - a * sin2_theta * y[7]) - 2. * Delta_1 * r2 * rho2 * a * sin2_theta * y[5] * y[7]);
 		// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[5] = (-Delta * r2a2cost2 * gsl_pow_2(y[4] - a * sint2 * y[7]) - (r * (a2 * sint2 - r) + a2 * cost2) * Delta_1 * rho4 * gsl_pow_2(y[5]) + 2. * a2 * sintcost * rho4 * y[5] * y[6] + r * Delta * rho4 * gsl_pow_2(y[6]) + Delta * sint2 * r * rho4 * gsl_pow_2(y[7])) * rho_6;
+		dydt[5] = (-Delta * r2_a2_cos2_theta * gsl_pow_2(y[4] - a * sin2_theta * y[7]) - (r * (a2 * sin2_theta - r) + a2 * cos2_theta) * Delta_1 * rho4 * gsl_pow_2(y[5]) + 2. * a2 * sin_theta_cos_theta * rho4 * y[5] * y[6] + r * Delta * rho4 * gsl_pow_2(y[6]) + Delta * sin2_theta * r * rho4 * gsl_pow_2(y[7])) * rho_6;
 		// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[6] = (2. * a2 * r * sintcost * gsl_pow_2(y[4]) - a2 * sintcost * rho4 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho4 * y[5] * y[6] - 4. * a * r * sintcost * a2r2 * y[4] * y[7] + sintcost * (2. * a4 * r * sint4 + 4. * a2 * r * sint2 * rho2 + a2r2 * rho4) * gsl_pow_2(y[7])) * rho_6;
+		dydt[6] = (2. * a2 * r * sin_theta_cos_theta * gsl_pow_2(y[4]) - a2 * sin_theta_cos_theta * rho4 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho4 * y[5] * y[6] - 4. * a * r * sin_theta_cos_theta * a2_r2 * y[4] * y[7] + sin_theta_cos_theta * (2. * a4 * r * sin4_theta + 4. * a2 * r * sin2_theta * rho2 + a2_r2 * rho4) * gsl_pow_2(y[7])) * rho_6;
 		// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[7] = (-2. * a * r2a2cost2 * Delta_1 * y[4] * y[5] + 4. * a * r * cott * y[4] * y[6] - 2. * Delta_1 * (r * rho4 - 2. * r2 * rho2 - r2a2cost2 * a2 * sint2) * y[5] * y[7] - 2. * cott * (rho4 + 2. * a2 * r * sint2) * y[6] * y[7]) * rho_4;
+		dydt[7] = (-2. * a * r2_a2_cos2_theta * Delta_1 * y[4] * y[5] + 4. * a * r * cot_theta * y[4] * y[6] - 2. * Delta_1 * (r * rho4 - 2. * r2 * rho2 - r2_a2_cos2_theta * a2 * sin2_theta) * y[5] * y[7] - 2. * cot_theta * (rho4 + 2. * a2 * r * sin2_theta) * y[6] * y[7]) * rho_4;
 		return GSL_SUCCESS;
 	}
 	int KerrTHamiltonianGeodesic(double t, const double y[], double dydt[], void *params) {
 		Kerr *kerr = reinterpret_cast<Kerr *>(params);
-		const double r = y[1], r2 = gsl_pow_2(y[1]), a = kerr->a_, a2 = kerr->a2_, a2r2 = a2 + r2, pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]);
-		const double E = 1. - y[4], E2 = gsl_pow_2(E), deltaE2 = (2. - y[4]) * y[4], L2 = gsl_pow_2(y[7]);
-		const double sint = abs(sin(y[2])), sint2 = gsl_pow_2(sint), sint_2 = 1. / sint2, sint_4 = gsl_pow_2(sint_2), cost = GSL_SIGN(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost);
-		const double Delta = a2r2 - 2. * r, Delta_1 = 1. / Delta, Delta_2 = gsl_pow_2(Delta_1);
-		const double rho2 = r2 + a2 * cost2, rho_2 = 1. / rho2, rho_4 = gsl_pow_2(rho_2);
-		const double Q = ptheta2 + cost2 * (a2 * deltaE2 + L2 * sint_2);
-		const double R = -a2r2 * r2 * deltaE2 + E2 * 2. * r * a2 + 2. * r * r2 - Delta * Q - (r2 - 2. * r) * L2 - 4. * r * a * E * y[7]; // R = gsl_pow_2(E * a2r2 - a * y[7]) - Delta * (r2 + gsl_pow_2(y[7] - a * E) + Q);
+		const double r = y[1], r2 = gsl_pow_2(y[1]), a = kerr->a_, a2 = kerr->a2_, a2_r2 = a2 + r2, pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]);
+		const double E = 1. - y[4], E2 = gsl_pow_2(E), delta_E2 = (2. - y[4]) * y[4], L2 = gsl_pow_2(y[7]);
+		const double sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin_2_theta = 1. / sin2_theta, sin_4_theta = gsl_pow_2(sin_2_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta);
+		const double Delta = a2_r2 - 2. * r, Delta_1 = 1. / Delta, Delta_2 = gsl_pow_2(Delta_1);
+		const double rho2 = r2 + a2 * cos2_theta, rho_2 = 1. / rho2, rho_4 = gsl_pow_2(rho_2);
+		const double Q = ptheta2 + cos2_theta * (a2 * delta_E2 + L2 * sin_2_theta);
+		const double R = -a2_r2 * r2 * delta_E2 + E2 * 2. * r * a2 + 2. * r * r2 - Delta * Q - (r2 - 2. * r) * L2 - 4. * r * a * E * y[7]; // R = gsl_pow_2(E * a2_r2 - a * y[7]) - Delta * (r2 + gsl_pow_2(y[7] - a * E) + Q);
 		//[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
-		dydt[0] = rho2 * Delta / (a2r2 * (E * a2r2 - a * y[7]) + a * Delta * (y[7] - a * E * sint2));		  // d\tau/dt
-		dydt[1] = Delta * rho_2 * y[5] * dydt[0];															  // dr/dt
-		dydt[2] = rho_2 * y[6] * dydt[0];																	  // d\theta/dt
-		dydt[3] = (2. * E * a * r - y[7] * (a2 - Delta * (1. + cost2 * sint_2))) * Delta_1 * rho_2 * dydt[0]; // d\phi/dt
+		dydt[0] = rho2 * Delta / (a2_r2 * (E * a2_r2 - a * y[7]) + a * Delta * (y[7] - a * E * sin2_theta));			// d\tau/dt
+		dydt[1] = Delta * rho_2 * y[5] * dydt[0];																		// dr/dt
+		dydt[2] = rho_2 * y[6] * dydt[0];																				// d\theta/dt
+		dydt[3] = (2. * E * a * r - y[7] * (a2 - Delta * (1. + cos2_theta * sin_2_theta))) * Delta_1 * rho_2 * dydt[0]; // d\phi/dt
 		dydt[4] = 0.;
-		dydt[5] = ((a2 * cost2 + r * a2 * sint2 - r2) * pr2 + ((-2. * deltaE2 * r2 - a2 * deltaE2 + 3. * r - L2 - Q) * r + a2 * E2 + L2 - 2. * a * E * y[7] + Q) * rho2 * Delta_1 - ((r - 1.) * rho2 + Delta * r) * R * Delta_2) * rho_4 * dydt[0];
-		dydt[6] = (-(Delta * pr2 - R * Delta_1) * a2 * rho_2 + a2 * deltaE2 + L2 * sint_2 + cost2 * sint_4 * L2) * sint * cost * rho_2 * dydt[0];
+		dydt[5] = ((a2 * cos2_theta + r * a2 * sin2_theta - r2) * pr2 + ((-2. * delta_E2 * r2 - a2 * delta_E2 + 3. * r - L2 - Q) * r + a2 * E2 + L2 - 2. * a * E * y[7] + Q) * rho2 * Delta_1 - ((r - 1.) * rho2 + Delta * r) * R * Delta_2) * rho_4 * dydt[0];
+		dydt[6] = (-(Delta * pr2 - R * Delta_1) * a2 * rho_2 + a2 * delta_E2 + L2 * sin_2_theta + cos2_theta * sin_4_theta * L2) * sin_theta * cos_theta * rho_2 * dydt[0];
 		dydt[7] = 0.;
 		return GSL_SUCCESS;
 	}
 	int KerrTauHamiltonianGeodesic(double t, const double y[], double dydt[], void *params) {
 		Kerr *kerr = reinterpret_cast<Kerr *>(params);
-		const double r = y[1], r2 = gsl_pow_2(y[1]), a = kerr->a_, a2 = kerr->a2_, a2r2 = a2 + r2, pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]);
-		const double E = 1. - y[4], E2 = gsl_pow_2(E), deltaE2 = (2. - y[4]) * y[4], L2 = gsl_pow_2(y[7]);
-		const double sint = abs(sin(y[2])), sint2 = gsl_pow_2(sint), sint_2 = 1. / sint2, sint_4 = gsl_pow_2(sint_2), cost = GSL_SIGN(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost);
-		const double Delta = a2r2 - 2. * r, Delta_1 = 1. / Delta, Delta_2 = gsl_pow_2(Delta_1);
-		const double rho2 = r2 + a2 * cost2, rho_2 = 1. / rho2, rho_4 = gsl_pow_2(rho_2);
-		const double Q = ptheta2 + cost2 * (a2 * deltaE2 + L2 * sint_2);
-		const double R = -a2r2 * r2 * deltaE2 + E2 * 2. * r * a2 + 2. * r * r2 - Delta * Q - (r2 - 2. * r) * L2 - 4. * r * a * E * y[7]; // R = gsl_pow_2(E * a2r2 - a * y[7]) - Delta * (r2 + gsl_pow_2(y[7] - a * E) + Q);
+		const double r = y[1], r2 = gsl_pow_2(y[1]), a = kerr->a_, a2 = kerr->a2_, a2_r2 = a2 + r2, pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]);
+		const double E = 1. - y[4], E2 = gsl_pow_2(E), delta_E2 = (2. - y[4]) * y[4], L2 = gsl_pow_2(y[7]);
+		const double sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin_2_theta = 1. / sin2_theta, sin_4_theta = gsl_pow_2(sin_2_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta);
+		const double Delta = a2_r2 - 2. * r, Delta_1 = 1. / Delta, Delta_2 = gsl_pow_2(Delta_1);
+		const double rho2 = r2 + a2 * cos2_theta, rho_2 = 1. / rho2, rho_4 = gsl_pow_2(rho_2);
+		const double Q = ptheta2 + cos2_theta * (a2 * delta_E2 + L2 * sin_2_theta);
+		const double R = -a2_r2 * r2 * delta_E2 + E2 * 2. * r * a2 + 2. * r * r2 - Delta * Q - (r2 - 2. * r) * L2 - 4. * r * a * E * y[7]; // R = gsl_pow_2(E * a2_r2 - a * y[7]) - Delta * (r2 + gsl_pow_2(y[7] - a * E) + Q);
 		//[t,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
-		dydt[0] = (a2r2 * (E * a2r2 - a * y[7]) * Delta_1 + a * (y[7] - a * E * sint2)) * rho_2;	// dt/d\tau
-		dydt[1] = Delta * rho_2 * y[5];																// dr/d\tau
-		dydt[2] = rho_2 * y[6];																		// d\theta/d\tau
-		dydt[3] = (2. * E * a * r - y[7] * (a2 - Delta * (1. + cost2 * sint_2))) * Delta_1 * rho_2; // d\phi/d\tau
+		dydt[0] = (a2_r2 * (E * a2_r2 - a * y[7]) * Delta_1 + a * (y[7] - a * E * sin2_theta)) * rho_2;		  // dt/d\tau
+		dydt[1] = Delta * rho_2 * y[5];																		  // dr/d\tau
+		dydt[2] = rho_2 * y[6];																				  // d\theta/d\tau
+		dydt[3] = (2. * E * a * r - y[7] * (a2 - Delta * (1. + cos2_theta * sin_2_theta))) * Delta_1 * rho_2; // d\phi/d\tau
 		dydt[4] = 0.;
-		dydt[5] = ((a2 * cost2 + r * a2 * sint2 - r2) * pr2 + ((-2. * deltaE2 * r2 - a2 * deltaE2 + 3. * r - L2 - Q) * r + a2 * E2 + L2 - 2. * a * E * y[7] + Q) * rho2 * Delta_1 - ((r - 1.) * rho2 + Delta * r) * R * Delta_2) * rho_4;
-		dydt[6] = (-(Delta * pr2 - R * Delta_1) * a2 * rho_2 + a2 * deltaE2 + L2 * sint_2 + cost2 * sint_4 * L2) * sint * cost * rho_2;
+		dydt[5] = ((a2 * cos2_theta + r * a2 * sin2_theta - r2) * pr2 + ((-2. * delta_E2 * r2 - a2 * delta_E2 + 3. * r - L2 - Q) * r + a2 * E2 + L2 - 2. * a * E * y[7] + Q) * rho2 * Delta_1 - ((r - 1.) * rho2 + Delta * r) * R * Delta_2) * rho_4;
+		dydt[6] = (-(Delta * pr2 - R * Delta_1) * a2 * rho_2 + a2 * delta_E2 + L2 * sin_2_theta + cos2_theta * sin_4_theta * L2) * sin_theta * cos_theta * rho_2;
 		dydt[7] = 0.;
 		return GSL_SUCCESS;
 	}
@@ -744,21 +744,21 @@ namespace SBody {
 		dydt[2] = y[6]; // d\theta/dt
 		dydt[3] = y[7]; // d\phi/dt
 		const double r = y[1], r2 = gsl_pow_2(r), a = kerr_taub_nut->a_, a2 = kerr_taub_nut->a2_, l = kerr_taub_nut->l_, l2 = kerr_taub_nut->l2_;
-		const double sint = abs(sin(y[2])), sint_1 = 1. / sint, sint2 = gsl_pow_2(sint), cost = GSL_SIGN(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost);
+		const double sin_theta = abs(sin(y[2])), sin_1_theta = 1. / sin_theta, sin2_theta = gsl_pow_2(sin_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta);
 		const double Delta = r2 - 2. * r - l2 + a2, Delta_1 = 1. / Delta;
-		const double lacost = l + a * cost, lacost2 = gsl_pow_2(lacost);
-		const double rho2 = r2 + lacost2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2);
-		const double chi = a * sint2 - 2. * l * cost, rho2achi = r2 + l2 + a2;
-		const double rho2rm = r * (r + 2. * l * lacost) - lacost2, rho2acost = (2. * r + l * lacost) * lacost - r2 * l;
-		const double dydt4 = 2. * rho_4 * (Delta_1 * rho2achi * rho2rm * y[5] * (1. - chi * y[7]) - sint_1 * chi * rho2acost * y[6] * (1. - chi * y[7]) - 2. * Delta_1 * rho2 * r * ((r + l2) * a * sint2 + Delta * l * cost) * y[5] * y[7] - sint_1 * rho4 * l * (1. + cost2) * y[6] * y[7]);
+		const double l_a_cos_theta = l + a * cos_theta, l_a_cos_theta2 = gsl_pow_2(l_a_cos_theta);
+		const double rho2 = r2 + l_a_cos_theta2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2);
+		const double chi = a * sin2_theta - 2. * l * cos_theta, rho2_a_chi = r2 + l2 + a2;
+		const double rho2rm = r * (r + 2. * l * l_a_cos_theta) - l_a_cos_theta2, rho2_a_cos_theta = (2. * r + l * l_a_cos_theta) * l_a_cos_theta - r2 * l;
+		const double dydt4 = 2. * rho_4 * (Delta_1 * rho2_a_chi * rho2rm * y[5] * (1. - chi * y[7]) - sin_1_theta * chi * rho2_a_cos_theta * y[6] * (1. - chi * y[7]) - 2. * Delta_1 * rho2 * r * ((r + l2) * a * sin2_theta + Delta * l * cos_theta) * y[5] * y[7] - sin_1_theta * rho4 * l * (1. + cos2_theta) * y[6] * y[7]);
 		// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 		dydt[4] = dydt4 * y[4];
 		// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[5] = -Delta * rho2rm * rho_6 * gsl_pow_2(1. - chi * y[7]) + (rho2rm - r * a2 * sint2) * Delta_1 * rho_2 * gsl_pow_2(y[5]) + 2. * a * sint * lacost * rho_2 * y[5] * y[6] + r * Delta * rho_2 * gsl_pow_2(y[6]) + Delta * r * sint2 * rho_2 * gsl_pow_2(y[7]) + dydt4 * y[5];
+		dydt[5] = -Delta * rho2rm * rho_6 * gsl_pow_2(1. - chi * y[7]) + (rho2rm - r * a2 * sin2_theta) * Delta_1 * rho_2 * gsl_pow_2(y[5]) + 2. * a * sin_theta * l_a_cos_theta * rho_2 * y[5] * y[6] + r * Delta * rho_2 * gsl_pow_2(y[6]) + Delta * r * sin2_theta * rho_2 * gsl_pow_2(y[7]) + dydt4 * y[5];
 		// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[6] = rho2acost * sint * rho_6 * (a - 2. * rho2achi * y[7]) - a * sint * lacost * rho_2 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho_2 * y[5] * y[6] - (rho2 * (Delta * chi * lacost - gsl_pow_2(rho2achi) * cost) - 2. * ((r + l2) * a * sint2 + Delta * l * cost) * rho2achi * lacost) * sint * rho_6 * gsl_pow_2(y[7]) + dydt4 * y[6];
+		dydt[6] = rho2_a_cos_theta * sin_theta * rho_6 * (a - 2. * rho2_a_chi * y[7]) - a * sin_theta * l_a_cos_theta * rho_2 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho_2 * y[5] * y[6] - (rho2 * (Delta * chi * l_a_cos_theta - gsl_pow_2(rho2_a_chi) * cos_theta) - 2. * ((r + l2) * a * sin2_theta + Delta * l * cos_theta) * rho2_a_chi * l_a_cos_theta) * sin_theta * rho_6 * gsl_pow_2(y[7]) + dydt4 * y[6];
 		// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[7] = -2. * a * rho2rm * Delta_1 * rho_4 * y[5] * (1. - chi * y[7]) + 2. * rho2acost * rho_4 * sint_1 * y[6] * (1. - chi * y[7]) - 2. * (1. - a2 * sint2 * Delta_1) * r * rho_2 * y[5] * y[7] - 2. * cost * sint_1 * y[6] * y[7] + dydt4 * y[7];
+		dydt[7] = -2. * a * rho2rm * Delta_1 * rho_4 * y[5] * (1. - chi * y[7]) + 2. * rho2_a_cos_theta * rho_4 * sin_1_theta * y[6] * (1. - chi * y[7]) - 2. * (1. - a2 * sin2_theta * Delta_1) * r * rho_2 * y[5] * y[7] - 2. * cos_theta * sin_1_theta * y[6] * y[7] + dydt4 * y[7];
 		return GSL_SUCCESS;
 	}
 	int KerrTaubNutTauLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
@@ -768,20 +768,20 @@ namespace SBody {
 		dydt[2] = y[6]; // d\theta/d\tau
 		dydt[3] = y[7]; // d\phi/d\tau
 		const double r = y[1], r2 = gsl_pow_2(r), a = kerr_taub_nut->a_, a2 = kerr_taub_nut->a2_, l = kerr_taub_nut->l_, l2 = kerr_taub_nut->l2_;
-		const double sint = abs(sin(y[2])), sint_1 = 1. / sint, sint2 = gsl_pow_2(sint), cost = GSL_SIGN(y[2]) * cos(y[2]), cost2 = gsl_pow_2(cost);
+		const double sin_theta = abs(sin(y[2])), sin_1_theta = 1. / sin_theta, sin2_theta = gsl_pow_2(sin_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta);
 		const double Delta = r2 - 2. * r - l2 + a2, Delta_1 = 1. / Delta;
-		const double lacost = l + a * cost, lacost2 = gsl_pow_2(lacost);
-		const double rho2 = r2 + lacost2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2);
-		const double chi = a * sint2 - 2. * l * cost, rho2achi = r2 + l2 + a2;
-		const double rho2rm = r * (r + 2. * l * lacost) - lacost2, rho2acost = (2. * r + l * lacost) * lacost - r2 * l;
+		const double l_a_cos_theta = l + a * cos_theta, l_a_cos_theta2 = gsl_pow_2(l_a_cos_theta);
+		const double rho2 = r2 + l_a_cos_theta2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2);
+		const double chi = a * sin2_theta - 2. * l * cos_theta, rho2_a_chi = r2 + l2 + a2;
+		const double rho2rm = r * (r + 2. * l * l_a_cos_theta) - l_a_cos_theta2, rho2_a_cos_theta = (2. * r + l * l_a_cos_theta) * l_a_cos_theta - r2 * l;
 		// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
-		dydt[4] = -2. * rho_4 * (Delta_1 * rho2achi * rho2rm * y[5] * (y[4] - chi * y[7]) - sint_1 * chi * rho2acost * y[6] * (y[4] - chi * y[7]) - 2. * Delta_1 * rho2 * r * ((r + l2) * a * sint2 + Delta * l * cost) * y[5] * y[7] - sint_1 * rho4 * l * (1. + cost2) * y[6] * y[7]);
+		dydt[4] = -2. * rho_4 * (Delta_1 * rho2_a_chi * rho2rm * y[5] * (y[4] - chi * y[7]) - sin_1_theta * chi * rho2_a_cos_theta * y[6] * (y[4] - chi * y[7]) - 2. * Delta_1 * rho2 * r * ((r + l2) * a * sin2_theta + Delta * l * cos_theta) * y[5] * y[7] - sin_1_theta * rho4 * l * (1. + cos2_theta) * y[6] * y[7]);
 		// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[5] = -Delta * rho2rm * rho_6 * gsl_pow_2(y[4] - chi * y[7]) + (rho2rm - r * a2 * sint2) * Delta_1 * rho_2 * gsl_pow_2(y[5]) + 2. * a * sint * lacost * rho_2 * y[5] * y[6] + r * Delta * rho_2 * gsl_pow_2(y[6]) + Delta * r * sint2 * rho_2 * gsl_pow_2(y[7]);
+		dydt[5] = -Delta * rho2rm * rho_6 * gsl_pow_2(y[4] - chi * y[7]) + (rho2rm - r * a2 * sin2_theta) * Delta_1 * rho_2 * gsl_pow_2(y[5]) + 2. * a * sin_theta * l_a_cos_theta * rho_2 * y[5] * y[6] + r * Delta * rho_2 * gsl_pow_2(y[6]) + Delta * r * sin2_theta * rho_2 * gsl_pow_2(y[7]);
 		// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[6] = rho2acost * sint * rho_6 * y[4] * (a * y[4] - 2. * rho2achi * y[7]) - a * sint * lacost * rho_2 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho_2 * y[5] * y[6] - (rho2 * (Delta * chi * lacost - gsl_pow_2(rho2achi) * cost) - 2. * ((r + l2) * a * sint2 + Delta * l * cost) * rho2achi * lacost) * sint * rho_6 * gsl_pow_2(y[7]);
+		dydt[6] = rho2_a_cos_theta * sin_theta * rho_6 * y[4] * (a * y[4] - 2. * rho2_a_chi * y[7]) - a * sin_theta * l_a_cos_theta * rho_2 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho_2 * y[5] * y[6] - (rho2 * (Delta * chi * l_a_cos_theta - gsl_pow_2(rho2_a_chi) * cos_theta) - 2. * ((r + l2) * a * sin2_theta + Delta * l * cos_theta) * rho2_a_chi * l_a_cos_theta) * sin_theta * rho_6 * gsl_pow_2(y[7]);
 		// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[7] = -2. * a * rho2rm * Delta_1 * rho_4 * y[5] * (y[4] - chi * y[7]) + 2. * rho2acost * rho_4 * sint_1 * y[6] * (y[4] - chi * y[7]) - 2. * (1. - a2 * sint2 * Delta_1) * r * rho_2 * y[5] * y[7] - 2. * cost * sint_1 * y[6] * y[7];
+		dydt[7] = -2. * a * rho2rm * Delta_1 * rho_4 * y[5] * (y[4] - chi * y[7]) + 2. * rho2_a_cos_theta * rho_4 * sin_1_theta * y[6] * (y[4] - chi * y[7]) - 2. * (1. - a2 * sin2_theta * Delta_1) * r * rho_2 * y[5] * y[7] - 2. * cos_theta * sin_1_theta * y[6] * y[7];
 		return GSL_SUCCESS;
 	}
 	int KerrTaubNutTHamiltonianGeodesic(double t, const double y[], double dydt[], void *params) { // TODO:
