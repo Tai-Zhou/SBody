@@ -243,31 +243,28 @@ namespace SBody {
 		if (coordinate == LAGRANGIAN) {
 			if (time == T)
 				return (y[1] - 2.) / (y[1] * y[4]);
-			else
-				return GSL_NAN; // TODO:
-		} else if (coordinate == HAMILTONIAN)
+			else // time == TAU
+				return (y[1] - 2.) * y[4] / y[1];
+		} else // coordinate == HAMILTONIAN
 			return 1. - y[4];
-		return GSL_NAN;
 	}
 	double Schwarzschild::AngularMomentum(const double y[], time_system time, coordinate_system coordinate) {
 		if (coordinate == LAGRANGIAN) {
 			if (time == T)
-				return gsl_pow_2(y[1]) * y[7] / y[4];
-			else
-				return GSL_NAN; // TODO:
-		} else if (coordinate == HAMILTONIAN)
+				return gsl_pow_2(y[1] * sin(y[2])) * y[7] / y[4];
+			else // time == TAU
+				return gsl_pow_2(y[1] * sin(y[2])) * y[7];
+		} else // coordinate == HAMILTONIAN
 			return y[7];
-		return GSL_NAN;
 	}
 	double Schwarzschild::CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) {
 		if (coordinate == LAGRANGIAN) {
 			if (time == T)
 				return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2]))) / gsl_pow_2(y[4]);
-			else
-				return GSL_NAN; // TODO:
-		} else if (coordinate == HAMILTONIAN)
+			else // time == TAU
+				return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2])));
+		} else // coordinate == HAMILTONIAN
 			return gsl_pow_2(y[6]) + gsl_pow_2(y[7] / tan(y[2]));
-		return GSL_NAN;
 	}
 	int Schwarzschild::NormalizeTimelikeGeodesic(double y[]) {
 		const double g00 = 1. - 2. / y[1];
