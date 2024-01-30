@@ -107,7 +107,7 @@ namespace SBody {
 #endif
 			while (true) {
 				InitializePhoton(photon->data, alpha, beta);
-				metric_->BaseToHamiltonian(photon->data);
+				metric_->LagrangianToHamiltonian(photon->data);
 				int status = 0, fixed = 0;
 				h = -1.;
 				while (status <= 0) {
@@ -162,7 +162,7 @@ namespace SBody {
 					return status;
 				}
 				if (gsl_hypot(delta_alpha, delta_beta) <= epsilon * (1. + gsl_hypot(alpha, beta))) {
-					metric_->HamiltonianToBase(photon->data);
+					metric_->HamiltonianToLagrangian(photon->data);
 					break;
 				}
 				alpha += iteration_coefficient * delta_alpha;
@@ -182,7 +182,7 @@ namespace SBody {
 		copy(photon->data, photon->data + 8, photon2);
 		photon2[8] = 0.;
 		metric_->NormalizeNullGeodesic(photon2, 1.);
-		metric_->BaseToHamiltonian(photon2);
+		metric_->LagrangianToHamiltonian(photon2);
 		h = 1.;
 		int status = 0, signum;
 		integrator->Reset();
@@ -192,7 +192,7 @@ namespace SBody {
 			fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 			return status;
 		}
-		metric_->HamiltonianToBase(photon2);
+		metric_->HamiltonianToLagrangian(photon2);
 		SphericalToCartesian(photon2);
 		copy(photon2 + 1, photon2 + 4, center_photon_position);
 		copy(photon2 + 5, photon2 + 8, center_photon_velocity);
@@ -251,7 +251,7 @@ namespace SBody {
 			const double vph_norm = metric_->DotProduct(photon->data, photon2 + 4, coordinate_static->data, 4);
 			for (int j = 0; j < 3; ++j)
 				local_cone_record[i][j] /= vph_norm;
-			metric_->BaseToHamiltonian(photon2);
+			metric_->LagrangianToHamiltonian(photon2);
 			h = 1.;
 			int status = 0;
 			integrator->Reset();
@@ -260,7 +260,7 @@ namespace SBody {
 				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 				return status;
 			}
-			metric_->HamiltonianToBase(photon2);
+			metric_->HamiltonianToLagrangian(photon2);
 			SphericalToCartesian(photon2);
 			copy(photon2 + 5, photon2 + 8, cone_record[i]);
 			const double rec2_norm = Norm(cone_record[i]);
@@ -305,7 +305,7 @@ namespace SBody {
 			// SphericalToCartesian(area_record_initial[i], 3);
 			photon2[8] = 0.;
 			metric_->NormalizeNullGeodesic(photon2);
-			metric_->BaseToHamiltonian(photon2);
+			metric_->LagrangianToHamiltonian(photon2);
 			h = 1.;
 			int status = 0;
 			integrator->Reset();
@@ -315,7 +315,7 @@ namespace SBody {
 				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 				return status;
 			}
-			metric_->HamiltonianToBase(photon2);
+			metric_->HamiltonianToLagrangian(photon2);
 			copy(photon2 + 1, photon2 + 4, area_record[i]);
 			SphericalToCartesian(area_record[i], 3);
 		}*/
@@ -387,14 +387,14 @@ namespace SBody {
 				ph[6] = -ph[6];
 				ph[7] = -ph[7];
 			}
-			metric_->BaseToHamiltonian(ph);
+			metric_->LagrangianToHamiltonian(ph);
 			ph[8] = 0;
 			h = 1.;
 			int status = 0;
 			integrator->Reset();
 			while (status <= 0 && ph[1] < 1.e3)
 				status = integrator->Apply(&time_limit, -t_final_, &h, ph);
-			metric_->HamiltonianToBase(ph);
+			metric_->HamiltonianToLagrangian(ph);
 			const double sin_theta = GSL_SIGN(ph[2]) * sin(ph[2]), cos_theta = GSL_SIGN(ph[2]) * cos(ph[2]), sin_phi = sin(ph[3]), cos_phi = cos(ph[3]);
 			center_ph[0] = ph[5] * sin_theta * cos_phi + ph[1] * (cos_theta * cos_phi * ph[6] - sin_theta * sin_phi * ph[7]);
 			center_ph[1] = ph[5] * sin_theta * sin_phi + ph[1] * (cos_theta * sin_phi * ph[6] + sin_theta * cos_phi * ph[7]);
@@ -416,14 +416,14 @@ namespace SBody {
 					ph[6] = -ph[6];
 					ph[7] = -ph[7];
 				}
-				metric_->BaseToHamiltonian(ph);
+				metric_->LagrangianToHamiltonian(ph);
 				ph[8] = 0;
 				h = 1.;
 				status = 0;
 				integrator->Reset();
 				while (status <= 0 && ph[8] < time_limit)
 					status = integrator->Apply(ph + 8, time_limit, &h, ph);
-				metric_->HamiltonianToBase(ph);
+				metric_->HamiltonianToLagrangian(ph);
 				const double sin_theta = GSL_SIGN(ph[2]) * sin(ph[2]), cos_theta = GSL_SIGN(ph[2]) * cos(ph[2]), sin_phi = sin(ph[3]), cos_phi = cos(ph[3]);
 				rec[i][0] = ph[5] * sin_theta * cos_phi + ph[1] * (cos_theta * cos_phi * ph[6] - sin_theta * sin_phi * ph[7]);
 				rec[i][1] = ph[5] * sin_theta * sin_phi + ph[1] * (cos_theta * sin_phi * ph[6] + sin_theta * cos_phi * ph[7]);
@@ -503,7 +503,7 @@ namespace SBody {
 			initials_[p][9] = -1.;
 			unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
 			metric_->NormalizeNullGeodesic(initials_[p].data(), 1.);
-			metric_->BaseToHamiltonian(initials_[p].data());
+			metric_->LagrangianToHamiltonian(initials_[p].data());
 			while (status <= 0 && initials_[p][8] > t1 && initials_[p][1] > 100)
 				status = integrator->Apply(initials_[p].data() + 8, t1, initials_[p].data() + 9, initials_[p].data());
 			if (status > 0)
@@ -553,7 +553,7 @@ namespace SBody {
 				if (ph[1] <= 3.)
 					rec.Save({NAN, NAN});
 				else {
-					metric_->HamiltonianToBase(ph);
+					metric_->HamiltonianToLagrangian(ph);
 					if (ph[2] < 0)
 						ph[2] += M_PI;
 					SphericalToCartesian(ph);

@@ -102,7 +102,7 @@ int Benchmark() {
 		temp[9] = star_0.Energy();
 		temp[10] = star_0.AngularMomentum();
 		temp[11] = star_0.CarterConstant();
-		view_ptr->TraceStar(temp, i, temp + 12, true);
+		view_ptr->Trace(temp, i, temp + 12, true);
 		SphericalToCartesian(temp);
 		ProgressBar::bars_[0].set_progress(i * stepPercent);
 		ProgressBar::bars_[0].set_option(indicators::option::PrefixText{fmt::format("Anticipated score is: {}? ", i * 200000000ul / (T_STEP_NUMBER * chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count()))});
@@ -292,11 +292,11 @@ int main(int argc, char *argv[]) {
 			PrintlnError("main status = {}", status);
 		star_0.Position(temp.data());
 		if (Hamiltonian)
-			main_metric->HamiltonianToBase(temp.data());
+			main_metric->HamiltonianToLagrangian(temp.data());
 		if (ray & 1)
-			viewPtr->TraceStar(temp.data(), i, temp.data() + 12, true);
+			viewPtr->Trace(temp.data(), i, temp.data() + 12, true);
 		if (ray & 2)
-			cameraPtr->TraceStar();
+			cameraPtr->Trace();
 		SphericalToCartesian(temp.data());
 		temp[8] = t / Unit::s;
 		temp[9] = star_0.Energy();

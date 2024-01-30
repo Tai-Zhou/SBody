@@ -83,10 +83,10 @@ namespace SBody {
 			return gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * (x[3] - y[3]));
 		return -gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1] - y[1]) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * (x[3] - y[3]));
 	}
-	int Newton::BaseToHamiltonian(double y[]) {
+	int Newton::LagrangianToHamiltonian(double y[]) {
 		return GSL_FAILURE;
 	}
-	int Newton::HamiltonianToBase(double y[]) {
+	int Newton::HamiltonianToLagrangian(double y[]) {
 		return GSL_FAILURE;
 	}
 	int Newton::FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) {
@@ -227,7 +227,7 @@ namespace SBody {
 			return x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2.) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * PhiDifference(x[3] - y[3]));
 		return -(1. - 2. / x[1]) * gsl_pow_2(x[0] - y[0]) + x[1] * gsl_pow_2(x[1] - y[1]) / (x[1] - 2.) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * PhiDifference(x[3] - y[3]));
 	}
-	int Schwarzschild::BaseToHamiltonian(double y[]) {
+	int Schwarzschild::LagrangianToHamiltonian(double y[]) {
 		const double dt_dtau = 1. / y[4], r2 = gsl_pow_2(y[1]);
 		y[4] = (y[4] - 1. + 2. / y[1]) * dt_dtau; // 1 + p_t
 		y[5] *= y[1] / (y[1] - 2.) * dt_dtau;
@@ -235,7 +235,7 @@ namespace SBody {
 		y[7] *= r2 * gsl_pow_2(sin(y[2])) * dt_dtau;
 		return 0;
 	}
-	int Schwarzschild::HamiltonianToBase(double y[]) {
+	int Schwarzschild::HamiltonianToLagrangian(double y[]) {
 		const double r_1 = 1. / y[1], g00 = 1. - 2. * r_1;
 		y[4] = -g00 / (y[4] - 1.);
 		y[5] *= g00 * y[4];
@@ -523,7 +523,7 @@ namespace SBody {
 			return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + 2. * r * a2_ * gsl_pow_2(sin2_theta) / rho2) * gsl_pow_2(d3);
 		return (r_rho_2 - 1.) * gsl_pow_2(d0) - 2. * r_rho_2 * a_ * sin2_theta * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * gsl_pow_2(sin2_theta)) * gsl_pow_2(d3);
 	}
-	int Kerr::BaseToHamiltonian(double y[]) {
+	int Kerr::LagrangianToHamiltonian(double y[]) {
 		const double dt_dtau = 1. / y[4], r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2]));
 		const double Delta = r2 - 2. * y[1] + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
 		const double r_rho_2 = 2. * y[1] / rho2;
@@ -533,7 +533,7 @@ namespace SBody {
 		y[7] = (-r_rho_2 * a_ + (r2 + a2_ * (1. + r_rho_2 * sin2_theta)) * y[7]) * sin2_theta * dt_dtau;
 		return 0;
 	}
-	int Kerr::HamiltonianToBase(double y[]) {
+	int Kerr::HamiltonianToLagrangian(double y[]) {
 		const double pt = y[4] - 1., r2 = gsl_pow_2(y[1]);
 		const double Delta = r2 - 2. * y[1] + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
 		const double rho_2 = 1. / rho2, r_rho_2 = 2. * y[1] * rho_2;
@@ -649,7 +649,7 @@ namespace SBody {
 			return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + (gsl_pow_2(rho2 + a_ * chi) * sin2_theta - gsl_pow_2(chi) * Delta) * rho_2 * gsl_pow_2(d3);
 		return (a2_ * sin2_theta - Delta) * rho_2 * gsl_pow_2(d0) - 4. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * rho_2 * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + (gsl_pow_2(rho2 + a_ * chi) * sin2_theta - gsl_pow_2(chi) * Delta) * rho_2 * gsl_pow_2(d3);
 	}
-	int KerrTaubNUT::BaseToHamiltonian(double y[]) {
+	int KerrTaubNUT::LagrangianToHamiltonian(double y[]) {
 		const double dt_dtau = 1. / y[4], r = y[1], r2 = gsl_pow_2(r);
 		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
@@ -660,7 +660,7 @@ namespace SBody {
 		y[7] = (-2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) + (gsl_pow_2(r2 + l2_ + a2_) * sin2_theta - gsl_pow_2(a_ * sin2_theta - 2. * l_ * cos_theta) * Delta) * y[7]) * rho_2 * dt_dtau;
 		return 0;
 	}
-	int KerrTaubNUT::HamiltonianToBase(double y[]) {
+	int KerrTaubNUT::HamiltonianToLagrangian(double y[]) {
 		const double pt = y[4] - 1., r = y[1], r2 = gsl_pow_2(r);
 		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
