@@ -505,12 +505,13 @@ namespace SBody {
 		return 0;
 	}
 	std::unique_ptr<Integrator> Kerr::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
-		if (motion != GEODESIC)
-			PrintlnError("Motion not supported!");
 		if (time == T) {
-			if (coordinate == LAGRANGIAN)
-				return std::make_unique<Integrator>(KerrTLagrangianGeodesic, Jacobian, this);
-			else if (coordinate == HAMILTONIAN)
+			if (coordinate == LAGRANGIAN) {
+				if (motion == GEODESIC)
+					return std::make_unique<Integrator>(KerrTLagrangianGeodesic, Jacobian, this);
+				else if (motion == HELICAL)
+					return std::make_unique<Integrator>(KerrTLagrangianHelical, Jacobian, this);
+			} else if (coordinate == HAMILTONIAN && motion == GEODESIC)
 				return std::make_unique<Integrator>(KerrTHamiltonianGeodesic, Jacobian, this);
 		} else if (time == TAU) {
 			if (coordinate == LAGRANGIAN)
@@ -519,9 +520,7 @@ namespace SBody {
 				return std::make_unique<Integrator>(KerrTauHamiltonianGeodesic, Jacobian, this);
 		}
 		PrintlnError("Time system not supported!");
-		return std::make_unique<Integrator>(
-			[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
-			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_FAILURE; });
+		return nullptr;
 	}
 
 	KerrTaubNUT::KerrTaubNUT(double spin, double NUT) : Kerr(spin), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
@@ -648,13 +647,10 @@ namespace SBody {
 			return std::make_unique<Integrator>(KerrTaubNutTauLagrangianGeodesic, Jacobian, this);
 		}
 		PrintlnError("Time system not supported!");
-		return std::make_unique<Integrator>(
-			[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
-			[](double t, const double y[], double *dfdy, double dfdt[], void *params) -> int { return GSL_FAILURE; });
+		return nullptr;
 	}
-
 	int KerrTLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
-		Kerr *kerr = reinterpret_cast<Kerr *>(params);
+		Kerr *kerr = static_cast<Kerr *>(params);
 		dydt[0] = y[4]; // d\tau/dt
 		dydt[1] = y[5]; // dr/dt
 		dydt[2] = y[6]; // d\theta/dt
@@ -674,27 +670,34 @@ namespace SBody {
 		dydt[7] = (-2. * a * r2_a2_cos2_theta * Delta_1 * y[5] + 4. * a * r * cot_theta * y[6] - 2. * Delta_1 * (r * rho4 - 2. * r2 * rho2 - r2_a2_cos2_theta * a2 * sin2_theta) * y[5] * y[7] - 2. * cot_theta * (rho4 + 2. * a2 * r * sin2_theta) * y[6] * y[7]) * rho_4 + dydt4 * y[7];
 		return GSL_SUCCESS;
 	}
-	int KerrTauLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
-		Kerr *kerr = reinterpret_cast<Kerr *>(params);
-		dydt[0] = y[4]; // dt/d\tau
-		dydt[1] = y[5]; // dr/d\tau
-		dydt[2] = y[6]; // d\theta/d\tau
-		dydt[3] = y[7]; // d\phi/d\tau
-		const double r = y[1], r2 = gsl_pow_2(r), a = kerr->a_, a2 = kerr->a2_, a4 = kerr->a4_, a2_r2 = a2 + r2;
-		const double sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin4_theta = gsl_pow_4(sin_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta), sin_theta_cos_theta = sin_theta * cos_theta, cot_theta = cos_theta / sin_theta;
-		const double Delta = r2 - 2. * r + a2, Delta_1 = 1. / Delta;
-		const double rho2 = r2 + a2 * cos2_theta, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), r2_a2_cos2_theta = r2 - a2 * cos2_theta;
-		dydt[4] = -2. * rho_4 * (Delta_1 * a2_r2 * r2_a2_cos2_theta * y[5] * (y[4] - a * sin2_theta * y[7]) - 2. * a2 * r * sin_theta_cos_theta * y[6] * (y[4] - a * sin2_theta * y[7]) - 2. * Delta_1 * r2 * rho2 * a * sin2_theta * y[5] * y[7]);
-		// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[5] = (-Delta * r2_a2_cos2_theta * gsl_pow_2(y[4] - a * sin2_theta * y[7]) - (r * (a2 * sin2_theta - r) + a2 * cos2_theta) * Delta_1 * rho4 * gsl_pow_2(y[5]) + 2. * a2 * sin_theta_cos_theta * rho4 * y[5] * y[6] + r * Delta * rho4 * gsl_pow_2(y[6]) + Delta * sin2_theta * r * rho4 * gsl_pow_2(y[7])) * rho_6;
-		// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[6] = (2. * a2 * r * sin_theta_cos_theta * gsl_pow_2(y[4]) - a2 * sin_theta_cos_theta * rho4 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho4 * y[5] * y[6] - 4. * a * r * sin_theta_cos_theta * a2_r2 * y[4] * y[7] + sin_theta_cos_theta * (2. * a4 * r * sin4_theta + 4. * a2 * r * sin2_theta * rho2 + a2_r2 * rho4) * gsl_pow_2(y[7])) * rho_6;
-		// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[7] = (-2. * a * r2_a2_cos2_theta * Delta_1 * y[4] * y[5] + 4. * a * r * cot_theta * y[4] * y[6] - 2. * Delta_1 * (r * rho4 - 2. * r2 * rho2 - r2_a2_cos2_theta * a2 * sin2_theta) * y[5] * y[7] - 2. * cot_theta * (rho4 + 2. * a2 * r * sin2_theta) * y[6] * y[7]) * rho_4;
+	int KerrTLagrangianHelical(double t, const double y[], double dydt[], void *params) {
+		Kerr *kerr = static_cast<Kerr *>(params);
+		dydt[0] = y[4]; // d\tau/dt
+		dydt[1] = y[5]; // dr/dt
+		dydt[2] = 0.;	// d\theta/dt = 0.
+		dydt[3] = y[7]; // d\phi/dt
+		const double r = y[1], r2 = gsl_pow_2(r), a = kerr->a_, a2 = kerr->a2_;
+		const double sin2_theta = gsl_pow_2(sin(y[2]));
+		const double Delta_1 = 1. / (r2 - 2. * r + a2);
+		const double rho2 = r2 + a2 * gsl_pow_2(cos(y[2])), rho_2 = 1. / rho2;
+		const double r_rho_2 = 2. * y[1] * rho_2;
+		const double g00 = -(1. - r_rho_2), g11 = rho2 * Delta_1, g03 = -r_rho_2 * a * sin2_theta, g33 = (r2 + a2 - g03 * a) * sin2_theta;
+		const double L_1 = y[4] / (g03 + g33 * y[7]), L_2 = gsl_pow_2(L_1);
+		const double A = g33 * (g33 * L_2 + 1.), A_1 = 1. / A, B = 2. * g03 * (g33 * L_2 + 1.), C = g00 + g11 * gsl_pow_2(y[5]) + gsl_pow_2(g03) * L_2;
+		const double dg00_dr = (2. - 4. * r2 * rho_2) * rho_2, dg11_dr = 2. * (r - g11 * (r - 1.)) * Delta_1, dg03_dr = -dg00_dr * a * sin2_theta, dg33_dr = 2. * r * sin2_theta - dg03_dr * a * sin2_theta;
+		const double dA_dr = dg33_dr * (2. * g33 * L_2 + 1.), dB_dr = 2. * (dg03_dr * (g33 * L_2 + 1.) + g03 * dg33_dr * L_2), dC_dr = dg00_dr + dg11_dr * gsl_pow_2(y[5]) + 2. * g03 * dg03_dr * L_2;
+		// d^2r/dt^2 = 0.
+		dydt[5] = 0.;
+		// d^2\theta/dt^2 = 0.
+		dydt[6] = 0.;
+		// d^2\phi/dt^2 = d(d\phi/dt)/dr * dr/dt
+		dydt[7] = y[5] * A_1 * (-y[7] * dA_dr + 0.5 * (-dB_dr + (B * dB_dr - 2. * (A * dC_dr + C * dA_dr)) / (2. * A * y[7] + B)));
+		// d^2\tau/dt^2 = d^2\tau/dtdr * dr/dt = d((g03 + g33 * d\phi/dt) / L)/dr * dr/dt
+		dydt[4] = (y[5] * (dg03_dr + dg33_dr * y[7]) + g33 * dydt[7]) * L_1;
 		return GSL_SUCCESS;
 	}
 	int KerrTHamiltonianGeodesic(double t, const double y[], double dydt[], void *params) {
-		Kerr *kerr = reinterpret_cast<Kerr *>(params);
+		Kerr *kerr = static_cast<Kerr *>(params);
 		const double r = y[1], r2 = gsl_pow_2(y[1]), a = kerr->a_, a2 = kerr->a2_, a2_r2 = a2 + r2, pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]);
 		const double E = 1. - y[4], E2 = gsl_pow_2(E), delta_E2 = (2. - y[4]) * y[4], L2 = gsl_pow_2(y[7]);
 		const double sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin_2_theta = 1. / sin2_theta, sin_4_theta = gsl_pow_2(sin_2_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta);
@@ -713,8 +716,27 @@ namespace SBody {
 		dydt[7] = 0.;
 		return GSL_SUCCESS;
 	}
+	int KerrTauLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
+		Kerr *kerr = static_cast<Kerr *>(params);
+		dydt[0] = y[4]; // dt/d\tau
+		dydt[1] = y[5]; // dr/d\tau
+		dydt[2] = y[6]; // d\theta/d\tau
+		dydt[3] = y[7]; // d\phi/d\tau
+		const double r = y[1], r2 = gsl_pow_2(r), a = kerr->a_, a2 = kerr->a2_, a4 = kerr->a4_, a2_r2 = a2 + r2;
+		const double sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin4_theta = gsl_pow_4(sin_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta), sin_theta_cos_theta = sin_theta * cos_theta, cot_theta = cos_theta / sin_theta;
+		const double Delta = r2 - 2. * r + a2, Delta_1 = 1. / Delta;
+		const double rho2 = r2 + a2 * cos2_theta, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2), r2_a2_cos2_theta = r2 - a2 * cos2_theta;
+		dydt[4] = -2. * rho_4 * (Delta_1 * a2_r2 * r2_a2_cos2_theta * y[5] * (y[4] - a * sin2_theta * y[7]) - 2. * a2 * r * sin_theta_cos_theta * y[6] * (y[4] - a * sin2_theta * y[7]) - 2. * Delta_1 * r2 * rho2 * a * sin2_theta * y[5] * y[7]);
+		// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+		dydt[5] = (-Delta * r2_a2_cos2_theta * gsl_pow_2(y[4] - a * sin2_theta * y[7]) - (r * (a2 * sin2_theta - r) + a2 * cos2_theta) * Delta_1 * rho4 * gsl_pow_2(y[5]) + 2. * a2 * sin_theta_cos_theta * rho4 * y[5] * y[6] + r * Delta * rho4 * gsl_pow_2(y[6]) + Delta * sin2_theta * r * rho4 * gsl_pow_2(y[7])) * rho_6;
+		// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+		dydt[6] = (2. * a2 * r * sin_theta_cos_theta * gsl_pow_2(y[4]) - a2 * sin_theta_cos_theta * rho4 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho4 * y[5] * y[6] - 4. * a * r * sin_theta_cos_theta * a2_r2 * y[4] * y[7] + sin_theta_cos_theta * (2. * a4 * r * sin4_theta + 4. * a2 * r * sin2_theta * rho2 + a2_r2 * rho4) * gsl_pow_2(y[7])) * rho_6;
+		// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+		dydt[7] = (-2. * a * r2_a2_cos2_theta * Delta_1 * y[4] * y[5] + 4. * a * r * cot_theta * y[4] * y[6] - 2. * Delta_1 * (r * rho4 - 2. * r2 * rho2 - r2_a2_cos2_theta * a2 * sin2_theta) * y[5] * y[7] - 2. * cot_theta * (rho4 + 2. * a2 * r * sin2_theta) * y[6] * y[7]) * rho_4;
+		return GSL_SUCCESS;
+	}
 	int KerrTauHamiltonianGeodesic(double t, const double y[], double dydt[], void *params) {
-		Kerr *kerr = reinterpret_cast<Kerr *>(params);
+		Kerr *kerr = static_cast<Kerr *>(params);
 		const double r = y[1], r2 = gsl_pow_2(y[1]), a = kerr->a_, a2 = kerr->a2_, a2_r2 = a2 + r2, pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]);
 		const double E = 1. - y[4], E2 = gsl_pow_2(E), delta_E2 = (2. - y[4]) * y[4], L2 = gsl_pow_2(y[7]);
 		const double sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin_2_theta = 1. / sin2_theta, sin_4_theta = gsl_pow_2(sin_2_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta);
@@ -733,27 +755,8 @@ namespace SBody {
 		dydt[7] = 0.;
 		return GSL_SUCCESS;
 	}
-	int KerrTLagrangianHelical(double t, const double y[], double dydt[], void *params) {
-		Kerr *kerr = reinterpret_cast<Kerr *>(params);
-		const double g00 = 1. - 2. / y[1], sin_theta = abs(sin(y[2]));
-		if (g00 <= 0)
-			return GSL_FAILURE;
-		dydt[0] = y[4]; // d\tau/dt
-		dydt[1] = y[5]; // dr/dt
-		dydt[2] = 0.;	// d\theta/dt = 0.
-		dydt[3] = y[7]; // d\phi/dt
-		// d^2\tau/dt^2 = d^2\tau/dtdr * dr/dt
-		dydt[4] = ((1. + gsl_pow_2(y[5] / g00)) / gsl_pow_2(y[1]) + y[1] * gsl_pow_2(sin_theta * y[7])) * y[5] / sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * sin_theta * y[7])));
-		// d^2r/dt^2 = 0.
-		dydt[5] = 0.;
-		// d^2\theta/dt^2 = 0.
-		dydt[6] = 0.;
-		// d^2\phi/dt^2 = d(d\phi/dt)/dr * dr/dt
-		dydt[7] = -2. * y[7] / y[1] * y[5];
-		return GSL_SUCCESS;
-	}
 	int KerrTaubNutTLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
-		KerrTaubNUT *kerr_taub_nut = reinterpret_cast<KerrTaubNUT *>(params);
+		KerrTaubNUT *kerr_taub_nut = static_cast<KerrTaubNUT *>(params);
 		dydt[0] = y[4]; // d\tau/dt
 		dydt[1] = y[5]; // dr/dt
 		dydt[2] = y[6]; // d\theta/dt
@@ -764,20 +767,50 @@ namespace SBody {
 		const double l_a_cos_theta = l + a * cos_theta, l_a_cos_theta2 = gsl_pow_2(l_a_cos_theta);
 		const double rho2 = r2 + l_a_cos_theta2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2);
 		const double chi = a * sin2_theta - 2. * l * cos_theta, rho2_a_chi = r2 + l2 + a2;
-		const double rho2rm = r * (r + 2. * l * l_a_cos_theta) - l_a_cos_theta2, rho2_a_cos_theta = (2. * r + l * l_a_cos_theta) * l_a_cos_theta - r2 * l;
-		const double dydt4 = 2. * rho_4 * (Delta_1 * rho2_a_chi * rho2rm * y[5] * (1. - chi * y[7]) - sin_1_theta * chi * rho2_a_cos_theta * y[6] * (1. - chi * y[7]) - 2. * Delta_1 * rho2 * r * ((r + l2) * a * sin2_theta + Delta * l * cos_theta) * y[5] * y[7] - sin_1_theta * rho4 * l * (1. + cos2_theta) * y[6] * y[7]);
+		const double rho2_r_Delta = r * (r + 2. * l * l_a_cos_theta) - l_a_cos_theta2, rho2_a_cos_theta = (2. * r + l * l_a_cos_theta) * l_a_cos_theta - r2 * l;
+		const double dydt4 = 2. * rho_4 * (Delta_1 * rho2_a_chi * rho2_r_Delta * y[5] * (1. - chi * y[7]) - sin_1_theta * chi * rho2_a_cos_theta * y[6] * (1. - chi * y[7]) - 2. * Delta_1 * rho2 * r * ((r + l2) * a * sin2_theta + Delta * l * cos_theta) * y[5] * y[7] - sin_1_theta * rho4 * l * (1. + cos2_theta) * y[6] * y[7]);
 		// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
 		dydt[4] = dydt4 * y[4];
 		// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[5] = -Delta * rho2rm * rho_6 * gsl_pow_2(1. - chi * y[7]) + (rho2rm - r * a2 * sin2_theta) * Delta_1 * rho_2 * gsl_pow_2(y[5]) + 2. * a * sin_theta * l_a_cos_theta * rho_2 * y[5] * y[6] + r * Delta * rho_2 * gsl_pow_2(y[6]) + Delta * r * sin2_theta * rho_2 * gsl_pow_2(y[7]) + dydt4 * y[5];
+		dydt[5] = -Delta * rho2_r_Delta * rho_6 * gsl_pow_2(1. - chi * y[7]) + (rho2_r_Delta - r * a2 * sin2_theta) * Delta_1 * rho_2 * gsl_pow_2(y[5]) + 2. * a * sin_theta * l_a_cos_theta * rho_2 * y[5] * y[6] + r * Delta * rho_2 * gsl_pow_2(y[6]) + Delta * r * sin2_theta * rho_2 * gsl_pow_2(y[7]) + dydt4 * y[5];
 		// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 		dydt[6] = rho2_a_cos_theta * sin_theta * rho_6 * (a - 2. * rho2_a_chi * y[7]) - a * sin_theta * l_a_cos_theta * rho_2 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho_2 * y[5] * y[6] - (rho2 * (Delta * chi * l_a_cos_theta - gsl_pow_2(rho2_a_chi) * cos_theta) - 2. * ((r + l2) * a * sin2_theta + Delta * l * cos_theta) * rho2_a_chi * l_a_cos_theta) * sin_theta * rho_6 * gsl_pow_2(y[7]) + dydt4 * y[6];
 		// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[7] = -2. * a * rho2rm * Delta_1 * rho_4 * y[5] * (1. - chi * y[7]) + 2. * rho2_a_cos_theta * rho_4 * sin_1_theta * y[6] * (1. - chi * y[7]) - 2. * (1. - a2 * sin2_theta * Delta_1) * r * rho_2 * y[5] * y[7] - 2. * cos_theta * sin_1_theta * y[6] * y[7] + dydt4 * y[7];
+		dydt[7] = -2. * a * rho2_r_Delta * Delta_1 * rho_4 * y[5] * (1. - chi * y[7]) + 2. * rho2_a_cos_theta * rho_4 * sin_1_theta * y[6] * (1. - chi * y[7]) - 2. * (1. - a2 * sin2_theta * Delta_1) * r * rho_2 * y[5] * y[7] - 2. * cos_theta * sin_1_theta * y[6] * y[7] + dydt4 * y[7];
 		return GSL_SUCCESS;
 	}
+	int KerrTaubNutTLagrangianHelical(double t, const double y[], double dydt[], void *params) {
+		KerrTaubNUT *kerr_taub_nut = static_cast<KerrTaubNUT *>(params);
+		dydt[0] = y[4]; // d\tau/dt
+		dydt[1] = y[5]; // dr/dt
+		dydt[2] = 0.;	// d\theta/dt = 0.
+		dydt[3] = y[7]; // d\phi/dt
+		const double r = y[1], r2 = gsl_pow_2(r), a = kerr_taub_nut->a_, a2 = kerr_taub_nut->a2_, l = kerr_taub_nut->l_, l2 = kerr_taub_nut->l2_;
+		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+		const double Delta = r2 - 2. * r - l2 + a2, Delta_1 = 1. / Delta;
+		const double l_a_cos_theta2 = gsl_pow_2(l + a * cos_theta);
+		const double rho2 = r2 + l_a_cos_theta2, rho_2 = 1. / rho2;
+		const double chi = a * sin2_theta - 2. * l * cos_theta, rho2_a_chi = r2 + l2 + a2;
+		const double g00 = -rho_2 * (Delta - a2 * sin2_theta), g11 = rho2 * Delta_1, g03 = -g00 * chi - a * sin2_theta, g33 = -g03 * chi + rho2_a_chi * sin2_theta;
+		const double L_1 = y[4] / (g03 + g33 * y[7]), L_2 = gsl_pow_2(L_1);
+		const double A = g33 * (g33 * L_2 + 1.), A_1 = 1. / A, B = 2. * g03 * (g33 * L_2 + 1.), C = g00 + g11 * gsl_pow_2(y[5]) + gsl_pow_2(g03) * L_2;
+		const double dg00_dr = -2. * rho_2 * ((r - 1.) + g00 * r), dg11_dr = 2. * Delta_1 * (r - g11 * (r - 1.)), dg03_dr = -dg00_dr * chi, dg33_dr = 2. * r * sin2_theta - dg03_dr * chi;
+		const double dA_dr = dg33_dr * (2. * g33 * L_2 + 1.), dB_dr = 2. * (dg03_dr * (g33 * L_2 + 1.) + g03 * dg33_dr * L_2), dC_dr = dg00_dr + dg11_dr * gsl_pow_2(y[5]) + 2. * g03 * dg03_dr * L_2;
+		// d^2r/dt^2 = 0.
+		dydt[5] = 0.;
+		// d^2\theta/dt^2 = 0.
+		dydt[6] = 0.;
+		// d^2\phi/dt^2 = d(d\phi/dt)/dr * dr/dt
+		dydt[7] = y[5] * A_1 * (-y[7] * dA_dr + 0.5 * (-dB_dr + (B * dB_dr - 2. * (A * dC_dr + C * dA_dr)) / (2. * A * y[7] + B)));
+		// d^2\tau/dt^2 = d^2\tau/dtdr * dr/dt = d((g03 + g33 * d\phi/dt) / L)/dr * dr/dt
+		dydt[4] = (y[5] * (dg03_dr + dg33_dr * y[7]) + g33 * dydt[7]) * L_1;
+		return GSL_SUCCESS;
+	}
+	int KerrTaubNutTHamiltonianGeodesic(double t, const double y[], double dydt[], void *params) { // TODO:
+		return GSL_FAILURE;
+	}
 	int KerrTaubNutTauLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
-		KerrTaubNUT *kerr_taub_nut = reinterpret_cast<KerrTaubNUT *>(params);
+		KerrTaubNUT *kerr_taub_nut = static_cast<KerrTaubNUT *>(params);
 		dydt[0] = y[4]; // dt/d\tau
 		dydt[1] = y[5]; // dr/d\tau
 		dydt[2] = y[6]; // d\theta/d\tau
@@ -788,19 +821,16 @@ namespace SBody {
 		const double l_a_cos_theta = l + a * cos_theta, l_a_cos_theta2 = gsl_pow_2(l_a_cos_theta);
 		const double rho2 = r2 + l_a_cos_theta2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = gsl_pow_3(rho_2);
 		const double chi = a * sin2_theta - 2. * l * cos_theta, rho2_a_chi = r2 + l2 + a2;
-		const double rho2rm = r * (r + 2. * l * l_a_cos_theta) - l_a_cos_theta2, rho2_a_cos_theta = (2. * r + l * l_a_cos_theta) * l_a_cos_theta - r2 * l;
+		const double rho2_r_Delta = r * (r + 2. * l * l_a_cos_theta) - l_a_cos_theta2, rho2_a_cos_theta = (2. * r + l * l_a_cos_theta) * l_a_cos_theta - r2 * l;
 		// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
-		dydt[4] = -2. * rho_4 * (Delta_1 * rho2_a_chi * rho2rm * y[5] * (y[4] - chi * y[7]) - sin_1_theta * chi * rho2_a_cos_theta * y[6] * (y[4] - chi * y[7]) - 2. * Delta_1 * rho2 * r * ((r + l2) * a * sin2_theta + Delta * l * cos_theta) * y[5] * y[7] - sin_1_theta * rho4 * l * (1. + cos2_theta) * y[6] * y[7]);
+		dydt[4] = -2. * rho_4 * (Delta_1 * rho2_a_chi * rho2_r_Delta * y[5] * (y[4] - chi * y[7]) - sin_1_theta * chi * rho2_a_cos_theta * y[6] * (y[4] - chi * y[7]) - 2. * Delta_1 * rho2 * r * ((r + l2) * a * sin2_theta + Delta * l * cos_theta) * y[5] * y[7] - sin_1_theta * rho4 * l * (1. + cos2_theta) * y[6] * y[7]);
 		// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[5] = -Delta * rho2rm * rho_6 * gsl_pow_2(y[4] - chi * y[7]) + (rho2rm - r * a2 * sin2_theta) * Delta_1 * rho_2 * gsl_pow_2(y[5]) + 2. * a * sin_theta * l_a_cos_theta * rho_2 * y[5] * y[6] + r * Delta * rho_2 * gsl_pow_2(y[6]) + Delta * r * sin2_theta * rho_2 * gsl_pow_2(y[7]);
+		dydt[5] = -Delta * rho2_r_Delta * rho_6 * gsl_pow_2(y[4] - chi * y[7]) + (rho2_r_Delta - r * a2 * sin2_theta) * Delta_1 * rho_2 * gsl_pow_2(y[5]) + 2. * a * sin_theta * l_a_cos_theta * rho_2 * y[5] * y[6] + r * Delta * rho_2 * gsl_pow_2(y[6]) + Delta * r * sin2_theta * rho_2 * gsl_pow_2(y[7]);
 		// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 		dydt[6] = rho2_a_cos_theta * sin_theta * rho_6 * y[4] * (a * y[4] - 2. * rho2_a_chi * y[7]) - a * sin_theta * l_a_cos_theta * rho_2 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho_2 * y[5] * y[6] - (rho2 * (Delta * chi * l_a_cos_theta - gsl_pow_2(rho2_a_chi) * cos_theta) - 2. * ((r + l2) * a * sin2_theta + Delta * l * cos_theta) * rho2_a_chi * l_a_cos_theta) * sin_theta * rho_6 * gsl_pow_2(y[7]);
 		// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		dydt[7] = -2. * a * rho2rm * Delta_1 * rho_4 * y[5] * (y[4] - chi * y[7]) + 2. * rho2_a_cos_theta * rho_4 * sin_1_theta * y[6] * (y[4] - chi * y[7]) - 2. * (1. - a2 * sin2_theta * Delta_1) * r * rho_2 * y[5] * y[7] - 2. * cos_theta * sin_1_theta * y[6] * y[7];
+		dydt[7] = -2. * a * rho2_r_Delta * Delta_1 * rho_4 * y[5] * (y[4] - chi * y[7]) + 2. * rho2_a_cos_theta * rho_4 * sin_1_theta * y[6] * (y[4] - chi * y[7]) - 2. * (1. - a2 * sin2_theta * Delta_1) * r * rho_2 * y[5] * y[7] - 2. * cos_theta * sin_1_theta * y[6] * y[7];
 		return GSL_SUCCESS;
-	}
-	int KerrTaubNutTHamiltonianGeodesic(double t, const double y[], double dydt[], void *params) { // TODO:
-		return GSL_FAILURE;
 	}
 	int Jacobian(double t, const double y[], double *dfdy, double dfdt[], void *params) {
 		return GSL_SUCCESS;
