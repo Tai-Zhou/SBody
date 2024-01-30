@@ -18,6 +18,7 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_odeiv2.h>
 #include <gsl/gsl_permutation.h>
+#include <gsl/gsl_roots.h>
 #include <gsl/gsl_vector.h>
 
 namespace SBody {
@@ -47,6 +48,9 @@ namespace SBody {
 
 	/// \f$\pi^2\f$.
 	constexpr double M_PI2 = 9.86960440108935861883449099987615111;
+
+	/// \f$\sqrt27\f$
+	constexpr double M_SQRT27 = 5.19615242270663188058233902451761710;
 
 	/**
 	 * @brief A wrapper of the gsl_odeiv2_evolve
@@ -127,6 +131,45 @@ namespace SBody {
 		 * @return status
 		 */
 		int CheckCoordinate(double *y);
+	};
+	class Solver {
+	  public:
+		virtual int Iterate() = 0;
+		virtual int Solve() = 0;
+		virtual double Root() = 0;
+	};
+	/**
+	 * @brief
+	 *
+	 */
+	class FunctionSolver : public Solver {
+	  private:
+		gsl_root_fsolver *solver_;
+
+	  public:
+		FunctionSolver(const gsl_root_fsolver_type *type = gsl_root_fsolver_brent);
+		FunctionSolver(gsl_function *function, double lower, double upper, const gsl_root_fsolver_type *type = gsl_root_fsolver_brent);
+		~FunctionSolver();
+		int Set(gsl_function *function, double lower, double upper);
+		int Iterate() override;
+		int Solve() override;
+		double Root() override;
+		double Lower();
+		double Upper();
+	};
+
+	class DerivativeSolver : public Solver {
+	  private:
+		gsl_root_fdfsolver *solver_;
+
+	  public:
+		DerivativeSolver(const gsl_root_fdfsolver_type *type = gsl_root_fdfsolver_steffenson);
+		DerivativeSolver(gsl_function_fdf *function, double root, const gsl_root_fdfsolver_type *type = gsl_root_fdfsolver_steffenson);
+		~DerivativeSolver();
+		int Set(gsl_function_fdf *function, double root);
+		int Iterate() override;
+		int Solve() override;
+		double Root() override;
 	};
 
 	/**
@@ -389,6 +432,55 @@ namespace SBody {
 	 * @return result
 	 */
 	double _0x1(double x);
+
+	/**
+	 * @brief \f$\int_x^y\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f$.
+	 *
+	 * @return
+	 */
+	double EllipticIntegral(double x, double y, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
+
+	/**
+	 * @brief \f$\int_x^y(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f$.
+	 *
+	 * @return
+	 */
+	double EllipticIntegral2Imaginary(double x, double y, double f, double g, double h, double a1, double b1, double a4 = 1., double b4 = 0.);
+
+	/**
+	 * @brief \f$\int_x^y\prod_{i=1}^2(f_i+g_it+h_it^2)^{-1/2}dt\f$.
+	 *
+	 * @return
+	 */
+	double EllipticIntegral4Imaginary(double x, double y, double f1, double g1, double h1, double f2, double g2, double h2);
+
+	/**
+	 * @brief \f$\int_x^y(a_5+b_5t)^{-1}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f$.
+	 *
+	 * @return
+	 */
+	double EllipticIntegral_2(double x, double y, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
+
+	/**
+	 * @brief \f$\int_x^y(a_5+b_5t)^{-1}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f$.
+	 *
+	 * @return
+	 */
+	double EllipticIntegral2Imaginary_2(double x, double y, double a5, double b5, double f, double g, double h, double a1, double b1, double a4 = 1., double b4 = 0.);
+
+	/**
+	 * @brief \f$\int_x^y(a_5+b_5t)^{-2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f$.
+	 *
+	 * @return
+	 */
+	double EllipticIntegral_4(double x, double y, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
+
+	/**
+	 * @brief \f$\int_x^y(a_5+b_5t)^{-2}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f$.
+	 *
+	 * @return
+	 */
+	double EllipticIntegral2Imaginary_4(double x, double y, double a5, double b5, double f, double g, double h, double a1, double b1, double a4 = 1., double b4 = 0.);
 } // namespace SBody
 
 #endif

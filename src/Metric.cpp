@@ -18,6 +18,7 @@
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_permutation.h>
+#include <gsl/gsl_poly.h>
 #include <gsl/gsl_vector.h>
 
 #include "IO.h"
@@ -86,6 +87,9 @@ namespace SBody {
 		return GSL_FAILURE;
 	}
 	int Newton::HamiltonianToBase(double y[]) {
+		return GSL_FAILURE;
+	}
+	int Newton::FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) {
 		return GSL_FAILURE;
 	}
 	double Newton::Energy(const double y[], time_system time, coordinate_system coordinate) {
@@ -239,6 +243,94 @@ namespace SBody {
 		y[7] *= gsl_pow_2(r_1 / sin(y[2])) * y[4];
 		return 0;
 	}
+	int Schwarzschild::FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) {
+		const double sin_theta_target = abs(sin(target_theta)), cos_theta_target = GSL_SIGN(target_theta) * cos(target_theta), sin_phi_target = sin(target_phi), cos_phi_target = cos(target_phi);
+		const double cos_observer_target = sin_theta_observer * sin_theta_target * cos_phi_target + cos_theta_observer * cos_theta_target;
+		const double delta_phi = acos(cos_observer_target), sin_observer_target = sqrt(1. - gsl_pow_2(cos_observer_target));
+		const double u0 = 1. / observer_r, u1 = 1. / target_r;
+		if (delta_phi == 0.) { // 0. <= delta_phi <= M_PI
+			alpha = 0.;
+			beta = 0.;
+			photon[0] = (target_r - observer_r + 4. * log(target_r * u0) + 4. * (u1 - u0)) * observer_r / (observer_r - 2.);
+			photon[1] = target_r;
+			photon[2] = target_theta;
+			photon[3] = target_phi;
+			photon[4] = target_r * (observer_r - 2.) / (observer_r * (target_r - 2.));
+			photon[5] = (target_r - 2.) * u1;
+			photon[6] = 0.;
+			photon[7] = 0.;
+			photon[8] = target_r - observer_r + 2. * log(target_r * u0);
+			return GSL_SUCCESS;
+		}
+		double impact_parameter_upper_limit = target_r / sqrt(1. - 2. * u1), turning_phi;
+		if (double x0, x1, x2; u1 * 3. < 1. && gsl_poly_solve_cubic(-0.5, 0., 0.5 / gsl_pow_2(impact_parameter_upper_limit), &x0, &x1, &x2) == 3)
+			turning_phi = M_SQRT1_2 * EllipticIntegral(u0, u1, -x0, 1., u1, -1., x2, -1.); // use u1 instead of x1, prevent x1 < u1 < x1 + epsilon
+		else {
+			impact_parameter_upper_limit = M_SQRT27 - epsilon;
+			turning_phi = M_PI; // make delta_phi <= turning_phi
+		}
+		double integrate_parameters[4] = {u0, u1, delta_phi, turning_phi};
+		FunctionSolver impact_solver;
+		gsl_function impact_function{
+			[](double x, void *params) -> double {
+				const double *p = static_cast<double *>(params);
+				if (x == 0.)
+					return -p[2];
+				if (double x0, x1, x2; gsl_poly_solve_cubic(-0.5, 0., 0.5 / gsl_pow_2(x), &x0, &x1, &x2) == 3) {
+					if (x1 < p[1]) // x1 < u1 < x1 + epsilon
+						return M_SQRT1_2 * EllipticIntegral(p[0], p[1], -x0, 1., p[1], -1., x2, -1.) - p[2];
+					else if (p[2] > p[3]) // u1 -> turning point -> u1 -> u0
+						return M_SQRT2 * EllipticIntegral(p[1], x1, -x0, 1., x1, -1., x2, -1.) + M_SQRT1_2 * EllipticIntegral(p[0], p[1], -x0, 1., x1, -1., x2, -1.) - p[2];
+					else // u1 -> u0
+						return M_SQRT1_2 * EllipticIntegral(p[0], p[1], -x0, 1., x1, -1., x2, -1.) - p[2];
+				} else // impact_parameter < sqrt(27)
+					return M_SQRT1_2 * EllipticIntegral2Imaginary(p[0], p[1], -0.5 / (gsl_pow_2(x) * x0), x0 - 0.5, 1., -x0, 1.) - p[2];
+			},
+			&integrate_parameters};
+		if (delta_phi > turning_phi)
+			impact_solver.Set(&impact_function, M_SQRT27 + epsilon, impact_parameter_upper_limit);
+		else
+			impact_solver.Set(&impact_function, 0, impact_parameter_upper_limit);
+		if (impact_solver.Solve() != GSL_SUCCESS)
+			return GSL_FAILURE;
+		alpha = impact_solver.Root() / sin_observer_target * sin_theta_target * sin_phi_target;
+		beta = impact_solver.Root() / sin_observer_target * (cos_theta_target * sin_theta_observer - sin_theta_target * cos_phi_target * cos_theta_observer);
+		if (double x0, x1, x2; gsl_poly_solve_cubic(-0.5, 0., 0.5 / gsl_pow_2(impact_solver.Root()), &x0, &x1, &x2) == 3) {
+			if (x1 < u1) { // x1 < u1 < x1 + epsilon
+				const double ellip_int_4 = EllipticIntegral_4(u0, u1, 0., 1., u1, -1., -x0, 1., x2, -1.);
+				photon[0] = -M_SQRT1_2 * ellip_int_4 / (impact_solver.Root() * (1. - 2. * u0));
+				photon[8] = -M_SQRT1_2 * (ellip_int_4 + 2. * EllipticIntegral_2(u0, u1, 0., 1., u1, -1., -x0, 1., x2, -1.) + 4. * EllipticIntegral_2(u0, u1, 1., -2., u1, -1., -x0, 1., x2, -1.)) / impact_solver.Root();
+			} else if (delta_phi > turning_phi) { // u1 -> turning point -> u1 -> u0
+				const double ellip_int_4 = 2. * EllipticIntegral_4(u1, x1, 0., 1., x1, -1., -x0, 1., x2, -1.) + EllipticIntegral_4(u0, u1, 0., 1., x1, -1., -x0, 1., x2, -1.);
+				photon[0] = -M_SQRT1_2 * ellip_int_4 / (impact_solver.Root() * (1. - 2. * u0));
+				photon[8] = -M_SQRT1_2 * (ellip_int_4 + 4. * EllipticIntegral_2(u1, x1, 0., 1., x1, -1., -x0, 1., x2, -1.) + 2. * EllipticIntegral_2(u0, u1, 0., 1., x1, -1., -x0, 1., x2, -1.) + 8. * EllipticIntegral_2(u1, x1, 1., -2., x1, -1., -x0, 1., x2, -1.) + 4. * EllipticIntegral_2(u0, u1, 1., -2., x1, -1., -x0, 1., x2, -1.)) / impact_solver.Root();
+			} else { // u1 -> u0
+				const double ellip_int_4 = EllipticIntegral_4(u0, u1, 0., 1., x1, -1., -x0, 1., x2, -1.);
+				photon[0] = -M_SQRT1_2 * ellip_int_4 / (impact_solver.Root() * (1. - 2. * u0));
+				photon[8] = -M_SQRT1_2 * (ellip_int_4 + 2. * EllipticIntegral_2(u0, u1, 0., 1., x1, -1., -x0, 1., x2, -1.) + 4. * EllipticIntegral_2(u0, u1, 1., -2., x1, -1., -x0, 1., x2, -1.)) / impact_solver.Root();
+			}
+		} else { // impact_parameter < sqrt(27)
+			const double ellip_int_4 = EllipticIntegral2Imaginary_4(u0, u1, 0., 1., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.);
+			photon[0] = -M_SQRT1_2 * ellip_int_4 / (impact_solver.Root() * (1. - 2. * u0));
+			photon[8] = -M_SQRT1_2 * (ellip_int_4 + 2. * EllipticIntegral2Imaginary_2(u0, u1, 0., 1., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.) + 4. * EllipticIntegral2Imaginary_2(u0, u1, 1., -2., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.)) / impact_solver.Root();
+		}
+		photon[1] = target_r;
+		photon[2] = target_theta;
+		photon[3] = target_phi;
+		photon[4] = observer_r * (target_r - 2.) / (target_r * (observer_r - 2.));
+		if (delta_phi > turning_phi)
+			photon[5] = -(target_r - 2.) * u1 * sqrt(1. - (target_r - 2.) * u1 * gsl_pow_2(u1 * impact_solver.Root()));
+		else
+			photon[5] = (target_r - 2.) * u1 * sqrt(1. - (target_r - 2.) * u1 * gsl_pow_2(u1 * impact_solver.Root()));
+		// the direction of the angular momentum is [alpha * cos_theta_observer, beta, -alpha * sin_theta_observer],
+		// so the y component (r^2 * d\theta/dtau * cos(phi)) should have the same sign as beta
+		if (cos_phi_target < 0)
+			photon[6] = -(target_r - 2.) * u1 * beta * gsl_pow_2(u1);
+		else
+			photon[6] = (target_r - 2.) * u1 * beta * gsl_pow_2(u1);
+		photon[7] = alpha == 0. ? 0. : -(target_r - 2.) * u1 * alpha * sin_theta_observer * gsl_pow_2(u1 / sin_theta_target);
+		return GSL_SUCCESS;
+	}
 	double Schwarzschild::Energy(const double y[], time_system time, coordinate_system coordinate) {
 		if (coordinate == LAGRANGIAN) {
 			if (time == T)
@@ -295,16 +387,22 @@ namespace SBody {
 							dydt[2] = y[6]; // d\theta/dt
 							dydt[3] = y[7]; // d\phi/dt
 							const double r = y[1], sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
-							const double r2m = r - 2., r3m = r - 3.;
-							const double r2mr_1 = 1. / (r2m * r);
+							const double rm2 = r - 2., rm3 = r - 3.;
+							const double rm2r_1 = 1. / (rm2 * r);
 							// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
-							dydt[4] = 2. * y[5] * r2mr_1 * y[4];
+							dydt[4] = 2. * y[5] * rm2r_1 * y[4];
 							// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-							dydt[5] = -r2m / gsl_pow_3(r) + 3. * r2mr_1 * gsl_pow_2(y[5]) + r2m * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
+							dydt[5] = -rm2 / gsl_pow_3(r) + 3. * rm2r_1 * gsl_pow_2(y[5]) + rm2 * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
 							// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-							dydt[6] = -2. * r3m * r2mr_1 * y[5] * y[6] + sin_theta * cos_theta * gsl_pow_2(y[7]);
+							dydt[6] = -2. * rm3 * rm2r_1 * y[5] * y[6] + sin_theta * cos_theta * gsl_pow_2(y[7]);
 							// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-							dydt[7] = -2. * (r3m * r2mr_1 * y[5] + cos_theta / sin_theta * y[6]) * y[7];
+							if (sin_theta == 0.) {
+								if (y[7] == 0.)
+									dydt[7] = -2. * rm3 * rm2r_1 * y[5] * y[7];
+								else
+									return GSL_FAILURE;
+							} else
+								dydt[7] = -2. * (rm3 * rm2r_1 * y[5] + cos_theta / sin_theta * y[6]) * y[7];
 							return GSL_SUCCESS;
 						},
 						Jacobian);
@@ -337,7 +435,7 @@ namespace SBody {
 							dydt[2] = 0.;	// d\theta/dt = 0.
 							dydt[3] = y[7]; // d\phi/dt
 							// d^2\tau/dt^2 = d^2\tau/dtdr * dr/dt
-							dydt[4] = ((1. + gsl_pow_2(y[5] / g00)) / gsl_pow_2(y[1]) + y[1] * gsl_pow_2(sin_theta * y[7])) * y[5] / sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * sin_theta * y[7])));
+							dydt[4] = ((1. + gsl_pow_2(y[5] / g00)) / gsl_pow_2(y[1]) + y[1] * gsl_pow_2(sin_theta * y[7])) * y[5] / sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * sin_theta * y[7]))); // y[4]?
 							// d^2r/dt^2 = 0.
 							dydt[5] = 0.;
 							// d^2\theta/dt^2 = 0.
@@ -374,12 +472,12 @@ namespace SBody {
 					dydt[2] = y[6]; // d\theta/d\tau
 					dydt[3] = y[7]; // d\phi/d\tau
 					const double r = y[1], sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
-					const double r2m = r - 2., r_1 = 1. / r;
-					const double r2mr_1 = 1. / (r2m * r);
+					const double rm2 = r - 2., r_1 = 1. / r;
+					const double rm2r_1 = 1. / (rm2 * r);
 					// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
-					dydt[4] = -2. * y[5] * r2mr_1 * y[4];
+					dydt[4] = -2. * y[5] * rm2r_1 * y[4];
 					// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-					dydt[5] = -r2m * gsl_pow_3(r_1) * gsl_pow_2(y[4]) + r2mr_1 * gsl_pow_2(y[5]) + r2m * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
+					dydt[5] = -rm2 * gsl_pow_3(r_1) * gsl_pow_2(y[4]) + rm2r_1 * gsl_pow_2(y[5]) + rm2 * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
 					// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 					dydt[6] = -2. * r_1 * y[5] * y[6] + sin_theta * cos_theta * gsl_pow_2(y[7]);
 					// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
@@ -432,7 +530,7 @@ namespace SBody {
 		y[4] = (y[4] - 1. + r_rho_2 * (1. - a_ * sin2_theta * y[7])) * dt_dtau; // 1 + p_t
 		y[5] *= rho2 / Delta * dt_dtau;
 		y[6] *= rho2 * dt_dtau;
-		y[7] = (-r_rho_2 * a_ + (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * y[7]) * sin2_theta * dt_dtau;
+		y[7] = (-r_rho_2 * a_ + (r2 + a2_ * (1. + r_rho_2 * sin2_theta)) * y[7]) * sin2_theta * dt_dtau;
 		return 0;
 	}
 	int Kerr::HamiltonianToBase(double y[]) {
@@ -444,6 +542,9 @@ namespace SBody {
 		y[6] *= y[4] * rho_2;
 		y[7] = (-r_rho_2 * a_ * pt + (1. - r_rho_2) / gsl_pow_2(sin(y[2])) * y[7]) / Delta * y[4];
 		return 0;
+	}
+	int Kerr::FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) {
+		return GSL_FAILURE;
 	}
 	double Kerr::Energy(const double y[], time_system time, coordinate_system coordinate) {
 		if (coordinate == LAGRANGIAN) {
@@ -528,7 +629,7 @@ namespace SBody {
 		return "Kerr-Taub-NUT";
 	}
 	int KerrTaubNUT::MetricTensor(const double position[], gsl_matrix *metric) {
-		return 1;
+		return GSL_FAILURE;
 	}
 	double KerrTaubNUT::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
 		const double r = position[1], sin_theta = sin(position[2]), cos_theta = cos(position[2]);
@@ -569,6 +670,9 @@ namespace SBody {
 		y[6] *= rho_2 * y[4];
 		y[7] = (-2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * pt + (Delta - a2_ * sin2_theta) * y[7]) / (Delta * rho2 * sin2_theta) * y[4];
 		return 0;
+	}
+	int KerrTaubNUT::FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) {
+		return GSL_FAILURE;
 	}
 	double KerrTaubNUT::Energy(const double y[], time_system time, coordinate_system coordinate) {
 		const double r = y[1], r2 = gsl_pow_2(r);

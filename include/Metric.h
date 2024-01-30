@@ -27,8 +27,7 @@ namespace SBody {
 	 * @brief
 	 *
 	 */
-	enum coordinate_system { BASE,
-							 LAGRANGIAN,
+	enum coordinate_system { LAGRANGIAN,
 							 HAMILTONIAN };
 
 	enum motion_mode { GEODESIC,
@@ -52,6 +51,7 @@ namespace SBody {
 		int LocalInertialFrame(const double position[], gsl_matrix *coordinate, const double timelike[] = nullptr);
 		virtual int BaseToHamiltonian(double y[]) = 0;
 		virtual int HamiltonianToBase(double y[]) = 0;
+		virtual int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) = 0;
 		virtual double Energy(const double y[], time_system time, coordinate_system coordinate) = 0;
 		virtual double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) = 0;
 		virtual double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) = 0;
@@ -70,6 +70,7 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int BaseToHamiltonian(double y[]) override;
 		int HamiltonianToBase(double y[]) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
 		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
 		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
 		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
@@ -93,6 +94,7 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int BaseToHamiltonian(double y[]) override;
 		int HamiltonianToBase(double y[]) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
 		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
 		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
 		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
@@ -110,6 +112,7 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int BaseToHamiltonian(double y[]) override;
 		int HamiltonianToBase(double y[]) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
 		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
 		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
 		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
@@ -127,6 +130,7 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int BaseToHamiltonian(double y[]) override;
 		int HamiltonianToBase(double y[]) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
 		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
 		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
 		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
