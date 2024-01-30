@@ -15,7 +15,7 @@ if(WITH_OPENMP)
 
     if(OpenMP_FOUND)
         add_compile_definitions(WITH_OPENMP)
-        list(APPEND OPTIONAL_LIBS ${OPENMP_LIBRARIES})
+        list(APPEND OPTIONAL_LIBS OpenMP::OpenMP_CXX)
     else()
         set(WITH_OPENMP OFF)
         message(NOTICE "OpenMP not found")

@@ -23,6 +23,10 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl_bind.h>
 
+#ifdef WITH_OPENMP
+#include <omp.h>
+#endif
+
 #include "IO.h"
 #include "Metric.h"
 #include "Object.h"
