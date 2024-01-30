@@ -138,6 +138,19 @@ namespace SBody {
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
 		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
+	// Post-Newtonian
+	int NewtonTLagrangianGeodesic(double t, const double y[], double dydt[], void *params);
+
+	// Post-Newtonian-1
+	int PN1TLagrangianGeodesic(double t, const double y[], double dydt[], void *params);
+
+	// Schwarzschild
+	int SchwarzschildTLagrangianGeodesic(double t, const double y[], double dydt[], void *params);
+	int SchwarzschildTLagrangianCircular(double t, const double y[], double dydt[], void *params);
+	int SchwarzschildTLagrangianRIAF(double t, const double y[], double dydt[], void *params);
+	int SchwarzschildTLagrangianHelical(double t, const double y[], double dydt[], void *params);
+	int SchwarzschildTHamiltonianGeodesic(double t, const double y[], double dydt[], void *params);
+	int SchwarzschildTauLagrangianGeodesic(double t, const double y[], double dydt[], void *params);
 
 	// Kerr
 	int KerrTLagrangianGeodesic(double t, const double y[], double dydt[], void *params);

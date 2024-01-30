@@ -142,67 +142,17 @@ namespace SBody {
 	std::unique_ptr<Integrator> Newton::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
 		if (time != T || coordinate != LAGRANGIAN || motion != GEODESIC) {
 			PrintlnError("Newton::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
-			SBodyExit(GSL_EINVAL);
+			return nullptr;
 		}
-		return std::make_unique<Integrator>(
-			[](double t, const double y[], double dydt[], void *params) -> int {
-				int PN = *static_cast<int *>(params);
-				const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
-				const double v_tan2 = gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
-				const double rdot = y[5], rdot2 = gsl_pow_2(y[5]);
-				const double v2 = rdot2 + v_tan2;
-				dydt[0] = y[4];
-				dydt[1] = y[5];
-				dydt[2] = y[6];
-				dydt[3] = y[7];
-				dydt[4] = 0.;
-				double A = 1., B = 0.;
-				if (PN & 1) {
-					A += v2 - 4. * r_1;
-					B += -4. * rdot;
-				}
-				if (PN & 2) {
-					A += r_1 * (-2. * rdot2 + 9. * r_1);
-					B += 2. * r_1 * rdot;
-				}
-				if (PN & 8) {
-					A += -16. * gsl_pow_3(r_1) + rdot2 * r_2;
-					B += -4. * rdot * r_2;
-				}
-				const double B_r2 = B * r_2;
-				dydt[5] = r_1 * v_tan2 - r_2 * A - B_r2 * y[5];
-				dydt[6] = sin_theta * cos_theta * gsl_pow_2(y[7]) - (2. * y[5] * r_1 + B_r2) * y[6];
-				dydt[7] = -(2. * cos_theta / sin_theta * y[6] + 2. * y[5] * r_1 + B_r2) * y[7];
-				return GSL_SUCCESS;
-			},
-			Jacobian,
-			const_cast<int *>(&this->PN_));
+		return std::make_unique<Integrator>(NewtonTLagrangianGeodesic, Jacobian, const_cast<int *>(&this->PN_));
 	}
 	PN1::PN1(double fSP) : Newton(1), PN1_(fSP){};
 	std::unique_ptr<Integrator> PN1::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
 		if (time != T || coordinate != LAGRANGIAN || motion != GEODESIC) {
 			PrintlnError("PN1::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
-			SBodyExit(GSL_EINVAL);
+			return nullptr;
 		}
-		return std::make_unique<Integrator>(
-			[](double t, const double y[], double dydt[], void *params) -> int {
-				const double PN1 = *static_cast<const double *>(params);
-				const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
-				const double v_tan2 = gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
-				const double v2 = gsl_pow_2(y[5]) + v_tan2;
-				dydt[0] = y[4];
-				dydt[1] = y[5];
-				dydt[2] = y[6];
-				dydt[3] = y[7];
-				dydt[4] = 0.;
-				const double A = 1. + (v2 - 4. * r_1) * PN1, B_r2 = -4. * y[5] * PN1 * r_2;
-				dydt[5] = r_1 * v_tan2 - r_2 * A - B_r2 * y[5];
-				dydt[6] = sin_theta * cos_theta * gsl_pow_2(y[7]) - (2. * y[5] * r_1 + B_r2) * y[6];
-				dydt[7] = -(2. * cos_theta / sin_theta * y[6] + 2. * y[5] * r_1 + B_r2) * y[7];
-				return GSL_SUCCESS;
-			},
-			Jacobian,
-			const_cast<double *>(&this->PN1_));
+		return std::make_unique<Integrator>(PN1TLagrangianGeodesic, Jacobian, const_cast<double *>(&this->PN1_));
 	}
 
 	Schwarzschild::Schwarzschild() {}
@@ -380,114 +330,19 @@ namespace SBody {
 		if (time == T) {
 			if (coordinate == LAGRANGIAN) {
 				if (motion == GEODESIC)
-					return std::make_unique<Integrator>(
-						[](double t, const double y[], double dydt[], void *params) -> int {
-							dydt[0] = y[4]; // d\tau/dt
-							dydt[1] = y[5]; // dr/dt
-							dydt[2] = y[6]; // d\theta/dt
-							dydt[3] = y[7]; // d\phi/dt
-							const double r = y[1], sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
-							const double rm2 = r - 2., rm3 = r - 3.;
-							const double rm2r_1 = 1. / (rm2 * r);
-							// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
-							dydt[4] = 2. * y[5] * rm2r_1 * y[4];
-							// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-							dydt[5] = -rm2 / gsl_pow_3(r) + 3. * rm2r_1 * gsl_pow_2(y[5]) + rm2 * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
-							// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-							dydt[6] = -2. * rm3 * rm2r_1 * y[5] * y[6] + sin_theta * cos_theta * gsl_pow_2(y[7]);
-							// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-							if (sin_theta == 0.) {
-								if (y[7] == 0.)
-									dydt[7] = -2. * rm3 * rm2r_1 * y[5] * y[7];
-								else
-									return GSL_FAILURE;
-							} else
-								dydt[7] = -2. * (rm3 * rm2r_1 * y[5] + cos_theta / sin_theta * y[6]) * y[7];
-							return GSL_SUCCESS;
-						},
-						Jacobian);
-				if (motion == CIRCULAR)
-					return std::make_unique<Integrator>(
-						[](double t, const double y[], double dydt[], void *params) -> int {
-							dydt[0] = y[4]; // d\tau/dt
-							dydt[1] = y[5]; // dr/dt
-							dydt[2] = y[6]; // d\theta/dt
-							dydt[3] = y[7]; // d\phi/dt
-							dydt[4] = 0.;
-							dydt[5] = 0.;
-							dydt[6] = 0.;
-							dydt[7] = 0.;
-							return GSL_SUCCESS;
-						},
-						Jacobian);
-				if (motion == RIAF)
-					return std::make_unique<Integrator>(
-						[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
-						Jacobian);
-				if (motion == HELICAL)
-					return std::make_unique<Integrator>(
-						[](double t, const double y[], double dydt[], void *params) -> int {
-							const double g00 = 1. - 2. / y[1], sin_theta = abs(sin(y[2]));
-							if (g00 <= 0)
-								return GSL_FAILURE;
-							dydt[0] = y[4]; // d\tau/dt
-							dydt[1] = y[5]; // dr/dt
-							dydt[2] = 0.;	// d\theta/dt = 0.
-							dydt[3] = y[7]; // d\phi/dt
-							// d^2\tau/dt^2 = d^2\tau/dtdr * dr/dt
-							dydt[4] = ((1. + gsl_pow_2(y[5] / g00)) / gsl_pow_2(y[1]) + y[1] * gsl_pow_2(sin_theta * y[7])) * y[5] / sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * sin_theta * y[7]))); // y[4]?
-							// d^2r/dt^2 = 0.
-							dydt[5] = 0.;
-							// d^2\theta/dt^2 = 0.
-							dydt[6] = 0.;
-							// d^2\phi/dt^2 = d(d\phi/dt)/dr * dr/dt
-							dydt[7] = -2. * y[7] / y[1] * y[5];
-							return GSL_SUCCESS;
-						},
-						Jacobian);
-			}
-			if (coordinate == HAMILTONIAN && motion == GEODESIC)
-				return std::make_unique<Integrator>(
-					[](double t, const double y[], double dydt[], void *params) -> int {
-						const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), g00 = 1. - 2. * r_1, E = 1. - y[4], L2 = gsl_pow_2(y[7]);
-						const double sin_1_theta = 1. / abs(sin(y[2])), sin_2_theta = gsl_pow_2(sin_1_theta);
-						//[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
-						dydt[0] = g00 / E;							  // d\tau/dt
-						dydt[1] = g00 * y[5] * dydt[0];				  // dr/dt
-						dydt[2] = y[6] * r_2 * dydt[0];				  // d\theta/dt
-						dydt[3] = y[7] * sin_2_theta * r_2 * dydt[0]; // d\phi/dt
-						dydt[4] = 0.;
-						dydt[5] = (-(gsl_pow_2(y[5]) + gsl_pow_2(E) / gsl_pow_2(g00)) + (gsl_pow_2(y[6]) + L2 * sin_2_theta) * r_1) * r_2 * dydt[0];
-						dydt[6] = sin_2_theta * L2 * GSL_SIGN(y[2]) * cos(y[2]) * sin_1_theta * r_2 * dydt[0];
-						dydt[7] = 0.;
-						return GSL_SUCCESS;
-					},
-					Jacobian);
-		}
-		if (time == TAU && coordinate == LAGRANGIAN && motion == GEODESIC)
-			return std::make_unique<Integrator>(
-				[](double t, const double y[], double dydt[], void *params) -> int {
-					dydt[0] = y[4]; // dt/d\tau
-					dydt[1] = y[5]; // dr/d\tau
-					dydt[2] = y[6]; // d\theta/d\tau
-					dydt[3] = y[7]; // d\phi/d\tau
-					const double r = y[1], sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
-					const double rm2 = r - 2., r_1 = 1. / r;
-					const double rm2r_1 = 1. / (rm2 * r);
-					// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
-					dydt[4] = -2. * y[5] * rm2r_1 * y[4];
-					// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-					dydt[5] = -rm2 * gsl_pow_3(r_1) * gsl_pow_2(y[4]) + rm2r_1 * gsl_pow_2(y[5]) + rm2 * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
-					// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-					dydt[6] = -2. * r_1 * y[5] * y[6] + sin_theta * cos_theta * gsl_pow_2(y[7]);
-					// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-					dydt[7] = -2. * (r_1 * y[5] + cos_theta / sin_theta * y[6]) * y[7];
-					return GSL_SUCCESS;
-				},
-				Jacobian);
-		return std::make_unique<Integrator>(
-			[](double t, const double y[], double dydt[], void *params) -> int { return GSL_FAILURE; },
-			Jacobian);
+					return std::make_unique<Integrator>(SchwarzschildTLagrangianGeodesic, Jacobian);
+				else if (motion == CIRCULAR)
+					return std::make_unique<Integrator>(SchwarzschildTLagrangianCircular, Jacobian);
+				else if (motion == RIAF)
+					return std::make_unique<Integrator>(SchwarzschildTLagrangianRIAF, Jacobian);
+				else if (motion == HELICAL)
+					return std::make_unique<Integrator>(SchwarzschildTLagrangianHelical, Jacobian);
+			} else if (coordinate == HAMILTONIAN && motion == GEODESIC)
+				return std::make_unique<Integrator>(SchwarzschildTHamiltonianGeodesic, Jacobian);
+		} else if (time == TAU && coordinate == LAGRANGIAN && motion == GEODESIC)
+			return std::make_unique<Integrator>(SchwarzschildTauLagrangianGeodesic, Jacobian);
+		PrintlnError("Schwarzschild::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
+		return nullptr;
 	}
 
 	Kerr::Kerr(double spin) : a_(spin), a2_(a_ * a_), a4_(a2_ * a2_) {}
@@ -620,7 +475,7 @@ namespace SBody {
 			else if (coordinate == HAMILTONIAN)
 				return std::make_unique<Integrator>(KerrTauHamiltonianGeodesic, Jacobian, this);
 		}
-		PrintlnError("Time system not supported!");
+		PrintlnError("Kerr::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
 		return nullptr;
 	}
 
@@ -750,8 +605,142 @@ namespace SBody {
 		} else if (time == TAU) {
 			return std::make_unique<Integrator>(KerrTaubNutTauLagrangianGeodesic, Jacobian, this);
 		}
-		PrintlnError("Time system not supported!");
+		PrintlnError("KerrTaubNUT::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
 		return nullptr;
+	}
+	int NewtonTLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
+		const int PN = *static_cast<int *>(params);
+		const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+		const double v_tan2 = gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
+		const double rdot = y[5], rdot2 = gsl_pow_2(y[5]);
+		const double v2 = rdot2 + v_tan2;
+		dydt[0] = y[4];
+		dydt[1] = y[5];
+		dydt[2] = y[6];
+		dydt[3] = y[7];
+		dydt[4] = 0.;
+		double A = 1., B = 0.;
+		if (PN & 1) {
+			A += v2 - 4. * r_1;
+			B += -4. * rdot;
+		}
+		if (PN & 2) {
+			A += r_1 * (-2. * rdot2 + 9. * r_1);
+			B += 2. * r_1 * rdot;
+		}
+		if (PN & 8) {
+			A += -16. * gsl_pow_3(r_1) + rdot2 * r_2;
+			B += -4. * rdot * r_2;
+		}
+		const double B_r2 = B * r_2;
+		dydt[5] = r_1 * v_tan2 - r_2 * A - B_r2 * y[5];
+		dydt[6] = sin_theta * cos_theta * gsl_pow_2(y[7]) - (2. * y[5] * r_1 + B_r2) * y[6];
+		dydt[7] = -(2. * cos_theta / sin_theta * y[6] + 2. * y[5] * r_1 + B_r2) * y[7];
+		return GSL_SUCCESS;
+	}
+	int PN1TLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
+		const double PN1 = *static_cast<double *>(params);
+		const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+		const double v_tan2 = gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
+		const double v2 = gsl_pow_2(y[5]) + v_tan2;
+		dydt[0] = y[4];
+		dydt[1] = y[5];
+		dydt[2] = y[6];
+		dydt[3] = y[7];
+		dydt[4] = 0.;
+		const double A = 1. + (v2 - 4. * r_1) * PN1, B_r2 = -4. * y[5] * PN1 * r_2;
+		dydt[5] = r_1 * v_tan2 - r_2 * A - B_r2 * y[5];
+		dydt[6] = sin_theta * cos_theta * gsl_pow_2(y[7]) - (2. * y[5] * r_1 + B_r2) * y[6];
+		dydt[7] = -(2. * cos_theta / sin_theta * y[6] + 2. * y[5] * r_1 + B_r2) * y[7];
+		return GSL_SUCCESS;
+	}
+	int SchwarzschildTLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
+		dydt[0] = y[4]; // d\tau/dt
+		dydt[1] = y[5]; // dr/dt
+		dydt[2] = y[6]; // d\theta/dt
+		dydt[3] = y[7]; // d\phi/dt
+		const double r = y[1], sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+		const double rm2 = r - 2., rm3 = r - 3.;
+		const double rm2r_1 = 1. / (rm2 * r);
+		// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
+		dydt[4] = 2. * y[5] * rm2r_1 * y[4];
+		// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+		dydt[5] = -rm2 / gsl_pow_3(r) + 3. * rm2r_1 * gsl_pow_2(y[5]) + rm2 * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
+		// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+		dydt[6] = -2. * rm3 * rm2r_1 * y[5] * y[6] + sin_theta * cos_theta * gsl_pow_2(y[7]);
+		// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+		if (sin_theta == 0.) {
+			if (y[7] == 0.)
+				dydt[7] = -2. * rm3 * rm2r_1 * y[5] * y[7];
+			else
+				return GSL_FAILURE;
+		} else
+			dydt[7] = -2. * (rm3 * rm2r_1 * y[5] + cos_theta / sin_theta * y[6]) * y[7];
+		return GSL_SUCCESS;
+	}
+	int SchwarzschildTLagrangianCircular(double t, const double y[], double dydt[], void *params) {
+		dydt[0] = y[4]; // d\tau/dt
+		dydt[1] = 0.;	// dr/dt
+		dydt[2] = 0.;	// d\theta/dt
+		dydt[3] = y[7]; // d\phi/dt
+		dydt[4] = 0.;
+		dydt[5] = 0.;
+		dydt[6] = 0.;
+		dydt[7] = 0.;
+		return GSL_SUCCESS;
+	}
+	int SchwarzschildTLagrangianRIAF(double t, const double y[], double dydt[], void *params) {
+		return GSL_FAILURE;
+	}
+	int SchwarzschildTLagrangianHelical(double t, const double y[], double dydt[], void *params) {
+		const double g00 = 1. - 2. / y[1], sin_theta = abs(sin(y[2]));
+		if (g00 <= 0)
+			return GSL_FAILURE;
+		dydt[0] = y[4]; // d\tau/dt
+		dydt[1] = y[5]; // dr/dt
+		dydt[2] = 0.;	// d\theta/dt = 0.
+		dydt[3] = y[7]; // d\phi/dt
+		// d^2\tau/dt^2 = d^2\tau/dtdr * dr/dt
+		dydt[4] = ((1. + gsl_pow_2(y[5] / g00)) / gsl_pow_2(y[1]) + y[1] * gsl_pow_2(sin_theta * y[7])) * y[5] / sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * sin_theta * y[7]))); // y[4]?
+		// d^2r/dt^2 = 0.
+		dydt[5] = 0.;
+		// d^2\theta/dt^2 = 0.
+		dydt[6] = 0.;
+		// d^2\phi/dt^2 = d(d\phi/dt)/dr * dr/dt
+		dydt[7] = -2. * y[7] / y[1] * y[5];
+		return GSL_SUCCESS;
+	}
+	int SchwarzschildTHamiltonianGeodesic(double t, const double y[], double dydt[], void *params) {
+		const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), g00 = 1. - 2. * r_1, E = 1. - y[4], L2 = gsl_pow_2(y[7]);
+		const double sin_1_theta = 1. / abs(sin(y[2])), sin_2_theta = gsl_pow_2(sin_1_theta);
+		//[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
+		dydt[0] = g00 / E;							  // d\tau/dt
+		dydt[1] = g00 * y[5] * dydt[0];				  // dr/dt
+		dydt[2] = y[6] * r_2 * dydt[0];				  // d\theta/dt
+		dydt[3] = y[7] * sin_2_theta * r_2 * dydt[0]; // d\phi/dt
+		dydt[4] = 0.;
+		dydt[5] = (-(gsl_pow_2(y[5]) + gsl_pow_2(E) / gsl_pow_2(g00)) + (gsl_pow_2(y[6]) + L2 * sin_2_theta) * r_1) * r_2 * dydt[0];
+		dydt[6] = sin_2_theta * L2 * GSL_SIGN(y[2]) * cos(y[2]) * sin_1_theta * r_2 * dydt[0];
+		dydt[7] = 0.;
+		return GSL_SUCCESS;
+	}
+	int SchwarzschildTauLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
+		dydt[0] = y[4]; // dt/d\tau
+		dydt[1] = y[5]; // dr/d\tau
+		dydt[2] = y[6]; // d\theta/d\tau
+		dydt[3] = y[7]; // d\phi/d\tau
+		const double r = y[1], sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+		const double rm2 = r - 2., r_1 = 1. / r;
+		const double rm2r_1 = 1. / (rm2 * r);
+		// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
+		dydt[4] = -2. * y[5] * rm2r_1 * y[4];
+		// d^2r/dt^2=(d^2r/d\tau^2)*(d\tau/dt)^2+(dr/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+		dydt[5] = -rm2 * gsl_pow_3(r_1) * gsl_pow_2(y[4]) + rm2r_1 * gsl_pow_2(y[5]) + rm2 * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
+		// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+		dydt[6] = -2. * r_1 * y[5] * y[6] + sin_theta * cos_theta * gsl_pow_2(y[7]);
+		// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
+		dydt[7] = -2. * (r_1 * y[5] + cos_theta / sin_theta * y[6]) * y[7];
+		return GSL_SUCCESS;
 	}
 	int KerrTLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
 		Kerr *kerr = static_cast<Kerr *>(params);
