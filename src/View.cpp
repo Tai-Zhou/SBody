@@ -74,6 +74,8 @@ namespace SBody {
 		if (fast_trace && metric_->FastTrace(r_, theta_, sin_theta_, cos_theta_, position[1], position[2], position[3], alpha, beta, photon->data) == GSL_SUCCESS) {
 			record[0] = alpha * cos_iota_ - beta * sin_iota_;
 			record[1] = beta * cos_iota_ + alpha * sin_iota_;
+			record[2] = metric_->Redshift(position, photon->data);
+			record[3] = (gsl_vector_get(photon, 8)) / Unit::s;
 		} else {
 			auto t_start = chrono::steady_clock::now();
 			const double r_star = position[1], sin_theta_star = abs(sin(position[2])), cos_theta_star = GSL_SIGN(position[2]) * cos(position[2]), sin_phi_star = sin(position[3]), cos_phi_star = cos(position[3]);
