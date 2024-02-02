@@ -198,6 +198,7 @@ namespace SBody {
 		const double cos_observer_target = sin_theta_observer * sin_theta_target * cos_phi_target + cos_theta_observer * cos_theta_target;
 		const double delta_phi = acos(cos_observer_target), sin_observer_target = sqrt(1. - gsl_pow_2(cos_observer_target));
 		const double u0 = 1. / observer_r, u1 = 1. / target_r;
+		const double g11_1 = 1. - 2. * u1;
 		if (delta_phi == 0.) { // 0. <= delta_phi <= M_PI
 			alpha = 0.;
 			beta = 0.;
@@ -212,7 +213,7 @@ namespace SBody {
 			photon[8] = target_r - observer_r + 2. * log(target_r * u0);
 			return GSL_SUCCESS;
 		}
-		double impact_parameter_upper_limit = target_r / sqrt(1. - 2. * u1), turning_phi;
+		double impact_parameter_upper_limit = target_r / sqrt(g11_1), turning_phi;
 		if (double x0, x1, x2; u1 * 3. < 1. && gsl_poly_solve_cubic(-0.5, 0., 0.5 / gsl_pow_2(impact_parameter_upper_limit), &x0, &x1, &x2) == 3)
 			turning_phi = M_SQRT1_2 * EllipticIntegral(u0, u1, -x0, 1., u1, -1., x2, -1.); // use u1 instead of x1, prevent x1 < u1 < x1 + epsilon
 		else {
@@ -267,18 +268,21 @@ namespace SBody {
 		photon[1] = target_r;
 		photon[2] = target_theta;
 		photon[3] = target_phi;
-		photon[4] = observer_r * (target_r - 2.) / (target_r * (observer_r - 2.));
+		photon[4] = g11_1 / (1. - 2. * u0); // dt/d\tau = 1. when r = observer_r
 		if (delta_phi > turning_phi)
-			photon[5] = -(target_r - 2.) * u1 * sqrt(1. - (target_r - 2.) * u1 * gsl_pow_2(u1 * impact_solver.Root()));
+			photon[5] = -g11_1 * sqrt(1. - g11_1 * gsl_pow_2(u1 * impact_solver.Root()));
 		else
-			photon[5] = (target_r - 2.) * u1 * sqrt(1. - (target_r - 2.) * u1 * gsl_pow_2(u1 * impact_solver.Root()));
+			photon[5] = g11_1 * sqrt(1. - g11_1 * gsl_pow_2(u1 * impact_solver.Root()));
 		// the direction of the angular momentum is [alpha * cos_theta_observer, beta, -alpha * sin_theta_observer],
-		// so the y component (r^2 * d\theta/dtau * cos(phi)) should have the same sign as beta
-		if (cos_phi_target < 0)
-			photon[6] = -(target_r - 2.) * u1 * beta * gsl_pow_2(u1);
-		else
-			photon[6] = (target_r - 2.) * u1 * beta * gsl_pow_2(u1);
-		photon[7] = alpha == 0. ? 0. : -(target_r - 2.) * u1 * alpha * sin_theta_observer * gsl_pow_2(u1 / sin_theta_target);
+		// the y component should have the same sign as the component perpendicular to [cos(phi), sin(phi), 0],
+		// which is also the component along the [-sin(phi), cos(phi), 0] direction.
+		if (alpha == 0.) {
+			photon[6] = GSL_SIGN(beta * cos_phi_target - alpha * cos_theta_observer * sin_phi_target) * g11_1 * gsl_pow_2(u1) * impact_solver.Root();
+			photon[7] = 0.;
+		} else {
+			photon[6] = GSL_SIGN(beta * cos_phi_target - alpha * cos_theta_observer * sin_phi_target) * g11_1 * gsl_pow_2(u1) * sqrt(gsl_pow_2(impact_solver.Root()) - gsl_pow_2(alpha * sin_theta_observer / sin_theta_target));
+			photon[7] = -g11_1 * alpha * sin_theta_observer * gsl_pow_2(u1 / sin_theta_target);
+		}
 		return GSL_SUCCESS;
 	}
 	double Schwarzschild::Energy(const double y[], time_system time, coordinate_system coordinate) {
