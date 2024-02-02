@@ -162,9 +162,6 @@
 <li><p><strong>jacobian</strong> – The jacobian of the function <div class="math notranslate nohighlight">
 \[J_{ij}=\frac{\partial f_i\left[t,y(t)\right]}{\partial y_j}.\]</div>
 </p></li>
-<li><p><strong>coordinate</strong> – The coordinate of the system, <code class="docutils literal notranslate"><span class="pre">0</span></code> for Cartesian, <code class="docutils literal notranslate"><span class="pre">1</span></code> for spherical, and <code class="docutils literal notranslate"><span class="pre">2</span></code> for modified spherical. The modified spherical coordiante maps the polar angle from <span class="math notranslate nohighlight">\(\theta\in[0,\pi]\)</span> to <div class="math notranslate nohighlight">
-\[\begin{split} \theta'\equiv\begin{cases}\theta &amp; (\theta\leq\pi/2)\\ \theta-\pi &amp; (\theta&gt;\pi/2)\end{cases}. \end{split}\]</div>
-</p></li>
 <li><p><strong>params</strong> – The parameters passed to the function, like the PN parameter, or the spin of the black hole. </p></li>
 <li><p><strong>type</strong> – Type of the algorithms. Explicit embedded Runge-Kutta Prince-Dormand (8, 9) method is set by default. </p></li>
 </ul>
@@ -684,41 +681,18 @@
 </dl>
 </dd></dl>
 
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">_0x</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>x</strong> – </p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>result </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">_0x1</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>x</strong> – </p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>result </p>
-</dd>
-</dl>
-</dd></dl>
-
 <section id="elliptic-integrals">
 <h3>Elliptic Integrals<a class="headerlink" href="#elliptic-integrals" title="Link to this heading"></a></h3>
+<p>Calculate the elliptic integrals using the Legendre forms. Further information can be found in <a class="reference external" href="https://www.gnu.org/software/gsl/doc/html/specfunc.html#elliptic-integrals">GSL Manual</a>, <a class="reference external" href="https://www.ams.org/mcom/1988-51-183/S0025-5718-1988-0942154-7/">Carlson (1988)</a>, <a class="reference external" href="https://www.ams.org/mcom/1989-53-187/S0025-5718-1989-0969482-4/">Carlson (1989)</a>, <a class="reference external" href="https://www.ams.org/mcom/1991-56-193/S0025-5718-1991-1052087-6/">Carlson (1991)</a>, and <a class="reference external" href="https://www.ams.org/mcom/1992-59-199/S0025-5718-1992-1134720-4/">Carlson (1992)</a>.</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EllipticIntegral</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">y</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a2</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b2</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a3</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b3</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1.</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0.</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p><span class="math notranslate nohighlight">\(\int_x^y\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\)</span>. </p>
+<dd><p><div class="math notranslate nohighlight">
+\[\int_x^y\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\]</div>
+.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p></p>
+<dd class="field-odd"><p>result </p>
 </dd>
 </dl>
 </dd></dl>
@@ -726,10 +700,12 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EllipticIntegral2Imaginary</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">y</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">f</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">g</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">h</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1.</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0.</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p><span class="math notranslate nohighlight">\(\int_x^y(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\)</span>. </p>
+<dd><p><div class="math notranslate nohighlight">
+\[\int_x^y(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\]</div>
+.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p></p>
+<dd class="field-odd"><p>result </p>
 </dd>
 </dl>
 </dd></dl>
@@ -737,10 +713,12 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EllipticIntegral4Imaginary</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">y</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">f1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">g1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">h1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">f2</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">g2</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">h2</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p><span class="math notranslate nohighlight">\(\int_x^y\prod_{i=1}^2(f_i+g_it+h_it^2)^{-1/2}dt\)</span>. </p>
+<dd><p><div class="math notranslate nohighlight">
+\[\int_x^y\prod_{i=1}^2(f_i+g_it+h_it^2)^{-1/2}dt\]</div>
+.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p></p>
+<dd class="field-odd"><p>result </p>
 </dd>
 </dl>
 </dd></dl>
@@ -748,10 +726,12 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EllipticIntegral_2</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">y</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a5</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b5</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a2</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b2</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a3</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b3</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1.</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0.</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p><span class="math notranslate nohighlight">\(\int_x^y(a_5+b_5t)^{-1}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\)</span>. </p>
+<dd><p><div class="math notranslate nohighlight">
+\[\int_x^y(a_5+b_5t)^{-1}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\]</div>
+.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p></p>
+<dd class="field-odd"><p>result </p>
 </dd>
 </dl>
 </dd></dl>
@@ -759,10 +739,12 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EllipticIntegral2Imaginary_2</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">y</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a5</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b5</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">f</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">g</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">h</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1.</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0.</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p><span class="math notranslate nohighlight">\(\int_x^y(a_5+b_5t)^{-1}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\)</span>. </p>
+<dd><p><div class="math notranslate nohighlight">
+\[\int_x^y(a_5+b_5t)^{-1}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\]</div>
+.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p></p>
+<dd class="field-odd"><p>result </p>
 </dd>
 </dl>
 </dd></dl>
@@ -770,10 +752,12 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EllipticIntegral_4</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">y</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a5</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b5</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a2</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b2</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a3</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b3</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1.</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0.</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p><span class="math notranslate nohighlight">\(\int_x^y(a_5+b_5t)^{-2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\)</span>. </p>
+<dd><p><div class="math notranslate nohighlight">
+\[\int_x^y(a_5+b_5t)^{-2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\]</div>
+.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p></p>
+<dd class="field-odd"><p>result </p>
 </dd>
 </dl>
 </dd></dl>
@@ -781,10 +765,12 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EllipticIntegral2Imaginary_4</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">y</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a5</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b5</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">f</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">g</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">h</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b1</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">a4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1.</span></span>, <span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">b4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0.</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p><span class="math notranslate nohighlight">\(\int_x^y(a_5+b_5t)^{-2}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\)</span>. </p>
+<dd><p><div class="math notranslate nohighlight">
+\[\int_x^y(a_5+b_5t)^{-2}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\]</div>
+.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p></p>
+<dd class="field-odd"><p>result </p>
 </dd>
 </dl>
 </dd></dl>
