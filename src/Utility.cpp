@@ -374,16 +374,17 @@ namespace SBody {
 		const double W2 = U2_12 - d13 * d14 * d25 * d15_1;
 		const double Q2 = gsl_pow_2(X5 * Y5 / (X1 * Y1)) * W2;
 		const double P2 = Q2 + d25 * d35 * d45 * d15_1;
+		const double R_C = X1 * Y1 == 0. ? 0. : gsl_sf_ellint_RC(P2, Q2, GSL_PREC_DOUBLE);
 		const double I1 = 2. * gsl_sf_ellint_RF(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE);
-		const double I3 = 2. * (d12 * d13 * d14 * d15_1 / 3. * gsl_sf_ellint_RJ(U2_12, U2_13, U2_14, W2, GSL_PREC_DOUBLE) + gsl_sf_ellint_RC(P2, Q2, GSL_PREC_DOUBLE));
+		const double I3 = 2. * (d12 * d13 * d14 * d15_1 / 3. * gsl_sf_ellint_RJ(U2_12, U2_13, U2_14, W2, GSL_PREC_DOUBLE) + R_C);
 		return (b5 * I3 - b1 * I1) * d15_1;
 	}
 	double EllipticIntegral2Imaginary_2(double x, double y, double a5, double b5, double f, double g, double h, double a1, double b1, double a4, double b4) {
 		if (x == y)
 			return 0.;
 		const double d14 = a1 * b4 - a4 * b1, d15 = a1 * b5 - a5 * b1, d15_1 = 1. / d15, d45 = a4 * b5 - a5 * b4;
-		const double X1 = sqrt(a1 + b1 * x), X4 = sqrt(a4 + b4 * x);
-		const double Y1 = sqrt(a1 + b1 * y), Y4 = sqrt(a4 + b4 * y);
+		const double X1 = sqrt(a1 + b1 * x), X4 = sqrt(a4 + b4 * x), X5 = sqrt(a5 + b5 * x);
+		const double Y1 = sqrt(a1 + b1 * y), Y4 = sqrt(a4 + b4 * y), Y5 = sqrt(a5 + b5 * y);
 		const double xi = sqrt(f + (g + h * y) * y), eta = sqrt(f + (g + h * x) * x);
 		const double M2 = gsl_pow_2(X1 * Y4 + X4 * Y1) * (gsl_pow_2((xi + eta) / (y - x)) - h);
 		const double c2_11 = 2 * (f * b1 * b1 - g * a1 * b1 + h * a1 * a1), c2_44 = 2 * (f * b4 * b4 - g * a4 * b4 + h * a4 * a4), c2_55 = 2 * (f * b5 * b5 - g * a5 * b5 + h * a5 * a5);
@@ -392,8 +393,11 @@ namespace SBody {
 		const double L2m = M2 + c2_14 - c11_c44, L2p = M2 + c2_14 + c11_c44;
 		const double W2p = M2 + d14 * (c2_15 + c11 * c55) * d15_1;
 		const double U = (Y1 * Y4 * eta + X1 * X4 * xi) / (y - x), U2 = gsl_pow_2(U);
+		const double W2 = U2 - c2_11 * d45 * d15_1;
+		const double Q2 = gsl_pow_2(X5 * Y5 / (X1 * Y1)) * W2;
+		const double P2 = Q2 + 0.5 * c2_55 * d45 * d15_1;
 		const double I1 = 4. * gsl_sf_ellint_RF(M2, L2m, L2p, GSL_PREC_DOUBLE);
-		const double I3 = 2. * c11 / (3. * c55) * (4. * d14 * d15_1 * (c2_15 + c11 * c55) * gsl_sf_ellint_RJ(M2, L2m, L2p, W2p, GSL_PREC_DOUBLE) - 1.5 * I1 + 3. * gsl_sf_ellint_RC(U2, U2 - 0.5 * c2_11 * d45 * d15_1, GSL_PREC_DOUBLE));
+		const double I3 = 2. * (c11 / (3. * c55) * (4. * d14 * d15_1 * (c2_15 + c11 * c55) * gsl_sf_ellint_RJ(M2, L2m, L2p, W2p, GSL_PREC_DOUBLE) - 1.5 * I1 + 3. * gsl_sf_ellint_RC(U2, W2, GSL_PREC_DOUBLE)) + gsl_sf_ellint_RC(P2, Q2, GSL_PREC_DOUBLE));
 		return (b5 * I3 - b1 * I1) * d15_1;
 	}
 	double EllipticIntegral_4(double x, double y, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4, double b4) {
@@ -407,12 +411,13 @@ namespace SBody {
 		const double U2_12 = gsl_pow_2((X1 * X2 * Y3 * Y4 + Y1 * Y2 * X3 * X4) / (y - x));
 		const double U2_13 = U2_12 - d14 * d23;
 		const double U2_14 = U2_12 - d13 * d24;
-		const double W2 = U2_12 - d13 * d14 * d25 * d15_1; // FIXME:
+		const double W2 = U2_12 - d13 * d14 * d25 * d15_1;
 		const double Q2 = gsl_pow_2(X5 * Y5 / (X1 * Y1)) * W2;
 		const double P2 = Q2 + d25 * d35 * d45 * d15_1;
+		const double R_C = X1 * Y1 == 0. ? 0. : gsl_sf_ellint_RC(P2, Q2, GSL_PREC_DOUBLE);
 		const double I1 = 2. * gsl_sf_ellint_RF(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE);
 		const double I2 = 2. * (d12 * d13 * gsl_sf_ellint_RD(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE) / 3. + X1 * Y1 / (X4 * Y4 * sqrt(U2_14)));
-		const double I3 = 2. * (d12 * d13 * d14 * d15_1 / 3. * gsl_sf_ellint_RJ(U2_12, U2_13, U2_14, W2, GSL_PREC_DOUBLE) + gsl_sf_ellint_RC(P2, Q2, GSL_PREC_DOUBLE));
+		const double I3 = 2. * (d12 * d13 * d14 * d15_1 / 3. * gsl_sf_ellint_RJ(U2_12, U2_13, U2_14, W2, GSL_PREC_DOUBLE) + R_C);
 		return -0.5 * d15_1 * ((b1 * b5) / d15 + (b2 * b5) / d25 + (b3 * b5) / d35 + (b4 * b5) / d45) * I3 + b5 * b5 * d24 * d34 / (2. * d15 * d25 * d35 * d45) * I2 + gsl_pow_2(b1 * d15_1) * (1. - d12 * d13 * b5 * b5 / (2. * b1 * b1 * d25 * d35)) * I1 - b5 * b5 / (d15 * d25 * d35) * (Y1 * Y2 * Y3 / (Y4 * Y5 * Y5) - X1 * X2 * X3 / (X4 * X5 * X5));
 	}
 	double EllipticIntegral2Imaginary_4(double x, double y, double a5, double b5, double f, double g, double h, double a1, double b1, double a4, double b4) {
@@ -429,9 +434,12 @@ namespace SBody {
 		const double L2m = M2 + c2_14 - c11_c44, L2p = M2 + c2_14 + c11_c44;
 		const double W2p = M2 + d14 * (c2_15 + c11 * c55) * d15_1;
 		const double U = (Y1 * Y4 * eta + X1 * X4 * xi) / (y - x), U2 = gsl_pow_2(U);
+		const double W2 = U2 - c2_11 * d45 * d15_1;
+		const double Q2 = gsl_pow_2(X5 * Y5 / (X1 * Y1)) * W2;
+		const double P2 = Q2 + 0.5 * c2_55 * d45 * d15_1;
 		const double I1 = 4. * gsl_sf_ellint_RF(M2, L2m, L2p, GSL_PREC_DOUBLE);
 		const double I2 = 2. * c11 / (3. * c44) * (4. * (c2_14 + c11_c44) * gsl_sf_ellint_RD(M2, L2m, L2p, GSL_PREC_DOUBLE) - 1.5 * I1 + 3. / U) + 2. * X1 * Y1 / (X4 * Y4 * U);
-		const double I3 = 2. * c11 / (3. * c55) * (4. * d14 * d15_1 * (c2_15 + c11 * c55) * gsl_sf_ellint_RJ(M2, L2m, L2p, W2p, GSL_PREC_DOUBLE) - 1.5 * I1 + 3. * gsl_sf_ellint_RC(U2, U2 - 0.5 * c2_11 * d45 * d15_1, GSL_PREC_DOUBLE));
+		const double I3 = 2. * (c11 / (3. * c55) * (4. * d14 * d15_1 * (c2_15 + c11 * c55) * gsl_sf_ellint_RJ(M2, L2m, L2p, W2p, GSL_PREC_DOUBLE) - 1.5 * I1 + 3. * gsl_sf_ellint_RC(U2, W2, GSL_PREC_DOUBLE)) + gsl_sf_ellint_RC(P2, Q2, GSL_PREC_DOUBLE));
 		return -0.5 * d15_1 * ((b1 * b5) / d15 + 2. * b5 * (g * b5 - 2. * h * a5) / c2_55 + (b4 * b5) / d45) * I3 + b5 * b5 * 0.5 * c2_44 / (d15 * d45 * c2_55) * I2 + gsl_pow_2(b1 * d15_1) * (1. - 0.5 * c2_11 * b5 * b5 / (b1 * b1 * c2_55)) * I1 - b5 * b5 / (0.5 * d15 * c2_55) * (Y1 * xi / (Y4 * Y5 * Y5) - X1 * eta / (X4 * X5 * X5));
 	}
 } // namespace SBody
