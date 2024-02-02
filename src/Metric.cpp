@@ -186,9 +186,9 @@ namespace SBody {
 		return 0;
 	}
 	int Schwarzschild::HamiltonianToLagrangian(double y[]) {
-		const double r_1 = 1. / y[1], g00 = 1. - 2. * r_1;
-		y[4] = -g00 / (y[4] - 1.);
-		y[5] *= g00 * y[4];
+		const double r_1 = 1. / y[1], g11_1 = 1. - 2. * r_1;
+		y[4] = -g11_1 / (y[4] - 1.);
+		y[5] *= g11_1 * y[4];
 		y[6] *= gsl_pow_2(r_1) * y[4];
 		y[7] *= gsl_pow_2(r_1 / sin(y[2])) * y[4];
 		return 0;
@@ -289,41 +289,41 @@ namespace SBody {
 		if (coordinate == LAGRANGIAN) {
 			if (time == T)
 				return (y[1] - 2.) / (y[1] * y[4]);
-			else // time == TAU
-				return (y[1] - 2.) * y[4] / y[1];
-		} else // coordinate == HAMILTONIAN
-			return 1. - y[4];
+			// time == TAU
+			return (1. - 2. / y[1]) * y[4];
+		} // coordinate == HAMILTONIAN
+		return 1. - y[4];
 	}
 	double Schwarzschild::AngularMomentum(const double y[], time_system time, coordinate_system coordinate) {
 		if (coordinate == LAGRANGIAN) {
 			if (time == T)
 				return gsl_pow_2(y[1] * sin(y[2])) * y[7] / y[4];
-			else // time == TAU
-				return gsl_pow_2(y[1] * sin(y[2])) * y[7];
-		} else // coordinate == HAMILTONIAN
-			return y[7];
+			// time == TAU
+			return gsl_pow_2(y[1] * sin(y[2])) * y[7];
+		} // coordinate == HAMILTONIAN
+		return y[7];
 	}
 	double Schwarzschild::CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) {
 		if (coordinate == LAGRANGIAN) {
 			if (time == T)
 				return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2]))) / gsl_pow_2(y[4]);
-			else // time == TAU
-				return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2])));
-		} else // coordinate == HAMILTONIAN
-			return gsl_pow_2(y[6]) + gsl_pow_2(y[7] / tan(y[2]));
+			// time == TAU
+			return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2])));
+		} // coordinate == HAMILTONIAN
+		return gsl_pow_2(y[6]) + gsl_pow_2(y[7] / tan(y[2]));
 	}
 	int Schwarzschild::NormalizeTimelikeGeodesic(double y[]) {
-		const double g00 = 1. - 2. / y[1];
-		if (g00 <= 0)
+		const double g11_1 = 1. - 2. / y[1];
+		if (g11_1 <= 0)
 			return 1;
-		y[4] = sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+		y[4] = sqrt(g11_1 - (gsl_pow_2(y[5]) / g11_1 + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
 		return std::isnan(y[4]);
 	}
 	int Schwarzschild::NormalizeNullGeodesic(double y[], double frequency) {
-		const double g00 = 1. - 2. / y[1];
-		if (g00 <= 0)
+		const double g11_1 = 1. - 2. / y[1];
+		if (g11_1 <= 0)
 			return 1;
-		const double coefficient = GSL_SIGN(frequency) * g00 / sqrt(gsl_pow_2(y[5]) + g00 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+		const double coefficient = GSL_SIGN(frequency) * g11_1 / sqrt(gsl_pow_2(y[5]) + g11_1 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
 		y[4] = frequency;
 		y[5] *= coefficient;
 		y[6] *= coefficient;
@@ -715,15 +715,15 @@ namespace SBody {
 		return GSL_SUCCESS;
 	}
 	int SchwarzschildTHamiltonianGeodesic(double t, const double y[], double dydt[], void *params) {
-		const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), g00 = 1. - 2. * r_1, E = 1. - y[4], L2 = gsl_pow_2(y[7]);
+		const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), g11_1 = 1. - 2. * r_1, E = 1. - y[4], L2 = gsl_pow_2(y[7]);
 		const double sin_1_theta = 1. / abs(sin(y[2])), sin_2_theta = gsl_pow_2(sin_1_theta);
 		//[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
-		dydt[0] = g00 / E;							  // d\tau/dt
-		dydt[1] = g00 * y[5] * dydt[0];				  // dr/dt
+		dydt[0] = g11_1 / E;						  // d\tau/dt
+		dydt[1] = g11_1 * y[5] * dydt[0];			  // dr/dt
 		dydt[2] = y[6] * r_2 * dydt[0];				  // d\theta/dt
 		dydt[3] = y[7] * sin_2_theta * r_2 * dydt[0]; // d\phi/dt
 		dydt[4] = 0.;
-		dydt[5] = (-(gsl_pow_2(y[5]) + gsl_pow_2(E) / gsl_pow_2(g00)) + (gsl_pow_2(y[6]) + L2 * sin_2_theta) * r_1) * r_2 * dydt[0];
+		dydt[5] = (-(gsl_pow_2(y[5]) + gsl_pow_2(E) / gsl_pow_2(g11_1)) + (gsl_pow_2(y[6]) + L2 * sin_2_theta) * r_1) * r_2 * dydt[0];
 		dydt[6] = sin_2_theta * L2 * GSL_SIGN(y[2]) * cos(y[2]) * sin_1_theta * r_2 * dydt[0];
 		dydt[7] = 0.;
 		return GSL_SUCCESS;
