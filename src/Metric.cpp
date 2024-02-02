@@ -697,21 +697,23 @@ namespace SBody {
 		return GSL_FAILURE;
 	}
 	int SchwarzschildTLagrangianHelical(double t, const double y[], double dydt[], void *params) {
-		const double g00 = 1. - 2. / y[1], sin_theta = abs(sin(y[2]));
-		if (g00 <= 0)
+		const double r = y[1];
+		if (r <= 2.)
 			return GSL_FAILURE;
+		const double sin2_theta = gsl_pow_2(sin(y[2]));
+		const double g00 = -1. + 2. / r, g11 = -1. / g00, g33 = gsl_pow_2(r) * sin2_theta;
 		dydt[0] = y[4]; // d\tau/dt
 		dydt[1] = y[5]; // dr/dt
 		dydt[2] = 0.;	// d\theta/dt = 0.
 		dydt[3] = y[7]; // d\phi/dt
 		// d^2\tau/dt^2 = d^2\tau/dtdr * dr/dt
-		dydt[4] = ((1. + gsl_pow_2(y[5] / g00)) / gsl_pow_2(y[1]) + y[1] * gsl_pow_2(sin_theta * y[7])) * y[5] / sqrt(g00 - (gsl_pow_2(y[5]) / g00 + gsl_pow_2(y[1] * sin_theta * y[7]))); // y[4]?
+		dydt[4] = sin2_theta * y[5] * (r * (-g00 - g11 * gsl_pow_2(y[5]) - gsl_pow_2(y[4])) + 1. + gsl_pow_2(g11) * gsl_pow_2(y[5])) / (y[4] * (g33 + gsl_pow_2(g33 * y[7] / y[4])));
 		// d^2r/dt^2 = 0.
 		dydt[5] = 0.;
 		// d^2\theta/dt^2 = 0.
 		dydt[6] = 0.;
 		// d^2\phi/dt^2 = d(d\phi/dt)/dr * dr/dt
-		dydt[7] = -2. * y[7] / y[1] * y[5];
+		dydt[7] = y[7] * (-2. / r * y[5] + dydt[4] / y[4]);
 		return GSL_SUCCESS;
 	}
 	int SchwarzschildTHamiltonianGeodesic(double t, const double y[], double dydt[], void *params) {
