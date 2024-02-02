@@ -5,6 +5,10 @@
 Metric
 ======
 
+.. doxygenclass:: SBody::Metric
+   :members:
+   :no-link:
+
 Newton & Post-Newtonian
 -----------------------
 
@@ -12,7 +16,12 @@ Newton & Post-Newtonian
    Newton
    Post-Newtonian
 
-.. doxygennamespace:: SBody::Metric::Newton
+.. doxygenclass:: SBody::Newton
+   :members:
+   :no-link:
+
+.. doxygenclass:: SBody::PN1
+   :members:
    :no-link:
 
 Schwarzschild
@@ -21,7 +30,8 @@ Schwarzschild
 .. index::
    Schwarzschild
 
-.. doxygennamespace:: SBody::Metric::Schwarzschild
+.. doxygenclass:: SBody::Schwarzschild
+   :members:
    :no-link:
 
 Kerr
@@ -30,7 +40,8 @@ Kerr
 .. index::
    Kerr
 
-.. doxygennamespace:: SBody::Metric::Kerr
+.. doxygenclass:: SBody::Kerr
+   :members:
    :no-link:
 
 Kerr-Taub-NUT
@@ -39,5 +50,6 @@ Kerr-Taub-NUT
 .. index::
    Kerr-Taub-NUT
 
-.. doxygennamespace:: SBody::Metric::KerrTaubNUT
+.. doxygenclass:: SBody::KerrTaubNUT
+   :members:
    :no-link:
