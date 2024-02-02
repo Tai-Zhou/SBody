@@ -73,10 +73,6 @@ namespace SBody {
 		 *
 		 * @param function The function calculates \f[\frac{\mathrm dy_i(t)}{\mathrm dt}=f_i\left[t,y_1(t),\dots,y_n(t)\right].\f]
 		 * @param jacobian The jacobian of the function \f[J_{ij}=\frac{\partial f_i\left[t,y(t)\right]}{\partial y_j}.\f]
-		 * @param coordinate The coordinate of the system, `0` for Cartesian, `1` for spherical, and `2` for modified spherical. The modified spherical coordiante maps the polar angle from \f$\theta\in[0,\pi]\f$ to \f[
-		 * \theta'\equiv\begin{cases}\theta & (\theta\leq\pi/2)\\
-		 * \theta-\pi & (\theta>\pi/2)\end{cases}.
-		 * \f]
 		 * @param params The parameters passed to the function, like the PN parameter, or the spin of the black hole.
 		 * @param type Type of the algorithms. Explicit embedded Runge-Kutta Prince-Dormand (8, 9) method is set by default.
 		 */
@@ -395,8 +391,10 @@ namespace SBody {
 	int OppositeSign(double x, double y);
 
 	/**
-	 * @brief Map `theta` from \f$(\pi/2, \pi]\f$ to \f$(-\pi/2, 0]\f$.
-	 *
+	 * @brief The modified spherical coordiante maps the polar angle from \f$\theta\in[0,\pi]\f$ to \f[
+	 * \theta'\equiv\begin{cases}\theta & (\theta\leq\pi/2)\\
+	 * \theta-\pi & (\theta>\pi/2)\end{cases}.
+	 * \f]
 	 * @param theta_0
 	 * @param y
 	 */
@@ -434,51 +432,51 @@ namespace SBody {
 	double _0x1(double x);
 
 	/**
-	 * @brief \f$\int_x^y\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f$.
+	 * @brief \f[\int_x^y\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
 	 *
-	 * @return
+	 * @return result
 	 */
 	double EllipticIntegral(double x, double y, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
 
 	/**
-	 * @brief \f$\int_x^y(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f$.
+	 * @brief \f[\int_x^y(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f].
 	 *
-	 * @return
+	 * @return result
 	 */
 	double EllipticIntegral2Imaginary(double x, double y, double f, double g, double h, double a1, double b1, double a4 = 1., double b4 = 0.);
 
 	/**
-	 * @brief \f$\int_x^y\prod_{i=1}^2(f_i+g_it+h_it^2)^{-1/2}dt\f$.
+	 * @brief \f[\int_x^y\prod_{i=1}^2(f_i+g_it+h_it^2)^{-1/2}dt\f].
 	 *
-	 * @return
+	 * @return result
 	 */
 	double EllipticIntegral4Imaginary(double x, double y, double f1, double g1, double h1, double f2, double g2, double h2);
 
 	/**
-	 * @brief \f$\int_x^y(a_5+b_5t)^{-1}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f$.
+	 * @brief \f[\int_x^y(a_5+b_5t)^{-1}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
 	 *
-	 * @return
+	 * @return result
 	 */
 	double EllipticIntegral_2(double x, double y, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
 
 	/**
-	 * @brief \f$\int_x^y(a_5+b_5t)^{-1}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f$.
+	 * @brief \f[\int_x^y(a_5+b_5t)^{-1}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f].
 	 *
-	 * @return
+	 * @return result
 	 */
 	double EllipticIntegral2Imaginary_2(double x, double y, double a5, double b5, double f, double g, double h, double a1, double b1, double a4 = 1., double b4 = 0.);
 
 	/**
-	 * @brief \f$\int_x^y(a_5+b_5t)^{-2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f$.
+	 * @brief \f[\int_x^y(a_5+b_5t)^{-2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
 	 *
-	 * @return
+	 * @return result
 	 */
 	double EllipticIntegral_4(double x, double y, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
 
 	/**
-	 * @brief \f$\int_x^y(a_5+b_5t)^{-2}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f$.
+	 * @brief \f[\int_x^y(a_5+b_5t)^{-2}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f].
 	 *
-	 * @return
+	 * @return result
 	 */
 	double EllipticIntegral2Imaginary_4(double x, double y, double a5, double b5, double f, double g, double h, double a1, double b1, double a4 = 1., double b4 = 0.);
 } // namespace SBody

@@ -23,7 +23,7 @@ namespace SBody {
 		 * @brief Initialize the unit system
 		 *
 		 * @param mass mass of the central black hole, in unit of \f$M_\odot\f$
-		 * @return int
+		 * @return status
 		 */
 		static int Initialize(double mass);
 		/// Degree, in unit of rad
