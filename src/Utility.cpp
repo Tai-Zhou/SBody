@@ -330,14 +330,6 @@ namespace SBody {
 			phi -= M_2PI;
 		return phi;
 	}
-	double _0x(double x) {
-		return x > 0 ? x : 0;
-	}
-	double _0x1(double x) {
-		if (x < 0)
-			return 0;
-		return x < 1 ? x : 1;
-	}
 	double EllipticIntegral(double x, double y, double a1, double b1, double a2, double b2, double a3, double b3, double a4, double b4) {
 		if (x == y)
 			return 0.;

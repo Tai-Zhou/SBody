@@ -416,22 +416,6 @@ namespace SBody {
 	double PhiDifference(double phi);
 
 	/**
-	 * @brief
-	 *
-	 * @param x
-	 * @return result
-	 */
-	double _0x(double x);
-
-	/**
-	 * @brief
-	 *
-	 * @param x
-	 * @return result
-	 */
-	double _0x1(double x);
-
-	/**
 	 * @brief \f[\int_x^y\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
 	 *
 	 * @return result
