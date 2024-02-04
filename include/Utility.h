@@ -457,12 +457,8 @@ namespace SBody {
 	 */
 	double EllipticIntegral_4(double x, double y, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
 
-	/**
-	 * @brief \f[\int_x^y(a_5+b_5t)^{-2}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f].
-	 *
-	 * @return result
-	 */
-	double EllipticIntegral2Imaginary_4(double x, double y, double a5, double b5, double f, double g, double h, double a1, double b1, double a4 = 1., double b4 = 0.);
+	double Carlson_RC(double x, double y, gsl_mode_t mode = GSL_PREC_DOUBLE);
+	double Carlson_RJ(double x, double y, double z, double p, gsl_mode_t mode = GSL_PREC_DOUBLE);
 } // namespace SBody
 
 #endif

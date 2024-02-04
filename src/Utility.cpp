@@ -434,4 +434,16 @@ namespace SBody {
 		const double I3 = 2. * (c11 / (3. * c55) * (4. * d14 * d15_1 * (c2_15 + c11 * c55) * gsl_sf_ellint_RJ(M2, L2m, L2p, W2p, GSL_PREC_DOUBLE) - 1.5 * I1 + 3. * gsl_sf_ellint_RC(U2, W2, GSL_PREC_DOUBLE)) + gsl_sf_ellint_RC(P2, Q2, GSL_PREC_DOUBLE));
 		return -0.5 * d15_1 * ((b1 * b5) / d15 + 2. * b5 * (g * b5 - 2. * h * a5) / c2_55 + (b4 * b5) / d45) * I3 + b5 * b5 * 0.5 * c2_44 / (d15 * d45 * c2_55) * I2 + gsl_pow_2(b1 * d15_1) * (1. - 0.5 * c2_11 * b5 * b5 / (b1 * b1 * c2_55)) * I1 - b5 * b5 / (0.5 * d15 * c2_55) * (Y1 * xi / (Y4 * Y5 * Y5) - X1 * eta / (X4 * X5 * X5));
 	}
+	double Carlson_RC(double x, double y, gsl_mode_t mode) {
+		if (y <= 0.)
+			return sqrt(x / (x - y)) * gsl_sf_ellint_RC(x - y, -y, mode);
+		return gsl_sf_ellint_RC(x, y, mode);
+	}
+	double Carlson_RJ(double x, double y, double z, double p, gsl_mode_t mode) {
+		if (p <= 0.) {
+			const double y_1 = 1. / y, y_p_1 = 1. / (y - p), gamma = y + (z - y) * (y - x) * y_p_1;
+			return ((gamma - y) * gsl_sf_ellint_RJ(x, y, z, gamma, mode) - 3. * (gsl_sf_ellint_RF(x, y, z, mode) - Carlson_RC(x * z * y_1, p * gamma * y_1))) * y_p_1;
+		}
+		return gsl_sf_ellint_RJ(x, y, z, p, mode);
+	}
 } // namespace SBody
