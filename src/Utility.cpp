@@ -390,8 +390,52 @@ namespace SBody {
 		const double I2 = 2. * (c11 / (3. * c44) * (4. * (c2_14 + c11_c44) * gsl_sf_ellint_RD(M2, L2m, L2p, GSL_PREC_DOUBLE) - 1.5 * I1 + 3. / U) + X1 * Y1 / (X4 * Y4 * U));
 		return -0.5 * d15_1 * ((b1 * b5) / d15 + 2. * b5 * (g * b5 - 2. * h * a5) / c2_55 + (b4 * b5) / d45) * I3 + b52 * 0.5 * c2_44 / (d15 * d45 * c2_55) * I2 + gsl_pow_2(b1 * d15_1) * (1. - 0.5 * c2_11 * b52 / (b12 * c2_55)) * I1 - b52 / (0.5 * d15 * c2_55) * (X1 * xi / (X4 * X52) - Y1 * eta / (Y4 * Y52));
 	}
-	double EllipticIntegral4Imaginary(double y, double x, double f1, double g1, double h1, double f2, double g2, double h2) {
-		return GSL_NAN;
+	double EllipticIntegral4Imaginary(int p5, double y, double x, double a5, double b5, double f1, double g1, double h1, double f2, double g2, double h2) {
+		if (x == y)
+			return 0.;
+		if (p5 != 0 && p5 != -2 && p5 != -4)
+			return GSL_NAN;
+		const double x_y_1 = 1. / (x - y);
+		const double xi12 = f1 + (g1 + h1 * x) * x, eta12 = f1 + (g1 + h1 * y) * y;
+		const double xi22 = f2 + (g2 + h2 * x) * x, eta22 = f2 + (g2 + h2 * y) * y;
+		const double xi1 = sqrt(xi12), eta1 = sqrt(eta12);
+		const double xi2 = sqrt(xi22), eta2 = sqrt(eta22);
+		const double xi1p = (g1 + 2. * h1 * x) / (2. * xi1), eta_1p = (g1 + 2. * h1 * y) / (2. * eta1);
+		const double B = xi1p * xi2 - eta_1p * eta2;
+		const double theta1 = xi12 + eta12 - h1 * gsl_pow_2(x - y);
+		const double theta2 = xi22 + eta22 - h2 * gsl_pow_2(x - y);
+		const double zeta1 = sqrt(2. * xi1 * eta1 + theta1), zeta2 = sqrt(2. * xi2 * eta2 + theta2);
+		const double U = (xi1 * eta2 + xi2 * eta1) * x_y_1, U2 = gsl_pow_2(U);
+		const double M = zeta1 * zeta2 * x_y_1;
+		const double M2 = gsl_pow_2(M);
+		const double delta11_2 = 4. * f1 * h1 - gsl_pow_2(g1), delta12_2 = 2. * (f1 * h2 + f2 * h1) - g1 * g2, delta22_2 = 4. * f2 * h2 - gsl_pow_2(g2);
+		const double Delta = sqrt(gsl_pow_2(delta12_2) - delta11_2 * delta22_2);
+		const double Deltam = delta12_2 - Delta, Deltap = delta12_2 + Delta;
+		const double L2m = M2 + Deltam, L2p = M2 + Deltap;
+		const double RF = gsl_sf_ellint_RF(M2, L2m, L2p, GSL_PREC_DOUBLE);
+		if (p5 == 0)
+			return 4. * RF;
+		const double G = 2. * Delta * Deltap * gsl_sf_ellint_RD(M2, L2m, L2p, GSL_PREC_DOUBLE) / 3. + Delta / (2. * U) + (delta12_2 * theta1 - delta11_2 * theta2) / (4. * xi1 * eta1 * U);
+		const double Sigma = G - Deltap * RF + B;
+		const double alpha15 = 2. * f1 * b5 - g1 * a5, beta15 = g1 * b5 - 2. * h1 * a5;
+		const double alpha25 = 2. * f2 * b5 - g2 * a5, beta25 = g2 * b5 - 2. * h2 * a5;
+		const double gamma1 = 0.5 * (alpha15 * b5 - beta15 * a5), gamma2 = 0.5 * (alpha25 * b5 - beta25 * a5);
+		const double gamma1_1 = 1. / gamma1, gamma2_1 = 1. / gamma2;
+		const double Lambda = delta11_2 * gamma2 * gamma1_1;
+		const double Omega2 = M2 + Lambda;
+		const double psi = 0.5 * (alpha15 * beta25 - alpha25 * beta15);
+		const double xi5 = a5 + b5 * x, eta5 = a5 + b5 * y;
+		const double X = 0.5 * x_y_1 * (xi5 * (alpha15 + beta15 * y) * eta2 / eta1 + eta5 * (alpha15 + beta15 * x) * xi2 / xi1);
+		const double S = 0.5 * (M2 + delta12_2) - U2, S2 = gsl_pow_2(S);
+		const double mu = gamma1 * xi5 * eta5 / (xi1 * eta1);
+		const double T = mu * S + 2. * gamma1 * gamma2, T2 = gsl_pow_2(T);
+		const double V2 = gsl_pow_2(mu) * (S2 + Lambda * U2);
+		const double a = S * Omega2 / U + 2. * Lambda * U, a2 = gsl_pow_2(a);
+		const double b2 = (S2 / U2 + Lambda) * gsl_pow_2(Omega2);
+		const double H = delta11_2 * psi * gsl_pow_2(gamma1_1) * (Carlson_RJ(M2, L2m, L2p, Omega2) / 3. + 0.5 * Carlson_RC(a2, b2)) - X * Carlson_RC(T2, V2);
+		if (p5 == -2)
+			return -2. * (b5 * H + beta15 * RF * gamma1_1);
+		return b5 * (beta15 * gamma1_1 + beta25 * gamma2_1) * H + gsl_pow_2(beta15 * gamma1_1) * RF + gsl_pow_2(b5) * (Sigma - b5 * (xi1 * xi2 / xi5 - eta1 * eta2 / eta5)) * gamma1_1 * gamma2_1;
 	}
 	double Carlson_RC(double x, double y, gsl_mode_t mode) {
 		if (y <= 0.)
