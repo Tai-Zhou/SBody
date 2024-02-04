@@ -348,7 +348,7 @@ namespace SBody {
 		const double b52 = gsl_pow_2(b5);
 		const double d15 = a1 * b5 - a5 * b1, d15_1 = 1. / d15, d25 = a2 * b5 - a5 * b2, d35 = a3 * b5 - a5 * b3, d45 = a4 * b5 - a5 * b4;
 		const double W2 = U2_12 - d13 * d14 * d25 * d15_1;
-		const double Q2 = X52 * Y52 / gsl_pow_2(X1 * Y1) * W2;
+		const double Q2 = X52 * Y52 * W2 / gsl_pow_2(X1 * Y1);
 		const double P2 = Q2 + d25 * d35 * d45 * d15_1;
 		const double RC_P2_Q2 = X1 * Y1 == 0. ? 0. : Carlson_RC(P2, Q2);
 		const double I3 = 2. * (d12 * d13 * d14 * d15_1 / 3. * Carlson_RJ(U2_12, U2_13, U2_14, W2) + RC_P2_Q2);
@@ -380,8 +380,8 @@ namespace SBody {
 		const double d14 = a1 * b4 - a4 * b1, d15 = a1 * b5 - a5 * b1, d15_1 = 1. / d15, d45 = a4 * b5 - a5 * b4;
 		const double W2p = M2 + d14 * (c2_15 + c11 * c55) * d15_1;
 		const double U = (X1 * X4 * eta + Y1 * Y4 * xi) / (x - y), U2 = gsl_pow_2(U);
-		const double W2 = U2 - c2_11 * d45 * d15_1;
-		const double Q2 = X52 * Y52 / gsl_pow_2(X1 * Y1) * W2;
+		const double W2 = U2 - 0.5 * c2_11 * d45 * d15_1;
+		const double Q2 = X52 * Y52 * W2 / gsl_pow_2(X1 * Y1);
 		const double P2 = Q2 + 0.5 * c2_55 * d45 * d15_1;
 		const double RC_P2_Q2 = X1 * Y1 == 0. ? 0. : Carlson_RC(P2, Q2);
 		const double I3 = 2. * (c11 / (3. * c55) * (4. * (W2p - M2) * Carlson_RJ(M2, L2m, L2p, W2p) - 1.5 * I1 + 3. * Carlson_RC(U2, W2)) + RC_P2_Q2);
