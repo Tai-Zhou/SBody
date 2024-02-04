@@ -102,6 +102,24 @@ namespace SBody {
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
 		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
+	class ReissnerNordstrom : public Schwarzschild {
+	  public:
+		const double r_Q_, r_Q2_, r_Q4_;
+		ReissnerNordstrom(double charge);
+		std::string Name() override;
+		int MetricTensor(const double position[], gsl_matrix *metric) override;
+		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;
+		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
+		int LagrangianToHamiltonian(double y[]) override;
+		int HamiltonianToLagrangian(double y[]) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
+		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
+		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
+		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
+		int NormalizeTimelikeGeodesic(double y[]) override;
+		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
+		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+	};
 	class Kerr : public Schwarzschild {
 	  public:
 		const double a_, a2_, a4_;
@@ -120,10 +138,46 @@ namespace SBody {
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
 		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
 	};
+	class KerrNewman : public Kerr {
+	  public:
+		const double r_Q_, r_Q2_, r_Q4_;
+		KerrNewman(double charge);
+		std::string Name() override;
+		int MetricTensor(const double position[], gsl_matrix *metric) override;
+		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;
+		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
+		int LagrangianToHamiltonian(double y[]) override;
+		int HamiltonianToLagrangian(double y[]) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
+		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
+		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
+		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
+		int NormalizeTimelikeGeodesic(double y[]) override;
+		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
+		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+	};
 	class KerrTaubNUT : public Kerr {
 	  public:
 		const double l_, l2_, l4_;
 		KerrTaubNUT(double spin, double NUT);
+		std::string Name() override;
+		int MetricTensor(const double position[], gsl_matrix *metric) override;
+		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;
+		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
+		int LagrangianToHamiltonian(double y[]) override;
+		int HamiltonianToLagrangian(double y[]) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
+		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
+		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
+		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
+		int NormalizeTimelikeGeodesic(double y[]) override;
+		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
+		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
+	};
+	class Hayward : public Kerr {
+	  public:
+		const double alpha_, beta_, g_;
+		Hayward(double alpha, double beta, double charge);
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;

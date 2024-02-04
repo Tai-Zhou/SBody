@@ -348,7 +348,100 @@ namespace SBody {
 		PrintlnError("Schwarzschild::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
 		return nullptr;
 	}
-
+	ReissnerNordstrom::ReissnerNordstrom(double charge) : r_Q_(charge * 0.25 * M_1_PI), r_Q2_(r_Q_ * r_Q_), r_Q4_(r_Q2_ * r_Q2_) {}
+	std::string ReissnerNordstrom::Name() {
+		return "Reissner-Nordstrom";
+	}
+	int ReissnerNordstrom::MetricTensor(const double position[], gsl_matrix *metric) {
+		const double r_1 = 1. / position[1];
+		gsl_matrix_set_zero(metric);
+		gsl_matrix_set(metric, 0, 0, -(1. - (2. - r_Q2_ * r_1) * r_1));
+		gsl_matrix_set(metric, 1, 1, -1. / gsl_matrix_get(metric, 0, 0));
+		gsl_matrix_set(metric, 2, 2, gsl_pow_2(position[1]));
+		gsl_matrix_set(metric, 3, 3, gsl_pow_2(position[1] * sin(position[2])));
+		return position[1] == 2. ? GSL_EZERODIV : GSL_SUCCESS;
+	}
+	double ReissnerNordstrom::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
+		const double r_1 = 1. / position[1];
+		if (dimension == 3)
+			return x[1] * y[1] / (1. - (2. - r_Q2_ * r_1) * r_1) + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
+		return -(1. - (2. - r_Q2_ * r_1) * r_1) * x[0] * y[0] + x[1] * y[1] / (1. - (2. - r_Q2_ * r_1) * r_1) + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
+	}
+	double ReissnerNordstrom::DistanceSquare(const double x[], const double y[], const size_t dimension) {
+		const double r_1 = 1. / x[1];
+		if (dimension == 3)
+			return gsl_pow_2(x[1] - y[1]) / (1. - (2. - r_Q2_ * r_1) * r_1) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * PhiDifference(x[3] - y[3]));
+		return -(1. - (2. - r_Q2_ * r_1) * r_1) * gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1]) * (gsl_pow_2(x[1] - y[1]) / ((x[1] - 2.) * x[1] + r_Q2_) + gsl_pow_2(x[2] - y[2]) + gsl_pow_2(sin(x[2]) * PhiDifference(x[3] - y[3])));
+	}
+	int ReissnerNordstrom::LagrangianToHamiltonian(double y[]) {
+		const double dt_dtau = 1. / y[4], r_1 = 1. / y[1], r2 = gsl_pow_2(y[1]);
+		const double rs_rQ2 = (2. - r_Q2_ * r_1) * r_1;
+		y[4] = (y[4] - 1. + rs_rQ2) * dt_dtau; // 1 + p_t
+		y[5] *= dt_dtau / (1. - rs_rQ2);
+		y[6] *= r2 * dt_dtau;
+		y[7] *= r2 * gsl_pow_2(sin(y[2])) * dt_dtau;
+		return 0;
+	}
+	int ReissnerNordstrom::HamiltonianToLagrangian(double y[]) {
+		const double r_1 = 1. / y[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
+		y[4] = -g11_1 / (y[4] - 1.);
+		y[5] *= g11_1 * y[4];
+		y[6] *= gsl_pow_2(r_1) * y[4];
+		y[7] *= gsl_pow_2(r_1 / sin(y[2])) * y[4];
+		return 0;
+	}
+	int ReissnerNordstrom::FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) {
+		return GSL_FAILURE;
+	}
+	double ReissnerNordstrom::Energy(const double y[], time_system time, coordinate_system coordinate) {
+		const double r_1 = 1. / y[1];
+		if (coordinate == LAGRANGIAN) {
+			if (time == T)
+				return (1. - (2. - r_Q2_ * r_1) * r_1) / y[4];
+			// time == TAU
+			return (1. - (2. - r_Q2_ * r_1) * r_1) * y[4];
+		} // coordinate == HAMILTONIAN
+		return 1. - y[4];
+	}
+	double ReissnerNordstrom::AngularMomentum(const double y[], time_system time, coordinate_system coordinate) {
+		if (coordinate == LAGRANGIAN) {
+			if (time == T)
+				return gsl_pow_2(y[1] * sin(y[2])) * y[7] / y[4];
+			// time == TAU
+			return gsl_pow_2(y[1] * sin(y[2])) * y[7];
+		} // coordinate == HAMILTONIAN
+		return y[7];
+	}
+	double ReissnerNordstrom::CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) { // TODO: Check!
+		if (coordinate == LAGRANGIAN) {
+			if (time == T)
+				return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2]))) / gsl_pow_2(y[4]);
+			// time == TAU
+			return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2])));
+		} // coordinate == HAMILTONIAN
+		return gsl_pow_2(y[6]) + y[0] == 0. ? 0. : gsl_pow_2(y[7] / tan(y[2]));
+	}
+	int ReissnerNordstrom::NormalizeTimelikeGeodesic(double y[]) {
+		const double r_1 = 1. / y[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
+		if (g11_1 <= 0)
+			return 1;
+		y[4] = sqrt(g11_1 - (gsl_pow_2(y[5]) / g11_1 + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+		return std::isnan(y[4]);
+	}
+	int ReissnerNordstrom::NormalizeNullGeodesic(double y[], double frequency) {
+		const double r_1 = 1. / y[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
+		if (g11_1 <= 0)
+			return 1;
+		const double coefficient = GSL_SIGN(frequency) * g11_1 / sqrt(gsl_pow_2(y[5]) + g11_1 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+		y[4] = frequency;
+		y[5] *= coefficient;
+		y[6] *= coefficient;
+		y[7] *= coefficient;
+		return 0;
+	}
+	std::unique_ptr<Integrator> ReissnerNordstrom::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+		return nullptr;
+	}
 	Kerr::Kerr(double spin) : a_(spin), a2_(a_ * a_), a4_(a2_ * a2_) {}
 	std::string Kerr::Name() {
 		return "Kerr";
