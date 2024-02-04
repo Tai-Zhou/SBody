@@ -417,25 +417,11 @@ namespace SBody {
 	double PhiDifference(double phi);
 
 	/**
-	 * @brief \f[\int_y^x\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
+	 * @brief \f[\int_y^x(a_5+b_5t)^{p_5/2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
 	 *
 	 * @return result
 	 */
-	double EllipticIntegral(double y, double x, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
-
-	/**
-	 * @brief \f[\int_y^x(a_5+b_5t)^{-1}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
-	 *
-	 * @return result
-	 */
-	double EllipticIntegral_2(double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
-
-	/**
-	 * @brief \f[\int_y^x(a_5+b_5t)^{-2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
-	 *
-	 * @return result
-	 */
-	double EllipticIntegral_4(double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
+	double EllipticIntegral(int p5, double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
 
 	/**
 	 * @brief \f[\int_y^x(a_5+b_5t)^{p_5/2}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f].

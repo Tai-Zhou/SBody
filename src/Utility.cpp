@@ -330,53 +330,31 @@ namespace SBody {
 			phi -= M_2PI;
 		return phi;
 	}
-	double EllipticIntegral(double y, double x, double a1, double b1, double a2, double b2, double a3, double b3, double a4, double b4) {
+	double EllipticIntegral(int p5, double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4, double b4) {
 		if (x == y)
 			return 0.;
-		const double X1 = sqrt(a1 + b1 * x), X2 = sqrt(a2 + b2 * x), X3 = sqrt(a3 + b3 * x), X4 = sqrt(a4 + b4 * x);
-		const double Y1 = sqrt(a1 + b1 * y), Y2 = sqrt(a2 + b2 * y), Y3 = sqrt(a3 + b3 * y), Y4 = sqrt(a4 + b4 * y);
-		const double U2_12 = gsl_pow_2((X1 * X2 * Y3 * Y4 + Y1 * Y2 * X3 * X4) / (x - y));
-		const double U2_13 = U2_12 - (a1 * b4 - a4 * b1) * (a2 * b3 - a3 * b2);
-		const double U2_14 = U2_12 - (a1 * b3 - a3 * b1) * (a2 * b4 - a4 * b2);
-		return 2. * gsl_sf_ellint_RF(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE);
-	}
-	double EllipticIntegral_2(double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4, double b4) {
-		if (x == y)
-			return 0.;
-		const double d12 = a1 * b2 - a2 * b1, d13 = a1 * b3 - a3 * b1, d14 = a1 * b4 - a4 * b1, d15_1 = 1. / (a1 * b5 - a5 * b1);
-		const double d25 = a2 * b5 - a5 * b2, d35 = a3 * b5 - a5 * b3, d45 = a4 * b5 - a5 * b4;
-		const double X1 = sqrt(a1 + b1 * x), X2 = sqrt(a2 + b2 * x), X3 = sqrt(a3 + b3 * x), X4 = sqrt(a4 + b4 * x), X5 = sqrt(a5 + b5 * x);
-		const double Y1 = sqrt(a1 + b1 * y), Y2 = sqrt(a2 + b2 * y), Y3 = sqrt(a3 + b3 * y), Y4 = sqrt(a4 + b4 * y), Y5 = sqrt(a5 + b5 * y);
-		const double U2_12 = gsl_pow_2((X1 * X2 * Y3 * Y4 + Y1 * Y2 * X3 * X4) / (x - y));
-		const double U2_13 = U2_12 - d14 * (a2 * b3 - a3 * b2);
-		const double U2_14 = U2_12 - d13 * (a2 * b4 - a4 * b2);
-		const double W2 = U2_12 - d13 * d14 * d25 * d15_1;
-		const double Q2 = gsl_pow_2(X5 * Y5 / (X1 * Y1)) * W2;
-		const double P2 = Q2 + d25 * d35 * d45 * d15_1;
-		const double RC_P2_Q2 = X1 * Y1 == 0. ? 0. : Carlson_RC(P2, Q2);
-		const double I1 = 2. * gsl_sf_ellint_RF(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE);
-		const double I3 = 2. * (d12 * d13 * d14 * d15_1 / 3. * Carlson_RJ(U2_12, U2_13, U2_14, W2) + RC_P2_Q2);
-		return (b5 * I3 - b1 * I1) * d15_1;
-	}
-	double EllipticIntegral_4(double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4, double b4) {
-		if (x == y)
-			return 0.;
-		const double b52 = gsl_pow_2(b5);
-		const double d12 = a1 * b2 - a2 * b1, d13 = a1 * b3 - a3 * b1, d14 = a1 * b4 - a4 * b1, d15 = a1 * b5 - a5 * b1;
+		if (p5 != 0 && p5 != -2 && p5 != -4)
+			return GSL_NAN;
+		const double d12 = a1 * b2 - a2 * b1, d13 = a1 * b3 - a3 * b1, d14 = a1 * b4 - a4 * b1;
 		const double d23 = a2 * b3 - a3 * b2, d24 = a2 * b4 - a4 * b2, d34 = a3 * b4 - a4 * b3;
-		const double d15_1 = 1. / d15, d25 = a2 * b5 - a5 * b2, d35 = a3 * b5 - a5 * b3, d45 = a4 * b5 - a5 * b4;
 		const double X1 = sqrt(a1 + b1 * x), X2 = sqrt(a2 + b2 * x), X3 = sqrt(a3 + b3 * x), X4 = sqrt(a4 + b4 * x), X52 = a5 + b5 * x;
 		const double Y1 = sqrt(a1 + b1 * y), Y2 = sqrt(a2 + b2 * y), Y3 = sqrt(a3 + b3 * y), Y4 = sqrt(a4 + b4 * y), Y52 = a5 + b5 * y;
 		const double U2_12 = gsl_pow_2((X1 * X2 * Y3 * Y4 + Y1 * Y2 * X3 * X4) / (x - y));
 		const double U2_13 = U2_12 - d14 * d23;
 		const double U2_14 = U2_12 - d13 * d24;
+		const double I1 = 2. * gsl_sf_ellint_RF(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE);
+		if (p5 == 0)
+			return I1;
+		const double b52 = gsl_pow_2(b5);
+		const double d15 = a1 * b5 - a5 * b1, d15_1 = 1. / d15, d25 = a2 * b5 - a5 * b2, d35 = a3 * b5 - a5 * b3, d45 = a4 * b5 - a5 * b4;
 		const double W2 = U2_12 - d13 * d14 * d25 * d15_1;
 		const double Q2 = X52 * Y52 / gsl_pow_2(X1 * Y1) * W2;
 		const double P2 = Q2 + d25 * d35 * d45 * d15_1;
 		const double RC_P2_Q2 = X1 * Y1 == 0. ? 0. : Carlson_RC(P2, Q2);
-		const double I1 = 2. * gsl_sf_ellint_RF(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE);
-		const double I2 = 2. * (d12 * d13 * gsl_sf_ellint_RD(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE) / 3. + X1 * Y1 / (X4 * Y4 * sqrt(U2_14)));
 		const double I3 = 2. * (d12 * d13 * d14 * d15_1 / 3. * Carlson_RJ(U2_12, U2_13, U2_14, W2) + RC_P2_Q2);
+		if (p5 == -2)
+			return (b5 * I3 - b1 * I1) * d15_1;
+		const double I2 = 2. * (d12 * d13 * gsl_sf_ellint_RD(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE) / 3. + X1 * Y1 / (X4 * Y4 * sqrt(U2_14)));
 		return -0.5 * d15_1 * (b1 / d15 + b2 / d25 + b3 / d35 + b4 / d45) * b5 * I3 + b52 * d24 * d34 / (2. * d15 * d25 * d35 * d45) * I2 + gsl_pow_2(b1 * d15_1) * (1. - d12 * d13 * b52 / (2. * b1 * b1 * d25 * d35)) * I1 - b52 / (d15 * d25 * d35) * (X1 * X2 * X3 / (X4 * X52) - Y1 * Y2 * Y3 / (Y4 * Y52));
 	}
 
