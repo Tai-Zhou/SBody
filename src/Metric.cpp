@@ -235,7 +235,7 @@ namespace SBody {
 					else // u1 -> u0
 						return M_SQRT1_2 * EllipticIntegral(0, p[0], p[1], 0., 0., -x0, 1., x1, -1., x2, -1.) - p[2];
 				} else // impact_parameter < sqrt(27)
-					return M_SQRT1_2 * EllipticIntegral2Imaginary(0, p[0], p[1], 0., 0., -0.5 / (gsl_pow_2(x) * x0), x0 - 0.5, 1., -x0, 1.) - p[2];
+					return M_SQRT1_2 * EllipticIntegral2Complex(0, p[0], p[1], 0., 0., -0.5 / (gsl_pow_2(x) * x0), x0 - 0.5, 1., -x0, 1.) - p[2];
 			},
 			&integrate_parameters};
 		if (delta_phi > turning_phi)
@@ -261,9 +261,9 @@ namespace SBody {
 				photon[8] = -M_SQRT1_2 * (ellip_int_4 + 2. * EllipticIntegral(-2, u0, u1, 0., 1., -x0, 1., x1, -1., x2, -1.) + 4. * EllipticIntegral(-2, u0, u1, 1., -2., -x0, 1., x1, -1., x2, -1.)) / impact_solver.Root();
 			}
 		} else { // impact_parameter < sqrt(27)
-			const double ellip_int_4 = EllipticIntegral2Imaginary(-4, u0, u1, 0., 1., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.);
+			const double ellip_int_4 = EllipticIntegral2Complex(-4, u0, u1, 0., 1., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.);
 			photon[0] = -M_SQRT1_2 * ellip_int_4 / (impact_solver.Root() * (1. - 2. * u0));
-			photon[8] = -M_SQRT1_2 * (ellip_int_4 + 2. * EllipticIntegral2Imaginary(-2, u0, u1, 0., 1., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.) + 4. * EllipticIntegral2Imaginary(-2, u0, u1, 1., -2., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.)) / impact_solver.Root();
+			photon[8] = -M_SQRT1_2 * (ellip_int_4 + 2. * EllipticIntegral2Complex(-2, u0, u1, 0., 1., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.) + 4. * EllipticIntegral2Complex(-2, u0, u1, 1., -2., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.)) / impact_solver.Root();
 		}
 		photon[1] = target_r;
 		photon[2] = target_theta;

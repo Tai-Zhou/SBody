@@ -428,14 +428,14 @@ namespace SBody {
 	 *
 	 * @return result
 	 */
-	double EllipticIntegral2Imaginary(int p5, double y, double x, double a5, double b5, double f, double g, double h, double a1, double b1, double a4 = 1., double b4 = 0.);
+	double EllipticIntegral2Complex(int p5, double y, double x, double a5, double b5, double f, double g, double h, double a1, double b1, double a4 = 1., double b4 = 0.);
 
 	/**
 	 * @brief \f[\int_y^x(a_5+b_5t)^{p_5/2}\prod_{i=1}^2(f_i+g_it+h_it^2)^{-1/2}dt\f].
 	 *
 	 * @return result
 	 */
-	double EllipticIntegral4Imaginary(int p5, double y, double x, double a5, double b5, double f1, double g1, double h1, double f2, double g2, double h2);
+	double EllipticIntegral4Complex(int p5, double y, double x, double a5, double b5, double f1, double g1, double h1, double f2, double g2, double h2);
 
 	double Carlson_RC(double x, double y, gsl_mode_t mode = GSL_PREC_DOUBLE);
 	double Carlson_RJ(double x, double y, double z, double p, gsl_mode_t mode = GSL_PREC_DOUBLE);

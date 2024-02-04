@@ -536,6 +536,18 @@ PYBIND11_MODULE(SBoPy, m) {
 		Get MCMC log probability
 	)pbdoc");
 
+	m.def("EllipticIntegral", &EllipticIntegral, R"pbdoc(
+		Elliptic Integral
+	)pbdoc");
+
+	m.def("EllipticIntegral2Complex", &EllipticIntegral2Complex, R"pbdoc(
+		Elliptic Integral with 2 complex roots
+	)pbdoc");
+
+	m.def("EllipticIntegral4Complex", &EllipticIntegral4Complex, R"pbdoc(
+		Elliptic Integral with 4 complex roots
+	)pbdoc");
+
 	m.attr("s") = Unit::s;
 	m.attr("day") = Unit::day;
 	m.attr("yr") = Unit::yr;
