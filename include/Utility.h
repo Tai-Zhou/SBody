@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <gsl/gsl_matrix.h>
+#include <gsl/gsl_mode.h>
 #include <gsl/gsl_odeiv2.h>
 #include <gsl/gsl_permutation.h>
 #include <gsl/gsl_roots.h>
@@ -416,46 +417,39 @@ namespace SBody {
 	double PhiDifference(double phi);
 
 	/**
-	 * @brief \f[\int_x^y\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
+	 * @brief \f[\int_y^x\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
 	 *
 	 * @return result
 	 */
-	double EllipticIntegral(double x, double y, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
+	double EllipticIntegral(double y, double x, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
 
 	/**
-	 * @brief \f[\int_x^y(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f].
+	 * @brief \f[\int_y^x(a_5+b_5t)^{-1}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
 	 *
 	 * @return result
 	 */
-	double EllipticIntegral2Imaginary(double x, double y, double f, double g, double h, double a1, double b1, double a4 = 1., double b4 = 0.);
+	double EllipticIntegral_2(double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
 
 	/**
-	 * @brief \f[\int_x^y\prod_{i=1}^2(f_i+g_it+h_it^2)^{-1/2}dt\f].
+	 * @brief \f[\int_y^x(a_5+b_5t)^{-2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
 	 *
 	 * @return result
 	 */
-	double EllipticIntegral4Imaginary(double x, double y, double f1, double g1, double h1, double f2, double g2, double h2);
+	double EllipticIntegral_4(double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
 
 	/**
-	 * @brief \f[\int_x^y(a_5+b_5t)^{-1}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
+	 * @brief \f[\int_y^x(a_5+b_5t)^{p_5/2}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f].
 	 *
 	 * @return result
 	 */
-	double EllipticIntegral_2(double x, double y, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
+	double EllipticIntegral2Imaginary(int p5, double y, double x, double a5, double b5, double f, double g, double h, double a1, double b1, double a4 = 1., double b4 = 0.);
 
 	/**
-	 * @brief \f[\int_x^y(a_5+b_5t)^{-1}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f].
+	 * @brief \f[\int_y^x\prod_{i=1}^2(f_i+g_it+h_it^2)^{-1/2}dt\f].
 	 *
 	 * @return result
 	 */
-	double EllipticIntegral2Imaginary_2(double x, double y, double a5, double b5, double f, double g, double h, double a1, double b1, double a4 = 1., double b4 = 0.);
-
-	/**
-	 * @brief \f[\int_x^y(a_5+b_5t)^{-2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
-	 *
-	 * @return result
-	 */
-	double EllipticIntegral_4(double x, double y, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4 = 1., double b4 = 0.);
+	double EllipticIntegral4Imaginary(double y, double x, double f1, double g1, double h1, double f2, double g2, double h2);
 
 	double Carlson_RC(double x, double y, gsl_mode_t mode = GSL_PREC_DOUBLE);
 	double Carlson_RJ(double x, double y, double z, double p, gsl_mode_t mode = GSL_PREC_DOUBLE);
