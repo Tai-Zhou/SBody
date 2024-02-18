@@ -17,6 +17,7 @@
 
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_mode.h>
+#include <gsl/gsl_multiroots.h>
 #include <gsl/gsl_odeiv2.h>
 #include <gsl/gsl_permutation.h>
 #include <gsl/gsl_roots.h>
@@ -129,12 +130,14 @@ namespace SBody {
 		 */
 		int CheckCoordinate(double *y);
 	};
+
 	class Solver {
 	  public:
 		virtual int Iterate() = 0;
 		virtual int Solve() = 0;
 		virtual double Root() = 0;
 	};
+
 	/**
 	 * @brief
 	 *
@@ -167,6 +170,47 @@ namespace SBody {
 		int Iterate() override;
 		int Solve() override;
 		double Root() override;
+	};
+
+	class MultiSolver {
+	  public:
+		virtual int Iterate() = 0;
+		virtual int Solve() = 0;
+		virtual gsl_vector *Root() = 0;
+		virtual gsl_vector *Value() = 0;
+		virtual gsl_vector *StepSize() = 0;
+	};
+
+	class MultiFunctionSolver : public MultiSolver {
+	  private:
+		gsl_multiroot_fsolver *solver_;
+
+	  public:
+		MultiFunctionSolver(size_t n, const gsl_multiroot_fsolver_type *type = gsl_multiroot_fsolver_broyden);
+		MultiFunctionSolver(gsl_multiroot_function *function, const gsl_vector *x, size_t n, const gsl_multiroot_fsolver_type *type = gsl_multiroot_fsolver_broyden);
+		~MultiFunctionSolver();
+		int Set(gsl_multiroot_function *function, const gsl_vector *x);
+		int Iterate() override;
+		int Solve() override;
+		gsl_vector *Root() override;
+		gsl_vector *Value() override;
+		gsl_vector *StepSize() override;
+	};
+
+	class MultiDerivativeSolver : public MultiSolver {
+	  private:
+		gsl_multiroot_fdfsolver *solver_;
+
+	  public:
+		MultiDerivativeSolver(size_t n, const gsl_multiroot_fdfsolver_type *type = gsl_multiroot_fdfsolver_gnewton);
+		MultiDerivativeSolver(gsl_multiroot_function_fdf *function, const gsl_vector *x, size_t n, const gsl_multiroot_fdfsolver_type *type = gsl_multiroot_fdfsolver_gnewton);
+		~MultiDerivativeSolver();
+		int Set(gsl_multiroot_function_fdf *function, const gsl_vector *x);
+		int Iterate() override;
+		int Solve() override;
+		gsl_vector *Root() override;
+		gsl_vector *Value() override;
+		gsl_vector *StepSize() override;
 	};
 
 	/**

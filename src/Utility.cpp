@@ -23,6 +23,8 @@
 
 namespace SBody {
 	double absolute_accuracy = 1e-13, relative_accuracy = 1e-13;
+
+	// Integrator
 	Integrator::Integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), void *params, const gsl_odeiv2_step_type *type) : control_(gsl_odeiv2_control_y_new(absolute_accuracy, relative_accuracy)), evolve_(gsl_odeiv2_evolve_alloc(8)), step_(gsl_odeiv2_step_alloc(type, 8)) {
 		system_ = gsl_odeiv2_system{function, jacobian, 8UL, params};
 	}
@@ -65,6 +67,8 @@ namespace SBody {
 			return status;
 		return GSL_SUCCESS;
 	}
+
+	// FunctionSolver
 	FunctionSolver::FunctionSolver(const gsl_root_fsolver_type *type) {
 		solver_ = gsl_root_fsolver_alloc(type);
 	}
@@ -96,6 +100,8 @@ namespace SBody {
 	double FunctionSolver::Upper() {
 		return gsl_root_fsolver_x_upper(solver_);
 	}
+
+	// DerivativeSolver
 	DerivativeSolver::DerivativeSolver(const gsl_root_fdfsolver_type *type) {
 		solver_ = gsl_root_fdfsolver_alloc(type);
 	}
@@ -103,21 +109,92 @@ namespace SBody {
 		solver_ = gsl_root_fdfsolver_alloc(type);
 		gsl_root_fdfsolver_set(solver_, function, root);
 	}
-	int DerivativeSolver::Set(gsl_function_fdf *function, double root) {
-		return gsl_root_fdfsolver_set(solver_, function, root);
-	}
 	DerivativeSolver::~DerivativeSolver() {
 		gsl_root_fdfsolver_free(solver_);
+	}
+	int DerivativeSolver::Set(gsl_function_fdf *function, double root) {
+		return gsl_root_fdfsolver_set(solver_, function, root);
 	}
 	int DerivativeSolver::Iterate() {
 		return gsl_root_fdfsolver_iterate(solver_);
 	}
 	int DerivativeSolver::Solve() {
-		return GSL_FAILURE;
+		while (gsl_root_test_residual(gsl_root_fdfsolver_root(solver_), absolute_accuracy) != GSL_SUCCESS)
+			if (int status = gsl_root_fdfsolver_iterate(solver_); status != GSL_SUCCESS)
+				return status;
+		return GSL_SUCCESS;
 	}
 	double DerivativeSolver::Root() {
 		return gsl_root_fdfsolver_root(solver_);
 	}
+
+	// MultiFunctionSolver
+	MultiFunctionSolver::MultiFunctionSolver(size_t n, const gsl_multiroot_fsolver_type *type) {
+		solver_ = gsl_multiroot_fsolver_alloc(type, n);
+	}
+	MultiFunctionSolver::MultiFunctionSolver(gsl_multiroot_function *function, const gsl_vector *x, size_t n, const gsl_multiroot_fsolver_type *type) {
+		solver_ = gsl_multiroot_fsolver_alloc(type, n);
+		gsl_multiroot_fsolver_set(solver_, function, x);
+	}
+	MultiFunctionSolver::~MultiFunctionSolver() {
+		gsl_multiroot_fsolver_free(solver_);
+	}
+	int MultiFunctionSolver::Set(gsl_multiroot_function *function, const gsl_vector *x) {
+		return gsl_multiroot_fsolver_set(solver_, function, x);
+	}
+	int MultiFunctionSolver::Iterate() {
+		return gsl_multiroot_fsolver_iterate(solver_);
+	}
+	int MultiFunctionSolver::Solve() {
+		while (gsl_multiroot_test_residual(gsl_multiroot_fsolver_f(solver_), absolute_accuracy) != GSL_SUCCESS)
+			if (int status = gsl_multiroot_fsolver_iterate(solver_); status != GSL_SUCCESS)
+				return status;
+		return GSL_SUCCESS;
+	}
+	gsl_vector *MultiFunctionSolver::Root() {
+		return gsl_multiroot_fsolver_root(solver_);
+	}
+	gsl_vector *MultiFunctionSolver::Value() {
+		return gsl_multiroot_fsolver_f(solver_);
+	}
+	gsl_vector *MultiFunctionSolver::StepSize() {
+		return gsl_multiroot_fsolver_dx(solver_);
+	}
+
+	// MultiDerivativeSolver
+	MultiDerivativeSolver::MultiDerivativeSolver(size_t n, const gsl_multiroot_fdfsolver_type *type) {
+		solver_ = gsl_multiroot_fdfsolver_alloc(type, n);
+	}
+	MultiDerivativeSolver::MultiDerivativeSolver(gsl_multiroot_function_fdf *function, const gsl_vector *x, size_t n, const gsl_multiroot_fdfsolver_type *type) {
+		solver_ = gsl_multiroot_fdfsolver_alloc(type, n);
+		gsl_multiroot_fdfsolver_set(solver_, function, x);
+	}
+	MultiDerivativeSolver::~MultiDerivativeSolver() {
+		gsl_multiroot_fdfsolver_free(solver_);
+	}
+	int MultiDerivativeSolver::Set(gsl_multiroot_function_fdf *function, const gsl_vector *x) {
+		return gsl_multiroot_fdfsolver_set(solver_, function, x);
+	}
+	int MultiDerivativeSolver::Iterate() {
+		return gsl_multiroot_fdfsolver_iterate(solver_);
+	}
+	int MultiDerivativeSolver::Solve() {
+		while (gsl_multiroot_test_residual(gsl_multiroot_fdfsolver_f(solver_), absolute_accuracy) != GSL_SUCCESS)
+			if (int status = gsl_multiroot_fdfsolver_iterate(solver_); status != GSL_SUCCESS)
+				return status;
+		return GSL_SUCCESS;
+	}
+	gsl_vector *MultiDerivativeSolver::Root() {
+		return gsl_multiroot_fdfsolver_root(solver_);
+	}
+	gsl_vector *MultiDerivativeSolver::Value() {
+		return gsl_multiroot_fdfsolver_f(solver_);
+	}
+	gsl_vector *MultiDerivativeSolver::StepSize() {
+		return gsl_multiroot_fdfsolver_dx(solver_);
+	}
+
+	// GslBlock
 	GslBlock::~GslBlock() {
 		for (auto vector : vectors_)
 			gsl_vector_free(vector);
@@ -162,6 +239,8 @@ namespace SBody {
 		permutations_.push_back(gsl_permutation_calloc(n));
 		return permutations_.back();
 	}
+
+	// Maths
 	double Dot(const double x[], const double y[], size_t dimension) {
 		if (dimension == 3)
 			return x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
