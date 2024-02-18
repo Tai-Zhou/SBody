@@ -302,7 +302,7 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 		return py::array_t<double>();
 	}
 	Star star_0(main_metric, T, LAGRANGIAN, Unit::R_sun, false);
-	size_t tStepNumber = 1000;
+	size_t tStepNumber = 10000;
 	double position[13], t = 0., tStep = 0., tRec = t1 / tStepNumber * Unit::s;
 	if (mode == 0) { // circular
 		if (star_0.InitializeCircular(r, x.at(8) * M_PI / 180., x.at(9)) != GSL_SUCCESS)
@@ -351,6 +351,9 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 }
 
 py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, int mode, bool ray_tracing, bool gr_time_delay, const py::array_t<double> &obs_time) {
+	const vector<double> estimate_step = {60., 30., 10., 3., 1., 0.5, 0.3, 0.2, 0.1, 0.};
+	int estimate_idx = 0;
+	double this_gr_obs_time, last_gr_obs_time, gr_offset = 0.;
 	Unit::Initialize(x.at(0)); // double fSP, double R, double r, double theta, double phi, double v_r, double v_phi, double inclination,
 	double R = x.at(2) * Unit::pc, r = x.at(7) * R * Unit::mas, inclination = x.at(5) * M_PI / 180., rotation = x.at(6) * M_PI / 180.;
 	shared_ptr<Metric> main_metric;
@@ -409,39 +412,50 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 		if (this_position[1] < 4.)
 			return py::array_t<double>();
 		this_obs_time = (t + vz0 - this_position[1] * (abs(sin(this_position[2])) * cos(this_position[3]) * sin_inc + GSL_SIGN(this_position[2]) * cos(this_position[2]) * cos_inc)) / Unit::s;
-		if (this_obs_time > obs_time.at(idx)) {
-			if (gr_time_delay) {
-				if (view_ptr->Trace(last_position, i, last_position + 8, false) != GSL_SUCCESS) {
-					PrintlnError("Trace star last position Error!");
-					return HSExit(x);
+		if (gr_time_delay) {
+			if (this_obs_time + gr_offset + estimate_step[estimate_idx] > obs_time.at(idx)) {
+				if (++estimate_idx < estimate_step.size()) {
+					if (view_ptr->Trace(last_position, i, last_position + 8, false) != GSL_SUCCESS) {
+						PrintlnError("Trace star last position Error!");
+						return HSExit(x);
+					}
+					last_gr_obs_time = t / Unit::s + t0 - last_position[11];
+					gr_offset = last_gr_obs_time - this_obs_time;
+				} else {
+					estimate_idx = 0;
+					if (view_ptr->Trace(this_position, i, this_position + 8, false) != GSL_SUCCESS) {
+						PrintlnError("Trace star this position Error!");
+						return HSExit(x);
+					}
+					this_gr_obs_time = t / Unit::s + t0 - this_position[11];
+					gr_offset = 0.;
+					const double time_diff0 = obs_time.at(idx) - last_gr_obs_time, time_diff1 = this_gr_obs_time - obs_time.at(idx), coeff = 1. / (this_gr_obs_time - last_gr_obs_time);
+					InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
+					result_ptr[8] = (tStep - tRec * time_diff1 * coeff) / Unit::s;
+					for (int j = 0; j < 5; ++j)
+						result_ptr[10 + j] = (time_diff1 * last_position[j + 8] + time_diff0 * this_position[j + 8]) * coeff;
+					const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
+					result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
+					result_ptr += 15;
+					if (++idx >= size)
+						break;
 				}
-				if (view_ptr->Trace(this_position, i, this_position + 8, false) != GSL_SUCCESS) {
-					PrintlnError("Trace star this position Error!");
-					return HSExit(x);
-				}
-				double this_gr_obs_time = t / Unit::s + t0 - this_position[11];
-				double last_gr_obs_time = (t - tRec) / Unit::s + t0 - last_position[11];
-				const double time_diff0 = obs_time.at(idx) - last_gr_obs_time, time_diff1 = this_gr_obs_time - obs_time.at(idx), coeff = 1. / (this_gr_obs_time - last_gr_obs_time);
-				InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
-				result_ptr[8] = (tStep - tRec * time_diff1 * coeff) / Unit::s;
-				for (int j = 0; j < 5; ++j)
-					result_ptr[10 + j] = (time_diff1 * last_position[j + 8] + time_diff0 * this_position[j + 8]) * coeff;
-			} else {
-				const double time_diff0 = obs_time.at(idx) - last_obs_time, time_diff1 = this_obs_time - obs_time.at(idx), coeff = 1. / (this_obs_time - last_obs_time);
-				InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
-				if (ray_tracing || metric == 2) {
-					CartesianToSpherical(result_ptr);
-					if (ray_tracing)
-						if (view_ptr->Trace(result_ptr, i, result_ptr + 10, false) != GSL_SUCCESS) {
-							PrintlnError("Trace star position Error!");
-							return HSExit(x);
-						}
-					if (metric == 2)
-						result_ptr[1] -= 1.;
-					SphericalToCartesian(result_ptr);
-				}
-				result_ptr[8] = (tStep - tRec * time_diff1 * coeff) / Unit::s;
 			}
+		} else if (this_obs_time > obs_time.at(idx)) {
+			const double time_diff0 = obs_time.at(idx) - last_obs_time, time_diff1 = this_obs_time - obs_time.at(idx), coeff = 1. / (this_obs_time - last_obs_time);
+			InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
+			if (ray_tracing || metric == 2) {
+				CartesianToSpherical(result_ptr);
+				if (ray_tracing)
+					if (view_ptr->Trace(result_ptr, i, result_ptr + 10, false) != GSL_SUCCESS) {
+						PrintlnError("Trace star position Error!");
+						return HSExit(x);
+					}
+				if (metric == 2)
+					result_ptr[1] -= 1.;
+				SphericalToCartesian(result_ptr);
+			}
+			result_ptr[8] = (tStep - tRec * time_diff1 * coeff) / Unit::s;
 			const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
 			result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
 			result_ptr += 15;
