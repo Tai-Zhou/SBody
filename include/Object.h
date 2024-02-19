@@ -141,6 +141,22 @@ namespace SBody {
 		Star(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double radius = 0, bool fixed = false);
 		int Hit(const double current[], const double last[]);
 	};
+
+	class HotSpot : public Particle {
+	  protected:
+		const double spectral_index_;
+		const double luminosity_;
+		const double luminosity_mu_;
+		const double luminosity_sigma_;
+
+	  public:
+		HotSpot(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double spectral_index, double luminosity, double luminosity_mu, double luminosity_sigma, bool fixed = false);
+		double Luminosity(double t);
+		double Flux(double t);
+	};
+
+	class Disk : public Object {
+	};
 } // namespace SBody
 
 #endif
