@@ -348,7 +348,7 @@ namespace SBody {
 		PrintlnError("Schwarzschild::GetIntegrator() {}, {}, {} invaild", time, coordinate, motion);
 		return nullptr;
 	}
-	ReissnerNordstrom::ReissnerNordstrom(double charge) : r_Q_(charge * 0.25 * M_1_PI), r_Q2_(r_Q_ * r_Q_), r_Q4_(r_Q2_ * r_Q2_) {}
+	ReissnerNordstrom::ReissnerNordstrom(double charge) : r_Q2_(0.25 * M_1_PI * charge * charge), r_Q_(sqrt(r_Q2_)), r_Q4_(r_Q2_ * r_Q2_) {}
 	std::string ReissnerNordstrom::Name() {
 		return "Reissner-Nordstrom";
 	}
