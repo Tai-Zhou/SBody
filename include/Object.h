@@ -66,13 +66,14 @@ namespace SBody {
 		 * @param photon 8 dimensional information of photon
 		 * @return double
 		 */
-		virtual double Redshift(const double photon[]) = 0;
+		virtual double Redshift(const double photon[], time_system photon_time) = 0;
 	};
+
 	/**
 	 * @brief
 	 *
 	 */
-	class Star : public Object {
+	class Particle : public Object {
 	  protected:
 		time_system time_;
 		coordinate_system coordinate_;
@@ -80,10 +81,6 @@ namespace SBody {
 		double position_[8];
 		/// if the position fixed
 		const bool fixed_;
-		/// radius
-		const double radius_;
-		/// radius square
-		const double radius_square_;
 		/// integrator
 		std::unique_ptr<Integrator> integrator_;
 
@@ -95,9 +92,8 @@ namespace SBody {
 		 * @param radius radius
 		 * @param fixed whether the position of the star is fixed
 		 */
-		Star(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double radius = 0, bool fixed = false);
+		Particle(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, bool fixed = false);
 		int Position(double *position);
-		int Position(double *position, double t);
 		int InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination = 0., double observer_rotation = 0.);
 		int InitializeGeodesic(double orbital_radius, double inclination, double periapsis, double ascending_node, double v_r, double v_phi, double observer_inclination = 0., double observer_rotation = 0.);
 		int InitializeSchwarzschildKeplerianPericenter(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation);
@@ -116,7 +112,7 @@ namespace SBody {
 		 * @param last
 		 * @return int
 		 */
-		int Hit(const double current[], const double last[] = nullptr);
+		int Hit(const double current[], const double last[] = nullptr) override;
 
 		/**
 		 * @brief return frequency
@@ -124,21 +120,26 @@ namespace SBody {
 		 * @param photon
 		 * @return double
 		 */
-		double Redshift(const double photon[]);
+		double Redshift(const double photon[], time_system photon_time) override;
 
-		/**
-		 * @brief return frequency
-		 *
-		 * @param photon
-		 * @return double
-		 */
-		double RedshiftTau(const double photon[]);
 		int MetricTensor(gsl_matrix *metric);
 		double DotProduct(const double x[], const double y[], const size_t dimension);
 		int LocalInertialFrame(gsl_matrix *coordinate);
 		double Energy();
 		double AngularMomentum();
 		double CarterConstant();
+	};
+
+	class Star : public Particle {
+	  protected:
+		/// radius
+		const double radius_;
+		/// radius square
+		const double radius_square_;
+
+	  public:
+		Star(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double radius = 0, bool fixed = false);
+		int Hit(const double current[], const double last[]);
 	};
 } // namespace SBody
 

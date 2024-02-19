@@ -22,15 +22,15 @@ namespace SBody {
 	Object::Object(std::shared_ptr<Metric> metric) : metric_(metric) {
 		object_list_.push_back(this);
 	}
-	Star::Star(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double radius, bool fixed) : Object(metric), time_(time), coordinate_(coordinate), fixed_(fixed), radius_(radius), radius_square_(gsl_pow_2(radius)) {
+	Particle::Particle(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, bool fixed) : Object(metric), time_(time), coordinate_(coordinate), fixed_(fixed) {
 		for (int i = 0; i < 8; ++i)
 			position_[i] = 0;
 	}
-	int Star::Position(double *position) {
+	int Particle::Position(double *position) {
 		std::copy(position_, position_ + 8, position);
 		return GSL_SUCCESS;
 	}
-	int Star::InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination, double observer_rotation) {
+	int Particle::InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination, double observer_rotation) {
 		integrator_ = metric_->GetIntegrator(time_, coordinate_, GEODESIC);
 		position_[0] = 0.;
 		periapsis += true_anomaly;
@@ -55,7 +55,7 @@ namespace SBody {
 		CartesianToSpherical(position_);
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
-	int Star::InitializeGeodesic(double orbital_radius, double inclination, double periapsis, double ascending_node, double v_r, double v_phi, double observer_inclination, double observer_rotation) {
+	int Particle::InitializeGeodesic(double orbital_radius, double inclination, double periapsis, double ascending_node, double v_r, double v_phi, double observer_inclination, double observer_rotation) {
 		integrator_ = metric_->GetIntegrator(time_, coordinate_, GEODESIC);
 		position_[0] = 0.;
 		const double tp1 = -orbital_radius * cos(periapsis), tp2 = -orbital_radius * sin(periapsis) * cos(inclination);
@@ -77,7 +77,7 @@ namespace SBody {
 		CartesianToSpherical(position_);
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
-	int Star::InitializeSchwarzschildKeplerianPericenter(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation) {
+	int Particle::InitializeSchwarzschildKeplerianPericenter(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation) {
 		integrator_ = metric_->GetIntegrator(time_, coordinate_, GEODESIC);
 		position_[0] = 0.;
 		double r = a * (1. - e); // pericenter
@@ -102,7 +102,7 @@ namespace SBody {
 		CartesianToSpherical(position_);
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
-	int Star::InitializeSchwarzschildKeplerianApocenter(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation) {
+	int Particle::InitializeSchwarzschildKeplerianApocenter(double a, double e, double inclination, double periapsis, double ascending_node, double observer_inclination, double observer_rotation) {
 		integrator_ = metric_->GetIntegrator(time_, coordinate_, GEODESIC);
 		position_[0] = 0.;
 		double r = a * (1. + e); // apocenter
@@ -128,12 +128,12 @@ namespace SBody {
 		CartesianToSpherical(position_);
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
-	int Star::InitializeKeplerianHarmonic(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination, double observer_rotation) {
+	int Particle::InitializeKeplerianHarmonic(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination, double observer_rotation) {
 		InitializeKeplerian(a, e, inclination, periapsis, ascending_node, true_anomaly, observer_inclination, observer_rotation);
 		position_[1] += 1.;
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
-	int Star::InitializeCircular(double r, double phi, double v_phi_ratio) {
+	int Particle::InitializeCircular(double r, double phi, double v_phi_ratio) {
 		integrator_ = metric_->GetIntegrator(time_, coordinate_, CIRCULAR);
 		position_[0] = 0.;
 		position_[1] = r;
@@ -150,7 +150,7 @@ namespace SBody {
 		}
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
-	int Star::InitializeHelical(double r, double theta, double phi, double v_r, double v_phi) {
+	int Particle::InitializeHelical(double r, double theta, double phi, double v_r, double v_phi) {
 		integrator_ = metric_->GetIntegrator(time_, coordinate_, HELICAL);
 		position_[0] = 0.;
 		position_[1] = r;
@@ -167,23 +167,48 @@ namespace SBody {
 		}
 		return metric_->NormalizeTimelikeGeodesic(position_);
 	}
-	int Star::IntegratorApply(double *t, double t1, double *h) {
+	int Particle::IntegratorApply(double *t, double t1, double *h) {
 		if (fixed_) {
 			*t = t1;
 			return GSL_SUCCESS;
 		}
 		return integrator_->Apply(t, t1, h, position_);
 	}
-	int Star::IntegratorApplyFixedStep(double *t, const double h) {
+	int Particle::IntegratorApplyFixedStep(double *t, const double h) {
 		if (fixed_) {
 			*t += h;
 			return GSL_SUCCESS;
 		}
 		return integrator_->ApplyFixedStep(t, h, position_);
 	}
-	int Star::IntegratorReset() {
+	int Particle::IntegratorReset() {
 		return integrator_->Reset();
 	}
+	int Particle::Hit(const double current[], const double last[]) {
+		return false;
+	}
+	double Particle::Redshift(const double photon[], time_system photon_time) {
+		return metric_->Redshift(position_, photon, time_, photon_time);
+	}
+	int Particle::MetricTensor(gsl_matrix *metric) {
+		return metric_->MetricTensor(position_, metric);
+	}
+	double Particle::DotProduct(const double x[], const double y[], const size_t dimension) {
+		return metric_->DotProduct(position_, x, y, dimension);
+	}
+	int Particle::LocalInertialFrame(gsl_matrix *coordinate) {
+		return metric_->LocalInertialFrame(position_, coordinate);
+	}
+	double Particle::Energy() {
+		return metric_->Energy(position_, time_, coordinate_);
+	}
+	double Particle::AngularMomentum() {
+		return metric_->AngularMomentum(position_, time_, coordinate_);
+	}
+	double Particle::CarterConstant() {
+		return metric_->CarterConstant(position_, 1., time_, coordinate_);
+	}
+	Star::Star(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double radius, bool fixed) : Particle(metric, time, coordinate, fixed), radius_(radius), radius_square_(gsl_pow_2(radius)) {}
 	int Star::Hit(const double current[], const double last[]) {
 		double a2 = metric_->DistanceSquare(position_, current, 3);
 		if (a2 <= radius_square_)
@@ -192,31 +217,5 @@ namespace SBody {
 		if (a2 + c2 > b2 && b2 + c2 > a2 && 2 * a2 * c2 - gsl_pow_2(a2 - b2 + c2) <= 4 * c2 * radius_square_)
 			return 1; // if min distance between current and last < radius, return 1;
 		return 0;
-	}
-	double Star::Redshift(const double photon[]) {
-		const double u[4] = {1., position_[5], position_[6], position_[7]}, v[4] = {1., photon[5], photon[6], photon[7]};
-		return -metric_->DotProduct(position_, u, v, 4) / (position_[4] * photon[4]);
-	}
-	double Star::RedshiftTau(const double photon[]) {
-		const double u[4] = {1., position_[5], position_[6], position_[7]};
-		return -metric_->DotProduct(position_, u, photon + 4, 4) / position_[4];
-	}
-	int Star::MetricTensor(gsl_matrix *metric) {
-		return metric_->MetricTensor(position_, metric);
-	}
-	double Star::DotProduct(const double x[], const double y[], const size_t dimension) {
-		return metric_->DotProduct(position_, x, y, dimension);
-	}
-	int Star::LocalInertialFrame(gsl_matrix *coordinate) {
-		return metric_->LocalInertialFrame(position_, coordinate);
-	}
-	double Star::Energy() {
-		return metric_->Energy(position_, time_, coordinate_);
-	}
-	double Star::AngularMomentum() {
-		return metric_->AngularMomentum(position_, time_, coordinate_);
-	}
-	double Star::CarterConstant() {
-		return metric_->CarterConstant(position_, 1., time_, coordinate_);
 	}
 } // namespace SBody

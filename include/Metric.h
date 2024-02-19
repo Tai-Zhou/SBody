@@ -51,11 +51,11 @@ namespace SBody {
 		int LocalInertialFrame(const double position[], gsl_matrix *coordinate, const double timelike[] = nullptr);
 		virtual int LagrangianToHamiltonian(double y[]) = 0;
 		virtual int HamiltonianToLagrangian(double y[]) = 0;
-		virtual int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) = 0;
+		virtual int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double photon[]) = 0;
 		virtual double Energy(const double y[], time_system time, coordinate_system coordinate) = 0;
 		virtual double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) = 0;
 		virtual double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) = 0;
-		virtual double Redshift(const double y[], const double photon[], time_system time = T); // TODO: add coordinate
+		virtual double Redshift(const double y[], const double photon[], time_system object_time, time_system photon_time);
 		virtual int NormalizeTimelikeGeodesic(double y[]) = 0;
 		virtual int NormalizeNullGeodesic(double y[], double frequency = 1.) = 0;
 		virtual std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) = 0;
@@ -70,11 +70,11 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int LagrangianToHamiltonian(double y[]) override;
 		int HamiltonianToLagrangian(double y[]) override;
-		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double photon[]) override;
 		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
 		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
 		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
-		double Redshift(const double y[], const double photon[], time_system time = T) override;
+		double Redshift(const double y[], const double photon[], time_system object_time, time_system photon_time) override;
 		int NormalizeTimelikeGeodesic(double y[]) override;
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
 		std::unique_ptr<Integrator> GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion = GEODESIC) override;
@@ -94,7 +94,7 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int LagrangianToHamiltonian(double y[]) override;
 		int HamiltonianToLagrangian(double y[]) override;
-		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double photon[]) override;
 		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
 		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
 		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
@@ -112,7 +112,7 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int LagrangianToHamiltonian(double y[]) override;
 		int HamiltonianToLagrangian(double y[]) override;
-		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double photon[]) override;
 		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
 		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
 		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
@@ -130,7 +130,7 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int LagrangianToHamiltonian(double y[]) override;
 		int HamiltonianToLagrangian(double y[]) override;
-		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double photon[]) override;
 		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
 		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
 		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
@@ -141,14 +141,14 @@ namespace SBody {
 	class KerrNewman : public Kerr {
 	  public:
 		const double r_Q_, r_Q2_, r_Q4_;
-		KerrNewman(double charge);
+		KerrNewman(double spin, double charge);
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;
 		double DotProduct(const double position[], const double x[], const double y[], const size_t dimension) override;
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int LagrangianToHamiltonian(double y[]) override;
 		int HamiltonianToLagrangian(double y[]) override;
-		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double photon[]) override;
 		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
 		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
 		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
@@ -166,7 +166,7 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int LagrangianToHamiltonian(double y[]) override;
 		int HamiltonianToLagrangian(double y[]) override;
-		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double photon[]) override;
 		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
 		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
 		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
@@ -184,7 +184,7 @@ namespace SBody {
 		double DistanceSquare(const double x[], const double y[], const size_t dimension) override;
 		int LagrangianToHamiltonian(double y[]) override;
 		int HamiltonianToLagrangian(double y[]) override;
-		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) override;
+		int FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double photon[]) override;
 		double Energy(const double y[], time_system time, coordinate_system coordinate) override;
 		double AngularMomentum(const double y[], time_system time, coordinate_system coordinate) override;
 		double CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) override;
@@ -195,7 +195,7 @@ namespace SBody {
 	// Post-Newtonian
 	int NewtonTLagrangianGeodesic(double t, const double y[], double dydt[], void *params);
 
-	// Post-Newtonian-1
+	// PN1
 	int PN1TLagrangianGeodesic(double t, const double y[], double dydt[], void *params);
 
 	// Schwarzschild

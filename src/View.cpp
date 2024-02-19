@@ -66,7 +66,7 @@ namespace SBody {
 		}
 		return metric_->NormalizeNullGeodesic(photon, 1.);
 	}
-	int View::Trace(double position[], int ray_number, double record[], bool luminosity, bool fast_trace) { // FIXME:!!!!
+	int View::Trace(double position[], time_system time, double record[], bool luminosity, bool fast_trace) { // FIXME:!!!!
 		GslBlock collector;
 		gsl_vector *photon = collector.VectorAlloc(10), *last = collector.VectorAlloc(10);
 		unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
@@ -74,7 +74,7 @@ namespace SBody {
 		if (fast_trace && metric_->FastTrace(r_, theta_, sin_theta_, cos_theta_, position[1], position[2], position[3], alpha, beta, photon->data) == GSL_SUCCESS) {
 			record[0] = alpha * cos_iota_ - beta * sin_iota_;
 			record[1] = beta * cos_iota_ + alpha * sin_iota_;
-			record[2] = metric_->Redshift(position, photon->data);
+			record[2] = metric_->Redshift(position, photon->data, time, T);
 			record[3] = gsl_vector_get(photon, 8) / Unit::s;
 		} else {
 			auto t_start = chrono::steady_clock::now();
@@ -103,10 +103,6 @@ namespace SBody {
 					beta = effective_radius * beta_coefficient;
 				}
 			}
-#ifdef RECORD_TRACE
-			vector<double> qdq(12);
-			IO::NumPy rec("Trace " + to_string(ray_number), 12);
-#endif
 			while (true) {
 				InitializePhoton(photon->data, alpha, beta);
 				metric_->LagrangianToHamiltonian(photon->data);
@@ -173,7 +169,7 @@ namespace SBody {
 			}
 			record[0] = alpha * cos_iota_ - beta * sin_iota_;
 			record[1] = beta * cos_iota_ + alpha * sin_iota_;
-			record[2] = metric_->Redshift(position, photon->data);
+			record[2] = metric_->Redshift(position, photon->data, time, T);
 			record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
 		}
 		if (!luminosity)
@@ -332,26 +328,11 @@ namespace SBody {
 			cross_section_area_initial += DotCross(gsl_vector_ptr(photon_in_static_frame_cartesian, 1), area_record_initial[i], area_record_initial[i - 1]);
 			cross_section_area += TriangleArea(center_photon_position, area_record[i], area_record[i - 1]);
 		}
-#ifdef RECORD_TRACE
-		if (ray_number == 2500) {
-			NumPy area_record_npy("area_record", {3}), cone_record_npy("cone_record", {3});
-			area_record_npy.Save(center_photon_position, 3);
-			cone_record_npy.Save(center_photon_velocity, 3);
-			for (int i = 0; i < sample_number; ++i) {
-				area_record_npy.Save(area_record[i], 3);
-				cone_record_npy.Save(cone_record[i], 3);
-			}
-		}
-#endif
-#ifdef VIEW_TAU
-		output->Save({alpha, beta, star.RedshiftTau(photon), (photon[8] + photon[9]) / Unit::s, 0.5 * abs(cone_solid_angle) / epsilon_circle_area, sqrt(-1. / gmunu->data[0]), 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area, cross_section_area / epsilon_circle_area, cross_section_area_initial / epsilon_circle_area});
-#else
 		record[4] = 0.5 * abs(cone_solid_angle) / epsilon_circle_area;
 		// record[5] = sqrt(-1. / gmunu->data[0]);
 		// record[6] = 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area;
 		// record[7] = cross_section_area / epsilon_circle_area;
 		// record[8] = 0.5 * abs(cross_section_area_initial) / epsilon_circle_area;
-#endif
 		return GSL_SUCCESS;
 	}
 	int View::OmegaTest() {
@@ -527,7 +508,7 @@ namespace SBody {
 				status = integrator->Apply(ph + 8, t1, ph + 9, ph);
 				for (auto objP : Object::object_list_)
 					if (objP->Hit(ph, last))
-						screen_[i][j] = objP->Redshift(ph); // FIXME: if multi objects
+						screen_[i][j] = objP->Redshift(ph, T); // FIXME: if multi objects
 				if (screen_[i][j] > epsilon)
 					break;
 			}

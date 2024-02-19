@@ -61,7 +61,7 @@ double CalculatePericenterTime(double mass, int metric, double fSP, double R, do
 		main_metric = make_shared<PN1>(fSP);
 	else
 		main_metric = make_shared<Schwarzschild>();
-	Star star_0(main_metric, T, LAGRANGIAN, Unit::R_sun, false);
+	Particle star_0(main_metric, T, LAGRANGIAN, false);
 	if (metric == 2)
 		star_0.InitializeKeplerianHarmonic(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
 	else
@@ -100,7 +100,8 @@ py::array_t<double> CalculateFullStarOrbit(double mass, int metric, double fSP, 
 		main_metric = make_shared<Schwarzschild>();
 		view_ptr = make_unique<View>(make_unique<Schwarzschild>(), R, 0., 0.);
 	}
-	Star star_0(main_metric, T, LAGRANGIAN, Unit::R_sun, false);
+	time_system star_time = T;
+	Particle star_0(main_metric, star_time, LAGRANGIAN, false);
 	if (metric == 2)
 		star_0.InitializeKeplerianHarmonic(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
 	else
@@ -121,7 +122,7 @@ py::array_t<double> CalculateFullStarOrbit(double mass, int metric, double fSP, 
 			PrintlnError("main status = {}", status);
 		star_0.Position(result_ptr);
 		if (metric)
-			view_ptr->Trace(result_ptr, i, result_ptr + 10, false);
+			view_ptr->Trace(result_ptr, star_time, result_ptr + 10, false);
 		SphericalToCartesian(result_ptr);
 		result_ptr[8] = t / Unit::s;
 		const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
@@ -149,7 +150,8 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 		main_metric = make_shared<Schwarzschild>();
 		view_ptr = make_unique<View>(make_unique<Schwarzschild>(), R, 0., 0.);
 	}
-	Star star_0(main_metric, T, LAGRANGIAN, Unit::R_sun, false);
+	time_system star_time = T;
+	Particle star_0(main_metric, star_time, LAGRANGIAN, false);
 	double z0, t0, last_obs_time = 2002., this_obs_time, *last_position = new double[13], *this_position = new double[13];
 	if (metric == 2)
 		star_0.InitializeKeplerianHarmonic(a, e, inclination, periapsis, ascending_node, 0., 0., 0.);
@@ -158,7 +160,7 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 	star_0.Position(last_position);
 	z0 = last_position[1] * GSL_SIGN(last_position[2]) * cos(last_position[2]);
 	if (gr_time_delay) {
-		view_ptr->Trace(last_position, 0, last_position + 8, false);
+		view_ptr->Trace(last_position, star_time, last_position + 8, false);
 		t0 = last_position[11];
 	}
 	if (metric == 2)
@@ -186,8 +188,8 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 			this_obs_time = (t + z0 - this_position[1] * GSL_SIGN(this_position[2]) * cos(this_position[2])) / Unit::yr + 2002.;
 		if (this_obs_time > obs_time.at(idx)) {
 			if (gr_time_delay) {
-				view_ptr->Trace(last_position, i, last_position + 8, false);
-				view_ptr->Trace(this_position, i, this_position + 8, false);
+				view_ptr->Trace(last_position, star_time, last_position + 8, false);
+				view_ptr->Trace(this_position, star_time, this_position + 8, false);
 				double this_gr_obs_time = (t + (t0 - this_position[11]) * Unit::s) / Unit::yr + 2002.;
 				double last_gr_obs_time = (t - tRec + (t0 - last_position[11]) * Unit::s) / Unit::yr + 2002.;
 				const double time_diff0 = obs_time.at(idx) - last_gr_obs_time, time_diff1 = this_gr_obs_time - obs_time.at(idx), coeff = 1. / (this_gr_obs_time - last_gr_obs_time);
@@ -201,7 +203,7 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 				if (ray_tracing || metric == 2) {
 					CartesianToSpherical(result_ptr);
 					if (ray_tracing)
-						view_ptr->Trace(result_ptr, i, result_ptr + 10, false);
+						view_ptr->Trace(result_ptr, star_time, result_ptr + 10, false);
 					if (metric == 2)
 						result_ptr[1] -= 1.;
 					SphericalToCartesian(result_ptr);
@@ -301,7 +303,8 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 		PrintlnError("Metric Error!");
 		return py::array_t<double>();
 	}
-	Star star_0(main_metric, T, LAGRANGIAN, Unit::R_sun, false);
+	time_system hotspot_time = T;
+	Particle star_0(main_metric, hotspot_time, LAGRANGIAN, false);
 	size_t tStepNumber = 10000;
 	double position[13], t = 0., tStep = 0., tRec = t1 / tStepNumber * Unit::s;
 	if (mode == 0) { // circular
@@ -323,7 +326,7 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 	}
 	star_0.Position(position);
 	if (gr_time_delay) {
-		if (view_ptr->Trace(position, 0, position + 8, false) != GSL_SUCCESS) {
+		if (view_ptr->Trace(position, hotspot_time, position + 8, false) != GSL_SUCCESS) {
 			PrintlnError("Initially trace star Error!");
 			return HSExit(x);
 		}
@@ -338,7 +341,7 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 			py::print("[!] IntegratorApply status =", status);
 		star_0.Position(result_ptr);
 		if (gr_time_delay)
-			if (view_ptr->Trace(result_ptr, i, result_ptr + 10, false) != GSL_SUCCESS) {
+			if (view_ptr->Trace(result_ptr, hotspot_time, result_ptr + 10, false) != GSL_SUCCESS) {
 				PrintlnError("Trace star this position Error!");
 				return HSExit(x);
 			}
@@ -368,7 +371,8 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 		PrintlnError("Metric Error!");
 		return py::array_t<double>();
 	}
-	Star star_0(main_metric, T, LAGRANGIAN, Unit::R_sun, false);
+	time_system hotspot_time = T;
+	Particle star_0(main_metric, hotspot_time, LAGRANGIAN, false);
 	double *last_position = new double[13], *this_position = new double[13], t = 0., tStep = 0., tRec = 0.1 * Unit::s, t0, last_obs_time = 0., this_obs_time;
 	const double sin_inc = sin(inclination), cos_inc = cos(inclination);
 	if (mode == 0) { // circular
@@ -387,7 +391,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 	star_0.Position(last_position);
 	double x0 = last_position[1] * abs(sin(last_position[2])) * cos(last_position[3]), z0 = last_position[1] * GSL_SIGN(last_position[2]) * cos(last_position[2]);
 	if (gr_time_delay) {
-		if (view_ptr->Trace(last_position, 0, last_position + 8, false) != GSL_SUCCESS) {
+		if (view_ptr->Trace(last_position, hotspot_time, last_position + 8, false) != GSL_SUCCESS) {
 			PrintlnError("Initially trace star Error!");
 			return HSExit(x);
 		}
@@ -415,7 +419,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 		if (gr_time_delay) {
 			if (this_obs_time + gr_offset + estimate_step[estimate_idx] > obs_time.at(idx)) {
 				if (++estimate_idx < estimate_step.size()) {
-					if (view_ptr->Trace(last_position, i, last_position + 8, false) != GSL_SUCCESS) {
+					if (view_ptr->Trace(last_position, hotspot_time, last_position + 8, false) != GSL_SUCCESS) {
 						PrintlnError("Trace star last position Error!");
 						return HSExit(x);
 					}
@@ -423,7 +427,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 					gr_offset = last_gr_obs_time - this_obs_time;
 				} else {
 					estimate_idx = 0;
-					if (view_ptr->Trace(this_position, i, this_position + 8, false) != GSL_SUCCESS) {
+					if (view_ptr->Trace(this_position, hotspot_time, this_position + 8, false) != GSL_SUCCESS) {
 						PrintlnError("Trace star this position Error!");
 						return HSExit(x);
 					}
@@ -447,7 +451,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 			if (ray_tracing || metric == 2) {
 				CartesianToSpherical(result_ptr);
 				if (ray_tracing)
-					if (view_ptr->Trace(result_ptr, i, result_ptr + 10, false) != GSL_SUCCESS) {
+					if (view_ptr->Trace(result_ptr, hotspot_time, result_ptr + 10, false) != GSL_SUCCESS) {
 						PrintlnError("Trace star position Error!");
 						return HSExit(x);
 					}

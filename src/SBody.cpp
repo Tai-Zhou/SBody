@@ -83,7 +83,7 @@ int Benchmark() {
 	double t = 0., t1 = 0., t_step = 3600. * Unit::s / T_STEP_NUMBER;
 	shared_ptr<Metric> main_metric = make_shared<Kerr>(0.3);
 	unique_ptr<View> view_ptr = make_unique<View>(make_unique<Kerr>(0.3), 8180. * Unit::pc, M_PI_4, 0.);
-	Star star_0(main_metric, T, LAGRANGIAN, Unit::R_sun, 0);
+	Particle star_0(main_metric, T, LAGRANGIAN, false);
 	star_0.InitializeKeplerian(10., 0.1, M_PI * 30. / 180., 0., 0., 0., M_PI_4);
 	double temp[17];
 	int status = 0;
@@ -102,12 +102,12 @@ int Benchmark() {
 		temp[9] = star_0.Energy();
 		temp[10] = star_0.AngularMomentum();
 		temp[11] = star_0.CarterConstant();
-		view_ptr->Trace(temp, i, temp + 12, true);
+		view_ptr->Trace(temp, T, temp + 12, false, true);
 		SphericalToCartesian(temp);
 		ProgressBar::bars_[0].set_progress(i * stepPercent);
-		ProgressBar::bars_[0].set_option(indicators::option::PrefixText{fmt::format("Anticipated score is: {}? ", i * 200000000ul / (T_STEP_NUMBER * chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count()))});
+		ProgressBar::bars_[0].set_option(indicators::option::PrefixText{fmt::format("Anticipated score is: {}? ", i * 200000000000ul / (T_STEP_NUMBER * chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()))});
 	}
-	ProgressBar::SetComplete(0, fmt::format("Final score is: {}! ", 200000000ul / chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count()));
+	ProgressBar::SetComplete(0, fmt::format("Final score is: {}! ", 200000000000ul / chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()));
 	indicators::show_console_cursor(true);
 	return GSL_SUCCESS;
 }
@@ -267,7 +267,8 @@ int main(int argc, char *argv[]) {
 			lensPtr = make_unique<thread>(&Camera::Lens, cameraPtr.get());
 	}
 	// Integrator integ(metric::function, metric::jacobian, metric != 0);
-	Star star_0(main_metric, T, LAGRANGIAN, Unit::R_sun, 0);
+	time_system star_time = T;
+	Particle star_0(main_metric, star_time, LAGRANGIAN, false);
 	star_0.InitializeSchwarzschildKeplerianApocenter(a * Unit::mpc, e, inclination, periapsis, ascending_node, inc, eps);
 	// star_0.InitializeGeodesic(a, inclination, periapsis, ascending_node, -0.16707659553531468, 0.3822615764261866, inc, eps);
 	// star_0.InitializeSchwarzschildKeplerianApocenterHarmonic(a * Unit::mpc, e, inclination, periapsis, ascending_node, inc, eps);
@@ -294,7 +295,7 @@ int main(int argc, char *argv[]) {
 		if (Hamiltonian)
 			main_metric->HamiltonianToLagrangian(temp.data());
 		if (ray & 1)
-			viewPtr->Trace(temp.data(), i, temp.data() + 12, true);
+			viewPtr->Trace(temp.data(), star_time, temp.data() + 12, true);
 		if (ray & 2)
 			cameraPtr->Trace();
 		SphericalToCartesian(temp.data());
