@@ -21,6 +21,8 @@ Utility
    :no-link:
 .. doxygenvariable:: SBody::M_PI2
    :no-link:
+.. doxygenvariable:: SBody::M_SQRT27
+   :no-link:
 
 Integrator
 ==========
@@ -50,6 +52,28 @@ DerivativeSolver
    :members:
    :no-link:
 
+
+MultiSolver
+===========
+
+.. doxygenclass:: SBody::MultiSolver
+   :members:
+   :no-link:
+
+MultiFunctionSolver
+-------------------
+
+.. doxygenclass:: SBody::MultiFunctionSolver
+   :members:
+   :no-link:
+
+MultiDerivativeSolver
+---------------------
+
+.. doxygenclass:: SBody::MultiDerivativeSolver
+   :members:
+   :no-link:
+
 GslBlock
 ========
 
@@ -75,31 +99,46 @@ Math
 .. doxygenfunction:: SBody::DotCross
    :no-link:
 
+.. doxygenfunction:: SBody::TriangleArea(double, double, double)
+   :no-link:
+
+.. doxygenfunction:: SBody::TriangleArea(const double[], const double[], const double[])
+   :no-link:
+
 .. doxygenfunction:: SBody::RotateAroundAxis
+   :no-link:
+
+.. doxygenfunction:: SBody::CartesianToSpherical(const double[], double[], size_t)
    :no-link:
 
 .. doxygenfunction:: SBody::CartesianToSpherical(double[], size_t)
    :no-link:
 
-.. doxygenfunction:: SBody::CartesianToSpherical(const double[], double[])
-   :no-link:
-
-.. doxygenfunction:: SBody::CartesianToSpherical(const double[], const double[], double[], double[])
+.. doxygenfunction:: SBody::SphericalToCartesian(const double[], double[], size_t)
    :no-link:
 
 .. doxygenfunction:: SBody::SphericalToCartesian(double[], size_t)
    :no-link:
 
-.. doxygenfunction:: SBody::SphericalToCartesian(const double[], double[])
-   :no-link:
-
-.. doxygenfunction:: SBody::SphericalToCartesian(const double[], const double[], double[], double[])
-   :no-link:
-
 .. doxygenfunction:: SBody::OppositeSign
    :no-link:
 
+.. doxygenfunction:: SBody::MapTheta
+   :no-link:
+
 .. doxygenfunction:: SBody::ModBy2Pi
+   :no-link:
+
+.. doxygenfunction:: SBody::PhiDifference
+   :no-link:
+
+.. doxygenfunction:: SBody::LinearInterpolation(double, double, double, double, double)
+   :no-link:
+
+.. doxygenfunction:: SBody::LinearInterpolation(double, double, double, const double, const double, double, size_t)
+   :no-link:
+
+.. doxygenfunction:: SBody::InterpolateSphericalPositionToCartesian
    :no-link:
 
 Elliptic Integrals
@@ -110,20 +149,14 @@ Calculate the elliptic integrals using the Legendre forms. Further information c
 .. doxygenfunction:: SBody::EllipticIntegral
    :no-link:
 
-.. doxygenfunction:: SBody::EllipticIntegral2Imaginary
+.. doxygenfunction:: SBody::EllipticIntegral2Complex
    :no-link:
 
-.. doxygenfunction:: SBody::EllipticIntegral4Imaginary
+.. doxygenfunction:: SBody::EllipticIntegral4Complex
    :no-link:
 
-.. doxygenfunction:: SBody::EllipticIntegral_2
+.. doxygenfunction:: SBody::Carlson_RC
    :no-link:
 
-.. doxygenfunction:: SBody::EllipticIntegral2Imaginary_2
-   :no-link:
-
-.. doxygenfunction:: SBody::EllipticIntegral_4
-   :no-link:
-
-.. doxygenfunction:: SBody::EllipticIntegral2Imaginary_4
+.. doxygenfunction:: SBody::Carlson_RJ
    :no-link:
