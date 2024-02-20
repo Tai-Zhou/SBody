@@ -66,7 +66,7 @@ namespace SBody {
 		}
 		return metric_->NormalizeNullGeodesic(photon, 1.);
 	}
-	int View::Trace(double position[], time_system time, double record[], bool luminosity, bool fast_trace) { // FIXME:!!!!
+	int View::Trace(const double position[], time_system object_time, double record[], bool calculate_luminosity, bool fast_trace) { // FIXME:!!!!
 		GslBlock collector;
 		gsl_vector *photon = collector.VectorAlloc(10), *last = collector.VectorAlloc(10);
 		unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
@@ -74,7 +74,7 @@ namespace SBody {
 		if (fast_trace && metric_->FastTrace(r_, theta_, sin_theta_, cos_theta_, position[1], position[2], position[3], alpha, beta, photon->data) == GSL_SUCCESS) {
 			record[0] = alpha * cos_iota_ - beta * sin_iota_;
 			record[1] = beta * cos_iota_ + alpha * sin_iota_;
-			record[2] = metric_->Redshift(position, photon->data, time, T);
+			record[2] = metric_->Redshift(position, photon->data, object_time, T);
 			record[3] = gsl_vector_get(photon, 8) / Unit::s;
 		} else {
 			auto t_start = chrono::steady_clock::now();
@@ -167,12 +167,12 @@ namespace SBody {
 				beta += iteration_coefficient * delta_beta;
 				integrator->Reset();
 			}
-			record[0] = alpha * cos_iota_ - beta * sin_iota_;
-			record[1] = beta * cos_iota_ + alpha * sin_iota_;
-			record[2] = metric_->Redshift(position, photon->data, time, T);
-			record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s;
+			record[0] = alpha * cos_iota_ - beta * sin_iota_;							   // alpha
+			record[1] = beta * cos_iota_ + alpha * sin_iota_;							   // beta
+			record[2] = metric_->Redshift(position, photon->data, object_time, T);		   // redshift
+			record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s; // time
 		}
-		if (!luminosity)
+		if (!calculate_luminosity)
 			return GSL_SUCCESS;
 		double photon2[9], cone_record[sample_number][3], local_cone_record[sample_number][3], area_record_initial[sample_number][3], area_record[sample_number][3], center_photon_position[3], center_photon_velocity[3], interval = M_2PI / sample_number;
 		auto photon2_position_view = gsl_vector_view_array(photon2, 4), photon2_velocity_view = gsl_vector_view_array(photon2 + 4, 4);
@@ -184,9 +184,7 @@ namespace SBody {
 		h = 1.;
 		int status = 0, signum;
 		integrator->Reset();
-		while (status <= 0 && photon2[8] < 1000.)
-			status = integrator->Apply(photon2 + 8, 1000., &h, photon2);
-		if (status > 0) {
+		if (status = integrator->Apply(photon2 + 8, 1000., &h, photon2); status > 0) {
 			fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
 			return status;
 		}
@@ -199,20 +197,6 @@ namespace SBody {
 			center_photon_velocity[i] /= photon_norm;
 		auto gmunu = collector.MatrixAlloc(4, 4), coordinate = collector.MatrixAlloc(4, 4), coordinate_gmunu = collector.MatrixAlloc(4, 4), coordinate_static = collector.MatrixCalloc(4, 4), coordinate_static_gmunu = collector.MatrixAlloc(4, 4);
 		auto permutation = collector.PermutationAlloc(4);
-		double deltaA[4], Gamma[4][4][4];
-		for (int i = 0; i < 4; ++i)
-			for (int j = 0; j < 4; ++j)
-				for (int k = 0; k < 4; ++k)
-					Gamma[i][j][k] = 0.;
-		Gamma[0][0][1] = Gamma[0][1][0] = 1. / (gsl_vector_get(photon, 1) * (gsl_vector_get(photon, 1) - 2.));
-		Gamma[1][0][0] = (gsl_vector_get(photon, 1) - 2.) / gsl_pow_3(gsl_vector_get(photon, 1));
-		Gamma[1][1][1] = Gamma[0][0][1];
-		Gamma[1][2][2] = 2. - gsl_vector_get(photon, 1);
-		Gamma[1][3][3] = Gamma[1][2][2] * gsl_pow_2(sin(gsl_vector_get(photon, 2)));
-		Gamma[2][1][2] = Gamma[2][2][1] = 1. / gsl_vector_get(photon, 1);
-		Gamma[2][3][3] = -sin(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2));
-		Gamma[3][1][3] = Gamma[3][3][1] = Gamma[2][1][2];
-		Gamma[3][2][3] = Gamma[3][3][2] = cos(gsl_vector_get(photon, 2)) / sin(gsl_vector_get(photon, 2));
 		metric_->MetricTensor(photon->data, gmunu);
 		metric_->LocalInertialFrame(photon->data, coordinate);
 		gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
@@ -265,58 +249,6 @@ namespace SBody {
 			for (int j = 0; j < 3; ++j)
 				cone_record[i][j] /= rec2_norm;
 		}
-		/*
-		for (int i = 0; i < sample_number; ++i) { // FIXME: https://en.wikipedia.org/wiki/Raychaudhuri_equation
-			const double angle = i * interval, sin_angle = sin(angle), cos_angle = cos(angle);
-			photon2[0] = 0.;
-			photon2[1] = epsilon * cos_angle;
-			photon2[2] = epsilon * sin_angle;
-			photon2[3] = 0.;
-			photon2[4] = 1.;
-			RotateAroundAxis(photon2 + 1, 1, gsl_vector_get(photon_in_star_frame_spherical, 2));
-			RotateAroundAxis(photon2 + 1, 2, gsl_vector_get(photon_in_star_frame_spherical, 3));
-			gsl_linalg_LU_svx(coordinate_gmunu, permutation, &photon2_position_view.vector);
-			area_record_initial[i][0] = metric_->DotProduct(photon->data, photon2, coordinate_static->data + 4, 4);
-			area_record_initial[i][1] = metric_->DotProduct(photon->data, photon2, coordinate_static->data + 8, 4);
-			area_record_initial[i][2] = metric_->DotProduct(photon->data, photon2, coordinate_static->data + 12, 4);
-			photon2[5] = gsl_vector_get(photon_in_static_frame_cartesian, 1);
-			photon2[6] = gsl_vector_get(photon_in_static_frame_cartesian, 2);
-			photon2[7] = gsl_vector_get(photon_in_static_frame_cartesian, 3);
-			for (int j = 0; j < 4; ++j) {
-				deltaA[j] = gsl_vector_get(photon_transform, j);
-				for (int k = 0; k < 4; ++k)
-					for (int l = 0; l < 4; ++l)
-						deltaA[j] += Gamma[k][j][l] * photon2[4 + k] * photon2[l];
-			}
-			RotateAroundAxis(photon2 + 5, 2, gsl_vector_get(photon, 2));
-			RotateAroundAxis(photon2 + 5, 0, -photon2[3]);
-			RotateAroundAxis(photon2 + 5, 2, -gsl_vector_get(photon, 2) - photon2[2]);
-			photon2[1] += gsl_vector_get(photon, 1);
-			photon2[2] += gsl_vector_get(photon, 2);
-			photon2[3] += gsl_vector_get(photon, 3);
-			photon2[5] /= sqrt(photon2[1] / (photon2[1] - 2.));
-			photon2[6] /= photon2[1];
-			photon2[7] /= (photon2[1] * sin(photon2[2]));
-			photon2[5] = deltaA[1];
-			photon2[6] = deltaA[2];
-			photon2[7] = deltaA[3];
-			// SphericalToCartesian(area_record_initial[i], 3);
-			photon2[8] = 0.;
-			metric_->NormalizeNullGeodesic(photon2);
-			metric_->LagrangianToHamiltonian(photon2);
-			h = 1.;
-			int status = 0;
-			integrator->Reset();
-			while (status <= 0 && photon2[8] < 1000.)
-				status = integrator->Apply(photon2 + 8, 1000., &h, photon2);
-			if (status > 0) {
-				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
-				return status;
-			}
-			metric_->HamiltonianToLagrangian(photon2);
-			copy(photon2 + 1, photon2 + 4, area_record[i]);
-			SphericalToCartesian(area_record[i], 3);
-		}*/
 		double cone_solid_angle = DotCross(center_photon_velocity, cone_record[0], cone_record[sample_number - 1]);
 		double cone_local_solid_angle = DotCross(photon_in_static_frame_cartesian->data + 1, local_cone_record[0], local_cone_record[sample_number - 1]);
 		// SphericalToCartesian(gsl_vector_ptr(photon, 1), 3);
@@ -328,7 +260,7 @@ namespace SBody {
 			cross_section_area_initial += DotCross(gsl_vector_ptr(photon_in_static_frame_cartesian, 1), area_record_initial[i], area_record_initial[i - 1]);
 			cross_section_area += TriangleArea(center_photon_position, area_record[i], area_record[i - 1]);
 		}
-		record[4] = 0.5 * abs(cone_solid_angle) / epsilon_circle_area;
+		record[4] = 2. * gsl_pow_2(record[2]) * epsilon_circle_area / abs(cone_solid_angle); // flux
 		// record[5] = sqrt(-1. / gmunu->data[0]);
 		// record[6] = 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area;
 		// record[7] = cross_section_area / epsilon_circle_area;

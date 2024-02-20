@@ -304,7 +304,7 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 		return py::array_t<double>();
 	}
 	time_system hotspot_time = T;
-	Particle star_0(main_metric, hotspot_time, LAGRANGIAN, false);
+	HotSpot star_0(main_metric, hotspot_time, LAGRANGIAN, 0., 1., 1000., 1., false);
 	size_t tStepNumber = 10000;
 	double position[13], t = 0., tStep = 0., tRec = t1 / tStepNumber * Unit::s;
 	if (mode == 0) { // circular
@@ -326,7 +326,7 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 	}
 	star_0.Position(position);
 	if (gr_time_delay) {
-		if (view_ptr->Trace(position, hotspot_time, position + 8, false) != GSL_SUCCESS) {
+		if (view_ptr->Trace(position, hotspot_time, position + 8, true) != GSL_SUCCESS) {
 			PrintlnError("Initially trace star Error!");
 			return HSExit(x);
 		}
@@ -340,11 +340,13 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 		if (status = star_0.IntegratorApply(&t, tStep, &h); status != 0)
 			py::print("[!] IntegratorApply status =", status);
 		star_0.Position(result_ptr);
-		if (gr_time_delay)
+		if (gr_time_delay) {
 			if (view_ptr->Trace(result_ptr, hotspot_time, result_ptr + 10, false) != GSL_SUCCESS) {
 				PrintlnError("Trace star this position Error!");
 				return HSExit(x);
 			}
+			result_ptr[14] *= star_0.Luminosity(tStep, result_ptr[12]);
+		}
 		result_ptr[8] = t / Unit::s;
 		const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
 		result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
@@ -372,7 +374,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 		return py::array_t<double>();
 	}
 	time_system hotspot_time = T;
-	Particle star_0(main_metric, hotspot_time, LAGRANGIAN, false);
+	HotSpot star_0(main_metric, hotspot_time, LAGRANGIAN, 0., 1., 1000., 1., false);
 	double *last_position = new double[13], *this_position = new double[13], t = 0., tStep = 0., tRec = 0.1 * Unit::s, t0, last_obs_time = 0., this_obs_time;
 	const double sin_inc = sin(inclination), cos_inc = cos(inclination);
 	if (mode == 0) { // circular
@@ -419,19 +421,21 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 		if (gr_time_delay) {
 			if (this_obs_time + gr_offset + estimate_step[estimate_idx] > obs_time.at(idx)) {
 				if (++estimate_idx < estimate_step.size()) {
-					if (view_ptr->Trace(last_position, hotspot_time, last_position + 8, false) != GSL_SUCCESS) {
+					if (view_ptr->Trace(last_position, hotspot_time, last_position + 8, true) != GSL_SUCCESS) {
 						PrintlnError("Trace star last position Error!");
 						return HSExit(x);
 					}
 					last_gr_obs_time = t / Unit::s + t0 - last_position[11];
+					last_position[12] *= star_0.Luminosity(tStep, last_position[10]);
 					gr_offset = last_gr_obs_time - this_obs_time;
 				} else {
 					estimate_idx = 0;
-					if (view_ptr->Trace(this_position, hotspot_time, this_position + 8, false) != GSL_SUCCESS) {
+					if (view_ptr->Trace(this_position, hotspot_time, this_position + 8, true) != GSL_SUCCESS) {
 						PrintlnError("Trace star this position Error!");
 						return HSExit(x);
 					}
 					this_gr_obs_time = t / Unit::s + t0 - this_position[11];
+					this_position[12] *= star_0.Luminosity(tStep, this_position[10]);
 					gr_offset = 0.;
 					const double time_diff0 = obs_time.at(idx) - last_gr_obs_time, time_diff1 = this_gr_obs_time - obs_time.at(idx), coeff = 1. / (this_gr_obs_time - last_gr_obs_time);
 					InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
@@ -450,11 +454,13 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 			InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
 			if (ray_tracing || metric == 2) {
 				CartesianToSpherical(result_ptr);
-				if (ray_tracing)
-					if (view_ptr->Trace(result_ptr, hotspot_time, result_ptr + 10, false) != GSL_SUCCESS) {
+				if (ray_tracing) {
+					if (view_ptr->Trace(result_ptr, hotspot_time, result_ptr + 10, true) != GSL_SUCCESS) {
 						PrintlnError("Trace star position Error!");
 						return HSExit(x);
 					}
+					result_ptr[14] *= star_0.Luminosity(tStep, result_ptr[12]);
+				}
 				if (metric == 2)
 					result_ptr[1] -= 1.;
 				SphericalToCartesian(result_ptr);

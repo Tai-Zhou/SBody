@@ -66,7 +66,7 @@ namespace SBody {
 		 * @return int
 		 */
 
-		int Trace(double position[], time_system time, double record[], bool luminosity, bool fast_trace = true);
+		int Trace(const double position[], time_system object_time, double record[], bool calculate_luminosity, bool fast_trace = true);
 
 		/**
 		 * @brief
