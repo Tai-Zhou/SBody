@@ -359,7 +359,7 @@ namespace SBody {
 	 */
 	double DotCross(const double x[], const double y[], const double z[]);
 
-	double TriangleArea(const double a, const double b, const double c);
+	double TriangleArea(double a, double b, double c);
 	double TriangleArea(const double x[], const double y[], const double z[]);
 
 	/**
@@ -426,15 +426,17 @@ namespace SBody {
 	 * \f]
 	 * @param theta_0
 	 * @param y
+	 * @return status
 	 */
-	void MapTheta(const double theta_0, double *y);
+	int MapTheta(const double theta_0, double *y);
 
 	/**
 	 * @brief Return `phi` in \f$[0, 2\pi)\f$.
 	 *
 	 * @param phi
+	 * @return status
 	 */
-	void ModBy2Pi(double &phi);
+	int ModBy2Pi(double &phi);
 
 	/**
 	 * @brief Similar to `ModBy2Pi`, but return `phi` in \f$(-\pi, \pi]\f$.
@@ -443,6 +445,11 @@ namespace SBody {
 	 * @return result
 	 */
 	double PhiDifference(double phi);
+
+	double LinearInterpolation(double x, double x0, double x1, double y0, double y1);
+	int LinearInterpolation(double x, double x0, double x1, const double y0[], const double y1[], double y[], size_t size);
+
+	int InterpolateSphericalPositionToCartesian(double t, double t0, double t1, const double y0[], const double y1[], double y[]);
 
 	/**
 	 * @brief \f[\int_y^x(a_5+b_5t)^{p_5/2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].

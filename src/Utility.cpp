@@ -276,7 +276,7 @@ namespace SBody {
 	double DotCross(const double x[], const double y[], const double z[]) {
 		return x[0] * (y[1] * z[2] - y[2] * z[1]) + x[1] * (y[2] * z[0] - y[0] * z[2]) + x[2] * (y[0] * z[1] - y[1] * z[0]);
 	}
-	double TriangleArea(const double a, const double b, const double c) {
+	double TriangleArea(double a, double b, double c) {
 		const double s = 0.5 * (a + b + c);
 		return sqrt(s * (s - a) * (s - b) * (s - c));
 	}
@@ -367,7 +367,7 @@ namespace SBody {
 	int OppositeSign(double x, double y) {
 		return (x > 0. && y < 0.) || (x < 0. && y > 0.);
 	}
-	void MapTheta(const double theta_0, double *y) {
+	int MapTheta(const double theta_0, double *y) {
 		if (OppositeSign(theta_0, y[2])) {
 			y[2] = -y[2];
 			y[3] += M_PI;
@@ -376,12 +376,14 @@ namespace SBody {
 			y[2] += M_PI;
 		else if (y[2] > M_PI_2)
 			y[2] -= M_PI;
+		return GSL_SUCCESS;
 	}
-	void ModBy2Pi(double &phi) {
+	int ModBy2Pi(double &phi) {
 		while (phi < 0)
 			phi += M_2PI;
 		while (phi >= M_2PI)
 			phi -= M_2PI;
+		return GSL_SUCCESS;
 	}
 	double PhiDifference(double phi) {
 		while (phi <= -M_PI)
@@ -389,6 +391,28 @@ namespace SBody {
 		while (phi > M_PI)
 			phi -= M_2PI;
 		return phi;
+	}
+	double LinearInterpolation(double x, double x0, double x1, double y0, double y1) {
+		if (x0 == x1)
+			return 0.5 * (y0 + y1);
+		return (y0 * (x1 - x) + y1 * (x - x0)) / (x1 - x0);
+	}
+	int LinearInterpolation(double x, double x0, double x1, const double y0[], const double y1[], double y[], size_t size) {
+		if (x0 == x1) {
+			while (--size >= 0)
+				y[size] = 0.5 * (y0[size] + y1[size]);
+			return GSL_SUCCESS;
+		}
+		const double x01_1 = 1. / (x1 - x0), a = (x - x0) * x01_1, b = (x1 - x) * x01_1;
+		while (--size >= 0)
+			y[size] = y0[size] * b + y1[size] * a;
+		return GSL_SUCCESS;
+	}
+	int InterpolateSphericalPositionToCartesian(double t, double t0, double t1, const double y0[], const double y1[], double y[]) {
+		double c0[8], c1[8];
+		SphericalToCartesian(y0, c0);
+		SphericalToCartesian(y1, c1);
+		return LinearInterpolation(t, t0, t1, y0, y, y, 8);
 	}
 	double EllipticIntegral(int p5, double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4, double b4) {
 		if (x == y)

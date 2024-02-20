@@ -38,16 +38,6 @@ namespace py = pybind11;
 using namespace std;
 using namespace SBody;
 
-int InterpolatePosition(double result[], double position0[], const double position1[], double time_diff0, double time_diff1) {
-	const double coeff = 1. / (time_diff0 + time_diff1);
-	copy(position1, position1 + 8, result);
-	SphericalToCartesian(position0);
-	SphericalToCartesian(result);
-	for (int i = 0; i < 8; ++i)
-		result[i] = (time_diff1 * position0[i] + time_diff0 * result[i]) * coeff;
-	return GSL_SUCCESS;
-}
-
 double CalculatePericenterTime(double mass, int metric, double fSP, double R, double ta, double a, double e, double inclination, double ascending_node, double periapsis) {
 	Unit::Initialize(mass);
 	R *= Unit::pc;
@@ -115,7 +105,7 @@ py::array_t<double> CalculateFullStarOrbit(double mass, int metric, double fSP, 
 		py::print("[!] IntegratorReset status =", status);
 	auto result = py::array_t<double>(tStepNumber * 14);
 	double *result_ptr = const_cast<double *>(result.data());
-	for (int i = 0; i < tStepNumber; ++i) {
+	for (size_t i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
 		status = star_0.IntegratorApply(&t, tStep, &h);
 		if (status > 0)
@@ -192,14 +182,11 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 				view_ptr->Trace(this_position, star_time, this_position + 8, false);
 				double this_gr_obs_time = (t + (t0 - this_position[11]) * Unit::s) / Unit::yr + 2002.;
 				double last_gr_obs_time = (t - tRec + (t0 - last_position[11]) * Unit::s) / Unit::yr + 2002.;
-				const double time_diff0 = obs_time.at(idx) - last_gr_obs_time, time_diff1 = this_gr_obs_time - obs_time.at(idx), coeff = 1. / (this_gr_obs_time - last_gr_obs_time);
-				InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
-				result_ptr[8] = (tStep - tRec * time_diff1 * coeff) / Unit::s;
-				for (int j = 0; j < 4; ++j)
-					result_ptr[10 + j] = (time_diff1 * last_position[j + 8] + time_diff0 * this_position[j + 8]) * coeff;
+				InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, last_position, this_position, result_ptr);
+				result_ptr[8] = LinearInterpolation(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, tStep - tRec, tStep) / Unit::s;
+				LinearInterpolation(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, last_position + 8, this_position + 8, result_ptr + 10, 4);
 			} else {
-				const double time_diff0 = obs_time.at(idx) - last_obs_time, time_diff1 = this_obs_time - obs_time.at(idx), coeff = 1. / (this_obs_time - last_obs_time);
-				InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
+				InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_obs_time, this_obs_time, last_position, this_position, result_ptr);
 				if (ray_tracing || metric == 2) {
 					CartesianToSpherical(result_ptr);
 					if (ray_tracing)
@@ -208,7 +195,7 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 						result_ptr[1] -= 1.;
 					SphericalToCartesian(result_ptr);
 				}
-				result_ptr[8] = (tStep - tRec * time_diff1 * coeff) / Unit::s;
+				result_ptr[8] = LinearInterpolation(obs_time.at(idx), last_obs_time, this_obs_time, tStep - tRec, tStep) / Unit::s;
 			}
 			const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
 			result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
@@ -271,7 +258,7 @@ double StarChi2(py::array_t<double> x, int metric, int gr_switch, int fix_switch
 }
 
 py::array_t<double> GetStarChi2(py::array_t<double> mcmc_chain, int metric, int gr_switch, int fix_switch, py::array_t<double> obs_time, py::array_t<double> obs_redshift, double redshift_sigma, py::array_t<double> obs_ra, double ra_sigma, py::array_t<double> obs_dec, double dec_sigma) {
-	const int m = mcmc_chain.shape(0), n = mcmc_chain.shape(1);
+	const int m = mcmc_chain.shape(0);
 	py::array_t<double> chi2(m);
 	py::gil_scoped_release release;
 #pragma omp parallel for
@@ -333,9 +320,9 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 	}
 	double h = 1.;
 	int status = 0;
-	auto result = py::array_t<double>(tStepNumber * 15);
+	auto result = py::array_t<double>(tStepNumber * 16);
 	double *result_ptr = const_cast<double *>(result.data());
-	for (int i = 0; i < tStepNumber; ++i) {
+	for (size_t i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
 		if (status = star_0.IntegratorApply(&t, tStep, &h); status != 0)
 			py::print("[!] IntegratorApply status =", status);
@@ -345,7 +332,7 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 				PrintlnError("Trace star this position Error!");
 				return HSExit(x);
 			}
-			result_ptr[14] *= star_0.Luminosity(tStep, result_ptr[12]);
+			result_ptr[15] = star_0.Luminosity(tStep, result_ptr[12]);
 		}
 		result_ptr[8] = t / Unit::s;
 		const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
@@ -357,7 +344,7 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 
 py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, int mode, bool ray_tracing, bool gr_time_delay, const py::array_t<double> &obs_time) {
 	const vector<double> estimate_step = {60., 30., 10., 3., 1., 0.5, 0.3, 0.2, 0.1, 0.};
-	int estimate_idx = 0;
+	size_t estimate_idx = 0;
 	double this_gr_obs_time, last_gr_obs_time, gr_offset = 0.;
 	Unit::Initialize(x.at(0)); // double fSP, double R, double r, double theta, double phi, double v_r, double v_phi, double inclination,
 	double R = x.at(2) * Unit::pc, r = x.at(7) * R * Unit::mas, inclination = x.at(5) * M_PI / 180., rotation = x.at(6) * M_PI / 180.;
@@ -375,7 +362,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 	}
 	time_system hotspot_time = T;
 	HotSpot star_0(main_metric, hotspot_time, LAGRANGIAN, 0., 1., 1000., 1., false);
-	double *last_position = new double[13], *this_position = new double[13], t = 0., tStep = 0., tRec = 0.1 * Unit::s, t0, last_obs_time = 0., this_obs_time;
+	double *last_position = new double[14], *this_position = new double[14], t = 0., tStep = 0., tRec = 0.1 * Unit::s, t0, last_obs_time = 0., this_obs_time;
 	const double sin_inc = sin(inclination), cos_inc = cos(inclination);
 	if (mode == 0) { // circular
 		if (star_0.InitializeCircular(r, x.at(8) * M_PI / 180., x.at(9)) != GSL_SUCCESS)
@@ -408,7 +395,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 	if (status = star_0.IntegratorReset(); status != 0)
 		py::print("[!] IntegratorReset status =", status);
 	size_t idx = 0, size = obs_time.size();
-	auto result = py::array_t<double>(size * 15);
+	auto result = py::array_t<double>(size * 16);
 	double *result_ptr = const_cast<double *>(result.data());
 	for (int i = 0;; ++i) {
 		tStep += tRec;
@@ -426,7 +413,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 						return HSExit(x);
 					}
 					last_gr_obs_time = t / Unit::s + t0 - last_position[11];
-					last_position[12] *= star_0.Luminosity(tStep, last_position[10]);
+					last_position[13] = star_0.Luminosity(tStep, last_position[10]);
 					gr_offset = last_gr_obs_time - this_obs_time;
 				} else {
 					estimate_idx = 0;
@@ -435,13 +422,11 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 						return HSExit(x);
 					}
 					this_gr_obs_time = t / Unit::s + t0 - this_position[11];
-					this_position[12] *= star_0.Luminosity(tStep, this_position[10]);
+					this_position[13] = star_0.Luminosity(tStep, this_position[10]);
 					gr_offset = 0.;
-					const double time_diff0 = obs_time.at(idx) - last_gr_obs_time, time_diff1 = this_gr_obs_time - obs_time.at(idx), coeff = 1. / (this_gr_obs_time - last_gr_obs_time);
-					InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
-					result_ptr[8] = (tStep - tRec * time_diff1 * coeff) / Unit::s;
-					for (int j = 0; j < 5; ++j)
-						result_ptr[10 + j] = (time_diff1 * last_position[j + 8] + time_diff0 * this_position[j + 8]) * coeff;
+					InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, last_position, this_position, result_ptr);
+					result_ptr[8] = LinearInterpolation(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, tStep - tRec, tStep) / Unit::s;
+					LinearInterpolation(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, last_position + 8, this_position + 8, result_ptr + 10, 6);
 					const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
 					result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
 					result_ptr += 15;
@@ -450,8 +435,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 				}
 			}
 		} else if (this_obs_time > obs_time.at(idx)) {
-			const double time_diff0 = obs_time.at(idx) - last_obs_time, time_diff1 = this_obs_time - obs_time.at(idx), coeff = 1. / (this_obs_time - last_obs_time);
-			InterpolatePosition(result_ptr, last_position, this_position, time_diff0, time_diff1);
+			InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_obs_time, this_obs_time, last_position, this_position, result_ptr);
 			if (ray_tracing || metric == 2) {
 				CartesianToSpherical(result_ptr);
 				if (ray_tracing) {
@@ -459,13 +443,13 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 						PrintlnError("Trace star position Error!");
 						return HSExit(x);
 					}
-					result_ptr[14] *= star_0.Luminosity(tStep, result_ptr[12]);
+					result_ptr[15] = star_0.Luminosity(tStep, result_ptr[12]);
 				}
 				if (metric == 2)
 					result_ptr[1] -= 1.;
 				SphericalToCartesian(result_ptr);
 			}
-			result_ptr[8] = (tStep - tRec * time_diff1 * coeff) / Unit::s;
+			result_ptr[8] = LinearInterpolation(obs_time.at(idx), last_obs_time, this_obs_time, tStep - tRec, tStep) / Unit::s;
 			const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
 			result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
 			result_ptr += 15;
@@ -498,7 +482,7 @@ double HSChi2(py::array_t<double> &x, int metric, int mode, int gr_switch, int f
 	const int size = obs_flux.size();
 	if (mode == 0 && !(fix_switch & 1024))
 		for (int i = 0; i < size; ++i)
-			flux_prob += gsl_pow_2((obs_flux.at(i) - x.at(10) * abs(obs_data.at(i, 14))) / flux_sigma.at(i));
+			flux_prob += gsl_pow_2((obs_flux.at(i) - abs(obs_data.at(i, 14) * obs_data.at(i, 15))) / flux_sigma.at(i));
 	if (gr_switch & 2)
 		for (int i = 0; i < size; ++i) {
 			ra_prob += gsl_pow_2((obs_ra.at(i) + obs_data.at(i, 10) * x.at(0) * 9.870628713769018e-6 / x.at(2) - x.at(3)) / ra_sigma.at(i));
