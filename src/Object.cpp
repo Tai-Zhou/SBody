@@ -219,8 +219,8 @@ namespace SBody {
 		return 0;
 	}
 	HotSpot::HotSpot(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double spectral_index, double luminosity, double luminosity_mu, double luminosity_sigma, bool fixed) : Particle(metric, time, coordinate, fixed), spectral_index_(spectral_index), luminosity_(luminosity), luminosity_mu_(luminosity_mu), luminosity_sigma_(luminosity_sigma) {}
-	double HotSpot::Luminosity(double t) {
+	double HotSpot::Luminosity(double t, double redshift) {
 		double intrinsic_time = time_ == T ? position_[0] : t;
-		return luminosity_ * exp(-0.5 * gsl_pow_2((intrinsic_time - luminosity_mu_) / luminosity_sigma_));
+		return luminosity_ * pow(redshift, -spectral_index_) * exp(-0.5 * gsl_pow_2((intrinsic_time - luminosity_mu_) / luminosity_sigma_));
 	}
 } // namespace SBody

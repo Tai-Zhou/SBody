@@ -151,8 +151,7 @@ namespace SBody {
 
 	  public:
 		HotSpot(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double spectral_index, double luminosity, double luminosity_mu, double luminosity_sigma, bool fixed = false);
-		double Luminosity(double t);
-		double Flux(double t);
+		double Luminosity(double t, double redshift);
 	};
 
 	class Disk : public Object {
