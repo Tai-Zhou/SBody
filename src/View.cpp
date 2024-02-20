@@ -212,8 +212,8 @@ namespace SBody {
 		gsl_vector_scale(photon_in_star_frame_cartesian, 1. / gsl_vector_get(photon_in_star_frame_cartesian, 0));
 		gsl_blas_dgemv(CblasNoTrans, 1., coordinate_static_gmunu, photon_transform, 0., photon_in_static_frame_cartesian);
 		gsl_vector_scale(photon_in_static_frame_cartesian, 1. / gsl_vector_get(photon_in_static_frame_cartesian, 0));
-		CartesianToSpherical(gsl_vector_ptr(photon_in_static_frame_cartesian, 1), gsl_vector_ptr(photon_in_static_frame_spherical, 1));
-		CartesianToSpherical(gsl_vector_ptr(photon_in_star_frame_cartesian, 1), gsl_vector_ptr(photon_in_star_frame_spherical, 1));
+		CartesianToSpherical(gsl_vector_ptr(photon_in_static_frame_cartesian, 0), gsl_vector_ptr(photon_in_static_frame_spherical, 0), 4);
+		CartesianToSpherical(gsl_vector_ptr(photon_in_star_frame_cartesian, 0), gsl_vector_ptr(photon_in_star_frame_spherical, 0), 4);
 		gsl_linalg_LU_decomp(coordinate_gmunu, permutation, &signum);
 		for (int i = 0; i < sample_number; ++i) {
 			const double angle = i * interval, sin_angle = sin(angle), cos_angle = cos(angle);
@@ -222,8 +222,8 @@ namespace SBody {
 			photon2[5] = cos_angle * sin_epsilon;
 			photon2[6] = sin_angle * sin_epsilon;
 			photon2[7] = cos_epsilon;
-			RotateAroundAxis(photon2 + 5, 1, gsl_vector_get(photon_in_star_frame_spherical, 2));
-			RotateAroundAxis(photon2 + 5, 2, gsl_vector_get(photon_in_star_frame_spherical, 3));
+			RotateAroundAxis(photon2 + 5, Y, gsl_vector_get(photon_in_star_frame_spherical, 2));
+			RotateAroundAxis(photon2 + 5, Z, gsl_vector_get(photon_in_star_frame_spherical, 3));
 			gsl_linalg_LU_svx(coordinate_gmunu, permutation, &photon2_velocity_view.vector);
 			photon2[8] = 0.;
 			metric_->NormalizeNullGeodesic(photon2);
@@ -251,7 +251,6 @@ namespace SBody {
 		}
 		double cone_solid_angle = DotCross(center_photon_velocity, cone_record[0], cone_record[sample_number - 1]);
 		double cone_local_solid_angle = DotCross(photon_in_static_frame_cartesian->data + 1, local_cone_record[0], local_cone_record[sample_number - 1]);
-		// SphericalToCartesian(gsl_vector_ptr(photon, 1), 3);
 		double cross_section_area_initial = DotCross(gsl_vector_ptr(photon_in_static_frame_cartesian, 1), area_record_initial[0], area_record_initial[sample_number - 1]);
 		double cross_section_area = TriangleArea(center_photon_position, area_record[0], area_record[sample_number - 1]);
 		for (int i = 1; i < sample_number; ++i) {
@@ -260,11 +259,7 @@ namespace SBody {
 			cross_section_area_initial += DotCross(gsl_vector_ptr(photon_in_static_frame_cartesian, 1), area_record_initial[i], area_record_initial[i - 1]);
 			cross_section_area += TriangleArea(center_photon_position, area_record[i], area_record[i - 1]);
 		}
-		record[4] = 2. * gsl_pow_2(record[2]) * epsilon_circle_area / abs(cone_solid_angle); // flux
-		// record[5] = sqrt(-1. / gmunu->data[0]);
-		// record[6] = 0.5 * abs(cone_local_solid_angle) / epsilon_circle_area;
-		// record[7] = cross_section_area / epsilon_circle_area;
-		// record[8] = 0.5 * abs(cross_section_area_initial) / epsilon_circle_area;
+		record[4] = 2. * gsl_pow_2(record[2]) * epsilon_circle_area / abs(cone_solid_angle); // flux coefficient
 		return GSL_SUCCESS;
 	}
 	int View::OmegaTest() {

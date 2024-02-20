@@ -43,7 +43,7 @@ namespace SBody {
 	constexpr double cos_epsilon = 0.999999999999999999995;
 
 	/// Area of a circle with radius of epsilon. \f$\pi\varepsilon^2\f$
-	constexpr double epsilon_circle_area = 3.14159265358979323846 * epsilon * epsilon;
+	constexpr double epsilon_circle_area = M_PI * epsilon * epsilon;
 
 	/// \f$2\pi\f$.
 	constexpr double M_2PI = 6.28318530717958647692528676655900576;
@@ -53,6 +53,10 @@ namespace SBody {
 
 	/// \f$\sqrt27\f$
 	constexpr double M_SQRT27 = 5.19615242270663188058233902451761710;
+
+	enum Axis { X,
+				Y,
+				Z };
 
 	/**
 	 * @brief A wrapper of the gsl_odeiv2_evolve
@@ -362,17 +366,27 @@ namespace SBody {
 	 * @brief Rotate vector `x` around the `axis` by `angle`.
 	 *
 	 * @param x 3 dimensional vector
-	 * @param axis the subscript of the rotation axis, should be \f$\geq0\f$ and \f$\leq2\f$.
+	 * @param axis the rotation axis.
 	 * @param angle in rad
 	 * @return status
 	 */
-	int RotateAroundAxis(double x[], int axis, double angle);
+	int RotateAroundAxis(double x[], Axis axis, double angle);
+
+	/**
+	 * @brief
+	 *
+	 * @param cartesian 4 or 8 dimensional vector
+	 * @param spherical 4 or 8 dimensional vector
+	 * @param dimension 4 or 8.
+	 * @return status
+	 */
+	int CartesianToSpherical(const double cartesian[], double spherical[], size_t dimension = 8);
 
 	/**
 	 * @brief
 	 *
 	 * @param x 4 or 8 dimensional vector
-	 * @param dimension 3, 4, or 8
+	 * @param dimension 4 or 8
 	 * @return status
 	 */
 	int CartesianToSpherical(double x[], size_t dimension = 8);
@@ -380,51 +394,21 @@ namespace SBody {
 	/**
 	 * @brief
 	 *
-	 * @param cartesian 3 dimensional vector
-	 * @param spherical 3 dimensional vector
+	 * @param spherical 4 or 8 dimensional vector
+	 * @param cartesian 4 or 8 dimensional vector
+	 * @param dimension 4 or 8.
 	 * @return status
 	 */
-	int CartesianToSpherical(const double cartesian[], double spherical[]);
-
-	/**
-	 * @brief
-	 *
-	 * @param cartesian_position 3 dimensional vector
-	 * @param cartesian_velocity 3 dimensional vector
-	 * @param spherical_position 3 dimensional vector
-	 * @param spherical_velocity 3 dimensional vector
-	 * @return status
-	 */
-	int CartesianToSpherical(const double cartesian_position[], const double cartesian_velocity[], double spherical_position[], double spherical_velocity[]);
+	int SphericalToCartesian(const double spherical[], double cartesian[], size_t dimension = 8);
 
 	/**
 	 * @brief
 	 *
 	 * @param x 4 or 8 dimensional vector
-	 * @param dimension 3, 4, or 8.
+	 * @param dimension 4 or 8.
 	 * @return status
 	 */
 	int SphericalToCartesian(double x[], size_t dimension = 8);
-
-	/**
-	 * @brief
-	 *
-	 * @param spherical 3 dimensional vector
-	 * @param cartesian 3 dimensional vector
-	 * @return status
-	 */
-	int SphericalToCartesian(const double spherical[], double cartesian[]);
-
-	/**
-	 * @brief
-	 *
-	 * @param spherical_position 3 dimensional vector
-	 * @param spherical_velocity 3 dimensional vector
-	 * @param cartesian_position 3 dimensional vector or `nullptr`
-	 * @param cartesian_velocity 3 dimensional vector
-	 * @return status
-	 */
-	int SphericalToCartesian(const double spherical_position[], const double spherical_velocity[], double cartesian_position[], double cartesian_velocity[]);
 
 	/**
 	 * @brief Return `1` if `x`, `y` have opposite signs, else `0`.
