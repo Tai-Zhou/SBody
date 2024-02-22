@@ -5,16 +5,12 @@
 Object
 ======
 
-
-Object
-------
-
 .. doxygenclass:: SBody::Object
    :members:
    :no-link:
 
 Star
-----
+====
 
 .. index::
    Star
@@ -24,7 +20,7 @@ Star
    :no-link:
 
 Disk
-----
+====
 
 .. index::
    Disk

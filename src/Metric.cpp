@@ -24,6 +24,8 @@
 #include "IO.h"
 #include "Utility.h"
 
+using namespace std;
+
 namespace SBody {
 	int Metric::LocalInertialFrame(const double position[], gsl_matrix *coordinate, const double timelike[]) {
 		GslBlock collector;
@@ -51,9 +53,9 @@ namespace SBody {
 			gsl_vector_scale(coordinate_row, 1. / sqrt(abs(DotProduct(position, coordinate_row->data, coordinate_row->data, 4))));
 			gsl_blas_dsymv(CblasUpper, 1., metric, coordinate_row, 0., product_row);
 		}
-		return isnan(gsl_matrix_get(coordinate, 3, 0)) ? 1 : 0;
+		return isnan(gsl_matrix_get(coordinate, 3, 0)) ? GSL_EDOM : GSL_SUCCESS;
 	}
-	double Metric::Redshift(const double y[], const double photon[], time_system object_time, time_system photon_time) {
+	double Metric::Redshift(const double y[], const double photon[], TimeSystem object_time, TimeSystem photon_time) {
 		const double u[4] = {1., y[5], y[6], y[7]}, v[4] = {1., photon[5], photon[6], photon[7]};
 		if (object_time == T) {
 			if (photon_time == T)
@@ -66,7 +68,7 @@ namespace SBody {
 	}
 
 	Newton::Newton(int PN) : PN_(PN){};
-	std::string Newton::Name() {
+	string Newton::Name() {
 		return "Newton";
 	}
 	int Newton::MetricTensor(const double position[], gsl_matrix *metric) { // FIXME: Check
@@ -75,7 +77,7 @@ namespace SBody {
 		gsl_matrix_set(metric, 1, 1, 1.);
 		gsl_matrix_set(metric, 2, 2, gsl_pow_2(position[1]));
 		gsl_matrix_set(metric, 3, 3, gsl_pow_2(position[1] * sin(position[2])));
-		return 0;
+		return GSL_SUCCESS;
 	}
 	double Newton::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
 		if (dimension == 3)
@@ -93,10 +95,10 @@ namespace SBody {
 	int Newton::HamiltonianToLagrangian(double y[]) {
 		return GSL_FAILURE;
 	}
-	int Newton::FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) {
+	int Newton::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) {
 		return GSL_FAILURE;
 	}
-	double Newton::Energy(const double y[], time_system time, coordinate_system coordinate) {
+	double Newton::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
 		const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), r_3 = gsl_pow_3(r_1), r_4 = gsl_pow_2(r_2);
 		const double v2 = gsl_pow_2(y[5]) + gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin(y[2]) * y[7])), v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2), v8 = gsl_pow_2(v4);
 		const double rdot = y[5], rdot2 = gsl_pow_2(rdot);
@@ -109,7 +111,7 @@ namespace SBody {
 			E += 0.375 * r_4 + 1.25 * r_3 * v2 + 1.5 * r_3 * rdot2 + 0.2734375 * v8 + 8.4375 * r_2 * v4 + 0.75 * r_2 * v2 * rdot2 + 3.4375 * r_1 * v6;
 		return E;
 	}
-	double Newton::AngularMomentum(const double y[], time_system time, coordinate_system coordinate) {
+	double Newton::AngularMomentum(const double y[], TimeSystem time, DynamicalSystem dynamics) {
 		const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), r_3 = gsl_pow_3(r_1);
 		const double v_tan2 = gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin(y[2]) * y[7]));
 		const double v2 = gsl_pow_2(y[5]) + v_tan2, v4 = gsl_pow_2(v2), v6 = gsl_pow_3(v2);
@@ -123,10 +125,10 @@ namespace SBody {
 			eff += 2.5 * r_3 + 0.3125 * v6 + 11.25 * r_2 * v2 + 0.5 * r_2 * rdot2 + 4.125 * r_1 * v4;
 		return y[1] * sqrt(v_tan2) * eff;
 	}
-	double Newton::CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) {
-		return gsl_pow_2(AngularMomentum(y, time, coordinate));
+	double Newton::CarterConstant(const double y[], const double mu2, TimeSystem time, DynamicalSystem dynamics) {
+		return gsl_pow_2(AngularMomentum(y, time, dynamics));
 	}
-	double Newton::Redshift(const double y[], const double photon[], time_system object_time, time_system photon_time) {
+	double Newton::Redshift(const double y[], const double photon[], TimeSystem object_time, TimeSystem photon_time) {
 		const double delta_epsilon = 1. - 2. / y[1];
 		return (1. - DotProduct(y, y + 4, photon + 4, 3) / sqrt(delta_epsilon)) / sqrt(delta_epsilon - gsl_pow_2(y[5]) - gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin(y[2]) * y[7])));
 	}
@@ -143,24 +145,24 @@ namespace SBody {
 			y[i] *= v_1;
 		return GSL_SUCCESS;
 	}
-	std::unique_ptr<Integrator> Newton::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
-		if (time != T || coordinate != LAGRANGIAN || motion != GEODESIC) {
-			PrintlnError("{}::GetIntegrator() {}, {}, {} invaild", Name(), time, coordinate, motion);
+	unique_ptr<Integrator> Newton::GetIntegrator(TimeSystem time, DynamicalSystem dynamics, MotionMode motion) {
+		if (time != T || dynamics != LAGRANGIAN || motion != GEODESIC) {
+			PrintlnError("{}::GetIntegrator() {}, {}, {} invaild", Name(), time, dynamics, motion);
 			return nullptr;
 		}
-		return std::make_unique<Integrator>(NewtonTLagrangianGeodesic, Jacobian, const_cast<int *>(&this->PN_));
+		return make_unique<Integrator>(NewtonTLagrangianGeodesic, Jacobian, const_cast<int *>(&this->PN_));
 	}
 	PN1::PN1(double fSP) : Newton(1), PN1_(fSP){};
-	std::unique_ptr<Integrator> PN1::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
-		if (time != T || coordinate != LAGRANGIAN || motion != GEODESIC) {
-			PrintlnError("{}::GetIntegrator() {}, {}, {} invaild", Name(), time, coordinate, motion);
+	unique_ptr<Integrator> PN1::GetIntegrator(TimeSystem time, DynamicalSystem dynamics, MotionMode motion) {
+		if (time != T || dynamics != LAGRANGIAN || motion != GEODESIC) {
+			PrintlnError("{}::GetIntegrator() {}, {}, {} invaild", Name(), time, dynamics, motion);
 			return nullptr;
 		}
-		return std::make_unique<Integrator>(PN1TLagrangianGeodesic, Jacobian, const_cast<double *>(&this->PN1_));
+		return make_unique<Integrator>(PN1TLagrangianGeodesic, Jacobian, const_cast<double *>(&this->PN1_));
 	}
 
 	Schwarzschild::Schwarzschild() {}
-	std::string Schwarzschild::Name() {
+	string Schwarzschild::Name() {
 		return "Schwarzschild";
 	}
 	int Schwarzschild::MetricTensor(const double position[], gsl_matrix *metric) {
@@ -187,7 +189,7 @@ namespace SBody {
 		y[5] *= y[1] / (y[1] - 2.) * dt_dtau;
 		y[6] *= r2 * dt_dtau;
 		y[7] *= r2 * gsl_pow_2(sin(y[2])) * dt_dtau;
-		return 0;
+		return GSL_SUCCESS;
 	}
 	int Schwarzschild::HamiltonianToLagrangian(double y[]) {
 		const double r_1 = 1. / y[1], g11_1 = 1. - 2. * r_1;
@@ -195,29 +197,29 @@ namespace SBody {
 		y[5] *= g11_1 * y[4];
 		y[6] *= gsl_pow_2(r_1) * y[4];
 		y[7] *= gsl_pow_2(r_1 / sin(y[2])) * y[4];
-		return 0;
+		return GSL_SUCCESS;
 	}
-	int Schwarzschild::FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) {
-		const double sin_theta_target = abs(sin(target_theta)), cos_theta_target = GSL_SIGN(target_theta) * cos(target_theta), sin_phi_target = sin(target_phi), cos_phi_target = cos(target_phi);
+	int Schwarzschild::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) {
+		const double sin_theta_target = abs(sin(theta_target)), cos_theta_target = GSL_SIGN(theta_target) * cos(theta_target), sin_phi_target = sin(phi_target), cos_phi_target = cos(phi_target);
 		const double cos_observer_target = sin_theta_observer * sin_theta_target * cos_phi_target + cos_theta_observer * cos_theta_target;
 		const double delta_phi = acos(cos_observer_target), sin_observer_target = sqrt(1. - gsl_pow_2(cos_observer_target));
-		const double u0 = 1. / observer_r, u1 = 1. / target_r;
+		const double u0 = 1. / r_observer, u1 = 1. / r_target;
 		const double g11_1 = 1. - 2. * u1;
-		if (delta_phi == 0.) { // 0. <= delta_phi <= M_PI
+		if (delta_phi == 0.) {
 			alpha = 0.;
 			beta = 0.;
-			photon[0] = (target_r - observer_r + 4. * log(target_r * u0) + 4. * (u1 - u0)) * observer_r / (observer_r - 2.);
-			photon[1] = target_r;
-			photon[2] = target_theta;
-			photon[3] = target_phi;
-			photon[4] = target_r * (observer_r - 2.) / (observer_r * (target_r - 2.));
-			photon[5] = (target_r - 2.) * u1;
+			photon[0] = (r_target - r_observer + 4. * log(r_target * u0) + 4. * (u1 - u0)) * r_observer / (r_observer - 2.);
+			photon[1] = r_target;
+			photon[2] = theta_target;
+			photon[3] = phi_target;
+			photon[4] = r_target * (r_observer - 2.) / (r_observer * (r_target - 2.));
+			photon[5] = (r_target - 2.) * u1;
 			photon[6] = 0.;
 			photon[7] = 0.;
-			photon[8] = target_r - observer_r + 2. * log(target_r * u0);
+			photon[8] = r_target - r_observer + 2. * log(r_target * u0);
 			return GSL_SUCCESS;
 		}
-		double impact_parameter_upper_limit = target_r / sqrt(g11_1), turning_phi;
+		double impact_parameter_upper_limit = r_target / sqrt(g11_1), turning_phi;
 		if (double x0, x1, x2; u1 * 3. < 1. && gsl_poly_solve_cubic(-0.5, 0., 0.5 / gsl_pow_2(impact_parameter_upper_limit), &x0, &x1, &x2) == 3)
 			turning_phi = M_SQRT1_2 * EllipticIntegral(0, u0, u1, 0., 0., -x0, 1., u1, -1., x2, -1.); // use u1 instead of x1, prevent x1 < u1 < x1 + epsilon
 		else {
@@ -246,8 +248,8 @@ namespace SBody {
 			impact_solver.Set(&impact_function, M_SQRT27 + epsilon, impact_parameter_upper_limit);
 		else
 			impact_solver.Set(&impact_function, 0, impact_parameter_upper_limit);
-		if (impact_solver.Solve() != GSL_SUCCESS)
-			return GSL_FAILURE;
+		if (int status = impact_solver.Solve(); status != GSL_SUCCESS)
+			return status;
 		alpha = impact_solver.Root() / sin_observer_target * sin_theta_target * sin_phi_target;
 		beta = impact_solver.Root() / sin_observer_target * (cos_theta_target * sin_theta_observer - sin_theta_target * cos_phi_target * cos_theta_observer);
 		if (double x0, x1, x2; gsl_poly_solve_cubic(-0.5, 0., 0.5 / gsl_pow_2(impact_solver.Root()), &x0, &x1, &x2) == 3) {
@@ -269,10 +271,10 @@ namespace SBody {
 			photon[0] = -M_SQRT1_2 * ellip_int_4 / (impact_solver.Root() * (1. - 2. * u0));
 			photon[8] = -M_SQRT1_2 * (ellip_int_4 + 2. * EllipticIntegral2Complex(-2, u0, u1, 0., 1., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.) + 4. * EllipticIntegral2Complex(-2, u0, u1, 1., -2., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.)) / impact_solver.Root();
 		}
-		photon[1] = target_r;
-		photon[2] = target_theta;
-		photon[3] = target_phi;
-		photon[4] = g11_1 / (1. - 2. * u0); // dt/d\tau = 1. when r = observer_r
+		photon[1] = r_target;
+		photon[2] = theta_target;
+		photon[3] = phi_target;
+		photon[4] = g11_1 / (1. - 2. * u0); // dt/d\tau = 1. when r = r_observer
 		if (delta_phi > turning_phi)
 			photon[5] = -g11_1 * sqrt(1. - g11_1 * gsl_pow_2(u1 * impact_solver.Root()));
 		else
@@ -289,31 +291,31 @@ namespace SBody {
 		}
 		return GSL_SUCCESS;
 	}
-	double Schwarzschild::Energy(const double y[], time_system time, coordinate_system coordinate) {
-		if (coordinate == LAGRANGIAN) {
+	double Schwarzschild::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
 			if (time == T)
 				return (y[1] - 2.) / (y[1] * y[4]);
 			// time == TAU
 			return (1. - 2. / y[1]) * y[4];
-		} // coordinate == HAMILTONIAN
+		} // dynamics == HAMILTONIAN
 		return 1. - y[4];
 	}
-	double Schwarzschild::AngularMomentum(const double y[], time_system time, coordinate_system coordinate) {
-		if (coordinate == LAGRANGIAN) {
+	double Schwarzschild::AngularMomentum(const double y[], TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
 			if (time == T)
 				return gsl_pow_2(y[1] * sin(y[2])) * y[7] / y[4];
 			// time == TAU
 			return gsl_pow_2(y[1] * sin(y[2])) * y[7];
-		} // coordinate == HAMILTONIAN
+		} // dynamics == HAMILTONIAN
 		return y[7];
 	}
-	double Schwarzschild::CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) {
-		if (coordinate == LAGRANGIAN) {
+	double Schwarzschild::CarterConstant(const double y[], const double mu2, TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
 			if (time == T)
 				return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2]))) / gsl_pow_2(y[4]);
 			// time == TAU
 			return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2])));
-		} // coordinate == HAMILTONIAN
+		} // dynamics == HAMILTONIAN
 		return gsl_pow_2(y[6]) + gsl_pow_2(y[7] / tan(y[2]));
 	}
 	int Schwarzschild::NormalizeTimelikeGeodesic(double y[]) {
@@ -321,61 +323,61 @@ namespace SBody {
 		if (g11_1 <= 0)
 			return 1;
 		y[4] = sqrt(g11_1 - (gsl_pow_2(y[5]) / g11_1 + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
-		return std::isnan(y[4]);
+		return isnan(y[4]) ? GSL_EDOM : GSL_SUCCESS;
 	}
 	int Schwarzschild::NormalizeNullGeodesic(double y[], double frequency) {
 		const double g11_1 = 1. - 2. / y[1];
 		if (g11_1 <= 0)
 			return 1;
 		const double coefficient = GSL_SIGN(frequency) * g11_1 / sqrt(gsl_pow_2(y[5]) + g11_1 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+		if (isnan(coefficient))
+			return GSL_EDOM;
 		y[4] = frequency;
 		y[5] *= coefficient;
 		y[6] *= coefficient;
 		y[7] *= coefficient;
-		return 0;
+		return GSL_SUCCESS;
 	}
-	std::unique_ptr<Integrator> Schwarzschild::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+	unique_ptr<Integrator> Schwarzschild::GetIntegrator(TimeSystem time, DynamicalSystem dynamics, MotionMode motion) {
 		if (time == T) {
-			if (coordinate == LAGRANGIAN) {
+			if (dynamics == LAGRANGIAN) {
 				if (motion == GEODESIC)
-					return std::make_unique<Integrator>(SchwarzschildTLagrangianGeodesic, Jacobian);
+					return make_unique<Integrator>(SchwarzschildTLagrangianGeodesic, Jacobian);
 				else if (motion == CIRCULAR)
-					return std::make_unique<Integrator>(SchwarzschildTLagrangianCircular, Jacobian);
-				else if (motion == RIAF)
-					return std::make_unique<Integrator>(SchwarzschildTLagrangianRIAF, Jacobian);
+					return make_unique<Integrator>(SchwarzschildTLagrangianCircular, Jacobian);
 				else if (motion == HELICAL)
-					return std::make_unique<Integrator>(SchwarzschildTLagrangianHelical, Jacobian);
-			} else if (coordinate == HAMILTONIAN && motion == GEODESIC)
-				return std::make_unique<Integrator>(SchwarzschildTHamiltonianGeodesic, Jacobian);
-		} else if (time == TAU && coordinate == LAGRANGIAN && motion == GEODESIC)
-			return std::make_unique<Integrator>(SchwarzschildTauLagrangianGeodesic, Jacobian);
-		PrintlnError("{}::GetIntegrator() {}, {}, {} invaild", Name(), time, coordinate, motion);
+					return make_unique<Integrator>(SchwarzschildTLagrangianHelical, Jacobian);
+			} else if (dynamics == HAMILTONIAN && motion == GEODESIC)
+				return make_unique<Integrator>(SchwarzschildTHamiltonianGeodesic, Jacobian);
+		} else if (time == TAU && dynamics == LAGRANGIAN && motion == GEODESIC)
+			return make_unique<Integrator>(SchwarzschildTauLagrangianGeodesic, Jacobian);
+		PrintlnError("{}::GetIntegrator() {}, {}, {} invaild", Name(), time, dynamics, motion);
 		return nullptr;
 	}
 	ReissnerNordstrom::ReissnerNordstrom(double charge) : r_Q_(0.5 * sqrt(M_1_PI) * charge), r_Q2_(r_Q_ * r_Q_), r_Q4_(r_Q2_ * r_Q2_) {}
-	std::string ReissnerNordstrom::Name() {
+	string ReissnerNordstrom::Name() {
 		return "Reissner-Nordstrom";
 	}
 	int ReissnerNordstrom::MetricTensor(const double position[], gsl_matrix *metric) {
 		const double r_1 = 1. / position[1];
 		gsl_matrix_set_zero(metric);
-		gsl_matrix_set(metric, 0, 0, -(1. - (2. - r_Q2_ * r_1) * r_1));
+		gsl_matrix_set(metric, 0, 0, -1. + (2. - r_Q2_ * r_1) * r_1);
 		gsl_matrix_set(metric, 1, 1, -1. / gsl_matrix_get(metric, 0, 0));
 		gsl_matrix_set(metric, 2, 2, gsl_pow_2(position[1]));
 		gsl_matrix_set(metric, 3, 3, gsl_pow_2(position[1] * sin(position[2])));
 		return position[1] == 2. ? GSL_EZERODIV : GSL_SUCCESS;
 	}
 	double ReissnerNordstrom::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
-		const double r_1 = 1. / position[1];
+		const double r_1 = 1. / position[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
 		if (dimension == 3)
-			return x[1] * y[1] / (1. - (2. - r_Q2_ * r_1) * r_1) + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
-		return -(1. - (2. - r_Q2_ * r_1) * r_1) * x[0] * y[0] + x[1] * y[1] / (1. - (2. - r_Q2_ * r_1) * r_1) + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
+			return x[1] * y[1] / (g11_1) + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
+		return -g11_1 * x[0] * y[0] + x[1] * y[1] / g11_1 + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
 	}
 	double ReissnerNordstrom::DistanceSquare(const double x[], const double y[], const size_t dimension) {
-		const double r_1 = 1. / x[1];
+		const double r_1 = 1. / x[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
 		if (dimension == 3)
-			return gsl_pow_2(x[1] - y[1]) / (1. - (2. - r_Q2_ * r_1) * r_1) + gsl_pow_2(x[1] * (x[2] - y[2])) + gsl_pow_2(x[1] * sin(x[2]) * PhiDifference(x[3] - y[3]));
-		return -(1. - (2. - r_Q2_ * r_1) * r_1) * gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1]) * (gsl_pow_2(x[1] - y[1]) / ((x[1] - 2.) * x[1] + r_Q2_) + gsl_pow_2(x[2] - y[2]) + gsl_pow_2(sin(x[2]) * PhiDifference(x[3] - y[3])));
+			return gsl_pow_2(x[1] - y[1]) / g11_1 + gsl_pow_2(x[1]) * (gsl_pow_2(x[2] - y[2]) + gsl_pow_2(sin(x[2]) * PhiDifference(x[3] - y[3])));
+		return -g11_1 * gsl_pow_2(x[0] - y[0]) + gsl_pow_2(x[1] - y[1]) / g11_1 + gsl_pow_2(x[1]) * (gsl_pow_2(x[2] - y[2]) + gsl_pow_2(sin(x[2]) * PhiDifference(x[3] - y[3])));
 	}
 	int ReissnerNordstrom::LagrangianToHamiltonian(double y[]) {
 		const double dt_dtau = 1. / y[4], r_1 = 1. / y[1], r2 = gsl_pow_2(y[1]);
@@ -384,7 +386,7 @@ namespace SBody {
 		y[5] *= dt_dtau / (1. - rs_rQ2);
 		y[6] *= r2 * dt_dtau;
 		y[7] *= r2 * gsl_pow_2(sin(y[2])) * dt_dtau;
-		return 0;
+		return GSL_SUCCESS;
 	}
 	int ReissnerNordstrom::HamiltonianToLagrangian(double y[]) {
 		const double r_1 = 1. / y[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
@@ -392,66 +394,97 @@ namespace SBody {
 		y[5] *= g11_1 * y[4];
 		y[6] *= gsl_pow_2(r_1) * y[4];
 		y[7] *= gsl_pow_2(r_1 / sin(y[2])) * y[4];
-		return 0;
+		return GSL_SUCCESS;
 	}
-	int ReissnerNordstrom::FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) {
+	int ReissnerNordstrom::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) {
 		return GSL_FAILURE;
 	}
-	double ReissnerNordstrom::Energy(const double y[], time_system time, coordinate_system coordinate) {
-		const double r_1 = 1. / y[1];
-		if (coordinate == LAGRANGIAN) {
+	double ReissnerNordstrom::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
+			const double r_1 = 1. / y[1];
 			if (time == T)
 				return (1. - (2. - r_Q2_ * r_1) * r_1) / y[4];
 			// time == TAU
 			return (1. - (2. - r_Q2_ * r_1) * r_1) * y[4];
-		} // coordinate == HAMILTONIAN
+		} // dynamics == HAMILTONIAN
 		return 1. - y[4];
 	}
-	double ReissnerNordstrom::AngularMomentum(const double y[], time_system time, coordinate_system coordinate) {
-		if (coordinate == LAGRANGIAN) {
+	double ReissnerNordstrom::AngularMomentum(const double y[], TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
 			if (time == T)
 				return gsl_pow_2(y[1] * sin(y[2])) * y[7] / y[4];
 			// time == TAU
 			return gsl_pow_2(y[1] * sin(y[2])) * y[7];
-		} // coordinate == HAMILTONIAN
+		} // dynamics == HAMILTONIAN
 		return y[7];
 	}
-	double ReissnerNordstrom::CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) {
-		if (coordinate == LAGRANGIAN) {
+	double ReissnerNordstrom::CarterConstant(const double y[], const double mu2, TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
 			if (time == T)
 				return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2]))) / gsl_pow_2(y[4]);
 			// time == TAU
 			return gsl_pow_4(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(y[7] * cos(y[2]) * sin(y[2])));
-		} // coordinate == HAMILTONIAN
-		return gsl_pow_2(y[6]) + y[0] == 0. ? 0. : gsl_pow_2(y[7] / tan(y[2]));
+		} // dynamics == HAMILTONIAN
+		return gsl_pow_2(y[6]) + gsl_pow_2(y[7] / tan(y[2]));
 	}
 	int ReissnerNordstrom::NormalizeTimelikeGeodesic(double y[]) {
 		const double r_1 = 1. / y[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
 		if (g11_1 <= 0)
 			return 1;
 		y[4] = sqrt(g11_1 - (gsl_pow_2(y[5]) / g11_1 + gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
-		return std::isnan(y[4]);
+		return isnan(y[4]) ? GSL_EDOM : GSL_SUCCESS;
 	}
 	int ReissnerNordstrom::NormalizeNullGeodesic(double y[], double frequency) {
 		const double r_1 = 1. / y[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
 		if (g11_1 <= 0)
 			return 1;
 		const double coefficient = GSL_SIGN(frequency) * g11_1 / sqrt(gsl_pow_2(y[5]) + g11_1 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+		if (isnan(coefficient))
+			return GSL_EDOM;
 		y[4] = frequency;
 		y[5] *= coefficient;
 		y[6] *= coefficient;
 		y[7] *= coefficient;
-		return 0;
+		return GSL_SUCCESS;
 	}
-	std::unique_ptr<Integrator> ReissnerNordstrom::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+	unique_ptr<Integrator> ReissnerNordstrom::GetIntegrator(TimeSystem time, DynamicalSystem dynamics, MotionMode motion) {
+		if (time == T)
+			if (dynamics == LAGRANGIAN)
+				if (motion == GEODESIC)
+					return make_unique<Integrator>(LagrangianGeodesic, Jacobian);
+		PrintlnError("{}::GetIntegrator() {}, {}, {} invaild", Name(), time, dynamics, motion);
 		return nullptr;
 	}
+	int ReissnerNordstrom::LagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
+		ReissnerNordstrom *metric = static_cast<ReissnerNordstrom *>(params);
+		dydt[0] = y[4]; // d\tau/dt
+		dydt[1] = y[5]; // dr/dt
+		dydt[2] = y[6]; // d\theta/dt
+		dydt[3] = y[7]; // d\phi/dt
+		const double r = y[1], r_1 = 1. / r, r_2 = gsl_pow_2(r_1), r_Q2 = metric->r_Q2_;
+		const double sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+		const double g11_1 = 1. - (2. - r_Q2 * r_1) * r_1, g11 = 1. / g11_1;
+		const double m_r_Q_r2 = (1. - r_Q2 * r_1) * r_2, m_r_Q_r2_g11 = m_r_Q_r2 * g11;
+		dydt[4] = 2. * m_r_Q_r2_g11 * y[5] * y[4];
+		dydt[5] = -g11_1 * m_r_Q_r2 + 3. * m_r_Q_r2_g11 * gsl_pow_2(y[5]) + r * g11_1 * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
+		dydt[6] = -2. * (g11_1 * r_1 - m_r_Q_r2) * g11 * y[5] * y[6] + sin_theta * cos_theta * gsl_pow_2(y[7]);
+		if (y[7] == 0.)
+			dydt[7] = 0.;
+		else if (sin_theta == 0.)
+			return GSL_EZERODIV;
+		else
+			dydt[7] = -2. * ((r_1 - m_r_Q_r2_g11) * y[5] + cos_theta / sin_theta * y[6]) * y[7];
+		return GSL_SUCCESS;
+	}
 	Kerr::Kerr(double spin) : a_(spin), a2_(a_ * a_), a4_(a2_ * a2_) {}
-	std::string Kerr::Name() {
+	string Kerr::Name() {
 		return "Kerr";
 	}
 	int Kerr::MetricTensor(const double position[], gsl_matrix *metric) {
-		const double r = position[1], r2 = gsl_pow_2(r), Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(position[2])), r_rho_2 = 2. * r / rho2, sin2_theta = gsl_pow_2(sin(position[2]));
+		const double r = position[1], r2 = gsl_pow_2(r), Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(position[2])), sin2_theta = gsl_pow_2(sin(position[2]));
+		if (rho2 == 0. || Delta == 0.)
+			return GSL_EZERODIV;
+		const double r_rho_2 = 2. * r / rho2;
 		gsl_matrix_set_zero(metric);
 		gsl_matrix_set(metric, 0, 0, -(1. - r_rho_2));
 		gsl_matrix_set(metric, 0, 3, -r_rho_2 * a_ * sin2_theta);
@@ -459,7 +492,7 @@ namespace SBody {
 		gsl_matrix_set(metric, 2, 2, rho2);
 		gsl_matrix_set(metric, 3, 0, -r_rho_2 * a_ * sin2_theta);
 		gsl_matrix_set(metric, 3, 3, (r2 + a2_ * (1. + r_rho_2 * sin2_theta)) * sin2_theta);
-		return rho2 == 0. || Delta == 0. ? 1 : 0;
+		return GSL_SUCCESS;
 	}
 	double Kerr::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
 		const double r = position[1], r2 = gsl_pow_2(r), Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(position[2])), r_rho_2 = 2. * r / rho2, sin2_theta = gsl_pow_2(sin(position[2]));
@@ -477,108 +510,160 @@ namespace SBody {
 	int Kerr::LagrangianToHamiltonian(double y[]) {
 		const double dt_dtau = 1. / y[4], r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2]));
 		const double Delta = r2 - 2. * y[1] + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
+		if (rho2 == 0. || Delta == 0.)
+			return GSL_EZERODIV;
 		const double r_rho_2 = 2. * y[1] / rho2;
 		y[4] = (y[4] - 1. + r_rho_2 * (1. - a_ * sin2_theta * y[7])) * dt_dtau; // 1 + p_t
 		y[5] *= rho2 / Delta * dt_dtau;
 		y[6] *= rho2 * dt_dtau;
 		y[7] = (-r_rho_2 * a_ + (r2 + a2_ * (1. + r_rho_2 * sin2_theta)) * y[7]) * sin2_theta * dt_dtau;
-		return 0;
+		return GSL_SUCCESS;
 	}
 	int Kerr::HamiltonianToLagrangian(double y[]) {
-		const double pt = y[4] - 1., r2 = gsl_pow_2(y[1]);
+		const double pt = y[4] - 1., r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2]));
 		const double Delta = r2 - 2. * y[1] + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
+		if (rho2 == 0. || Delta == 0.)
+			return GSL_EZERODIV;
 		const double rho_2 = 1. / rho2, r_rho_2 = 2. * y[1] * rho_2;
 		y[4] = -Delta / ((Delta + r_rho_2 * (a2_ + r2)) * pt + r_rho_2 * a_ * y[7]);
 		y[5] *= Delta * y[4] * rho_2;
 		y[6] *= y[4] * rho_2;
-		y[7] = (-r_rho_2 * a_ * pt + (1. - r_rho_2) / gsl_pow_2(sin(y[2])) * y[7]) / Delta * y[4];
-		return 0;
+		if (y[7] == 0.)
+			y[7] = -r_rho_2 * a_ * pt / Delta * y[4];
+		else if (sin2_theta == 0.)
+			return GSL_EZERODIV;
+		else
+			y[7] = (-r_rho_2 * a_ * pt + (1. - r_rho_2) / sin2_theta * y[7]) / Delta * y[4];
+		return GSL_SUCCESS;
 	}
-	int Kerr::FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) {
+	int Kerr::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) { // TODO:
+		const double sin_theta_target = abs(sin(theta_target)), cos_theta_target = GSL_SIGN(theta_target) * cos(theta_target), sin_phi_target = sin(phi_target), cos_phi_target = cos(phi_target);
+		const double sin2_theta_target = gsl_pow_2(sin_theta_target), cos2_theta_target = gsl_pow_2(cos_theta_target);
+		const double cos_observer_target = sin_theta_observer * sin_theta_target * cos_phi_target + cos_theta_observer * cos_theta_target;
+		const double delta_phi = acos(cos_observer_target), sin_observer_target = sqrt(1. - gsl_pow_2(cos_observer_target));
+		const double r2_target = gsl_pow_2(r_target), u0 = 1. / r_observer, u1 = 1. / r_target;
+		const double Delta = r_target * (r_target - 2.) + a2_, rho2 = r2_target + a2_ * cos2_theta_target;
+		const double rho_2 = 1. / rho2;
+		const double g00 = -(1. - 2. * r_target * rho_2), g03 = -2. * r_target * rho_2 * a_ * sin2_theta_target;
+		const double g11 = rho2 / Delta, g22 = rho2, g33 = (r2_target + a2_) * sin2_theta_target - g03 * a_ * sin2_theta_target;
+		double integrate_parameters[] = {u0, theta_observer, u1, theta_target, phi_target, sin_theta_observer};
+		GslBlock collector;
+		gsl_vector *initial_value = collector.VectorAlloc(2);
+		MultiFunctionSolver alpha_beta_solver(2);
+		gsl_multiroot_function alpha_beta_function{
+			[](const gsl_vector *x, void *params, gsl_vector *f) -> int {
+				const double *p = static_cast<double *>(params);
+				double E = 1., L = -gsl_vector_get(x, 0) * p[5];
+				if (p[1] == 0. || p[1] == M_PI)
+					L = 0.;
+				double theta, phi;
+				gsl_vector_set(f, 0, theta - p[3]);
+				gsl_vector_set(f, 1, PhiDifference(phi - p[4]));
+				return GSL_FAILURE;
+			},
+			2,
+			&integrate_parameters};
+		alpha_beta_solver.Set(&alpha_beta_function, initial_value);
+		if (int status = alpha_beta_solver.Solve(); status != GSL_SUCCESS)
+			return status;
+		alpha = gsl_vector_get(alpha_beta_solver.Root(), 0);
+		beta = gsl_vector_get(alpha_beta_solver.Root(), 1);
+		// [1., 1., beta / r2, -alpha / r2 / sin_theta] * r2 / (r2 + alpha2 + beta2)
+		const double E = 1. - 2. * u0, L = -alpha * sin_theta_observer;
+		photon[0] = 0.;
+		photon[1] = r_target;
+		photon[2] = theta_target;
+		photon[3] = phi_target;
+		photon[4] = (gsl_pow_2(g03 * g03) - g00 * g33) / (E * g33 + L * g03);
+		photon[7] = -(g00 * L + g03 * E) / (g03 * L + g33 * E);
 		return GSL_FAILURE;
 	}
-	double Kerr::Energy(const double y[], time_system time, coordinate_system coordinate) {
-		if (coordinate == LAGRANGIAN) {
+	double Kerr::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
 			if (time == T)
 				return (1. - 2. * y[1] / (gsl_pow_2(y[1]) + a2_ * gsl_pow_2(cos(y[2]))) * (1. - a_ * gsl_pow_2(sin(y[2])) * y[7])) / y[4];
 			// time == TAU
-			return (y[4] - 2. * y[1] / (gsl_pow_2(y[1]) + a2_ * gsl_pow_2(cos(y[2]))) * (y[4] - a_ * gsl_pow_2(sin(y[2])) * y[7]));
+			return y[4] - 2. * y[1] / (gsl_pow_2(y[1]) + a2_ * gsl_pow_2(cos(y[2]))) * (y[4] - a_ * gsl_pow_2(sin(y[2])) * y[7]);
 		} // dynamics == HAMILTONIAN
 		return 1. - y[4];
 	}
-	double Kerr::AngularMomentum(const double y[], time_system time, coordinate_system coordinate) {
-		const double r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2]));
-		const double r_rho_2 = 2. * y[1] / (r2 + a2_ * gsl_pow_2(cos(y[2])));
-		if (coordinate == LAGRANGIAN) {
+	double Kerr::AngularMomentum(const double y[], TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
+			const double r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2]));
+			const double r_rho_2 = 2. * y[1] / (r2 + a2_ * gsl_pow_2(cos(y[2])));
 			if (time == T)
 				return (-r_rho_2 * a_ + (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * y[7]) * sin2_theta / y[4];
 			// time == TAU
 			return (-r_rho_2 * a_ * y[4] + (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * y[7]) * sin2_theta;
-		} // coordinate == HAMILTONIAN
+		} // dynamics == HAMILTONIAN
 		return y[7];
 	}
-	double Kerr::CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) {
-		const double r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2])), cos2_theta = gsl_pow_2(cos(y[2]));
-		const double rho2 = r2 + a2_ * cos2_theta;
-		const double r_rho_2 = 2. * y[1] / rho2;
-		if (coordinate == LAGRANGIAN) {
+	double Kerr::CarterConstant(const double y[], const double mu2, TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
+			const double r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2])), cos2_theta = gsl_pow_2(cos(y[2]));
+			const double rho2 = r2 + a2_ * cos2_theta;
+			const double r_rho_2 = 2. * y[1] / rho2;
 			if (time == T)
 				return mu2 * cos2_theta * a2_ + (gsl_pow_2(rho2 * y[6]) + cos2_theta * (gsl_pow_2(-r_rho_2 * a_ + (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * y[7]) * sin2_theta - a2_ * gsl_pow_2(r_rho_2 * (1. - a_ * sin2_theta * y[7]) - 1.))) / gsl_pow_2(y[4]);
 			// time == TAU
 			return mu2 * cos2_theta * a2_ + gsl_pow_2(rho2 * y[6]) + cos2_theta * (gsl_pow_2(-r_rho_2 * a_ * y[4] + (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * y[7]) * sin2_theta - a2_ * gsl_pow_2(r_rho_2 * (y[4] - a_ * sin2_theta * y[7]) - y[4]));
-		} // coordinate == HAMILTONIAN
+		} // dynamics == HAMILTONIAN
 		return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (a2_ * (mu2 - gsl_pow_2(1. - y[4])) + gsl_pow_2(y[7] / sin(y[2])));
 	}
 	int Kerr::NormalizeTimelikeGeodesic(double y[]) {
 		const double r = y[1], r2 = gsl_pow_2(r), a2_r2 = a2_ + r2;
 		const double sin2_theta = gsl_pow_2(sin(y[2])), sin4_theta = gsl_pow_2(sin2_theta);
-		const double Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
+		const double rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
 		const double r_rho_2 = 2. * r / rho2;
-		y[7] += 2. * a_ * r / (gsl_pow_2(a2_r2) - a2_ * Delta * sin2_theta);
+		// y[7] += 2. * a_ * r / (gsl_pow_2(a2_r2) - a2_ * Delta * sin2_theta);
 		y[4] = sqrt(1. - r_rho_2 + 2. * r_rho_2 * a_ * sin2_theta * y[7] - (rho2 / (r2 - 2. * r + a2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + (a2_r2 * sin2_theta + r_rho_2 * a2_ * sin4_theta) * gsl_pow_2(y[7])));
-		return std::isnan(y[4]);
+		return isnan(y[4]) ? GSL_EDOM : GSL_SUCCESS;
 	}
 	int Kerr::NormalizeNullGeodesic(double y[], double frequency) {
 		const double r = y[1], r2 = gsl_pow_2(r);
 		const double sin2_theta = gsl_pow_2(sin(y[2])), sin4_theta = gsl_pow_2(sin2_theta);
 		const double rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
 		const double r_rho_2 = 2. * r / rho2;
-		const double effa = rho2 / (r2 - 2. * r + a2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2_ + r2) * sin2_theta + r_rho_2 * a2_ * sin4_theta) * gsl_pow_2(y[7]);
-		const double effb = -2. * r_rho_2 * a_ * sin2_theta * y[7];
-		const double effc = r_rho_2 - 1.;
-		const double eff = GSL_SIGN(frequency) * 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
+		const double a = rho2 / (r2 - 2. * r + a2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2_ + r2) * sin2_theta + r_rho_2 * a2_ * sin4_theta) * gsl_pow_2(y[7]);
+		const double b = -2. * r_rho_2 * a_ * sin2_theta * y[7];
+		const double c = r_rho_2 - 1.;
+		const double coefficient = GSL_SIGN(frequency) * 0.5 * (-b + sqrt(gsl_pow_2(b) - 4. * a * c)) / a;
+		if (isnan(coefficient))
+			return GSL_EDOM;
 		y[4] = frequency;
-		y[5] *= eff;
-		y[6] *= eff;
-		y[7] *= eff;
-		return 0;
+		y[5] *= coefficient;
+		y[6] *= coefficient;
+		y[7] *= coefficient;
+		return GSL_SUCCESS;
 	}
-	std::unique_ptr<Integrator> Kerr::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+	unique_ptr<Integrator> Kerr::GetIntegrator(TimeSystem time, DynamicalSystem dynamics, MotionMode motion) {
 		if (time == T) {
-			if (coordinate == LAGRANGIAN) {
+			if (dynamics == LAGRANGIAN) {
 				if (motion == GEODESIC)
-					return std::make_unique<Integrator>(KerrTLagrangianGeodesic, Jacobian, this);
+					return make_unique<Integrator>(KerrTLagrangianGeodesic, Jacobian, this);
 				else if (motion == HELICAL)
-					return std::make_unique<Integrator>(KerrTLagrangianHelical, Jacobian, this);
-			} else if (coordinate == HAMILTONIAN && motion == GEODESIC)
-				return std::make_unique<Integrator>(KerrTHamiltonianGeodesic, Jacobian, this);
+					return make_unique<Integrator>(KerrTLagrangianHelical, Jacobian, this);
+			} else if (dynamics == HAMILTONIAN && motion == GEODESIC)
+				return make_unique<Integrator>(KerrTHamiltonianGeodesic, Jacobian, this);
 		} else if (time == TAU) {
-			if (coordinate == LAGRANGIAN)
-				return std::make_unique<Integrator>(KerrTauLagrangianGeodesic, Jacobian, this);
-			else if (coordinate == HAMILTONIAN)
-				return std::make_unique<Integrator>(KerrTauHamiltonianGeodesic, Jacobian, this);
+			if (dynamics == LAGRANGIAN)
+				return make_unique<Integrator>(KerrTauLagrangianGeodesic, Jacobian, this);
+			else if (dynamics == HAMILTONIAN)
+				return make_unique<Integrator>(KerrTauHamiltonianGeodesic, Jacobian, this);
 		}
-		PrintlnError("{}::GetIntegrator() {}, {}, {} invaild", Name(), time, coordinate, motion);
+		PrintlnError("{}::GetIntegrator() {}, {}, {} invaild", Name(), time, dynamics, motion);
 		return nullptr;
 	}
 
-	/** WIP:
 	KerrNewman::KerrNewman(double spin, double charge) : Kerr(spin), r_Q_(0.5 * sqrt(M_1_PI) * charge), r_Q2_(r_Q_ * r_Q_), r_Q4_(r_Q2_ * r_Q2_) {}
-	std::string KerrNewman::Name() {
+	string KerrNewman::Name() {
 		return "Kerr-Newman";
 	}
 	int KerrNewman::MetricTensor(const double position[], gsl_matrix *metric) {
-		const double r = position[1], r2 = gsl_pow_2(r), Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * gsl_pow_2(cos(position[2])), r_rho_2 = 2. * r / rho2, sin2_theta = gsl_pow_2(sin(position[2]));
+		const double r = position[1], r2 = gsl_pow_2(r), Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * gsl_pow_2(cos(position[2])), sin2_theta = gsl_pow_2(sin(position[2]));
+		if (rho2 == 0. || Delta == 0.)
+			return GSL_EZERODIV;
+		const double r_rho_2 = (2. * r - r_Q2_) / rho2;
 		gsl_matrix_set_zero(metric);
 		gsl_matrix_set(metric, 0, 0, -(1. - r_rho_2));
 		gsl_matrix_set(metric, 0, 3, -r_rho_2 * a_ * sin2_theta);
@@ -586,17 +671,17 @@ namespace SBody {
 		gsl_matrix_set(metric, 2, 2, rho2);
 		gsl_matrix_set(metric, 3, 0, -r_rho_2 * a_ * sin2_theta);
 		gsl_matrix_set(metric, 3, 3, (r2 + a2_ * (1. + r_rho_2 * sin2_theta)) * sin2_theta);
-		return rho2 == 0. || Delta == 0. ? GSL_EZERODIV : GSL_SUCCESS;
+		return GSL_SUCCESS;
 	}
 	double KerrNewman::DotProduct(const double position[], const double x[], const double y[], const size_t dimension) {
-		const double r = position[1], r2 = gsl_pow_2(r), Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * gsl_pow_2(cos(position[2])), r_rho_2 = 2. * r / rho2, sin2_theta = gsl_pow_2(sin(position[2]));
+		const double r = position[1], r2 = gsl_pow_2(r), Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * gsl_pow_2(cos(position[2])), r_rho_2 = (2. * r - r_Q2_) / rho2, sin2_theta = gsl_pow_2(sin(position[2]));
 		if (dimension == 3)
 			return (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * gsl_pow_2(sin2_theta)) * x[3] * y[3];
 		return (r_rho_2 - 1.) * x[0] * y[0] - r_rho_2 * a_ * sin2_theta * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * gsl_pow_2(sin2_theta)) * x[3] * y[3];
 	}
 	double KerrNewman::DistanceSquare(const double x[], const double y[], const size_t dimension) {
 		const double r = x[1], r2 = gsl_pow_2(r), d0 = x[0] - y[0], d3 = PhiDifference(x[3] - y[3]);
-		const double Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * gsl_pow_2(cos(x[2])), r_rho_2 = 2. * r / rho2, sin2_theta = gsl_pow_2(sin(x[2]));
+		const double Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * gsl_pow_2(cos(x[2])), r_rho_2 = (2. * r - r_Q2_) / rho2, sin2_theta = gsl_pow_2(sin(x[2]));
 		if (dimension == 3)
 			return (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + 2. * r * a2_ * gsl_pow_2(sin2_theta) / rho2) * gsl_pow_2(d3);
 		return (r_rho_2 - 1.) * gsl_pow_2(d0) - 2. * r_rho_2 * a_ * sin2_theta * d0 * d3 + (rho2 / Delta) * gsl_pow_2(x[1] - y[1]) + rho2 * gsl_pow_2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * gsl_pow_2(sin2_theta)) * gsl_pow_2(d3);
@@ -604,61 +689,89 @@ namespace SBody {
 	int KerrNewman::LagrangianToHamiltonian(double y[]) {
 		const double dt_dtau = 1. / y[4], r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2]));
 		const double Delta = r2 - 2. * y[1] + a2_ + r_Q2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
-		const double r_rho_2 = 2. * y[1] / rho2;
+		if (rho2 == 0. || Delta == 0.)
+			return GSL_EZERODIV;
+		const double r_rho_2 = (2. * y[1] - r_Q2_) / rho2;
 		y[4] = (y[4] - 1. + r_rho_2 * (1. - a_ * sin2_theta * y[7])) * dt_dtau; // 1 + p_t
 		y[5] *= rho2 / Delta * dt_dtau;
 		y[6] *= rho2 * dt_dtau;
 		y[7] = (-r_rho_2 * a_ + (r2 + a2_ * (1. + r_rho_2 * sin2_theta)) * y[7]) * sin2_theta * dt_dtau;
-		return rho2 == 0. || Delta == 0. ? GSL_EZERODIV : GSL_SUCCESS;
+		return GSL_SUCCESS;
 	}
 	int KerrNewman::HamiltonianToLagrangian(double y[]) {
-		const double pt = y[4] - 1., r2 = gsl_pow_2(y[1]);
+		const double pt = y[4] - 1., r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2]));
 		const double Delta = r2 - 2. * y[1] + a2_ + r_Q2_, rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
-		const double rho_2 = 1. / rho2, r_rho_2 = 2. * y[1] * rho_2;
+		if (rho2 == 0. || Delta == 0.)
+			return GSL_EZERODIV;
+		const double rho_2 = 1. / rho2, r_rho_2 = (2. * y[1] - r_Q2_) / rho2;
 		y[4] = -Delta / ((Delta + r_rho_2 * (a2_ + r2)) * pt + r_rho_2 * a_ * y[7]);
 		y[5] *= Delta * y[4] * rho_2;
 		y[6] *= y[4] * rho_2;
-		y[7] = (-r_rho_2 * a_ * pt + (1. - r_rho_2) / gsl_pow_2(sin(y[2])) * y[7]) / Delta * y[4];
-		return rho2 == 0. || Delta == 0. ? GSL_EZERODIV : GSL_SUCCESS;
+		if (y[7] == 0.)
+			y[7] = (-r_rho_2 * a_ * pt + (1. - r_rho_2) / sin2_theta * y[7]) / Delta * y[4];
+		else if (sin2_theta == 0.)
+			return GSL_EZERODIV;
+		else
+			y[7] = (-r_rho_2 * a_ * pt + (1. - r_rho_2) / sin2_theta * y[7]) / Delta * y[4];
+		return GSL_SUCCESS;
 	}
-	int KerrNewman::FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) {
+	int KerrNewman::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) {
 		return GSL_FAILURE;
 	}
-	double KerrNewman::Energy(const double y[], time_system time, coordinate_system coordinate) {
-		if (coordinate == LAGRANGIAN) {
+	double KerrNewman::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
 			if (time == T)
-				return (1. - 2. * y[1] / (gsl_pow_2(y[1]) + a2_ * gsl_pow_2(cos(y[2]))) * (1. - a_ * gsl_pow_2(sin(y[2])) * y[7])) / y[4];
+				return (1. - (2. * y[1] - r_Q2_) / (gsl_pow_2(y[1]) + a2_ * gsl_pow_2(cos(y[2]))) * (1. - a_ * gsl_pow_2(sin(y[2])) * y[7])) / y[4];
 			// time == TAU
-			return (1. - 2. * y[1] / (gsl_pow_2(y[1]) + a2_ * gsl_pow_2(cos(y[2]))) * (y[4] - a_ * gsl_pow_2(sin(y[2])) * y[7]));
-		} // coordinate == HAMILTONIAN
+			return y[4] - (2. * y[1] - r_Q2_) / (gsl_pow_2(y[1]) + a2_ * gsl_pow_2(cos(y[2]))) * (y[4] - a_ * gsl_pow_2(sin(y[2])) * y[7]);
+		} // dynamics == HAMILTONIAN
 		return 1. - y[4];
 	}
-	double KerrNewman::AngularMomentum(const double y[], time_system time, coordinate_system coordinate) {
-		const double r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2]));
-		const double r_rho_2 = 2. * y[1] / (r2 + a2_ * gsl_pow_2(cos(y[2])));
-		if (coordinate == LAGRANGIAN) {
+	double KerrNewman::AngularMomentum(const double y[], TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
+			const double r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2]));
+			const double r_rho_2 = (2. * y[1] - r_Q2_) / (r2 + a2_ * gsl_pow_2(cos(y[2])));
 			if (time == T)
 				return (-r_rho_2 * a_ + (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * y[7]) * sin2_theta / y[4];
 			// time == TAU
 			return (-r_rho_2 * a_ * y[4] + (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * y[7]) * sin2_theta;
-		} // coordinate == HAMILTONIAN
+		} // dynamics == HAMILTONIAN
 		return y[7];
 	}
-	double KerrNewman::CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) {
-		return 0.;
+	double KerrNewman::CarterConstant(const double y[], const double mu2, TimeSystem time, DynamicalSystem dynamics) {
+		return GSL_NAN;
 	}
 	int KerrNewman::NormalizeTimelikeGeodesic(double y[]) {
-		return GSL_FAILURE;
+		const double r = y[1], r2 = gsl_pow_2(r);
+		const double sin2_theta = gsl_pow_2(sin(y[2]));
+		const double rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
+		const double r_rho_2 = (2. * r - r_Q2_) / rho2;
+		y[4] = sqrt(1. - r_rho_2 + 2. * r_rho_2 * a_ * sin2_theta * y[7] - (rho2 / (r2 - 2. * r + a2_ + r_Q2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * sin2_theta) * gsl_pow_2(y[7])));
+		return isnan(y[4]) ? GSL_EDOM : GSL_SUCCESS;
 	}
 	int KerrNewman::NormalizeNullGeodesic(double y[], double frequency) {
-		return GSL_FAILURE;
+		const double r = y[1], r2 = gsl_pow_2(r);
+		const double sin2_theta = gsl_pow_2(sin(y[2]));
+		const double rho2 = r2 + a2_ * gsl_pow_2(cos(y[2]));
+		const double r_rho_2 = (2. * r - r_Q2_) / rho2;
+		const double a = rho2 / (r2 - 2. * r + a2_ + r_Q2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * sin2_theta) * gsl_pow_2(y[7]);
+		const double b = -2. * r_rho_2 * a_ * sin2_theta * y[7];
+		const double c = r_rho_2 - 1.;
+		const double coefficient = GSL_SIGN(frequency) * 0.5 * (-b + sqrt(gsl_pow_2(b) - 4. * a * c)) / a;
+		if (isnan(coefficient))
+			return GSL_EDOM;
+		y[4] = frequency;
+		y[5] *= coefficient;
+		y[6] *= coefficient;
+		y[7] *= coefficient;
+		return GSL_SUCCESS;
 	}
-	std::unique_ptr<Integrator> KerrNewman::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+	unique_ptr<Integrator> KerrNewman::GetIntegrator(TimeSystem time, DynamicalSystem dynamics, MotionMode motion) {
 		return nullptr;
-	}*/
+	}
 
 	KerrTaubNUT::KerrTaubNUT(double spin, double NUT) : Kerr(spin), l_(NUT), l2_(l_ * l_), l4_(l2_ * l2_) {}
-	std::string KerrTaubNUT::Name() {
+	string KerrTaubNUT::Name() {
 		return "Kerr-Taub-NUT";
 	}
 	int KerrTaubNUT::MetricTensor(const double position[], gsl_matrix *metric) {
@@ -685,63 +798,57 @@ namespace SBody {
 	int KerrTaubNUT::LagrangianToHamiltonian(double y[]) {
 		const double dt_dtau = 1. / y[4], r = y[1], r2 = gsl_pow_2(r);
 		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
-		const double Delta = r2 - 2. * r - l2_ + a2_;
-		const double rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta), rho_2 = 1. / rho2;
+		const double Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta);
+		if (rho2 == 0. || Delta == 0.)
+			return GSL_EZERODIV;
+		const double rho_2 = 1. / rho2;
 		y[4] = (y[4] * rho2 - Delta + a2_ * sin2_theta - 2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * y[7]) * rho_2 * dt_dtau; // 1 + p_t
 		y[5] *= rho2 / Delta * dt_dtau;
 		y[6] *= rho2 * dt_dtau;
 		y[7] = (-2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) + (gsl_pow_2(r2 + l2_ + a2_) * sin2_theta - gsl_pow_2(a_ * sin2_theta - 2. * l_ * cos_theta) * Delta) * y[7]) * rho_2 * dt_dtau;
-		return 0;
+		return GSL_SUCCESS;
 	}
 	int KerrTaubNUT::HamiltonianToLagrangian(double y[]) {
 		const double pt = y[4] - 1., r = y[1], r2 = gsl_pow_2(r);
 		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
-		const double Delta = r2 - 2. * r - l2_ + a2_;
-		const double rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta), rho_2 = 1. / rho2;
+		const double Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta);
+		if (rho2 == 0. || Delta == 0.)
+			return GSL_EZERODIV;
+		const double rho_2 = 1. / rho2;
 		y[4] = Delta * rho2 * sin2_theta / ((Delta * gsl_pow_2(a_ * sin2_theta - 2. * l_ * cos_theta) - gsl_pow_2(r2 + l2_ + a2_) * sin2_theta) * pt - 2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * y[7]);
 		y[5] *= Delta * rho_2 * y[4];
 		y[6] *= rho_2 * y[4];
 		y[7] = (-2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * pt + (Delta - a2_ * sin2_theta) * y[7]) / (Delta * rho2 * sin2_theta) * y[4];
-		return 0;
+		return GSL_SUCCESS;
 	}
-	int KerrTaubNUT::FastTrace(const double observer_r, const double observer_theta, const double sin_theta_observer, const double cos_theta_observer, const double target_r, const double target_theta, const double target_phi, double &alpha, double &beta, double *photon) {
+	int KerrTaubNUT::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) {
 		return GSL_FAILURE;
 	}
-	double KerrTaubNUT::Energy(const double y[], time_system time, coordinate_system coordinate) {
-		const double r = y[1], r2 = gsl_pow_2(r);
-		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
-		const double Delta = r2 - 2. * r - l2_ + a2_;
-		if (coordinate == LAGRANGIAN) {
+	double KerrTaubNUT::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
+			const double r = y[1], r2 = gsl_pow_2(r);
+			const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+			const double Delta = r2 - 2. * r - l2_ + a2_;
 			if (time == T)
 				return (Delta - a2_ * sin2_theta + 2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * y[7]) / ((r2 + gsl_pow_2(l_ + a_ * cos_theta)) * y[4]);
 			// time == TAU
 			return ((Delta - a2_ * sin2_theta) * y[4] + 2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * y[7]) / (r2 + gsl_pow_2(l_ + a_ * cos_theta));
-		} // coordinate == HAMILTONIAN
+		} // dynamics == HAMILTONIAN
 		return 1. - y[4];
 	}
-	double KerrTaubNUT::AngularMomentum(const double y[], time_system time, coordinate_system coordinate) {
-		const double r = y[1], r2 = gsl_pow_2(r);
-		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
-		const double Delta = r2 - 2. * r - l2_ + a2_;
-		if (coordinate == LAGRANGIAN) {
+	double KerrTaubNUT::AngularMomentum(const double y[], TimeSystem time, DynamicalSystem dynamics) {
+		if (dynamics == LAGRANGIAN) {
+			const double r = y[1], r2 = gsl_pow_2(r);
+			const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+			const double Delta = r2 - 2. * r - l2_ + a2_;
 			if (time == T)
 				return (-2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) + (gsl_pow_2(r2 + l2_ + a2_) * sin2_theta - gsl_pow_2(a_ * sin2_theta - 2. * l_ * cos_theta) * Delta) * y[7]) / ((r2 + gsl_pow_2(l_ + a_ * cos_theta)) * y[4]);
 			// time == TAU
 			return (-2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * y[4] + (gsl_pow_2(r2 + l2_ + a2_) * sin2_theta - gsl_pow_2(a_ * sin2_theta - 2. * l_ * cos_theta) * Delta) * y[7]) / (r2 + gsl_pow_2(l_ + a_ * cos_theta));
-		} // coordinate == HAMILTONIAN
+		} // dynamics == HAMILTONIAN
 		return y[7];
 	}
-	double KerrTaubNUT::CarterConstant(const double y[], const double mu2, time_system time, coordinate_system coordinate) {
-		const double r2 = gsl_pow_2(y[1]), sin2_theta = gsl_pow_2(sin(y[2])), cos2_theta = gsl_pow_2(cos(y[2]));
-		const double rho2 = r2 + a2_ * cos2_theta;
-		const double r_rho_2 = 2. * y[1] / rho2;
-		if (coordinate == LAGRANGIAN) {
-			if (time == T)
-				return mu2 * cos2_theta * a2_ + (gsl_pow_2(rho2 * y[6]) + cos2_theta * (gsl_pow_2(-r_rho_2 * a_ + (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * y[7]) * sin2_theta - a2_ * gsl_pow_2(r_rho_2 * (1. - a_ * sin2_theta * y[7]) - 1.))) / gsl_pow_2(y[4]);
-			else
-				return GSL_NAN; // TODO:
-		} else if (coordinate == HAMILTONIAN)
-			return gsl_pow_2(y[6]) + gsl_pow_2(cos(y[2])) * (a2_ * (mu2 - gsl_pow_2(1. - y[4])) + gsl_pow_2(y[7] / sin(y[2])));
+	double KerrTaubNUT::CarterConstant(const double y[], const double mu2, TimeSystem time, DynamicalSystem dynamics) {
 		return GSL_NAN;
 	}
 	int KerrTaubNUT::NormalizeTimelikeGeodesic(double y[]) {
@@ -749,9 +856,9 @@ namespace SBody {
 		const double sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
 		const double Delta = r2 - 2. * r - l2_ + a2_;
 		const double rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta);
-		y[7] += 2. * a_ * r / (gsl_pow_2(a2_ + r2) - a2_ * Delta * sin2_theta);
+		// y[7] += 2. * a_ * r / (gsl_pow_2(a2_ + r2) - a2_ * Delta * sin2_theta);
 		y[4] = sqrt(((Delta - a2_ * sin2_theta) + 4. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * y[7] - (gsl_pow_2(r2 + l2_ + a2_) * sin2_theta - gsl_pow_2(a_ * sin2_theta - 2. * l_ * cos_theta) * Delta) * gsl_pow_2(y[7])) / rho2 - rho2 * (gsl_pow_2(y[5]) / Delta + gsl_pow_2(y[6])));
-		return std::isnan(y[4]);
+		return isnan(y[4]) ? GSL_EDOM : GSL_SUCCESS;
 	}
 	int KerrTaubNUT::NormalizeNullGeodesic(double y[], double frequency) {
 		const double r = y[1], r2 = gsl_pow_2(r);
@@ -760,28 +867,30 @@ namespace SBody {
 		const double l_a_cos_theta = l_ + a_ * cos_theta;
 		const double rho2 = r2 + gsl_pow_2(l_a_cos_theta), rho_2 = 1. / rho2;
 		const double chi = a_ * sin2_theta - 2. * l_ * cos_theta, rho2_a_chi = r2 + l2_ + a2_;
-		const double effa = rho2 / Delta * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + rho_2 * (gsl_pow_2(rho2_a_chi) * sin2_theta - gsl_pow_2(chi) * Delta) * gsl_pow_2(y[7]);
-		const double effb = -4. * rho_2 * ((r + l2_) * chi + l_ * cos_theta * rho2_a_chi) * y[7];
-		const double effc = -rho_2 * (Delta - a2_ * sin2_theta);
-		const double eff = GSL_SIGN(frequency) * 0.5 * (-effb + sqrt(gsl_pow_2(effb) - 4. * effa * effc)) / effa;
+		const double a = rho2 / Delta * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + rho_2 * (gsl_pow_2(rho2_a_chi) * sin2_theta - gsl_pow_2(chi) * Delta) * gsl_pow_2(y[7]);
+		const double b = -4. * rho_2 * ((r + l2_) * chi + l_ * cos_theta * rho2_a_chi) * y[7];
+		const double c = -rho_2 * (Delta - a2_ * sin2_theta);
+		const double coefficient = GSL_SIGN(frequency) * 0.5 * (-b + sqrt(gsl_pow_2(b) - 4. * a * c)) / a;
+		if (isnan(coefficient))
+			return GSL_EDOM;
 		y[4] = frequency;
-		y[5] *= eff;
-		y[6] *= eff;
-		y[7] *= eff;
-		return 0;
+		y[5] *= coefficient;
+		y[6] *= coefficient;
+		y[7] *= coefficient;
+		return GSL_SUCCESS;
 	}
-	std::unique_ptr<Integrator> KerrTaubNUT::GetIntegrator(time_system time, coordinate_system coordinate, motion_mode motion) {
+	unique_ptr<Integrator> KerrTaubNUT::GetIntegrator(TimeSystem time, DynamicalSystem dynamics, MotionMode motion) {
 		if (motion != GEODESIC)
 			PrintlnError("Motion not supported!");
 		if (time == T) {
-			if (coordinate == LAGRANGIAN)
-				return std::make_unique<Integrator>(KerrTaubNutTLagrangianGeodesic, Jacobian, this);
-			else if (coordinate == HAMILTONIAN)
-				return std::make_unique<Integrator>(KerrTaubNutTHamiltonianGeodesic, Jacobian, this);
+			if (dynamics == LAGRANGIAN)
+				return make_unique<Integrator>(KerrTaubNutTLagrangianGeodesic, Jacobian, this);
+			else if (dynamics == HAMILTONIAN)
+				return make_unique<Integrator>(KerrTaubNutTHamiltonianGeodesic, Jacobian, this);
 		} else if (time == TAU) {
-			return std::make_unique<Integrator>(KerrTaubNutTauLagrangianGeodesic, Jacobian, this);
+			return make_unique<Integrator>(KerrTaubNutTauLagrangianGeodesic, Jacobian, this);
 		}
-		PrintlnError("{}::GetIntegrator() {}, {}, {} invaild", Name(), time, coordinate, motion);
+		PrintlnError("{}::GetIntegrator() {}, {}, {} invaild", Name(), time, dynamics, motion);
 		return nullptr;
 	}
 	int NewtonTLagrangianGeodesic(double t, const double y[], double dydt[], void *params) {
@@ -845,12 +954,11 @@ namespace SBody {
 		// d^2\theta/dt^2=(d^2\theta/d\tau^2)*(d\tau/dt)^2+(d\theta/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 		dydt[6] = -2. * rm3 * rm2r_1 * y[5] * y[6] + sin_theta * cos_theta * gsl_pow_2(y[7]);
 		// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
-		if (sin_theta == 0.) {
-			if (y[7] == 0.)
-				dydt[7] = -2. * rm3 * rm2r_1 * y[5] * y[7];
-			else
-				return GSL_FAILURE;
-		} else
+		if (y[7] == 0.)
+			dydt[7] = 0.;
+		else if (sin_theta == 0.)
+			return GSL_EZERODIV;
+		else
 			dydt[7] = -2. * (rm3 * rm2r_1 * y[5] + cos_theta / sin_theta * y[6]) * y[7];
 		return GSL_SUCCESS;
 	}
@@ -864,9 +972,6 @@ namespace SBody {
 		dydt[6] = 0.;
 		dydt[7] = 0.;
 		return GSL_SUCCESS;
-	}
-	int SchwarzschildTLagrangianRIAF(double t, const double y[], double dydt[], void *params) {
-		return GSL_FAILURE;
 	}
 	int SchwarzschildTLagrangianHelical(double t, const double y[], double dydt[], void *params) {
 		const double r = y[1];

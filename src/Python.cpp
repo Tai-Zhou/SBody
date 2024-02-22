@@ -90,7 +90,7 @@ py::array_t<double> CalculateFullStarOrbit(double mass, int metric, double fSP, 
 		main_metric = make_shared<Schwarzschild>();
 		view_ptr = make_unique<View>(make_unique<Schwarzschild>(), R, 0., 0.);
 	}
-	time_system star_time = T;
+	TimeSystem star_time = T;
 	Particle star_0(main_metric, star_time, LAGRANGIAN, false);
 	if (metric == 2)
 		star_0.InitializeKeplerianHarmonic(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
@@ -140,7 +140,7 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 		main_metric = make_shared<Schwarzschild>();
 		view_ptr = make_unique<View>(make_unique<Schwarzschild>(), R, 0., 0.);
 	}
-	time_system star_time = T;
+	TimeSystem star_time = T;
 	Particle star_0(main_metric, star_time, LAGRANGIAN, false);
 	double z0, t0, last_obs_time = 2002., this_obs_time, *last_position = new double[13], *this_position = new double[13];
 	if (metric == 2)
@@ -290,7 +290,7 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 		PrintlnError("Metric Error!");
 		return py::array_t<double>();
 	}
-	time_system hotspot_time = T;
+	TimeSystem hotspot_time = T;
 	HotSpot star_0(main_metric, hotspot_time, LAGRANGIAN, 0., 1., 1000., 1., false);
 	size_t tStepNumber = 10000;
 	double position[13], t = 0., tStep = 0., tRec = t1 / tStepNumber * Unit::s;
@@ -360,7 +360,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 		PrintlnError("Metric Error!");
 		return py::array_t<double>();
 	}
-	time_system hotspot_time = T;
+	TimeSystem hotspot_time = T;
 	HotSpot star_0(main_metric, hotspot_time, LAGRANGIAN, 0., 1., 1000., 1., false);
 	double *last_position = new double[14], *this_position = new double[14], t = 0., tStep = 0., tRec = 0.1 * Unit::s, t0, last_obs_time = 0., this_obs_time;
 	const double sin_inc = sin(inclination), cos_inc = cos(inclination);

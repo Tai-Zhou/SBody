@@ -66,7 +66,7 @@ namespace SBody {
 		 * @param photon 8 dimensional information of photon
 		 * @return double
 		 */
-		virtual double Redshift(const double photon[], time_system photon_time) = 0;
+		virtual double Redshift(const double photon[], TimeSystem photon_time) = 0;
 	};
 
 	/**
@@ -75,8 +75,8 @@ namespace SBody {
 	 */
 	class Particle : public Object {
 	  protected:
-		time_system time_;
-		coordinate_system coordinate_;
+		TimeSystem time_;
+		DynamicalSystem coordinate_;
 		/// 8 dimensional information
 		double position_[8];
 		/// if the position fixed
@@ -92,7 +92,7 @@ namespace SBody {
 		 * @param radius radius
 		 * @param fixed whether the position of the star is fixed
 		 */
-		Particle(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, bool fixed = false);
+		Particle(std::shared_ptr<Metric> metric, TimeSystem time, DynamicalSystem coordinate, bool fixed = false);
 		int Position(double *position);
 		int InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination = 0., double observer_rotation = 0.);
 		int InitializeGeodesic(double orbital_radius, double inclination, double periapsis, double ascending_node, double v_r, double v_phi, double observer_inclination = 0., double observer_rotation = 0.);
@@ -120,7 +120,7 @@ namespace SBody {
 		 * @param photon
 		 * @return double
 		 */
-		double Redshift(const double photon[], time_system photon_time) override;
+		double Redshift(const double photon[], TimeSystem photon_time) override;
 
 		int MetricTensor(gsl_matrix *metric);
 		double DotProduct(const double x[], const double y[], const size_t dimension);
@@ -138,7 +138,7 @@ namespace SBody {
 		const double radius_square_;
 
 	  public:
-		Star(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double radius = 0, bool fixed = false);
+		Star(std::shared_ptr<Metric> metric, TimeSystem time, DynamicalSystem coordinate, double radius = 0, bool fixed = false);
 		int Hit(const double current[], const double last[]);
 	};
 
@@ -150,7 +150,7 @@ namespace SBody {
 		const double luminosity_sigma_;
 
 	  public:
-		HotSpot(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double spectral_index, double luminosity, double luminosity_mu, double luminosity_sigma, bool fixed = false);
+		HotSpot(std::shared_ptr<Metric> metric, TimeSystem time, DynamicalSystem coordinate, double spectral_index, double luminosity, double luminosity_mu, double luminosity_sigma, bool fixed = false);
 		double Luminosity(double t, double redshift);
 	};
 

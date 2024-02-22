@@ -17,17 +17,19 @@
 #include "Metric.h"
 #include "Utility.h"
 
+using namespace std;
+
 namespace SBody {
-	std::vector<Object *> Object::object_list_;
-	Object::Object(std::shared_ptr<Metric> metric) : metric_(metric) {
+	vector<Object *> Object::object_list_;
+	Object::Object(shared_ptr<Metric> metric) : metric_(metric) {
 		object_list_.push_back(this);
 	}
-	Particle::Particle(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, bool fixed) : Object(metric), time_(time), coordinate_(coordinate), fixed_(fixed) {
+	Particle::Particle(shared_ptr<Metric> metric, TimeSystem time, DynamicalSystem coordinate, bool fixed) : Object(metric), time_(time), coordinate_(coordinate), fixed_(fixed) {
 		for (int i = 0; i < 8; ++i)
 			position_[i] = 0;
 	}
 	int Particle::Position(double *position) {
-		std::copy(position_, position_ + 8, position);
+		copy(position_, position_ + 8, position);
 		return GSL_SUCCESS;
 	}
 	int Particle::InitializeKeplerian(double a, double e, double inclination, double periapsis, double ascending_node, double true_anomaly, double observer_inclination, double observer_rotation) {
@@ -45,7 +47,7 @@ namespace SBody {
 			position_[6] = 0.;
 			position_[7] = 0.;
 		} else {
-			const double vphi = sqrt((1 - e * e) * a) / r, vr = GSL_SIGN(PhiDifference(true_anomaly)) * sqrt(std::max(0., 2. / r - 1. / a - vphi * vphi));
+			const double vphi = sqrt((1 - e * e) * a) / r, vr = GSL_SIGN(PhiDifference(true_anomaly)) * sqrt(max(0., 2. / r - 1. / a - vphi * vphi));
 			const double tp5 = vphi * sin(periapsis) - vr * cos(periapsis), tp6 = -(vphi * cos(periapsis) + vr * sin(periapsis)) * cos(inclination);
 			const double xp5 = tp5 * cos(ascending_node) - tp6 * sin(ascending_node), xp6 = tp5 * sin(ascending_node) + tp6 * cos(ascending_node), xp7 = -(vphi * cos(periapsis) + vr * sin(periapsis)) * sin(inclination);
 			position_[5] = (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * cos(observer_inclination) + xp7 * sin(observer_inclination);
@@ -117,8 +119,7 @@ namespace SBody {
 			position_[7] = 0.;
 		} else {
 			const double E = (a - 2.) / sqrt(a * (a - 3.));
-			// const double vphi = sqrt(gsl_pow_2(E) * r * (r - 2.) - gsl_pow_2(r - 2.)) / (r * E);
-			const double vphi = sqrt((1 - e * e) * a) / r;
+			const double vphi = sqrt(gsl_pow_2(E) * r * (r - 2.) - gsl_pow_2(r - 2.)) / (r * E);
 			const double tp5 = -vphi * sin(periapsis), tp6 = vphi * cos(periapsis) * cos(inclination);
 			const double xp5 = tp5 * cos(ascending_node) - tp6 * sin(ascending_node), xp6 = tp5 * sin(ascending_node) + tp6 * cos(ascending_node), xp7 = vphi * cos(periapsis) * sin(inclination);
 			position_[5] = (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * cos(observer_inclination) + xp7 * sin(observer_inclination);
@@ -187,7 +188,7 @@ namespace SBody {
 	int Particle::Hit(const double current[], const double last[]) {
 		return false;
 	}
-	double Particle::Redshift(const double photon[], time_system photon_time) {
+	double Particle::Redshift(const double photon[], TimeSystem photon_time) {
 		return metric_->Redshift(position_, photon, time_, photon_time);
 	}
 	int Particle::MetricTensor(gsl_matrix *metric) {
@@ -208,7 +209,7 @@ namespace SBody {
 	double Particle::CarterConstant() {
 		return metric_->CarterConstant(position_, 1., time_, coordinate_);
 	}
-	Star::Star(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double radius, bool fixed) : Particle(metric, time, coordinate, fixed), radius_(radius), radius_square_(gsl_pow_2(radius)) {}
+	Star::Star(shared_ptr<Metric> metric, TimeSystem time, DynamicalSystem coordinate, double radius, bool fixed) : Particle(metric, time, coordinate, fixed), radius_(radius), radius_square_(gsl_pow_2(radius)) {}
 	int Star::Hit(const double current[], const double last[]) {
 		double a2 = metric_->DistanceSquare(position_, current, 3);
 		if (a2 <= radius_square_)
@@ -218,7 +219,7 @@ namespace SBody {
 			return 1; // if min distance between current and last < radius, return 1;
 		return 0;
 	}
-	HotSpot::HotSpot(std::shared_ptr<Metric> metric, time_system time, coordinate_system coordinate, double spectral_index, double luminosity, double luminosity_mu, double luminosity_sigma, bool fixed) : Particle(metric, time, coordinate, fixed), spectral_index_(spectral_index), luminosity_(luminosity), luminosity_mu_(luminosity_mu), luminosity_sigma_(luminosity_sigma) {}
+	HotSpot::HotSpot(shared_ptr<Metric> metric, TimeSystem time, DynamicalSystem coordinate, double spectral_index, double luminosity, double luminosity_mu, double luminosity_sigma, bool fixed) : Particle(metric, time, coordinate, fixed), spectral_index_(spectral_index), luminosity_(luminosity), luminosity_mu_(luminosity_mu), luminosity_sigma_(luminosity_sigma) {}
 	double HotSpot::Luminosity(double t, double redshift) {
 		double intrinsic_time = time_ == T ? position_[0] : t;
 		return luminosity_ * pow(redshift, -spectral_index_) * exp(-0.5 * gsl_pow_2((intrinsic_time - luminosity_mu_) / luminosity_sigma_));

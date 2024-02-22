@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <fmt/core.h>
+#include <fmt/format.h>
 #include <indicators/block_progress_bar.hpp>
 #include <indicators/cursor_control.hpp>
 #include <indicators/dynamic_progress.hpp>
@@ -28,6 +29,10 @@ namespace SBody {
 	 * @param code exit code
 	 */
 	void SBodyExit(int code);
+	template <typename T>
+	auto format_as(T e) {
+		return fmt::underlying(e);
+	}
 	template <typename... T>
 	void PrintlnBold(std::string format, T &&...args) {
 		fmt::println(format, "\033[1m", "\033[0m", std::forward<T>(args)...);

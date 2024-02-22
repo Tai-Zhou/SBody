@@ -66,7 +66,7 @@ namespace SBody {
 		}
 		return metric_->NormalizeNullGeodesic(photon, 1.);
 	}
-	int View::Trace(const double position[], time_system object_time, double record[], bool calculate_luminosity, bool fast_trace) { // FIXME:!!!!
+	int View::Trace(const double position[], TimeSystem object_time, double record[], bool calculate_luminosity, bool fast_trace) { // FIXME:!!!!
 		GslBlock collector;
 		gsl_vector *photon = collector.VectorAlloc(10), *last = collector.VectorAlloc(10);
 		unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
@@ -259,7 +259,7 @@ namespace SBody {
 			cross_section_area_initial += DotCross(gsl_vector_ptr(photon_in_static_frame_cartesian, 1), area_record_initial[i], area_record_initial[i - 1]);
 			cross_section_area += TriangleArea(center_photon_position, area_record[i], area_record[i - 1]);
 		}
-		record[4] = 2. * gsl_pow_2(record[2]) * epsilon_circle_area / abs(cone_solid_angle); // flux coefficient
+		record[4] = 2. * gsl_pow_2(record[2]) * epsilon_circle_area / abs(cone_solid_angle); // magnification
 		return GSL_SUCCESS;
 	}
 	int View::OmegaTest() {

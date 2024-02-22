@@ -135,7 +135,7 @@ Math
 .. doxygenfunction:: SBody::LinearInterpolation(double, double, double, double, double)
    :no-link:
 
-.. doxygenfunction:: SBody::LinearInterpolation(double, double, double, const double, const double, double, size_t)
+.. doxygenfunction:: SBody::LinearInterpolation(double, double, double, const double[], const double[], double[], size_t)
    :no-link:
 
 .. doxygenfunction:: SBody::InterpolateSphericalPositionToCartesian
