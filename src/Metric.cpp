@@ -502,8 +502,8 @@ namespace SBody {
 			if (time == T)
 				return (1. - 2. * y[1] / (gsl_pow_2(y[1]) + a2_ * gsl_pow_2(cos(y[2]))) * (1. - a_ * gsl_pow_2(sin(y[2])) * y[7])) / y[4];
 			// time == TAU
-			return (1. - 2. * y[1] / (gsl_pow_2(y[1]) + a2_ * gsl_pow_2(cos(y[2]))) * (y[4] - a_ * gsl_pow_2(sin(y[2])) * y[7]));
-		} // coordinate == HAMILTONIAN
+			return (y[4] - 2. * y[1] / (gsl_pow_2(y[1]) + a2_ * gsl_pow_2(cos(y[2]))) * (y[4] - a_ * gsl_pow_2(sin(y[2])) * y[7]));
+		} // dynamics == HAMILTONIAN
 		return 1. - y[4];
 	}
 	double Kerr::AngularMomentum(const double y[], time_system time, coordinate_system coordinate) {
