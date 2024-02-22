@@ -5,51 +5,46 @@
 The "S" in the name of SBody stands for "Small", "Some", and "Speed".
 
 - [Library \& Tool](#library--tool)
-  - [CMake](#cmake)
-  - [GSL](#gsl)
-  - [indicators](#indicators)
-  - [fmt](#fmt)
-  - [Python Packages](#python-packages)
-    - [NumPy](#numpy)
+  - [Required](#required)
+    - [CMake](#cmake)
+    - [GSL](#gsl)
+  - [Submodule](#submodule)
+  - [Optional](#optional)
 - [Changelog](#changelog)
 - [License](#license)
 
 ## Library & Tool
-### CMake
-
-**Required**
+### Required
+#### CMake
 
 [CMake](https://cmake.org) is an open-source, cross-platform family of tools designed to build, test and package software. SBody use CMake to get built on different platforms.
 * Linux: run `apt install cmake` or download and install from [homepage](https://cmake.org).
 * macOS: Install CMake via [Homebrew](https://brew.sh), with command `brew install cmake`.
 
-### GSL
-
-**Required**
+#### GSL
 
 The GNU Scientific Library ([GSL](https://www.gnu.org/software/gsl/)) is a numerical library for C and C++ programmers.
 * Linux: run `apt install libgsl-dev` or download and install from [homepage](https://www.gnu.org/software/gsl/).
 * macOS: Install GSL via [Homebrew](https://brew.sh), with command `brew install gsl`.
 
-### indicators
+### Submodule
 
-**Submodule**
+- **[indicators](https://github.com/p-ranav/indicators)**: show the progress bar.
 
-SBody uses [indicators](https://github.com/p-ranav/indicators) to show the progress.
+- **[fmt](https://github.com/fmtlib/fmt)**: format the output.
 
-### fmt
+### Optional
 
-**Submodule**
-
-SBody uses [fmt](https://github.com/fmtlib/fmt) to print.
-
-### Python Packages
-#### NumPy
-
-SBody output can be saved in [NPY format version 2.0](https://numpy.org/devdocs/reference/generated/numpy.lib.format.html#format-version-2-0).
+- [Doxygen](https://www.doxygen.nl): generate the documentation.
+- [OpenMP](https://www.openmp.org): build parallel version.
+- [Python](https://www.python.org):
+  - [Breathe](https://breathe.readthedocs.io): convert the Doxygen documentation to Sphinx.
+  - [NumPy](https://numpy.org): SBody output can be saved in [NPY format version 2.0](https://numpy.org/devdocs/reference/generated/numpy.lib.format.html#format-version-2-0).
+  - [pybind11](https://pybind11.readthedocs.io): build Python interface.
+  - [Sphinx](https://www.sphinx-doc.org): documentation shown in the webpage.
 
 ## Changelog
-Changelog can be found [here](CHANGELOG.md).
+Changelog can be found [here](https://github.com/Tai-Zhou/SBody/blob/main/CHANGELOG.md).
 
 ## License
-This program uses [GNU Scientific Library](https://www.gnu.org/software/gsl/) (GSL), so the program can only be distributed under the terms of the [GNU General Public License](https://www.gnu.org/licenses/gpl-3.0.html) (GPL).
+This program uses [GSL](https://www.gnu.org/software/gsl/), so the program can only be distributed under the terms of the [GNU General Public License](LICENSE) (GPL).
