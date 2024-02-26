@@ -39,13 +39,12 @@ namespace SBody {
 														 indicators::option::ForegroundColor{indicators::Color(4)},
 														 indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}});
 	}
-	int View::InitializePhoton(double *photon, double alpha, double beta) {
+	int View::InitializePhoton(double photon[], double alpha, double beta) {
 		photon[0] = 0.;
 		photon[1] = r_;
 		photon[4] = 1.;
 		photon[5] = 1.;
 		photon[8] = 0.;
-		photon[9] = 0.;
 		if (sin_theta_ < epsilon) {
 			const double k = gsl_hypot(alpha, beta);
 			if (theta_ < M_PI_2) {
@@ -66,157 +65,153 @@ namespace SBody {
 		}
 		return metric_->NormalizeNullGeodesic(photon, 1.);
 	}
-	int View::Trace(const double position[], TimeSystem object_time, double record[], bool calculate_luminosity, bool fast_trace) { // FIXME:!!!!
-		GslBlock collector;
-		gsl_vector *photon = collector.VectorAlloc(10), *last = collector.VectorAlloc(10);
+	int View::Trace(const double position[], TimeSystem object_time, double record[], bool calculate_magnification, bool fast_trace) {
+		double photon[9], last_step_record[9], alpha, delta_alpha, beta, delta_beta, h, t = 0.;
+		if (fast_trace && metric_->FastTrace(r_, theta_, sin_theta_, cos_theta_, position[1], position[2], position[3], alpha, beta, photon) == GSL_SUCCESS) {
+			PhotonInformation(position, object_time, record, photon, alpha, beta);
+			return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : GSL_SUCCESS;
+		}
+		auto t_start = chrono::steady_clock::now();
+		const double r_object = position[1], sin_theta_object = abs(sin(position[2])), cos_theta_object = GSL_SIGN(position[2]) * cos(position[2]), sin_phi_object = sin(position[3]), cos_phi_object = cos(position[3]);
+		if (r_object <= 3.) {
+			PrintlnWarning("Object orbit radius = {:.6f}", r_object);
+			if (r_object < 0)
+				return GSL_FAILURE;
+		}
+		const double alpha_coefficient = sin_theta_object * sin_phi_object, beta_coefficient = cos_theta_object * sin_theta_ - sin_theta_object * cos_phi_object * cos_theta_, cos_observer_object = sin_theta_ * sin_theta_object * cos_phi_object + cos_theta_ * cos_theta_object, sin_observer_object = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_object = acos(cos_observer_object), iteration_coefficient = tanh((2. + cos_observer_object) * 0.02 * r_object);
+		if (cos_observer_object == -1.) {
+			PrintlnWarning("Object behind black hole, cos(theta) = {:.6f}\n", cos_observer_object);
+			alpha = 2. * sqrt(r_object);
+			beta = 0.;
+		} else if (cos_observer_object < 1.) { // initial guessing
+			if (theta_observer_object < M_PI_2) {
+				const double effective_radius = r_object + gsl_pow_3(theta_observer_object / M_PI_2) / sin_observer_object;
+				alpha = effective_radius * alpha_coefficient;
+				beta = effective_radius * beta_coefficient;
+			} else {
+				const double effective_radius = 1. / sin_observer_object + 0.5 * (M_PI * r_object - 6. * cos_observer_object) / (M_PI - theta_observer_object - sin_observer_object * cos_observer_object);
+				// b-r*sin(theta)=(b-1.)*(2.*theta/pi-1.)+1.+(b-4.)/pi*sin(theta*2.)
+				// b=(r*sin(theta)*M_PI+M_2_PI-2.*theta-8.*sin(theta)*cos(theta))/(2.*(M_PI-theta-sin(theta)*cos(theta)))
+				alpha = effective_radius * alpha_coefficient;
+				beta = effective_radius * beta_coefficient;
+			}
+		}
 		unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
-		double alpha, delta_alpha, beta, delta_beta, h;
-		if (fast_trace && metric_->FastTrace(r_, theta_, sin_theta_, cos_theta_, position[1], position[2], position[3], alpha, beta, photon->data) == GSL_SUCCESS) {
-			record[0] = alpha * cos_iota_ - beta * sin_iota_;
-			record[1] = beta * cos_iota_ + alpha * sin_iota_;
-			record[2] = metric_->Redshift(position, photon->data, object_time, T);
-			record[3] = gsl_vector_get(photon, 8) / Unit::s;
-		} else {
-			auto t_start = chrono::steady_clock::now();
-			const double r_star = position[1], sin_theta_star = abs(sin(position[2])), cos_theta_star = GSL_SIGN(position[2]) * cos(position[2]), sin_phi_star = sin(position[3]), cos_phi_star = cos(position[3]);
-			if (r_star <= 3.) {
-				PrintlnWarning("star orbit radius = {:.6f}", r_star);
-				if (r_star < 0)
-					return GSL_FAILURE;
-			}
-			const double alpha_coefficient = sin_theta_star * sin_phi_star, beta_coefficient = cos_theta_star * sin_theta_ - sin_theta_star * cos_phi_star * cos_theta_, cos_observer_star = sin_theta_ * sin_theta_star * cos_phi_star + cos_theta_ * cos_theta_star, sin_observer_star = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_star = acos(cos_observer_star), iteration_coefficient = tanh((2. + cos_observer_star) * 0.02 * r_star);
-			int retry = 0;
-			if (cos_observer_star <= -1.) {
-				PrintlnWarning("star behind black hole, cos(theta) = {:.6f}\n", cos_observer_star);
-				alpha = 2. * sqrt(r_star);
-				beta = 0.;
-			} else if (cos_observer_star < 1.) {
-				if (theta_observer_star < M_PI_2) {
-					const double effective_radius = r_star + gsl_pow_3(theta_observer_star / M_PI_2) / sin_observer_star;
-					alpha = effective_radius * alpha_coefficient;
-					beta = effective_radius * beta_coefficient;
-				} else {
-					const double effective_radius = 1. / sin_observer_star + 0.5 * (M_PI * r_star - 6. * cos_observer_star) / (M_PI - theta_observer_star - sin_observer_star * cos_observer_star);
-					// b-r*sin(theta)=(b-1.)*(2.*theta/pi-1.)+1.+(b-4.)/pi*sin(theta*2.)
-					// b=(r*sin(theta)*M_PI+M_2_PI-2.*theta-8.*sin(theta)*cos(theta))/(2.*(M_PI-theta-sin(theta)*cos(theta)))
-					alpha = effective_radius * alpha_coefficient;
-					beta = effective_radius * beta_coefficient;
-				}
-			}
-			while (true) {
-				InitializePhoton(photon->data, alpha, beta);
-				metric_->LagrangianToHamiltonian(photon->data);
-				int status = 0, fixed = 0;
-				h = -1.;
-				while (status <= 0) {
+		int retry = 0;
+		while (true) {
+			InitializePhoton(photon, alpha, beta);
+			metric_->LagrangianToHamiltonian(photon);
+			int status = 0, fixed = 0;
+			h = -1.;
+			t = 0.;
+			while (status <= 0) {
 #ifndef GSL_RANGE_CHECK_OFF
-					if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(1000)) {
+				if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(1000)) {
 #else
-					if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(5)) {
+				if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(5)) {
 #endif
-						PrintlnWarning("Trace star timeout! Star position is:");
-						for (int i = 0; i < 8; ++i)
-							printf("x[%d]=%f\n", i, position[i]);
-						printf("alpha=%f, beta=%f\n", alpha, beta);
-						return GSL_FAILURE;
-					}
-					if (status == GSL_FAILURE) {
-						h *= 0.5;
-						fixed = 0;
-					}
-					gsl_vector_memcpy(last, photon);
-					if (fixed)
-						status = integrator->ApplyFixedStep(gsl_vector_ptr(photon, 9), h, photon->data);
-					else
-						status = integrator->ApplyStep(gsl_vector_ptr(photon, 9), t_final_, &h, photon->data);
-					if (const double cosph = (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * abs(sin(gsl_vector_get(photon, 2))) * cos(gsl_vector_get(photon, 3))) * sin_theta_ + (r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * cos_theta_; cosph > r_star * epsilon) {
-						gsl_vector_memcpy(photon, last);
-						h *= 0.3;
-						fixed = 1;
-						integrator->Reset();
-					} else if (cosph >= 0) {
-						delta_alpha = r_star * sin_theta_star * sin_phi_star - gsl_vector_get(photon, 1) * abs(sin(gsl_vector_get(photon, 2))) * sin(gsl_vector_get(photon, 3));
-						delta_beta = (r_star * cos_theta_star - gsl_vector_get(photon, 1) * GSL_SIGN(gsl_vector_get(photon, 2)) * cos(gsl_vector_get(photon, 2))) * sin_theta_ - (r_star * sin_theta_star * cos_phi_star - gsl_vector_get(photon, 1) * abs(sin(gsl_vector_get(photon, 2))) * cos(gsl_vector_get(photon, 3))) * cos_theta_;
-						break;
-					} else if (gsl_vector_get(photon, 9) < t_final_ * 1e-8) {
-						gsl_vector_set(photon, 8, gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9));
-						gsl_vector_set(photon, 9, 0);
-						if (gsl_vector_get(photon, 8) <= t_final_) {
-							if (++retry == 3) {
-								PrintlnWarning("Trace star failed! Star position is:");
-								for (int i = 0; i < 8; ++i)
-									printf("x[%d]=%f\n", i, position[i]);
-								printf("alpha=%f, beta=%f\n", alpha, beta);
-								return GSL_FAILURE;
-							}
-							delta_alpha = alpha * 0.2;
-							delta_beta = beta * 0.2;
-							break;
-						}
-					}
+					PrintlnWarning("View::Trace() timeout! Object position is:\nr = {}\ntheta = {}\nphi = {}", position[1], position[2], position[3]);
+					return GSL_FAILURE;
 				}
-				if (status > 0) {
-					PrintlnWarning("view::traceStar status = {}\n", status);
-					return status;
+				if (status == GSL_FAILURE) {
+					h *= 0.5;
+					fixed = 0;
 				}
-				if (gsl_hypot(delta_alpha, delta_beta) <= epsilon * (1. + gsl_hypot(alpha, beta))) {
-					metric_->HamiltonianToLagrangian(photon->data);
+				copy(photon, photon + 9, last_step_record);
+				if (fixed)
+					status = integrator->ApplyFixedStep(&t, h, photon);
+				else
+					status = integrator->ApplyStep(&t, t_final_, &h, photon);
+				if (const double cos_observer_object_photon = (r_object * sin_theta_object * cos_phi_object - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * sin_theta_ + (r_object * cos_theta_object - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * cos_theta_; cos_observer_object_photon > r_object * epsilon) {
+					// photon goes through the plane of the object
+					copy(last_step_record, last_step_record + 9, photon);
+					h *= 0.3;
+					fixed = 1;
+					integrator->Reset();
+				} else if (cos_observer_object_photon >= 0) {
+					// photon in the same plane with the object
+					photon[8] += t;
+					delta_alpha = r_object * sin_theta_object * sin_phi_object - photon[1] * abs(sin(photon[2])) * sin(photon[3]);
+					delta_beta = (r_object * cos_theta_object - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * sin_theta_ - (r_object * sin_theta_object * cos_phi_object - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * cos_theta_;
+					break;
+				} else if (t >= t_final_ * 1e-8)
+					continue;
+				// photon not reaches the plane of the object
+				photon[8] += t;
+				t = 0.;
+				if (photon[8] > t_final_)
+					continue;
+				// photon runs away
+				if (++retry < 3) { // retry limit
+					delta_alpha = alpha * 0.2;
+					delta_beta = beta * 0.2;
 					break;
 				}
-				alpha += iteration_coefficient * delta_alpha;
-				beta += iteration_coefficient * delta_beta;
-				integrator->Reset();
+				PrintlnWarning("View::Trace() failed! Object position is:\nr = {}\ntheta = {}\nphi = {}", position[1], position[2], position[3]);
+				return GSL_FAILURE;
 			}
-			record[0] = alpha * cos_iota_ - beta * sin_iota_;							   // alpha
-			record[1] = beta * cos_iota_ + alpha * sin_iota_;							   // beta
-			record[2] = metric_->Redshift(position, photon->data, object_time, T);		   // redshift
-			record[3] = (gsl_vector_get(photon, 8) + gsl_vector_get(photon, 9)) / Unit::s; // time
+			if (status > 0) {
+				PrintlnWarning("View::Trece() status = {}\n", status);
+				return status;
+			}
+			if (gsl_hypot(delta_alpha, delta_beta) <= epsilon * (1. + gsl_hypot(alpha, beta))) {
+				metric_->HamiltonianToLagrangian(photon);
+				break;
+			}
+			alpha += iteration_coefficient * delta_alpha;
+			beta += iteration_coefficient * delta_beta;
+			integrator->Reset();
 		}
-		if (!calculate_luminosity)
-			return GSL_SUCCESS;
-		double photon2[9], cone_record[SAMPLE_NUMBER][3], local_cone_record[SAMPLE_NUMBER][3], center_photon_position[3], center_photon_velocity[3];
-		auto photon2_velocity_view = gsl_vector_view_array(photon2 + 4, 4);
-		gsl_vector_set(photon, 0, 0.);
-		copy(photon->data, photon->data + 8, photon2);
-		photon2[8] = 0.;
-		metric_->NormalizeNullGeodesic(photon2, 1.);
-		metric_->LagrangianToHamiltonian(photon2);
-		h = 1.;
-		int status = 0, signum;
+		PhotonInformation(position, object_time, record, photon, alpha, beta);
+		return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : GSL_SUCCESS;
+	}
+	int View::PhotonInformation(const double position[], TimeSystem object_time, double record[], const double photon[], double alpha, double beta) {
+		record[0] = alpha * cos_iota_ + beta * sin_iota_;				 // alpha
+		record[1] = beta * cos_iota_ - alpha * sin_iota_;				 // beta
+		record[2] = metric_->Redshift(position, photon, object_time, T); // redshift
+		record[3] = photon[8] / Unit::s;								 // look back time
+		return GSL_SUCCESS;
+	}
+	int View::Magnification(const double position[], TimeSystem object_time, double &magnification, const double photon[], double redshift) {
+		unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
+		double forward_photon[8], cone_record[SAMPLE_NUMBER][3], local_cone_record[SAMPLE_NUMBER][3], center_photon_position[3], center_photon_velocity[3], h = 1., t = 0.;
+		auto forward_photon_velocity_view = gsl_vector_view_array(forward_photon + 4, 4);
+		copy(photon, photon + 8, forward_photon);
+		metric_->NormalizeNullGeodesic(forward_photon);
+		metric_->LagrangianToHamiltonian(forward_photon);
 		integrator->Reset();
-		if (status = integrator->Apply(photon2 + 8, 1000., &h, photon2); status > 0) {
-			fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
+		if (int status = integrator->Apply(&t, 1000., &h, forward_photon); status > 0) {
+			PrintlnError("View::Magnification() status = {}", status);
 			return status;
 		}
-		metric_->HamiltonianToLagrangian(photon2);
-		SphericalToCartesian(photon2);
-		copy(photon2 + 1, photon2 + 4, center_photon_position);
-		copy(photon2 + 5, photon2 + 8, center_photon_velocity);
-		const double photon_velocity = 1. / Norm(center_photon_velocity);
-		for (int i = 0; i < 3; ++i)
-			center_photon_velocity[i] *= photon_velocity;
+		metric_->HamiltonianToLagrangian(forward_photon);
+		SphericalToCartesian(forward_photon);
+		copy(forward_photon + 1, forward_photon + 4, center_photon_position);
+		copy(forward_photon + 5, forward_photon + 8, center_photon_velocity);
+		cblas_dscal(3, 1. / Norm(center_photon_velocity), center_photon_velocity, 1);
+		GslBlock collector;
 		auto gmunu = collector.MatrixAlloc(4, 4);			 // object local metric tensor
 		auto coordinate = collector.MatrixAlloc(4, 4);		 // object local inertial coordinate frame
 		auto coordinate_gmunu = collector.MatrixAlloc(4, 4); // object local inertial frame measured by observer
 		auto permutation = collector.PermutationAlloc(4);	 // permutation used in the LU decomposition
 		auto photon_transform = collector.VectorAlloc(4);	 // photon in TimeSystem TAU
 		auto photon_in_object_frame_cartesian = collector.VectorAlloc(4);
-		auto photon_in_object_frame_spherical = collector.VectorAlloc(4);
+		double photon_in_object_frame_spherical[4];
+		metric_->MetricTensor(position, gmunu);
+		metric_->LocalInertialFrame(position, object_time, coordinate);
+		gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
+		int signum;
+		gsl_linalg_LU_decomp(coordinate_gmunu, permutation, &signum);
+		gsl_vector_set(photon_transform, 0, 1.);
+		copy(photon + 5, photon + 8, gsl_vector_ptr(photon_transform, 1));
+		gsl_blas_dgemv(CblasNoTrans, 1., coordinate_gmunu, photon_transform, 0., photon_in_object_frame_cartesian);
+		gsl_vector_scale(photon_in_object_frame_cartesian, 1. / gsl_vector_get(photon_in_object_frame_cartesian, 0));
+		CartesianToSpherical(photon_in_object_frame_cartesian->data, photon_in_object_frame_spherical, 4);
 #ifndef GSL_RANGE_CHECK_OFF
 		auto coordinate_static = collector.MatrixCalloc(4, 4);		// object local static frame (only dt/d\tau != 0)
 		auto coordinate_static_gmunu = collector.MatrixAlloc(4, 4); // object local static frame measured by observer
 		auto photon_in_static_frame_cartesian = collector.VectorAlloc(4);
-		auto photon_in_static_frame_spherical = collector.VectorAlloc(4);
-#endif
-		metric_->MetricTensor(position, gmunu);
-		metric_->LocalInertialFrame(position, coordinate);
-		gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
-		gsl_vector_set(photon_transform, 0, 1.);
-		copy(gsl_vector_ptr(photon, 5), gsl_vector_ptr(photon, 8), gsl_vector_ptr(photon_transform, 1));
-		gsl_blas_dgemv(CblasNoTrans, 1., coordinate_gmunu, photon_transform, 0., photon_in_object_frame_cartesian);
-		gsl_vector_scale(photon_in_object_frame_cartesian, 1. / gsl_vector_get(photon_in_object_frame_cartesian, 0));
-		CartesianToSpherical(gsl_vector_ptr(photon_in_object_frame_cartesian, 0), gsl_vector_ptr(photon_in_object_frame_spherical, 0), 4);
-#ifndef GSL_RANGE_CHECK_OFF
+		double photon_in_static_frame_spherical[4];
 		gsl_matrix_set(coordinate_static, 0, 0, -sqrt(-1. / gmunu->data[0]));
 		gsl_matrix_set(coordinate_static, 1, 1, sqrt(1. / gmunu->data[5]));
 		gsl_matrix_set(coordinate_static, 2, 2, sqrt(1. / gmunu->data[10]));
@@ -224,42 +219,37 @@ namespace SBody {
 		gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate_static, 0., coordinate_static_gmunu);
 		gsl_blas_dgemv(CblasNoTrans, 1., coordinate_static_gmunu, photon_transform, 0., photon_in_static_frame_cartesian);
 		gsl_vector_scale(photon_in_static_frame_cartesian, 1. / gsl_vector_get(photon_in_static_frame_cartesian, 0));
-		CartesianToSpherical(gsl_vector_ptr(photon_in_static_frame_cartesian, 0), gsl_vector_ptr(photon_in_static_frame_spherical, 0), 4);
+		CartesianToSpherical(photon_in_object_frame_cartesian->data, photon_in_static_frame_spherical, 4);
 #endif
-		gsl_linalg_LU_decomp(coordinate_gmunu, permutation, &signum);
 		for (int i = 0; i < SAMPLE_NUMBER; ++i) {
 			const double angle = i * ANGLE_INTERVAL, sin_angle = sin(angle), cos_angle = cos(angle);
-			copy(photon->data, photon->data + 4, photon2);
-			photon2[4] = 1.;
-			photon2[5] = cos_angle * sin_epsilon;
-			photon2[6] = sin_angle * sin_epsilon;
-			photon2[7] = cos_epsilon;
-			RotateAroundAxis(photon2 + 5, Y, gsl_vector_get(photon_in_object_frame_spherical, 2));
-			RotateAroundAxis(photon2 + 5, Z, gsl_vector_get(photon_in_object_frame_spherical, 3));
-			gsl_linalg_LU_svx(coordinate_gmunu, permutation, &photon2_velocity_view.vector);
-			photon2[8] = 0.;
-			metric_->NormalizeNullGeodesic(photon2);
+			copy(photon, photon + 4, forward_photon);
+			forward_photon[4] = 1.;
+			forward_photon[5] = cos_angle * sin_epsilon;
+			forward_photon[6] = sin_angle * sin_epsilon;
+			forward_photon[7] = cos_epsilon;
+			RotateAroundAxis(forward_photon + 5, Y, photon_in_object_frame_spherical[2]);
+			RotateAroundAxis(forward_photon + 5, Z, photon_in_object_frame_spherical[3]);
+			gsl_linalg_LU_svx(coordinate_gmunu, permutation, &forward_photon_velocity_view.vector);
+			metric_->NormalizeNullGeodesic(forward_photon);
 #ifndef GSL_RANGE_CHECK_OFF
-			local_cone_record[i][0] = metric_->DotProduct(photon->data, photon2 + 4, coordinate_static->data + 4, 4);
-			local_cone_record[i][1] = metric_->DotProduct(photon->data, photon2 + 4, coordinate_static->data + 8, 4);
-			local_cone_record[i][2] = metric_->DotProduct(photon->data, photon2 + 4, coordinate_static->data + 12, 4);
-			const double vph_norm = metric_->DotProduct(photon->data, photon2 + 4, coordinate_static->data, 4);
-			for (int j = 0; j < 3; ++j)
-				local_cone_record[i][j] /= vph_norm;
+			local_cone_record[i][0] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 4, 4);
+			local_cone_record[i][1] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 8, 4);
+			local_cone_record[i][2] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 12, 4);
+			cblas_dscal(3, 1. / metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data, 4), local_cone_record[i], 1);
 #endif
-			metric_->LagrangianToHamiltonian(photon2);
+			metric_->LagrangianToHamiltonian(forward_photon);
 			h = 1.;
+			t = 0.;
 			integrator->Reset();
-			if (int status = integrator->Apply(photon2 + 8, 1000., &h, photon2); status > 0) {
-				fmt::print(stderr, "[!] view::traceStar status = {}\n", status);
+			if (int status = integrator->Apply(&t, 1000., &h, forward_photon); status > 0) {
+				PrintlnError("View::Magnification() status = {}", status);
 				return status;
 			}
-			metric_->HamiltonianToLagrangian(photon2);
-			SphericalToCartesian(photon2);
-			copy(photon2 + 5, photon2 + 8, cone_record[i]);
-			const double rec2_norm = Norm(cone_record[i]);
-			for (int j = 0; j < 3; ++j)
-				cone_record[i][j] /= rec2_norm;
+			metric_->HamiltonianToLagrangian(forward_photon);
+			SphericalToCartesian(forward_photon);
+			copy(forward_photon + 5, forward_photon + 8, cone_record[i]);
+			cblas_dscal(3, 1. / Norm(cone_record[i]), cone_record[i], 1);
 		}
 		double cone_solid_angle = DotCross(center_photon_velocity, cone_record[0], cone_record[SAMPLE_NUMBER - 1]);
 #ifndef GSL_RANGE_CHECK_OFF
@@ -271,7 +261,7 @@ namespace SBody {
 			cone_local_solid_angle += DotCross(photon_in_static_frame_cartesian->data + 1, local_cone_record[i], local_cone_record[i - 1]);
 #endif
 		}
-		record[4] = 2. / record[2] * epsilon_circle_area / abs(cone_solid_angle); // magnification
+		magnification = 2. / redshift * epsilon_circle_area / abs(cone_solid_angle);
 		return GSL_SUCCESS;
 	}
 	int View::OmegaTest() {
@@ -392,7 +382,7 @@ namespace SBody {
 						break;
 				}
 				if (status > 0) {
-					fmt::print(stderr, "[!] view::shadow status = {}\n", status);
+					PrintlnError("View::Shadow() status = {}", status);
 					return status;
 				}
 				if (photon[5] <= 0)
@@ -428,7 +418,7 @@ namespace SBody {
 			while (status <= 0 && initials_[p][8] > t1 && initials_[p][1] > 100)
 				status = integrator->Apply(initials_[p].data() + 8, t1, initials_[p].data() + 9, initials_[p].data());
 			if (status > 0)
-				fmt::print(stderr, "[!] camera::initialize status = {}\n", status);
+				PrintlnWarning("Camera::Camera() status = {}", status);
 		}
 	}
 	int Camera::Trace() {
@@ -451,7 +441,7 @@ namespace SBody {
 					break;
 			}
 			if (status > 0)
-				fmt::print(stderr, "[!] camera::traceStar status = {}\n", status);
+				PrintlnWarning("Camera::Trace() status = {}", status);
 		}
 		return 0;
 	}
@@ -470,7 +460,7 @@ namespace SBody {
 				while (status <= 0 && ph[8] > t1 && ph[1] > 3. && ph[1] < 3.e2)
 					status = integrator->Apply(ph + 8, t1, ph + 9, ph);
 				if (status > 0)
-					fmt::print(stderr, "[!] camera::lens status = {}\n", status);
+					PrintlnWarning("Camera::Lens() status = {}", status);
 				if (ph[1] <= 3.)
 					rec.Save({NAN, NAN});
 				else {

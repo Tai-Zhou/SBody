@@ -198,7 +198,7 @@ namespace SBody {
 		return metric_->DotProduct(position_, x, y, dimension);
 	}
 	int Particle::LocalInertialFrame(gsl_matrix *coordinate) {
-		return metric_->LocalInertialFrame(position_, coordinate);
+		return metric_->LocalInertialFrame(position_, time_, coordinate);
 	}
 	double Particle::Energy() {
 		return metric_->Energy(position_, time_, coordinate_);

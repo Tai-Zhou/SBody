@@ -61,7 +61,7 @@ namespace SBody {
 		/**
 		 * @brief Return the name of the metric.
 		 *
-		 * @return the name of the metric.
+		 * @return name of the metric.
 		 */
 		virtual std::string Name() = 0;
 
@@ -69,7 +69,7 @@ namespace SBody {
 		 * @brief Calculate the metric tensor at `position`, stored in `metric`.
 		 *
 		 * @param position 4 dimensional vector
-		 * @param metric matrix with size \f$4\times4\f$
+		 * @param metric matrix with size 4×4
 		 * @return status
 		 */
 		virtual int MetricTensor(const double position[], gsl_matrix *metric) = 0;
@@ -77,7 +77,7 @@ namespace SBody {
 		/**
 		 * @brief Dot product of vector `x` and `y` at `position`. \f$g_{\mu\nu}x^\mu y^\nu\f$
 		 *
-		 * @param position vector, position to calcuate the dot product of `x` and `y`.
+		 * @param position 4 dimensional vector, position to calcuate the dot product of `x` and `y`.
 		 * @param x 4 dimensional vector
 		 * @param y 4 dimensional vector
 		 * @param dimension dimension of the vector, should be 3 or 4.
@@ -94,7 +94,16 @@ namespace SBody {
 		 * @return result
 		 */
 		virtual double DistanceSquare(const double x[], const double y[], const size_t dimension) = 0;
-		int LocalInertialFrame(const double position[], gsl_matrix *coordinate);
+
+		/**
+		 * @brief Calculate the local inertial frame coordinate of the object at `position`, stored in `coordinate`.
+		 *
+		 * @param position 8 dimensional vector
+		 * @param time time systme of the object
+		 * @param coordinate matrix with size 4×4
+		 * @return status
+		 */
+		int LocalInertialFrame(const double position[], TimeSystem time, gsl_matrix *coordinate);
 
 		/**
 		 * @brief Convert the coordinate system from Lagrangian to Hamiltonian.
@@ -124,7 +133,7 @@ namespace SBody {
 		 * @param phi_target phi of the target, \f$\phi_\text{tar}\f$.
 		 * @param alpha x position of the target in the observer's view.
 		 * @param beta y position of the target in the observer's view.
-		 * @param photon 8 dimensional vector, position and the velocity of the photon traced to the target.
+		 * @param photon 9 dimensional vector, position and the velocity of the photon traced to the target. photon[8] is used to store the look back time.
 		 * @return status
 		 */
 		virtual int FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double photon[]) = 0;
@@ -133,8 +142,8 @@ namespace SBody {
 		 * @brief Calculate the energy of the object.
 		 *
 		 * @param y 8 dimensional vector
-		 * @param time the time system of the object
-		 * @param dynamics the dynamical system of the object
+		 * @param time time system of the object
+		 * @param dynamics dynamical system of the object
 		 * @return result
 		 */
 		virtual double Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) = 0;
@@ -142,8 +151,8 @@ namespace SBody {
 		 * @brief Calculate the angular momentum of the object.
 		 *
 		 * @param y 8 dimensional vector
-		 * @param time the time system of the object
-		 * @param dynamics the dynamical system of the object
+		 * @param time time system of the object
+		 * @param dynamics dynamical system of the object
 		 * @return result
 		 */
 		virtual double AngularMomentum(const double y[], TimeSystem time, DynamicalSystem dynamics) = 0;
@@ -152,8 +161,8 @@ namespace SBody {
 		 * @brief Calculate the Carter constant of the object.
 		 *
 		 * @param y 8 dimensional vector
-		 * @param time the time system of the object
-		 * @param dynamics the dynamical system of the object
+		 * @param time time system of the object
+		 * @param dynamics dynamical system of the object
 		 * @return result
 		 */
 		virtual double CarterConstant(const double y[], const double mu2, TimeSystem time, DynamicalSystem dynamics) = 0;
@@ -162,9 +171,9 @@ namespace SBody {
 		 * @brief Calculate the redshift of the object, \f$1+z\f$
 		 *
 		 * @param y 8 dimensional vector of the object
-		 * @param photon the photon traced to the object
-		 * @param object_time the time system of the object
-		 * @param photon_time the time system of the photon
+		 * @param photon photon traced to the object
+		 * @param object_time time system of the object
+		 * @param photon_time time system of the photon
 		 * @return result
 		 */
 		virtual double Redshift(const double y[], const double photon[], TimeSystem object_time, TimeSystem photon_time);
@@ -188,18 +197,15 @@ namespace SBody {
 		/**
 		 * @brief Get the integrator to calculate the motion of the object.
 		 *
-		 * @param time the time system of the object
-		 * @param dynamics the dynamical system of the object
-		 * @param motion the motion mode of the object
+		 * @param time time system of the object
+		 * @param dynamics dynamical system of the object
+		 * @param motion motion mode of the object
 		 * @return pointer to the integrator
 		 */
 		virtual std::unique_ptr<Integrator> GetIntegrator(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) = 0;
 	};
 
-	/**
-	 * @brief Post-Newtonian
-	 *
-	 */
+	/// Post-Newtonian
 	class Newton : public Metric {
 	  public:
 		const int PN_;

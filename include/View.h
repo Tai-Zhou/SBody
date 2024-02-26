@@ -27,51 +27,72 @@ namespace SBody {
 		std::shared_ptr<Metric> metric_;
 		/// Distance to the center black hole
 		const double r_;
-		/// Angle between the observer and the \f$z\f$ axis.
+		/// Angle between the observer and the \f$z\f$ axis, \f$\theta\f$.
 		const double theta_;
+		/// \f$\sin\theta\f$
 		const double sin_theta_;
+		/// \f$\cos\theta\f$
 		const double cos_theta_;
-		/// Rotational angle of the coordiante of the view.
+		/// Rotational angle of the coordiante of the view, \f$\iota\f$.
 		const double iota_;
+		/// \f$\sin\iota\f$
 		const double sin_iota_;
+		/// \f$\cos\iota\f$
 		const double cos_iota_;
+		/// time limit for the integration of photons.
 		const double t_final_;
 		std::unique_ptr<indicators::BlockProgressBar> bar_;
 
 	  public:
 		/**
-		 * @brief Construct a new view object
+		 * @brief Constructor
 		 *
-		 * @param r
-		 * @param theta
-		 * @param file_name
+		 * @param r Distance to the black hole
+		 * @param theta Angle between the observer and the \f$z\f$ axis, \f$\theta\f$.
+		 * @param iota Rotational angle of the coordiante of the view, \f$\iota\f$.
 		 */
 		View(std::shared_ptr<Metric> metric, double r, double theta, double iota);
 
 		/**
-		 * @brief
+		 * @brief Initialize the position and velocity of a trace back photon.
 		 *
-		 * @param photon
-		 * @param alpha
-		 * @param beta
-		 * @return int
+		 * @param photon 9 dimensional vector, photon[8] is used to store the look back time.
+		 * @param alpha x position of the target in the observer's view.
+		 * @param beta y position of the target in the observer's view.
+		 * @return status
 		 */
-		int InitializePhoton(double *photon, double alpha, double beta);
+		int InitializePhoton(double photon[], double alpha, double beta);
 
 		/**
 		 * @brief
 		 *
-		 * @param star
-		 * @param ray_number
-		 * @return int
+		 * @param position 8 dimensional vector
+		 * @param object_time time system of the object
+		 * @param record position to save the observational values
+		 * @param calculate_magnification switch of the magnification calculation
+		 * @param fast_trace switch of the fast trace
+		 * @return status
 		 */
-
-		int Trace(const double position[], TimeSystem object_time, double record[], bool calculate_luminosity, bool fast_trace = true);
+		int Trace(const double position[], TimeSystem object_time, double record[], bool calculate_magnification, bool fast_trace = true);
+		int PhotonInformation(const double position[], TimeSystem object_time, double record[], const double photon[], double alpha, double beta);
 
 		/**
-		 * @brief
+		 * @brief Calculate the magnification of the object.
 		 *
+		 * @param position 8 dimensional vector
+		 * @param object_time time system of the object
+		 * @param magnification position to save the magnification
+		 * @param photon 8 dimensional vector of the photon traced to the object
+		 * @param redshift redshift of the photon
 		 * @return int
+		 */
+		int Magnification(const double position[], TimeSystem object_time, double &magnification, const double photon[], double redshift);
+
+		/**
+		 * @brief Calculate the radius of the black hole shadow at different direction, saved in the file.
+		 *
+		 * @param file_name file name.
+		 * @return status
 		 */
 		int Shadow(std::string file_name);
 

@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <fmt/core.h>
+#include <gsl/gsl_cblas.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_sf_ellint.h>
@@ -195,7 +196,6 @@ namespace SBody {
 	gsl_vector *MultiDerivativeSolver::StepSize() {
 		return gsl_multiroot_fdfsolver_dx(solver_);
 	}
-
 	// GslBlock
 	GslBlock::~GslBlock() {
 		for (auto vector : vectors_)
@@ -246,26 +246,17 @@ namespace SBody {
 	double Dot(const double x[], const double y[], size_t dimension) {
 		if (dimension == 3)
 			return x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
-		double sum = 0;
-		while (dimension-- > 0)
-			sum += x[dimension] * y[dimension];
-		return sum;
+		return cblas_ddot(dimension, x, 1, y, 1);
 	}
 	double Dot(const double x[], size_t dimension) {
 		if (dimension == 3)
 			return x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
-		double sum = 0;
-		while (dimension-- > 0)
-			sum += x[dimension] * x[dimension];
-		return sum;
+		return cblas_ddot(dimension, x, 1, x, 1);
 	}
 	double Norm(const double x[], size_t dimension) {
 		if (dimension == 3)
 			return sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
-		double sum = 0;
-		while (dimension-- > 0)
-			sum += x[dimension] * x[dimension];
-		return sqrt(sum);
+		return cblas_dnrm2(dimension, x, 1);
 	}
 	int Cross(const double x[], const double y[], double z[]) {
 		z[0] = x[1] * y[2] - x[2] * y[1];

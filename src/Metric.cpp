@@ -27,7 +27,7 @@
 using namespace std;
 
 namespace SBody {
-	int Metric::LocalInertialFrame(const double position[], gsl_matrix *coordinate) {
+	int Metric::LocalInertialFrame(const double position[], TimeSystem time, gsl_matrix *coordinate) {
 		GslBlock collector;
 		gsl_matrix *metric = collector.MatrixAlloc(4, 4), *product = collector.MatrixAlloc(4, 4), *product_LU = collector.MatrixAlloc(4, 4);
 		gsl_matrix_set_identity(product);
@@ -40,7 +40,10 @@ namespace SBody {
 			product_row = collector.VectorAllocRowFromMatrix(product, i);
 			gsl_vector_set_basis(coordinate_row, i);
 			if (i == 0) {
-				copy(position + 5, position + 8, coordinate_row->data + 1);
+				if (time == T)
+					copy(position + 5, position + 8, coordinate_row->data + 1);
+				else
+					copy(position + 4, position + 8, coordinate_row->data);
 			} else {
 				gsl_matrix_memcpy(product_LU, product);
 				gsl_linalg_LU_decomp(product_LU, permutation, &signum);
