@@ -102,7 +102,7 @@
 <dd><p>Return the name of the metric. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>the name of the metric. </p>
+<dd class="field-odd"><p>name of the metric. </p>
 </dd>
 </dl>
 </dd></dl>
@@ -115,7 +115,7 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>position</strong> – 4 dimensional vector </p></li>
-<li><p><strong>metric</strong> – matrix with size <span class="math notranslate nohighlight">\(4\times4\)</span></p></li>
+<li><p><strong>metric</strong> – matrix with size 4×4 </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -131,7 +131,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>position</strong> – vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
+<li><p><strong>position</strong> – 4 dimensional vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
 <li><p><strong>x</strong> – 4 dimensional vector </p></li>
 <li><p><strong>y</strong> – 4 dimensional vector </p></li>
 <li><p><strong>dimension</strong> – dimension of the vector, should be 3 or 4. </p></li>
@@ -157,6 +157,24 @@
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>result </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">LocalInertialFrame</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">position</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span>, <span class="n"><span class="pre">TimeSystem</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">time</span></span>, <span class="n"><span class="pre">gsl_matrix</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">coordinate</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><p>Calculate the local inertial frame coordinate of the object at <code class="docutils literal notranslate"><span class="pre">position</span></code>, stored in <code class="docutils literal notranslate"><span class="pre">coordinate</span></code>. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>position</strong> – 8 dimensional vector </p></li>
+<li><p><strong>time</strong> – time systme of the object </p></li>
+<li><p><strong>coordinate</strong> – matrix with size 4×4 </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>status </p>
 </dd>
 </dl>
 </dd></dl>
@@ -205,7 +223,7 @@
 <li><p><strong>phi_target</strong> – phi of the target, <span class="math notranslate nohighlight">\(\phi_\text{tar}\)</span>. </p></li>
 <li><p><strong>alpha</strong> – x position of the target in the observer’s view. </p></li>
 <li><p><strong>beta</strong> – y position of the target in the observer’s view. </p></li>
-<li><p><strong>photon</strong> – 8 dimensional vector, position and the velocity of the photon traced to the target. </p></li>
+<li><p><strong>photon</strong> – 9 dimensional vector, position and the velocity of the photon traced to the target. photon[8] is used to store the look back time. </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -222,8 +240,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -240,8 +258,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -258,8 +276,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -276,9 +294,9 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector of the object </p></li>
-<li><p><strong>photon</strong> – the photon traced to the object </p></li>
-<li><p><strong>object_time</strong> – the time system of the object </p></li>
-<li><p><strong>photon_time</strong> – the time system of the photon </p></li>
+<li><p><strong>photon</strong> – photon traced to the object </p></li>
+<li><p><strong>object_time</strong> – time system of the object </p></li>
+<li><p><strong>photon_time</strong> – time system of the photon </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -322,9 +340,9 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
-<li><p><strong>motion</strong> – the motion mode of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
+<li><p><strong>motion</strong> – motion mode of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -351,7 +369,7 @@
 <dd><p>Return the name of the metric. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>the name of the metric. </p>
+<dd class="field-odd"><p>name of the metric. </p>
 </dd>
 </dl>
 </dd></dl>
@@ -364,7 +382,7 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>position</strong> – 4 dimensional vector </p></li>
-<li><p><strong>metric</strong> – matrix with size <span class="math notranslate nohighlight">\(4\times4\)</span></p></li>
+<li><p><strong>metric</strong> – matrix with size 4×4 </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -380,7 +398,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>position</strong> – vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
+<li><p><strong>position</strong> – 4 dimensional vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
 <li><p><strong>x</strong> – 4 dimensional vector </p></li>
 <li><p><strong>y</strong> – 4 dimensional vector </p></li>
 <li><p><strong>dimension</strong> – dimension of the vector, should be 3 or 4. </p></li>
@@ -454,7 +472,7 @@
 <li><p><strong>phi_target</strong> – phi of the target, <span class="math notranslate nohighlight">\(\phi_\text{tar}\)</span>. </p></li>
 <li><p><strong>alpha</strong> – x position of the target in the observer’s view. </p></li>
 <li><p><strong>beta</strong> – y position of the target in the observer’s view. </p></li>
-<li><p><strong>photon</strong> – 8 dimensional vector, position and the velocity of the photon traced to the target. </p></li>
+<li><p><strong>photon</strong> – 9 dimensional vector, position and the velocity of the photon traced to the target. photon[8] is used to store the look back time. </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -471,8 +489,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -489,8 +507,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -507,8 +525,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -525,9 +543,9 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector of the object </p></li>
-<li><p><strong>photon</strong> – the photon traced to the object </p></li>
-<li><p><strong>object_time</strong> – the time system of the object </p></li>
-<li><p><strong>photon_time</strong> – the time system of the photon </p></li>
+<li><p><strong>photon</strong> – photon traced to the object </p></li>
+<li><p><strong>object_time</strong> – time system of the object </p></li>
+<li><p><strong>photon_time</strong> – time system of the photon </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -571,9 +589,9 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
-<li><p><strong>motion</strong> – the motion mode of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
+<li><p><strong>motion</strong> – motion mode of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -597,9 +615,9 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
-<li><p><strong>motion</strong> – the motion mode of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
+<li><p><strong>motion</strong> – motion mode of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -626,7 +644,7 @@
 <dd><p>Return the name of the metric. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>the name of the metric. </p>
+<dd class="field-odd"><p>name of the metric. </p>
 </dd>
 </dl>
 </dd></dl>
@@ -639,7 +657,7 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>position</strong> – 4 dimensional vector </p></li>
-<li><p><strong>metric</strong> – matrix with size <span class="math notranslate nohighlight">\(4\times4\)</span></p></li>
+<li><p><strong>metric</strong> – matrix with size 4×4 </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -655,7 +673,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>position</strong> – vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
+<li><p><strong>position</strong> – 4 dimensional vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
 <li><p><strong>x</strong> – 4 dimensional vector </p></li>
 <li><p><strong>y</strong> – 4 dimensional vector </p></li>
 <li><p><strong>dimension</strong> – dimension of the vector, should be 3 or 4. </p></li>
@@ -729,7 +747,7 @@
 <li><p><strong>phi_target</strong> – phi of the target, <span class="math notranslate nohighlight">\(\phi_\text{tar}\)</span>. </p></li>
 <li><p><strong>alpha</strong> – x position of the target in the observer’s view. </p></li>
 <li><p><strong>beta</strong> – y position of the target in the observer’s view. </p></li>
-<li><p><strong>photon</strong> – 8 dimensional vector, position and the velocity of the photon traced to the target. </p></li>
+<li><p><strong>photon</strong> – 9 dimensional vector, position and the velocity of the photon traced to the target. photon[8] is used to store the look back time. </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -746,8 +764,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -764,8 +782,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -782,8 +800,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -827,9 +845,9 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
-<li><p><strong>motion</strong> – the motion mode of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
+<li><p><strong>motion</strong> – motion mode of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -855,7 +873,7 @@
 <dd><p>Return the name of the metric. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>the name of the metric. </p>
+<dd class="field-odd"><p>name of the metric. </p>
 </dd>
 </dl>
 </dd></dl>
@@ -868,7 +886,7 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>position</strong> – 4 dimensional vector </p></li>
-<li><p><strong>metric</strong> – matrix with size <span class="math notranslate nohighlight">\(4\times4\)</span></p></li>
+<li><p><strong>metric</strong> – matrix with size 4×4 </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -884,7 +902,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>position</strong> – vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
+<li><p><strong>position</strong> – 4 dimensional vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
 <li><p><strong>x</strong> – 4 dimensional vector </p></li>
 <li><p><strong>y</strong> – 4 dimensional vector </p></li>
 <li><p><strong>dimension</strong> – dimension of the vector, should be 3 or 4. </p></li>
@@ -958,7 +976,7 @@
 <li><p><strong>phi_target</strong> – phi of the target, <span class="math notranslate nohighlight">\(\phi_\text{tar}\)</span>. </p></li>
 <li><p><strong>alpha</strong> – x position of the target in the observer’s view. </p></li>
 <li><p><strong>beta</strong> – y position of the target in the observer’s view. </p></li>
-<li><p><strong>photon</strong> – 8 dimensional vector, position and the velocity of the photon traced to the target. </p></li>
+<li><p><strong>photon</strong> – 9 dimensional vector, position and the velocity of the photon traced to the target. photon[8] is used to store the look back time. </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -975,8 +993,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -993,8 +1011,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1011,8 +1029,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1056,9 +1074,9 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
-<li><p><strong>motion</strong> – the motion mode of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
+<li><p><strong>motion</strong> – motion mode of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1085,7 +1103,7 @@
 <dd><p>Return the name of the metric. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>the name of the metric. </p>
+<dd class="field-odd"><p>name of the metric. </p>
 </dd>
 </dl>
 </dd></dl>
@@ -1098,7 +1116,7 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>position</strong> – 4 dimensional vector </p></li>
-<li><p><strong>metric</strong> – matrix with size <span class="math notranslate nohighlight">\(4\times4\)</span></p></li>
+<li><p><strong>metric</strong> – matrix with size 4×4 </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1114,7 +1132,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>position</strong> – vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
+<li><p><strong>position</strong> – 4 dimensional vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
 <li><p><strong>x</strong> – 4 dimensional vector </p></li>
 <li><p><strong>y</strong> – 4 dimensional vector </p></li>
 <li><p><strong>dimension</strong> – dimension of the vector, should be 3 or 4. </p></li>
@@ -1188,7 +1206,7 @@
 <li><p><strong>phi_target</strong> – phi of the target, <span class="math notranslate nohighlight">\(\phi_\text{tar}\)</span>. </p></li>
 <li><p><strong>alpha</strong> – x position of the target in the observer’s view. </p></li>
 <li><p><strong>beta</strong> – y position of the target in the observer’s view. </p></li>
-<li><p><strong>photon</strong> – 8 dimensional vector, position and the velocity of the photon traced to the target. </p></li>
+<li><p><strong>photon</strong> – 9 dimensional vector, position and the velocity of the photon traced to the target. photon[8] is used to store the look back time. </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1205,8 +1223,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1223,8 +1241,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1241,8 +1259,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1286,9 +1304,9 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
-<li><p><strong>motion</strong> – the motion mode of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
+<li><p><strong>motion</strong> – motion mode of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1314,7 +1332,7 @@
 <dd><p>Return the name of the metric. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>the name of the metric. </p>
+<dd class="field-odd"><p>name of the metric. </p>
 </dd>
 </dl>
 </dd></dl>
@@ -1327,7 +1345,7 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>position</strong> – 4 dimensional vector </p></li>
-<li><p><strong>metric</strong> – matrix with size <span class="math notranslate nohighlight">\(4\times4\)</span></p></li>
+<li><p><strong>metric</strong> – matrix with size 4×4 </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1343,7 +1361,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>position</strong> – vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
+<li><p><strong>position</strong> – 4 dimensional vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
 <li><p><strong>x</strong> – 4 dimensional vector </p></li>
 <li><p><strong>y</strong> – 4 dimensional vector </p></li>
 <li><p><strong>dimension</strong> – dimension of the vector, should be 3 or 4. </p></li>
@@ -1417,7 +1435,7 @@
 <li><p><strong>phi_target</strong> – phi of the target, <span class="math notranslate nohighlight">\(\phi_\text{tar}\)</span>. </p></li>
 <li><p><strong>alpha</strong> – x position of the target in the observer’s view. </p></li>
 <li><p><strong>beta</strong> – y position of the target in the observer’s view. </p></li>
-<li><p><strong>photon</strong> – 8 dimensional vector, position and the velocity of the photon traced to the target. </p></li>
+<li><p><strong>photon</strong> – 9 dimensional vector, position and the velocity of the photon traced to the target. photon[8] is used to store the look back time. </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1434,8 +1452,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1452,8 +1470,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1470,8 +1488,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1515,9 +1533,9 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
-<li><p><strong>motion</strong> – the motion mode of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
+<li><p><strong>motion</strong> – motion mode of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1543,7 +1561,7 @@
 <dd><p>Return the name of the metric. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>the name of the metric. </p>
+<dd class="field-odd"><p>name of the metric. </p>
 </dd>
 </dl>
 </dd></dl>
@@ -1556,7 +1574,7 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>position</strong> – 4 dimensional vector </p></li>
-<li><p><strong>metric</strong> – matrix with size <span class="math notranslate nohighlight">\(4\times4\)</span></p></li>
+<li><p><strong>metric</strong> – matrix with size 4×4 </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1572,7 +1590,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>position</strong> – vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
+<li><p><strong>position</strong> – 4 dimensional vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
 <li><p><strong>x</strong> – 4 dimensional vector </p></li>
 <li><p><strong>y</strong> – 4 dimensional vector </p></li>
 <li><p><strong>dimension</strong> – dimension of the vector, should be 3 or 4. </p></li>
@@ -1646,7 +1664,7 @@
 <li><p><strong>phi_target</strong> – phi of the target, <span class="math notranslate nohighlight">\(\phi_\text{tar}\)</span>. </p></li>
 <li><p><strong>alpha</strong> – x position of the target in the observer’s view. </p></li>
 <li><p><strong>beta</strong> – y position of the target in the observer’s view. </p></li>
-<li><p><strong>photon</strong> – 8 dimensional vector, position and the velocity of the photon traced to the target. </p></li>
+<li><p><strong>photon</strong> – 9 dimensional vector, position and the velocity of the photon traced to the target. photon[8] is used to store the look back time. </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1663,8 +1681,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1681,8 +1699,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1699,8 +1717,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1744,9 +1762,9 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
-<li><p><strong>motion</strong> – the motion mode of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
+<li><p><strong>motion</strong> – motion mode of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1772,7 +1790,7 @@
 <dd><p>Return the name of the metric. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>the name of the metric. </p>
+<dd class="field-odd"><p>name of the metric. </p>
 </dd>
 </dl>
 </dd></dl>
@@ -1785,7 +1803,7 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>position</strong> – 4 dimensional vector </p></li>
-<li><p><strong>metric</strong> – matrix with size <span class="math notranslate nohighlight">\(4\times4\)</span></p></li>
+<li><p><strong>metric</strong> – matrix with size 4×4 </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1801,7 +1819,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>position</strong> – vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
+<li><p><strong>position</strong> – 4 dimensional vector, position to calcuate the dot product of <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p></li>
 <li><p><strong>x</strong> – 4 dimensional vector </p></li>
 <li><p><strong>y</strong> – 4 dimensional vector </p></li>
 <li><p><strong>dimension</strong> – dimension of the vector, should be 3 or 4. </p></li>
@@ -1875,7 +1893,7 @@
 <li><p><strong>phi_target</strong> – phi of the target, <span class="math notranslate nohighlight">\(\phi_\text{tar}\)</span>. </p></li>
 <li><p><strong>alpha</strong> – x position of the target in the observer’s view. </p></li>
 <li><p><strong>beta</strong> – y position of the target in the observer’s view. </p></li>
-<li><p><strong>photon</strong> – 8 dimensional vector, position and the velocity of the photon traced to the target. </p></li>
+<li><p><strong>photon</strong> – 9 dimensional vector, position and the velocity of the photon traced to the target. photon[8] is used to store the look back time. </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1892,8 +1910,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1910,8 +1928,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1928,8 +1946,8 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>y</strong> – 8 dimensional vector </p></li>
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1973,9 +1991,9 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>time</strong> – the time system of the object </p></li>
-<li><p><strong>dynamics</strong> – the dynamical system of the object </p></li>
-<li><p><strong>motion</strong> – the motion mode of the object </p></li>
+<li><p><strong>time</strong> – time system of the object </p></li>
+<li><p><strong>dynamics</strong> – dynamical system of the object </p></li>
+<li><p><strong>motion</strong> – motion mode of the object </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>

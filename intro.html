@@ -47,14 +47,13 @@
               <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">SBody</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#library-tool">Library &amp; Tool</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#cmake">CMake</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#gsl">GSL</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#indicators">indicators</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#fmt">fmt</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#python-packages">Python Packages</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#numpy">NumPy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#required">Required</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#cmake">CMake</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#gsl">GSL</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#submodule">Submodule</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#optional">Optional</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#changelog">Changelog</a></li>
@@ -99,15 +98,14 @@
 <ul class="simple">
 <li><p><span class="xref std std-ref">Library &amp; Tool</span></p>
 <ul>
+<li><p><span class="xref std std-ref">Required</span></p>
+<ul>
 <li><p><span class="xref std std-ref">CMake</span></p></li>
 <li><p><span class="xref std std-ref">GSL</span></p></li>
-<li><p><span class="xref std std-ref">indicators</span></p></li>
-<li><p><span class="xref std std-ref">fmt</span></p></li>
-<li><p><span class="xref std std-ref">Python Packages</span></p>
-<ul>
-<li><p><span class="xref std std-ref">NumPy</span></p></li>
 </ul>
 </li>
+<li><p><span class="xref std std-ref">Submodule</span></p></li>
+<li><p><span class="xref std std-ref">Optional</span></p></li>
 </ul>
 </li>
 <li><p><span class="xref std std-ref">Changelog</span></p></li>
@@ -115,9 +113,10 @@
 </ul>
 <section id="library-tool">
 <h2>Library &amp; Tool<a class="headerlink" href="#library-tool" title="Link to this heading"></a></h2>
+<section id="required">
+<h3>Required<a class="headerlink" href="#required" title="Link to this heading"></a></h3>
 <section id="cmake">
-<h3>CMake<a class="headerlink" href="#cmake" title="Link to this heading"></a></h3>
-<p><strong>Required</strong></p>
+<h4>CMake<a class="headerlink" href="#cmake" title="Link to this heading"></a></h4>
 <p><a class="reference external" href="https://cmake.org">CMake</a> is an open-source, cross-platform family of tools designed to build, test and package software. SBody use CMake to get built on different platforms.</p>
 <ul class="simple">
 <li><p>Linux: run <code class="docutils literal notranslate"><span class="pre">apt</span> <span class="pre">install</span> <span class="pre">cmake</span></code> or download and install from <a class="reference external" href="https://cmake.org">homepage</a>.</p></li>
@@ -125,39 +124,44 @@
 </ul>
 </section>
 <section id="gsl">
-<h3>GSL<a class="headerlink" href="#gsl" title="Link to this heading"></a></h3>
-<p><strong>Required</strong></p>
+<h4>GSL<a class="headerlink" href="#gsl" title="Link to this heading"></a></h4>
 <p>The GNU Scientific Library (<a class="reference external" href="https://www.gnu.org/software/gsl/">GSL</a>) is a numerical library for C and C++ programmers.</p>
 <ul class="simple">
 <li><p>Linux: run <code class="docutils literal notranslate"><span class="pre">apt</span> <span class="pre">install</span> <span class="pre">libgsl-dev</span></code> or download and install from <a class="reference external" href="https://www.gnu.org/software/gsl/">homepage</a>.</p></li>
 <li><p>macOS: Install GSL via <a class="reference external" href="https://brew.sh">Homebrew</a>, with command <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">gsl</span></code>.</p></li>
 </ul>
 </section>
-<section id="indicators">
-<h3>indicators<a class="headerlink" href="#indicators" title="Link to this heading"></a></h3>
-<p><strong>Submodule</strong></p>
-<p>SBody uses <a class="reference external" href="https://github.com/p-ranav/indicators">indicators</a> to show the progress.</p>
 </section>
-<section id="fmt">
-<h3>fmt<a class="headerlink" href="#fmt" title="Link to this heading"></a></h3>
-<p><strong>Submodule</strong></p>
-<p>SBody uses <a class="reference external" href="https://github.com/fmtlib/fmt">fmt</a> to print.</p>
+<section id="submodule">
+<h3>Submodule<a class="headerlink" href="#submodule" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>`indicators &lt;https://github.com/p-ranav/indicators&gt;`_</strong>: show the progress bar.</p></li>
+<li><p><strong>`fmt &lt;https://github.com/fmtlib/fmt&gt;`_</strong>: format the output.</p></li>
+</ul>
 </section>
-<section id="python-packages">
-<h3>Python Packages<a class="headerlink" href="#python-packages" title="Link to this heading"></a></h3>
-<section id="numpy">
-<h4>NumPy<a class="headerlink" href="#numpy" title="Link to this heading"></a></h4>
-<p>SBody output can be saved in <a class="reference external" href="https://numpy.org/devdocs/reference/generated/numpy.lib.format.html#format-version-2-0">NPY format version 2.0</a>.</p>
-</section>
+<section id="optional">
+<h3>Optional<a class="headerlink" href="#optional" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><a class="reference external" href="https://www.doxygen.nl">Doxygen</a>: generate the documentation.</p></li>
+<li><p><a class="reference external" href="https://www.openmp.org">OpenMP</a>: build parallel version.</p></li>
+<li><p><a class="reference external" href="https://www.python.org">Python</a>:</p>
+<ul>
+<li><p><a class="reference external" href="https://breathe.readthedocs.io">Breathe</a>: convert the Doxygen documentation to Sphinx.</p></li>
+<li><p><a class="reference external" href="https://numpy.org">NumPy</a>: SBody output can be saved in <a class="reference external" href="https://numpy.org/devdocs/reference/generated/numpy.lib.format.html#format-version-2-0">NPY format version 2.0</a>.</p></li>
+<li><p><a class="reference external" href="https://pybind11.readthedocs.io">pybind11</a>: build Python interface.</p></li>
+<li><p><a class="reference external" href="https://www.sphinx-doc.org">Sphinx</a>: documentation shown in the webpage.</p></li>
+</ul>
+</li>
+</ul>
 </section>
 </section>
 <section id="changelog">
 <h2>Changelog<a class="headerlink" href="#changelog" title="Link to this heading"></a></h2>
-<p>Changelog can be found <a class="reference external" href="CHANGELOG.md">here</a>.</p>
+<p>Changelog can be found <a class="reference external" href="https://github.com/Tai-Zhou/SBody/blob/main/CHANGELOG.md">here</a>.</p>
 </section>
 <section id="license">
 <h2>License<a class="headerlink" href="#license" title="Link to this heading"></a></h2>
-<p>This program uses <a class="reference external" href="https://www.gnu.org/software/gsl/">GNU Scientific Library</a> (GSL), so the program can only be distributed under the terms of the <a class="reference external" href="https://www.gnu.org/licenses/gpl-3.0.html">GNU General Public License</a> (GPL).</p>
+<p>This program uses <a class="reference external" href="https://www.gnu.org/software/gsl/">GSL</a>, so the program can only be distributed under the terms of the <a class="reference external" href="LICENSE">GNU General Public License</a> (GPL).</p>
 </section>
 </section>
 
