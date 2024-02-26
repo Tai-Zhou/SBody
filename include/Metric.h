@@ -94,7 +94,7 @@ namespace SBody {
 		 * @return result
 		 */
 		virtual double DistanceSquare(const double x[], const double y[], const size_t dimension) = 0;
-		int LocalInertialFrame(const double position[], gsl_matrix *coordinate, const double timelike[] = nullptr);
+		int LocalInertialFrame(const double position[], gsl_matrix *coordinate);
 
 		/**
 		 * @brief Convert the coordinate system from Lagrangian to Hamiltonian.
