@@ -358,7 +358,7 @@ namespace SBody {
 	int OppositeSign(double x, double y) {
 		return (x > 0. && y < 0.) || (x < 0. && y > 0.);
 	}
-	int MapTheta(const double theta_0, double *y) {
+	int MapTheta(const double theta_0, double y[]) {
 		if (OppositeSign(theta_0, y[2])) {
 			y[2] = -y[2];
 			y[3] += M_PI;
@@ -408,8 +408,8 @@ namespace SBody {
 	double Flux(double luminosity, double magnification, double redshift) {
 		return luminosity * magnification / redshift;
 	}
-	double FluxDensity(double luminosity_with_spectral_index, double magnification) {
-		return luminosity_with_spectral_index * magnification;
+	double FluxDensity(double spectral_density, double magnification) {
+		return spectral_density * magnification;
 	}
 	double EllipticIntegral(int p5, double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4, double b4) {
 		if (x == y)

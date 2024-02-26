@@ -224,7 +224,7 @@ namespace SBody {
 		double intrinsic_time = time_ == T ? position_[0] : t;
 		return luminosity_ * exp(-0.5 * gsl_pow_2((intrinsic_time - luminosity_mu_) / luminosity_sigma_));
 	}
-	double HotSpot::LuminosityWithSpectralIndex(double t, double redshift) {
+	double HotSpot::SpectralDensity(double t, double redshift) {
 		double intrinsic_time = time_ == T ? position_[0] : t;
 		return luminosity_ * pow(redshift, spectral_index_) * exp(-0.5 * gsl_pow_2((intrinsic_time - luminosity_mu_) / luminosity_sigma_));
 	}

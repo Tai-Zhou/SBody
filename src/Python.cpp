@@ -292,19 +292,19 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 		return py::array_t<double>();
 	}
 	TimeSystem hotspot_time = T;
-	HotSpot star_0(main_metric, hotspot_time, LAGRANGIAN, 0., 1., 1000., 1., false);
+	HotSpot hotspot(main_metric, hotspot_time, LAGRANGIAN, 0., 1., 1000., 1., false);
 	size_t tStepNumber = 10000;
 	double position[13], t = 0., tStep = 0., tRec = t1 / tStepNumber * Unit::s;
 	if (mode == 0) { // circular
-		if (star_0.InitializeCircular(r, x.at(8) * M_PI / 180., x.at(9)) != GSL_SUCCESS)
+		if (hotspot.InitializeCircular(r, x.at(8) * M_PI / 180., x.at(9)) != GSL_SUCCESS)
 			return py::array_t<double>();
 	} else if (mode == 1) { // geodesic
-		if (star_0.InitializeGeodesic(r, x.at(8) * M_PI / 180., x.at(9) * M_PI / 180., x.at(10) * M_PI / 180., x.at(11), x.at(12), inclination, rotation) != GSL_SUCCESS) {
+		if (hotspot.InitializeGeodesic(r, x.at(8) * M_PI / 180., x.at(9) * M_PI / 180., x.at(10) * M_PI / 180., x.at(11), x.at(12), inclination, rotation) != GSL_SUCCESS) {
 			PrintlnError("Initialize Geodesic Error!");
 			return HSExit(x);
 		}
 	} else if (mode == 2) { // helical
-		if (star_0.InitializeHelical(r, x.at(8) * M_PI / 180., x.at(9) * M_PI / 180., x.at(10), x.at(11)) != GSL_SUCCESS) {
+		if (hotspot.InitializeHelical(r, x.at(8) * M_PI / 180., x.at(9) * M_PI / 180., x.at(10), x.at(11)) != GSL_SUCCESS) {
 			PrintlnError("Initialize Helical Error!");
 			return HSExit(x);
 		}
@@ -312,7 +312,7 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 		PrintlnWarning("Mode Error!");
 		return py::array_t<double>();
 	}
-	star_0.Position(position);
+	hotspot.Position(position);
 	if (gr_time_delay) {
 		if (view_ptr->Trace(position, hotspot_time, position + 8, true) != GSL_SUCCESS) {
 			PrintlnError("Initially trace star Error!");
@@ -325,16 +325,16 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 	double *result_ptr = const_cast<double *>(result.data());
 	for (size_t i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
-		if (status = star_0.IntegratorApply(&t, tStep, &h); status != 0)
+		if (status = hotspot.IntegratorApply(&t, tStep, &h); status != 0)
 			py::print("[!] IntegratorApply status =", status);
-		star_0.Position(result_ptr);
+		hotspot.Position(result_ptr);
 		if (gr_time_delay) {
 			if (view_ptr->Trace(result_ptr, hotspot_time, result_ptr + 10, false) != GSL_SUCCESS) {
 				PrintlnError("Trace star this position Error!");
 				return HSExit(x);
 			}
-			result_ptr[15] = star_0.Luminosity(tStep);
-			result_ptr[16] = star_0.LuminosityWithSpectralIndex(tStep, result_ptr[12]);
+			result_ptr[15] = Flux(hotspot.Luminosity(tStep), result_ptr[14], result_ptr[12]);
+			result_ptr[16] = FluxDensity(hotspot.SpectralDensity(tStep, result_ptr[12]), result_ptr[14]);
 		}
 		result_ptr[8] = t / Unit::s;
 		const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
@@ -418,7 +418,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 					}
 					last_gr_obs_time = t / Unit::s + t0 - last_record[3];
 					last_record[5] = Flux(hotspot.Luminosity(tStep), last_record[4], last_record[2]);
-					last_record[6] = FluxDensity(hotspot.LuminosityWithSpectralIndex(tStep, last_record[2]), last_record[4]);
+					last_record[6] = FluxDensity(hotspot.SpectralDensity(tStep, last_record[2]), last_record[4]);
 					gr_offset = last_gr_obs_time - this_obs_time;
 				} else {
 					estimate_idx = 0;
@@ -428,7 +428,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 					}
 					this_gr_obs_time = t / Unit::s + t0 - this_record[3];
 					this_record[5] = Flux(hotspot.Luminosity(tStep), this_record[4], this_record[2]);
-					this_record[6] = FluxDensity(hotspot.LuminosityWithSpectralIndex(tStep, this_record[2]), this_record[4]);
+					this_record[6] = FluxDensity(hotspot.SpectralDensity(tStep, this_record[2]), this_record[4]);
 					gr_offset = 0.;
 					InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, last_position.data(), this_position.data(), result_ptr);
 					result_ptr[8] = LinearInterpolation(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, tStep - tRec, tStep) / Unit::s;
@@ -450,7 +450,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 						return HSExit(x);
 					}
 					result_ptr[15] = Flux(hotspot.Luminosity(tStep), result_ptr[14], result_ptr[12]);
-					result_ptr[16] = FluxDensity(hotspot.LuminosityWithSpectralIndex(tStep, result_ptr[12]), result_ptr[14]);
+					result_ptr[16] = FluxDensity(hotspot.SpectralDensity(tStep, result_ptr[12]), result_ptr[14]);
 				}
 				if (metric == 2)
 					result_ptr[1] -= 1.;

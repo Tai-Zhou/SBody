@@ -426,16 +426,16 @@ namespace SBody {
 	 * \theta'\equiv\begin{cases}\theta & (\theta\leq\pi/2)\\
 	 * \theta-\pi & (\theta>\pi/2)\end{cases}.
 	 * \f]
-	 * @param theta_0
-	 * @param y
+	 * @param theta_0 theta in the last integration step
+	 * @param y 8 dimensional vector
 	 * @return status
 	 */
-	int MapTheta(const double theta_0, double *y);
+	int MapTheta(const double theta_0, double y[]);
 
 	/**
 	 * @brief Return `phi` in \f$[0, 2\pi)\f$.
 	 *
-	 * @param phi
+	 * @param phi \f$\phi\f$
 	 * @return status
 	 */
 	int ModBy2Pi(double &phi);
@@ -443,18 +443,68 @@ namespace SBody {
 	/**
 	 * @brief Similar to `ModBy2Pi`, but return `phi` in \f$(-\pi, \pi]\f$.
 	 *
-	 * @param phi
+	 * @param phi \f$\phi\f$
 	 * @return result
 	 */
 	double PhiDifference(double phi);
 
+	/**
+	 * @brief Linear interpolation of points (x0, y0) and (x1, y1) at x. \f[y=\frac{y_0(x_1-x)+y_1(x-x_0)}{x_1-x_0}\f]
+	 *
+	 * @param x position to evaluate \f$y\f$
+	 * @param x0 \f$x_0\f$
+	 * @param x1 \f$x_1\f$
+	 * @param y0 \f$y_0\f$
+	 * @param y1 \f$y_1\f$
+	 * @return result
+	 */
 	double LinearInterpolation(double x, double x0, double x1, double y0, double y1);
+
+	/**
+	 * @brief Linear interpolation of vectors (x0, y0) and (x1, y1) at x, stored in y. \f[y=\frac{y_0(x_1-x)+y_1(x-x_0)}{x_1-x_0}\f]
+	 *
+	 * @param x position to evaluate \f$y\f$
+	 * @param x0 \f$x_0\f$
+	 * @param x1 \f$x_1\f$
+	 * @param y0 \f$y_0\f$
+	 * @param y1 \f$y_1\f$
+	 * @param y \f$y\f$
+	 * @param size size of the vectors
+	 * @return status
+	 */
 	int LinearInterpolation(double x, double x0, double x1, const double y0[], const double y1[], double y[], size_t size);
 
+	/**
+	 * @brief Linear interpolation of two spherical positions y0 and y1 at t, stored in y. \f[y=\frac{\text{SphericalToCartesian}(y_0)(t_1-t)+\text{SphericalToCartesian}(y_1)(t-t_0)}{t_1-t_0}\f]
+	 *
+	 * @param t time to evaluate \f$y\f$
+	 * @param t0 \f$t_0\f$
+	 * @param t1 \f$t_1\f$
+	 * @param y0 8 dimensional vector, spherical, \f$y_0\f$
+	 * @param y1 8 dimensional vector, spherical, \f$y_1\f$
+	 * @param y 8 dimensional vector, cartesian, \f$y\f$
+	 * @return int
+	 */
 	int InterpolateSphericalPositionToCartesian(double t, double t0, double t1, const double y0[], const double y1[], double y[]);
 
+	/**
+	 * @brief Calculate the bolometric flux. The result is \f[F_\text{obs}=\frac{L_\text{src}}{(1+z)^2}\frac{\Omega_\text{src}}{\Omega_\text{obs}}.\f] The additional \f$(1+z)^{-1}\f$ comes from the expansion of the frequency that \f$(1+z)^{-1}=\frac{\nu_\text{obs}}{\nu_\text{src}}\f$.
+	 *
+	 * @param luminosity intrinsic luminosity of the source, \f$L_\text{src}\f$
+	 * @param magnification magnification of the source, including the relativistic redshift and beaming, and gravitational lensing. \f$\frac{\Omega_\text{src}}{(1+z)\Omega_\text{obs}}\f$
+	 * @param redshift relativistic redshift of the source, \f$1+z\f$
+	 * @return result
+	 */
 	double Flux(double luminosity, double magnification, double redshift);
-	double FluxDensity(double luminosity_with_spectral_index, double magnification);
+
+	/**
+	 * @brief Calculate the flux density. The result is \f[F_{\nu,\text{obs}}=\frac{L_{\nu,\text{src}}}{1+z}\frac{\Omega_\text{src}}{\Omega_\text{obs}}.\f]
+	 *
+	 * @param spectral_density intrinsic spectral density of the source, \f$L_{\nu,\text{src}}\f$
+	 * @param magnification magnification of the source, including the relativistic redshift and beaming, and gravitational lensing. \f$\frac{\Omega_\text{src}}{(1+z)\Omega_\text{obs}}\f$
+	 * @return result
+	 */
+	double FluxDensity(double spectral_density, double magnification);
 
 	/**
 	 * @brief \f[\int_y^x(a_5+b_5t)^{p_5/2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
