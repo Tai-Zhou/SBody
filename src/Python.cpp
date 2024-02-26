@@ -38,6 +38,7 @@ namespace py = pybind11;
 using namespace std;
 using namespace SBody;
 
+constexpr auto HOTSPOT_RETURN_WIDTH = 17UL;
 double CalculatePericenterTime(double mass, int metric, double fSP, double R, double ta, double a, double e, double inclination, double ascending_node, double periapsis) {
 	Unit::Initialize(mass);
 	R *= Unit::pc;
@@ -320,7 +321,7 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 	}
 	double h = 1.;
 	int status = 0;
-	auto result = py::array_t<double>(tStepNumber * 16);
+	auto result = py::array_t<double>(tStepNumber * HOTSPOT_RETURN_WIDTH);
 	double *result_ptr = const_cast<double *>(result.data());
 	for (size_t i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
@@ -332,14 +333,15 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 				PrintlnError("Trace star this position Error!");
 				return HSExit(x);
 			}
-			result_ptr[15] = star_0.Luminosity(tStep, result_ptr[12]);
+			result_ptr[15] = star_0.Luminosity(tStep);
+			result_ptr[16] = star_0.LuminosityWithSpectralIndex(tStep, result_ptr[12]);
 		}
 		result_ptr[8] = t / Unit::s;
 		const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
 		result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
-		result_ptr += 15;
+		result_ptr += HOTSPOT_RETURN_WIDTH;
 	}
-	return result.reshape({tStepNumber, 15UL});
+	return result.reshape({tStepNumber, HOTSPOT_RETURN_WIDTH});
 }
 
 py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, int mode, bool ray_tracing, bool gr_time_delay, const py::array_t<double> &obs_time) {
@@ -361,81 +363,85 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 		return py::array_t<double>();
 	}
 	TimeSystem hotspot_time = T;
-	HotSpot star_0(main_metric, hotspot_time, LAGRANGIAN, 0., 1., 1000., 1., false);
-	double *last_position = new double[14], *this_position = new double[14], t = 0., tStep = 0., tRec = 0.1 * Unit::s, t0, last_obs_time = 0., this_obs_time;
+	HotSpot hotspot(main_metric, hotspot_time, LAGRANGIAN, 0., 1., 1000., 1., false);
+	double t = 0., tStep = 0., tRec = 0.1 * Unit::s, t0, last_obs_time = 0., this_obs_time;
+	array<double, 8> last_position, this_position;
+	array<double, 7> last_record, this_record;
 	const double sin_inc = sin(inclination), cos_inc = cos(inclination);
 	if (mode == 0) { // circular
-		if (star_0.InitializeCircular(r, x.at(8) * M_PI / 180., x.at(9)) != GSL_SUCCESS)
+		if (hotspot.InitializeCircular(r, x.at(8) * M_PI / 180., x.at(9)) != GSL_SUCCESS)
 			return py::array_t<double>();
 	} else if (mode == 1) { // geodesic
-		if (star_0.InitializeGeodesic(r, x.at(8) * M_PI / 180., x.at(9) * M_PI / 180., x.at(10) * M_PI / 180., x.at(11), x.at(12), inclination, rotation) != GSL_SUCCESS)
+		if (hotspot.InitializeGeodesic(r, x.at(8) * M_PI / 180., x.at(9) * M_PI / 180., x.at(10) * M_PI / 180., x.at(11), x.at(12), inclination, rotation) != GSL_SUCCESS)
 			return py::array_t<double>();
 	} else if (mode == 2) { // helical
-		if (star_0.InitializeHelical(r, x.at(8) * M_PI / 180., x.at(9) * M_PI / 180., x.at(10), x.at(11)) != GSL_SUCCESS)
+		if (hotspot.InitializeHelical(r, x.at(8) * M_PI / 180., x.at(9) * M_PI / 180., x.at(10), x.at(11)) != GSL_SUCCESS)
 			return py::array_t<double>();
 	} else {
 		PrintlnWarning("Mode Error!");
 		return py::array_t<double>();
 	}
-	star_0.Position(last_position);
+	hotspot.Position(last_position.data());
 	double x0 = last_position[1] * abs(sin(last_position[2])) * cos(last_position[3]), z0 = last_position[1] * GSL_SIGN(last_position[2]) * cos(last_position[2]);
 	if (gr_time_delay) {
-		if (view_ptr->Trace(last_position, hotspot_time, last_position + 8, false) != GSL_SUCCESS) {
+		if (view_ptr->Trace(last_position.data(), hotspot_time, last_record.data(), false) != GSL_SUCCESS) {
 			PrintlnError("Initially trace star Error!");
 			return HSExit(x);
 		}
-		t0 = last_position[11];
+		t0 = last_record[3];
 	}
 	double vz0 = x0 * sin_inc + z0 * cos_inc;
 	double h = -1.;
 	int status = 0;
-	if (status = star_0.IntegratorApply(&t, 0., &h); status != 0)
+	if (status = hotspot.IntegratorApply(&t, 0., &h); status != 0)
 		py::print("[!] IntegratorApply status =", status);
 	h = 1.;
-	if (status = star_0.IntegratorReset(); status != 0)
+	if (status = hotspot.IntegratorReset(); status != 0)
 		py::print("[!] IntegratorReset status =", status);
 	size_t idx = 0, size = obs_time.size();
-	auto result = py::array_t<double>(size * 16);
+	auto result = py::array_t<double>(size * HOTSPOT_RETURN_WIDTH);
 	double *result_ptr = const_cast<double *>(result.data());
 	for (int i = 0;; ++i) {
 		tStep += tRec;
-		if (status = star_0.IntegratorApply(&t, tStep, &h); status != 0)
+		if (status = hotspot.IntegratorApply(&t, tStep, &h); status != 0)
 			py::print("[!] IntegratorApply status =", status);
-		star_0.Position(this_position);
+		hotspot.Position(this_position.data());
 		if (this_position[1] < 4.)
 			return py::array_t<double>();
 		this_obs_time = (t + vz0 - this_position[1] * (abs(sin(this_position[2])) * cos(this_position[3]) * sin_inc + GSL_SIGN(this_position[2]) * cos(this_position[2]) * cos_inc)) / Unit::s;
 		if (gr_time_delay) {
 			if (this_obs_time + gr_offset + estimate_step[estimate_idx] > obs_time.at(idx)) {
 				if (++estimate_idx < estimate_step.size()) {
-					if (view_ptr->Trace(last_position, hotspot_time, last_position + 8, true) != GSL_SUCCESS) {
+					if (view_ptr->Trace(last_position.data(), hotspot_time, last_record.data(), true) != GSL_SUCCESS) {
 						PrintlnError("Trace star last position Error!");
 						return HSExit(x);
 					}
-					last_gr_obs_time = t / Unit::s + t0 - last_position[11];
-					last_position[13] = star_0.Luminosity(tStep, last_position[10]);
+					last_gr_obs_time = t / Unit::s + t0 - last_record[3];
+					last_record[5] = Flux(hotspot.Luminosity(tStep), last_record[4], last_record[2]);
+					last_record[6] = FluxDensity(hotspot.LuminosityWithSpectralIndex(tStep, last_record[2]), last_record[4]);
 					gr_offset = last_gr_obs_time - this_obs_time;
 				} else {
 					estimate_idx = 0;
-					if (view_ptr->Trace(this_position, hotspot_time, this_position + 8, true) != GSL_SUCCESS) {
+					if (view_ptr->Trace(this_position.data(), hotspot_time, this_record.data(), true) != GSL_SUCCESS) {
 						PrintlnError("Trace star this position Error!");
 						return HSExit(x);
 					}
-					this_gr_obs_time = t / Unit::s + t0 - this_position[11];
-					this_position[13] = star_0.Luminosity(tStep, this_position[10]);
+					this_gr_obs_time = t / Unit::s + t0 - this_record[3];
+					this_record[5] = Flux(hotspot.Luminosity(tStep), this_record[4], this_record[2]);
+					this_record[6] = FluxDensity(hotspot.LuminosityWithSpectralIndex(tStep, this_record[2]), this_record[4]);
 					gr_offset = 0.;
-					InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, last_position, this_position, result_ptr);
+					InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, last_position.data(), this_position.data(), result_ptr);
 					result_ptr[8] = LinearInterpolation(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, tStep - tRec, tStep) / Unit::s;
-					LinearInterpolation(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, last_position + 8, this_position + 8, result_ptr + 10, 6);
 					const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
 					result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
-					result_ptr += 15;
+					LinearInterpolation(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, last_record.data(), this_record.data(), result_ptr + 10, 7);
+					result_ptr += HOTSPOT_RETURN_WIDTH;
 					if (++idx >= size)
 						break;
 				}
 			}
 		} else if (this_obs_time > obs_time.at(idx)) {
-			InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_obs_time, this_obs_time, last_position, this_position, result_ptr);
+			InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_obs_time, this_obs_time, last_position.data(), this_position.data(), result_ptr);
 			if (ray_tracing || metric == 2) {
 				CartesianToSpherical(result_ptr);
 				if (ray_tracing) {
@@ -443,7 +449,8 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 						PrintlnError("Trace star position Error!");
 						return HSExit(x);
 					}
-					result_ptr[15] = star_0.Luminosity(tStep, result_ptr[12]);
+					result_ptr[15] = Flux(hotspot.Luminosity(tStep), result_ptr[14], result_ptr[12]);
+					result_ptr[16] = FluxDensity(hotspot.LuminosityWithSpectralIndex(tStep, result_ptr[12]), result_ptr[14]);
 				}
 				if (metric == 2)
 					result_ptr[1] -= 1.;
@@ -452,14 +459,15 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 			result_ptr[8] = LinearInterpolation(obs_time.at(idx), last_obs_time, this_obs_time, tStep - tRec, tStep) / Unit::s;
 			const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
 			result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - Dot(result_ptr + 5)) - 1.) * 299792.458;
-			result_ptr += 15;
+			result_ptr += HOTSPOT_RETURN_WIDTH;
 			if (++idx >= size)
 				break;
 		}
 		last_obs_time = this_obs_time;
 		swap(last_position, this_position);
+		swap(last_record, this_record);
 	}
-	return result.reshape({size, 15UL});
+	return result.reshape({size, HOTSPOT_RETURN_WIDTH});
 }
 
 double HSChi2(py::array_t<double> &x, int metric, int mode, int gr_switch, int fix_switch, py::array_t<double> &obs_time, py::array_t<double> &obs_flux, py::array_t<double> &flux_sigma, py::array_t<double> &obs_ra, py::array_t<double> &ra_sigma, py::array_t<double> &obs_dec, py::array_t<double> &dec_sigma) {
@@ -482,7 +490,7 @@ double HSChi2(py::array_t<double> &x, int metric, int mode, int gr_switch, int f
 	const int size = obs_flux.size();
 	if (mode == 0 && !(fix_switch & 1024))
 		for (int i = 0; i < size; ++i)
-			flux_prob += gsl_pow_2((obs_flux.at(i) - abs(obs_data.at(i, 14) * obs_data.at(i, 15))) / flux_sigma.at(i));
+			flux_prob += gsl_pow_2((obs_flux.at(i) - obs_data.at(i, 16)) / flux_sigma.at(i));
 	if (gr_switch & 2)
 		for (int i = 0; i < size; ++i) {
 			ra_prob += gsl_pow_2((obs_ra.at(i) + obs_data.at(i, 10) * x.at(0) * 9.870628713769018e-6 / x.at(2) - x.at(3)) / ra_sigma.at(i));

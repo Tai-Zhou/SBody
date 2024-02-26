@@ -414,6 +414,12 @@ namespace SBody {
 		SphericalToCartesian(y1, c1);
 		return LinearInterpolation(t, t0, t1, y0, y, y, 8);
 	}
+	double Flux(double luminosity, double magnification, double redshift) {
+		return luminosity * magnification / redshift;
+	}
+	double FluxDensity(double luminosity_with_spectral_index, double magnification) {
+		return luminosity_with_spectral_index * magnification;
+	}
 	double EllipticIntegral(int p5, double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4, double b4) {
 		if (x == y)
 			return 0.;

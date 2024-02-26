@@ -31,7 +31,7 @@ namespace SBody {
 	extern double relative_accuracy;
 
 	/// Sample number.
-	constexpr int sample_number = 100;
+	constexpr int SAMPLE_NUMBER = 100;
 
 	/// Epsilon, a small value. \f$\varepsilon\f$.
 	constexpr double epsilon = 1e-10;
@@ -53,6 +53,8 @@ namespace SBody {
 
 	/// \f$\sqrt27\f$
 	constexpr double M_SQRT27 = 5.19615242270663188058233902451761710;
+
+	constexpr double ANGLE_INTERVAL = M_2PI / SAMPLE_NUMBER;
 
 	enum Axis { X,
 				Y,
@@ -450,6 +452,9 @@ namespace SBody {
 	int LinearInterpolation(double x, double x0, double x1, const double y0[], const double y1[], double y[], size_t size);
 
 	int InterpolateSphericalPositionToCartesian(double t, double t0, double t1, const double y0[], const double y1[], double y[]);
+
+	double Flux(double luminosity, double magnification, double redshift);
+	double FluxDensity(double luminosity_with_spectral_index, double magnification);
 
 	/**
 	 * @brief \f[\int_y^x(a_5+b_5t)^{p_5/2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
