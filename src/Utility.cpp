@@ -394,9 +394,10 @@ namespace SBody {
 				y[size] = 0.5 * (y0[size] + y1[size]);
 			return GSL_SUCCESS;
 		}
-		const double x01_1 = 1. / (x1 - x0), a = (x - x0) * x01_1, b = (x1 - x) * x01_1;
-		while (--size >= 0)
-			y[size] = y0[size] * b + y1[size] * a;
+		memset(y, 0, sizeof(double) * size);
+		const double x01_1 = 1. / (x1 - x0);
+		cblas_daxpy(size, (x - x0) * x01_1, y1, 1, y, 1);
+		cblas_daxpy(size, (x1 - x) * x01_1, y0, 1, y, 1);
 		return GSL_SUCCESS;
 	}
 	int InterpolateSphericalPositionToCartesian(double t, double t0, double t1, const double y0[], const double y1[], double y[]) {
