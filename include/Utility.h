@@ -30,31 +30,35 @@ namespace SBody {
 	/// Global relative accuracy.
 	extern double relative_accuracy;
 
-	/// Sample number.
-	constexpr int SAMPLE_NUMBER = 100;
-
-	/// Epsilon, a small value. \f$\varepsilon\f$.
-	constexpr double epsilon = 1e-10;
-
-	/// \f$\sin\varepsilon\f$.
-	constexpr double sin_epsilon = 1e-10;
-
-	/// \f$\cos\varepsilon\f$.
-	constexpr double cos_epsilon = 0.999999999999999999995;
-
-	/// Area of a circle with radius of epsilon. \f$\pi\varepsilon^2\f$
-	constexpr double epsilon_circle_area = M_PI * epsilon * epsilon;
-
 	/// \f$2\pi\f$.
 	constexpr double M_2PI = 6.28318530717958647692528676655900576;
 
 	/// \f$\pi^2\f$.
 	constexpr double M_PI2 = 9.86960440108935861883449099987615111;
 
-	/// \f$\sqrt27\f$
+	/// \f$\sqrt{27}\f$
 	constexpr double M_SQRT27 = 5.19615242270663188058233902451761710;
 
+	/// Epsilon, a small value. \f$\varepsilon\f$.
+	constexpr double EPSILON = 1e-10;
+
+	/// \f$\sin\varepsilon\f$.
+	constexpr double SIN_EPSILON = 1e-10;
+
+	/// \f$\cos\varepsilon\f$.
+	constexpr double COS_EPSILON = 0.999999999999999999995;
+
+	/// Area of a circle with radius of EPSILON. \f$\pi\varepsilon^2\f$
+	constexpr double EPSILON_CIRCLE_AREA = M_PI * EPSILON * EPSILON;
+
+	/// Sample number.
+	constexpr int SAMPLE_NUMBER = 100;
+
+	/// The angle corresponding to the sample number.
 	constexpr double ANGLE_INTERVAL = M_2PI / SAMPLE_NUMBER;
+
+	/// Area of the regular polygon with SAMPLE_NUMBER edges.
+	constexpr double EPSILON_POLYGON_AREA = std::sin(ANGLE_INTERVAL) / ANGLE_INTERVAL * EPSILON_CIRCLE_AREA;
 
 	enum Axis { X,
 				Y,
@@ -449,7 +453,7 @@ namespace SBody {
 	double PhiDifference(double phi);
 
 	/**
-	 * @brief Linear interpolation of points (x0, y0) and (x1, y1) at x. \f[y=\frac{y_0(x_1-x)+y_1(x-x_0)}{x_1-x_0}\f]
+	 * @brief Linear interpolation of points (`x0`, `y0`) and (`x1`, `y1`) at `x`. \f[y=\frac{y_0(x_1-x)+y_1(x-x_0)}{x_1-x_0}\f]
 	 *
 	 * @param x position to evaluate \f$y\f$
 	 * @param x0 \f$x_0\f$
@@ -461,7 +465,7 @@ namespace SBody {
 	double LinearInterpolation(double x, double x0, double x1, double y0, double y1);
 
 	/**
-	 * @brief Linear interpolation of vectors (x0, y0) and (x1, y1) at x, stored in y. \f[y=\frac{y_0(x_1-x)+y_1(x-x_0)}{x_1-x_0}\f]
+	 * @brief Linear interpolation of vectors (`x0`, `y0`) and (`x1`, `y1`) at `x`, stored in `y`. \f[y=\frac{y_0(x_1-x)+y_1(x-x_0)}{x_1-x_0}\f]
 	 *
 	 * @param x position to evaluate \f$y\f$
 	 * @param x0 \f$x_0\f$
@@ -475,7 +479,7 @@ namespace SBody {
 	int LinearInterpolation(double x, double x0, double x1, const double y0[], const double y1[], double y[], size_t size);
 
 	/**
-	 * @brief Linear interpolation of two spherical positions y0 and y1 at t, stored in y. \f[y=\frac{\text{SphericalToCartesian}(y_0)(t_1-t)+\text{SphericalToCartesian}(y_1)(t-t_0)}{t_1-t_0}\f]
+	 * @brief Linear interpolation of two spherical positions `y0` and `y1` at `t`, stored in `y`. \f[y=\frac{\text{SphericalToCartesian}(y_0)(t_1-t)+\text{SphericalToCartesian}(y_1)(t-t_0)}{t_1-t_0}\f]
 	 *
 	 * @param t time to evaluate \f$y\f$
 	 * @param t0 \f$t_0\f$
@@ -483,7 +487,7 @@ namespace SBody {
 	 * @param y0 8 dimensional vector, spherical, \f$y_0\f$
 	 * @param y1 8 dimensional vector, spherical, \f$y_1\f$
 	 * @param y 8 dimensional vector, cartesian, \f$y\f$
-	 * @return int
+	 * @return status
 	 */
 	int InterpolateSphericalPositionToCartesian(double t, double t0, double t1, const double y0[], const double y1[], double y[]);
 

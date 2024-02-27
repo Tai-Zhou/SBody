@@ -45,7 +45,7 @@ namespace SBody {
 		photon[4] = 1.;
 		photon[5] = 1.;
 		photon[8] = 0.;
-		if (sin_theta_ < epsilon) {
+		if (sin_theta_ < EPSILON) {
 			const double k = gsl_hypot(alpha, beta);
 			if (theta_ < M_PI_2) {
 				photon[2] = 1e-15;
@@ -122,7 +122,7 @@ namespace SBody {
 					status = integrator->ApplyFixedStep(&t, h, photon);
 				else
 					status = integrator->ApplyStep(&t, t_final_, &h, photon);
-				if (const double cos_observer_object_photon = (r_object * sin_theta_object * cos_phi_object - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * sin_theta_ + (r_object * cos_theta_object - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * cos_theta_; cos_observer_object_photon > r_object * epsilon) {
+				if (const double cos_observer_object_photon = (r_object * sin_theta_object * cos_phi_object - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * sin_theta_ + (r_object * cos_theta_object - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * cos_theta_; cos_observer_object_photon > r_object * EPSILON) {
 					// photon goes through the plane of the object
 					copy(last_step_record, last_step_record + 9, photon);
 					h *= 0.3;
@@ -154,7 +154,7 @@ namespace SBody {
 				PrintlnWarning("View::Trece() status = {}\n", status);
 				return status;
 			}
-			if (gsl_hypot(delta_alpha, delta_beta) <= epsilon * (1. + gsl_hypot(alpha, beta))) {
+			if (gsl_hypot(delta_alpha, delta_beta) <= EPSILON * (1. + gsl_hypot(alpha, beta))) {
 				metric_->HamiltonianToLagrangian(photon);
 				break;
 			}
@@ -174,7 +174,7 @@ namespace SBody {
 	}
 	int View::Magnification(const double position[], TimeSystem object_time, double &magnification, const double photon[], double redshift) {
 		unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
-		double forward_photon[8], cone_record[SAMPLE_NUMBER][3], local_cone_record[SAMPLE_NUMBER][3], center_photon_position[3], center_photon_velocity[3], h = 1., t = 0.;
+		double forward_photon[8], cone_record[SAMPLE_NUMBER][3], local_cone_record[SAMPLE_NUMBER][3], center_photon_velocity[3], h = 1., t = 0.;
 		auto forward_photon_velocity_view = gsl_vector_view_array(forward_photon + 4, 4);
 		copy(photon, photon + 8, forward_photon);
 		metric_->NormalizeNullGeodesic(forward_photon);
@@ -186,7 +186,6 @@ namespace SBody {
 		}
 		metric_->HamiltonianToLagrangian(forward_photon);
 		SphericalToCartesian(forward_photon);
-		copy(forward_photon + 1, forward_photon + 4, center_photon_position);
 		copy(forward_photon + 5, forward_photon + 8, center_photon_velocity);
 		cblas_dscal(3, 1. / Norm(center_photon_velocity), center_photon_velocity, 1);
 		GslBlock collector;
@@ -200,43 +199,47 @@ namespace SBody {
 		metric_->MetricTensor(position, gmunu);
 		metric_->LocalInertialFrame(position, object_time, coordinate);
 		gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
-		int signum;
-		gsl_linalg_LU_decomp(coordinate_gmunu, permutation, &signum);
 		gsl_vector_set(photon_transform, 0, 1.);
 		copy(photon + 5, photon + 8, gsl_vector_ptr(photon_transform, 1));
 		gsl_blas_dgemv(CblasNoTrans, 1., coordinate_gmunu, photon_transform, 0., photon_in_object_frame_cartesian);
-		gsl_vector_scale(photon_in_object_frame_cartesian, 1. / gsl_vector_get(photon_in_object_frame_cartesian, 0));
+		// gsl_vector_scale(photon_in_object_frame_cartesian, 1. / gsl_vector_get(photon_in_object_frame_cartesian, 0));
 		CartesianToSpherical(photon_in_object_frame_cartesian->data, photon_in_object_frame_spherical, 4);
 #ifndef GSL_RANGE_CHECK_OFF
 		auto coordinate_static = collector.MatrixCalloc(4, 4);		// object local static frame (only dt/d\tau != 0)
 		auto coordinate_static_gmunu = collector.MatrixAlloc(4, 4); // object local static frame measured by observer
 		auto photon_in_static_frame_cartesian = collector.VectorAlloc(4);
-		double photon_in_static_frame_spherical[4];
-		gsl_matrix_set(coordinate_static, 0, 0, -sqrt(-1. / gmunu->data[0]));
+		gsl_matrix_set(coordinate_static, 0, 0, sqrt(-1. / gmunu->data[0]));
 		gsl_matrix_set(coordinate_static, 1, 1, sqrt(1. / gmunu->data[5]));
 		gsl_matrix_set(coordinate_static, 2, 2, sqrt(1. / gmunu->data[10]));
 		gsl_matrix_set(coordinate_static, 3, 3, sqrt(1. / gmunu->data[15]));
 		gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate_static, 0., coordinate_static_gmunu);
 		gsl_blas_dgemv(CblasNoTrans, 1., coordinate_static_gmunu, photon_transform, 0., photon_in_static_frame_cartesian);
+		// local_redshift should equal to sqrt(EPSILON_POLYGON_AREA / cone_local_solid_angle),
+		// the main error comes from the calculation of the cone_local_solid_angle, due to the limited SAMPLE_NUMBER.
+		const double local_redshift = photon_in_object_frame_cartesian->data[0] / photon_in_static_frame_cartesian->data[0];
 		gsl_vector_scale(photon_in_static_frame_cartesian, 1. / gsl_vector_get(photon_in_static_frame_cartesian, 0));
-		CartesianToSpherical(photon_in_object_frame_cartesian->data, photon_in_static_frame_spherical, 4);
 #endif
+		int signum;
+		gsl_linalg_LU_decomp(coordinate_gmunu, permutation, &signum);
 		for (int i = 0; i < SAMPLE_NUMBER; ++i) {
-			const double angle = i * ANGLE_INTERVAL, sin_angle = sin(angle), cos_angle = cos(angle);
+			const double angle = i * ANGLE_INTERVAL;
 			copy(photon, photon + 4, forward_photon);
-			forward_photon[4] = 1.;
-			forward_photon[5] = cos_angle * sin_epsilon;
-			forward_photon[6] = sin_angle * sin_epsilon;
-			forward_photon[7] = cos_epsilon;
+			forward_photon[4] = -1.;
+			forward_photon[5] = cos(angle) * SIN_EPSILON;
+			forward_photon[6] = sin(angle) * SIN_EPSILON;
+			forward_photon[7] = COS_EPSILON;
 			RotateAroundAxis(forward_photon + 5, Y, photon_in_object_frame_spherical[2]);
 			RotateAroundAxis(forward_photon + 5, Z, photon_in_object_frame_spherical[3]);
 			gsl_linalg_LU_svx(coordinate_gmunu, permutation, &forward_photon_velocity_view.vector);
 			metric_->NormalizeNullGeodesic(forward_photon);
 #ifndef GSL_RANGE_CHECK_OFF
-			local_cone_record[i][0] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 4, 4);
-			local_cone_record[i][1] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 8, 4);
-			local_cone_record[i][2] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 12, 4);
-			cblas_dscal(3, 1. / metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data, 4), local_cone_record[i], 1);
+			// local_cone_record[i][0] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 4, 4);
+			local_cone_record[i][0] = cblas_ddot(4, forward_photon + 4, 1, coordinate_static_gmunu->data + 4, 1);
+			// local_cone_record[i][1] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 8, 4);
+			local_cone_record[i][1] = cblas_ddot(4, forward_photon + 4, 1, coordinate_static_gmunu->data + 8, 1);
+			// ocal_cone_record[i][2] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 12, 4);
+			local_cone_record[i][2] = cblas_ddot(4, forward_photon + 4, 1, coordinate_static_gmunu->data + 12, 1);
+			cblas_dscal(3, 1. / cblas_ddot(4, forward_photon + 4, 1, coordinate_static_gmunu->data, 1), local_cone_record[i], 1);
 #endif
 			metric_->LagrangianToHamiltonian(forward_photon);
 			h = 1.;
@@ -251,17 +254,17 @@ namespace SBody {
 			copy(forward_photon + 5, forward_photon + 8, cone_record[i]);
 			cblas_dscal(3, 1. / Norm(cone_record[i]), cone_record[i], 1);
 		}
-		double cone_solid_angle = DotCross(center_photon_velocity, cone_record[0], cone_record[SAMPLE_NUMBER - 1]);
+		double cone_solid_angle = TriangleArea(center_photon_velocity, cone_record[0], cone_record[SAMPLE_NUMBER - 1]);
 #ifndef GSL_RANGE_CHECK_OFF
-		double cone_local_solid_angle = DotCross(photon_in_static_frame_cartesian->data + 1, local_cone_record[0], local_cone_record[SAMPLE_NUMBER - 1]);
+		double cone_local_solid_angle = TriangleArea(photon_in_static_frame_cartesian->data + 1, local_cone_record[0], local_cone_record[SAMPLE_NUMBER - 1]);
 #endif
 		for (int i = 1; i < SAMPLE_NUMBER; ++i) {
-			cone_solid_angle += DotCross(center_photon_velocity, cone_record[i], cone_record[i - 1]);
+			cone_solid_angle += TriangleArea(center_photon_velocity, cone_record[0], cone_record[SAMPLE_NUMBER - 1]);
 #ifndef GSL_RANGE_CHECK_OFF
-			cone_local_solid_angle += DotCross(photon_in_static_frame_cartesian->data + 1, local_cone_record[i], local_cone_record[i - 1]);
+			cone_local_solid_angle += TriangleArea(photon_in_static_frame_cartesian->data + 1, local_cone_record[i], local_cone_record[i - 1]);
 #endif
 		}
-		magnification = 2. / redshift * epsilon_circle_area / abs(cone_solid_angle);
+		magnification = EPSILON_POLYGON_AREA / (cone_solid_angle * redshift);
 		return GSL_SUCCESS;
 	}
 	int View::OmegaTest() {
@@ -318,9 +321,9 @@ namespace SBody {
 				const double angle_i = i * ANGLE_INTERVAL, sinai = sin(angle_i), cosai = cos(angle_i);
 				copy(position_, position_ + 4, ph);
 				ph[4] = 1.;
-				ph[5] = sina - sin_epsilon * cosai * cosa;
-				ph[6] = cosa + sin_epsilon * cosai * sina;
-				ph[7] = sin_epsilon * sinai;
+				ph[5] = sina - SIN_EPSILON * cosai * cosa;
+				ph[6] = cosa + SIN_EPSILON * cosai * sina;
+				ph[7] = SIN_EPSILON * sinai;
 				gsl_linalg_LU_svx(coordinate_gmunu, perm, &ph_view.vector);
 				metric_->NormalizeNullGeodesic(ph);
 				if (ph[5] < 0) {
@@ -353,7 +356,7 @@ namespace SBody {
 				for (int i = 0; i < SAMPLE_NUMBER; ++i)
 					cone_record.Save(rec[i], 3);
 			}
-			cone_record.Save({abs(area) / (M_2PI * gsl_pow_2(epsilon))});
+			cone_record.Save({abs(area) / (M_2PI * gsl_pow_2(EPSILON))});
 			ProgressBar::bars_[0].tick();
 		}
 		return 0;
@@ -368,7 +371,7 @@ namespace SBody {
 		for (int i = 0; i < SAMPLE_NUMBER; ++i) {
 			const double angle = i * ANGLE_INTERVAL, sin_angle = sin(angle), cos_angle = cos(angle);
 			int status = 0;
-			while (rout - rin > epsilon * (rin + rout)) {
+			while (rout - rin > EPSILON * (rin + rout)) {
 				rmid = 0.5 * (rin + rout);
 				InitializePhoton(photon, rmid * cos_angle, rmid * sin_angle);
 				h = -1.;
@@ -437,7 +440,7 @@ namespace SBody {
 				for (auto objP : Object::object_list_)
 					if (objP->Hit(ph, last))
 						screen_[i][j] = objP->Redshift(ph, T); // FIXME: if multi objects
-				if (screen_[i][j] > epsilon)
+				if (screen_[i][j] > EPSILON)
 					break;
 			}
 			if (status > 0)

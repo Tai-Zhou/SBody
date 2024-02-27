@@ -220,9 +220,9 @@ namespace SBody {
 		}
 		double impact_parameter_upper_limit = r_target / sqrt(g11_1), turning_phi;
 		if (double x0, x1, x2; u1 * 3. < 1. && gsl_poly_solve_cubic(-0.5, 0., 0.5 / gsl_pow_2(impact_parameter_upper_limit), &x0, &x1, &x2) == 3)
-			turning_phi = M_SQRT1_2 * EllipticIntegral(0, u0, u1, 0., 0., -x0, 1., u1, -1., x2, -1.); // use u1 instead of x1, prevent x1 < u1 < x1 + epsilon
+			turning_phi = M_SQRT1_2 * EllipticIntegral(0, u0, u1, 0., 0., -x0, 1., u1, -1., x2, -1.); // use u1 instead of x1, prevent x1 < u1 < x1 + EPSILON
 		else {
-			impact_parameter_upper_limit = M_SQRT27 - epsilon;
+			impact_parameter_upper_limit = M_SQRT27 - EPSILON;
 			turning_phi = M_PI; // make delta_phi <= turning_phi
 		}
 		double integrate_parameters[4] = {u0, u1, delta_phi, turning_phi};
@@ -233,7 +233,7 @@ namespace SBody {
 				if (x == 0.)
 					return -p[2];
 				if (double x0, x1, x2; gsl_poly_solve_cubic(-0.5, 0., 0.5 / gsl_pow_2(x), &x0, &x1, &x2) == 3) {
-					if (x1 < p[1]) // x1 < u1 < x1 + epsilon
+					if (x1 < p[1]) // x1 < u1 < x1 + EPSILON
 						return M_SQRT1_2 * EllipticIntegral(0, p[0], p[1], 0., 0., -x0, 1., p[1], -1., x2, -1.) - p[2];
 					else if (p[2] > p[3]) // u1 -> turning point -> u1 -> u0
 						return M_SQRT2 * EllipticIntegral(0., p[1], x1, 0., 0., -x0, 1., x1, -1., x2, -1.) + M_SQRT1_2 * EllipticIntegral(0, p[0], p[1], 0., 0., -x0, 1., x1, -1., x2, -1.) - p[2];
@@ -244,7 +244,7 @@ namespace SBody {
 			},
 			&integrate_parameters};
 		if (delta_phi > turning_phi)
-			impact_solver.Set(&impact_function, M_SQRT27 + epsilon, impact_parameter_upper_limit);
+			impact_solver.Set(&impact_function, M_SQRT27 + EPSILON, impact_parameter_upper_limit);
 		else
 			impact_solver.Set(&impact_function, 0, impact_parameter_upper_limit);
 		if (int status = impact_solver.Solve(); status != GSL_SUCCESS)
@@ -252,7 +252,7 @@ namespace SBody {
 		alpha = impact_solver.Root() / sin_observer_target * sin_theta_target * sin_phi_target;
 		beta = impact_solver.Root() / sin_observer_target * (cos_theta_target * sin_theta_observer - sin_theta_target * cos_phi_target * cos_theta_observer);
 		if (double x0, x1, x2; gsl_poly_solve_cubic(-0.5, 0., 0.5 / gsl_pow_2(impact_solver.Root()), &x0, &x1, &x2) == 3) {
-			if (x1 < u1) { // x1 < u1 < x1 + epsilon
+			if (x1 < u1) { // x1 < u1 < x1 + EPSILON
 				const double ellip_int_4 = EllipticIntegral(-4, u0, u1, 0., 1., u1, -1., -x0, 1., x2, -1.);
 				photon[0] = -M_SQRT1_2 * ellip_int_4 / (impact_solver.Root() * (1. - 2. * u0));
 				photon[8] = -M_SQRT1_2 * (ellip_int_4 + 2. * EllipticIntegral(-2, u0, u1, 0., 1., -x0, 1., u1, -1., x2, -1.) + 4. * EllipticIntegral(-2, u0, u1, 1., -2., -x0, 1., u1, -1., x2, -1.)) / impact_solver.Root();
