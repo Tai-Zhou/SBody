@@ -9,19 +9,25 @@ Utility
    :no-link:
 .. doxygenvariable:: SBody::relative_accuracy
    :no-link:
-.. doxygenvariable:: SBody::sample_number
-   :no-link:
-.. doxygenvariable:: SBody::epsilon
-   :no-link:
-.. doxygenvariable:: SBody::sin_epsilon
-   :no-link:
-.. doxygenvariable:: SBody::cos_epsilon
-   :no-link:
 .. doxygenvariable:: SBody::M_2PI
    :no-link:
 .. doxygenvariable:: SBody::M_PI2
    :no-link:
 .. doxygenvariable:: SBody::M_SQRT27
+   :no-link:
+.. doxygenvariable:: SBody::EPSILON
+   :no-link:
+.. doxygenvariable:: SBody::SIN_EPSILON
+   :no-link:
+.. doxygenvariable:: SBody::COS_EPSILON
+   :no-link:
+.. doxygenvariable:: SBody::EPSILON_CIRCLE_AREA
+   :no-link:
+.. doxygenvariable:: SBody::SAMPLE_NUMBER
+   :no-link:
+.. doxygenvariable:: SBody::ANGLE_INTERVAL
+   :no-link:
+.. doxygenvariable:: SBody::EPSILON_POLYGON_AREA
    :no-link:
 
 Integrator
@@ -139,6 +145,12 @@ Math
    :no-link:
 
 .. doxygenfunction:: SBody::InterpolateSphericalPositionToCartesian
+   :no-link:
+
+.. doxygenfunction:: SBody::Flux
+   :no-link:
+
+.. doxygenfunction:: SBody::FluxDensity
    :no-link:
 
 Elliptic Integrals
