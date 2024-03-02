@@ -95,7 +95,22 @@ namespace SBody {
 		return GSL_FAILURE;
 	}
 	int Newton::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) {
-		return GSL_FAILURE;
+		const double sin_theta_target = abs(sin(theta_target)), cos_theta_target = GSL_SIGN(theta_target) * cos(theta_target), sin_phi_target = sin(phi_target), cos_phi_target = cos(phi_target);
+		photon[1] = r_target * sin_theta_target * cos_phi_target;
+		photon[2] = r_target * sin_theta_target * sin_phi_target;
+		photon[3] = r_target * cos_theta_target;
+		const double dx = r_observer * sin_theta_observer - photon[1], dz = r_observer * cos_theta_observer - photon[3];
+		photon[0] = photon[8] = sqrt(gsl_pow_2(dx) + gsl_pow_2(photon[2]) + gsl_pow_2(dz));
+		if (photon[0] == 0.)
+			return GSL_EZERODIV;
+		alpha = photon[2];
+		beta = photon[3] * sin_theta_observer - photon[1] * cos_theta_observer;
+		photon[4] = 1.;
+		const double distance_1 = 1. / photon[0];
+		photon[5] = dx * distance_1;
+		photon[6] = photon[2] * distance_1;
+		photon[7] = dz * distance_1;
+		return CartesianToSpherical(photon);
 	}
 	double Newton::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
 		const double r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), r_3 = gsl_pow_3(r_1), r_4 = gsl_pow_2(r_2);
@@ -129,7 +144,7 @@ namespace SBody {
 	}
 	double Newton::Redshift(const double y[], const double photon[], TimeSystem object_time, TimeSystem photon_time) {
 		const double delta_epsilon = 1. - 2. / y[1];
-		return (1. - DotProduct(y, y + 4, photon + 4, 3) / sqrt(delta_epsilon)) / sqrt(delta_epsilon - gsl_pow_2(y[5]) - gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin(y[2]) * y[7])));
+		return (1. - DotProduct(y, y + 4, photon + 4, 3) / sqrt(delta_epsilon)) / sqrt(delta_epsilon - DotProduct(y, y + 4, y + 4, 3));
 	}
 	int Newton::NormalizeTimelikeGeodesic(double y[]) {
 		y[4] = 1;
