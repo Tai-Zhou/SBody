@@ -404,7 +404,7 @@ namespace SBody {
 		double c0[8], c1[8];
 		SphericalToCartesian(y0, c0);
 		SphericalToCartesian(y1, c1);
-		return LinearInterpolation(t, t0, t1, y0, y, y, 8);
+		return LinearInterpolation(t, t0, t1, c0, c1, y, 8);
 	}
 	double Flux(double luminosity, double magnification, double redshift) {
 		return luminosity * magnification / redshift;
