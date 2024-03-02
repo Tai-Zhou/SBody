@@ -310,11 +310,13 @@ namespace SBody {
 		if (spherical[1] = Norm(cartesian + 1); spherical[1] == 0.)
 			return GSL_EZERODIV;
 		const double r_1 = 1. / spherical[1];
+		spherical[0] = cartesian[0];
 		spherical[2] = acos(cartesian[3] * r_1);
 		if (dimension == 4) {
 			spherical[3] = atan2(cartesian[2], cartesian[1]);
 			return GSL_SUCCESS;
 		}
+		spherical[4] = cartesian[4];
 		spherical[5] = SBody::Dot(cartesian + 1, cartesian + 5) * r_1;
 		if (const double r_xy = Norm(cartesian + 1, 2); r_xy == 0.) {
 			spherical[3] = atan2(cartesian[6], cartesian[5]);
@@ -340,10 +342,12 @@ namespace SBody {
 		}
 #endif
 		const double sin_theta = abs(sin(spherical[2])), cos_theta = GSL_SIGN(spherical[2]) * cos(spherical[2]), sin_phi = sin(spherical[3]), cos_phi = cos(spherical[3]);
+		cartesian[0] = spherical[0];
 		cartesian[1] = spherical[1] * sin_theta * cos_phi;
 		cartesian[2] = spherical[1] * sin_theta * sin_phi;
 		cartesian[3] = spherical[1] * cos_theta;
 		if (dimension == 8) {
+			cartesian[4] = spherical[4];
 			cartesian[5] = spherical[5] * sin_theta * cos_phi + spherical[1] * (cos_theta * cos_phi * spherical[6] - sin_theta * sin_phi * spherical[7]);
 			cartesian[6] = spherical[5] * sin_theta * sin_phi + spherical[1] * (cos_theta * sin_phi * spherical[6] + sin_theta * cos_phi * spherical[7]);
 			cartesian[7] = spherical[5] * cos_theta - spherical[1] * sin_theta * spherical[6];
