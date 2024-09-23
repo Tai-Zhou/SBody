@@ -18,6 +18,7 @@
 #include <gsl/gsl_cblas.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_math.h>
+#include <gsl/gsl_poly.h>
 #include <gsl/gsl_sf_ellint.h>
 
 #include "IO.h"
@@ -25,7 +26,7 @@
 using namespace std;
 
 namespace SBody {
-	double absolute_accuracy = 1e-13, relative_accuracy = 1e-13;
+	double absolute_accuracy = 1e-15, relative_accuracy = 1e-15;
 
 	// Integrator
 	Integrator::Integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), void *params, const gsl_odeiv2_step_type *type) : control_(gsl_odeiv2_control_y_new(absolute_accuracy, relative_accuracy)), evolve_(gsl_odeiv2_evolve_alloc(8)), step_(gsl_odeiv2_step_alloc(type, 8)) {
@@ -359,6 +360,11 @@ namespace SBody {
 		copy(x, x + dimension, spherical);
 		return SphericalToCartesian(spherical, x, dimension);
 	}
+	double SquareRoot(double x) {
+		if (x <= 0.)
+			return 0.;
+		return sqrt(x);
+	}
 	int OppositeSign(double x, double y) {
 		return (x > 0. && y < 0.) || (x < 0. && y > 0.);
 	}
@@ -393,12 +399,12 @@ namespace SBody {
 		return (y0 * (x1 - x) + y1 * (x - x0)) / (x1 - x0);
 	}
 	int LinearInterpolation(double x, double x0, double x1, const double y0[], const double y1[], double y[], size_t size) {
+		memset(y, 0, sizeof(double) * size);
 		if (x0 == x1) {
-			while (--size >= 0)
-				y[size] = 0.5 * (y0[size] + y1[size]);
+			cblas_daxpy(size, 0.5, y1, 1, y, 1);
+			cblas_daxpy(size, 0.5, y0, 1, y, 1);
 			return GSL_SUCCESS;
 		}
-		memset(y, 0, sizeof(double) * size);
 		const double x01_1 = 1. / (x1 - x0);
 		cblas_daxpy(size, (x - x0) * x01_1, y1, 1, y, 1);
 		cblas_daxpy(size, (x1 - x) * x01_1, y0, 1, y, 1);
@@ -415,6 +421,103 @@ namespace SBody {
 	}
 	double FluxDensity(double spectral_density, double magnification) {
 		return spectral_density * magnification;
+	}
+	int PolySolveQuarticWithZero(double a, double b, double c, double offset, double *x0, double *x1, double *x2, double *x3) {
+		double roots[4];
+		if (int root_num = gsl_poly_solve_cubic(a, b, c, roots, roots + 1, roots + 2); root_num == 1) {
+			if (roots[0] < 0.) {
+				*x0 = roots[0] + offset;
+				*x1 = offset;
+			} else {
+				*x0 = offset;
+				*x1 = roots[0] + offset;
+			}
+			return 2;
+		}
+		// root_num == 3
+		roots[3] = 0.;
+		for (int i = 3; i > 0 && roots[i] < roots[i - 1]; --i)
+			swap(roots[i], roots[i - 1]);
+		*x0 = roots[0] + offset;
+		*x1 = roots[1] + offset;
+		*x2 = roots[2] + offset;
+		*x3 = roots[3] + offset;
+		return 4;
+	}
+	int PolySolveQuartic(double a, double b, double c, double d, double *x0, double *x1, double *x2, double *x3) {
+		using std::abs;
+		using std::sqrt;
+		double roots[4];
+		if (d == 0.)
+			return PolySolveQuarticWithZero(a, b, c, 0., x0, x1, x2, x3);
+		// Now solve x^4 + ax^3 + bx^2 + cx + d = 0.
+		const double a2 = a * a;
+		const double a_4 = a / 4;
+		// Let x = y - a/4:
+		// Mathematica: Expand[(y - a/4)^4 + a*(y - a/4)^3 + b*(y - a/4)^2 + c*(y - a/4) + d]
+		// We now solve the depressed quartic y^4 + py^2 + qy + r = 0.
+		const double p = b - 3 * a2 / 8;
+		const double q = c - a * b / 2 + a2 * a / 8;
+		const double r = d - a_4 * c + a2 * b / 16 - 3 * a2 * a2 / 256;
+		if (r == 0.)
+			return PolySolveQuarticWithZero(0., p, q, -a_4, x0, x1, x2, x3);
+		// Biquadratic case:
+		if (q == 0.) {
+			if (int root_num = gsl_poly_solve_quadratic(1, p, r, roots, roots + 1); root_num == 0)
+				return 0;
+			if (roots[0] >= 0.) { // roots[1] >= roots[0]
+				double root_of_root_0 = sqrt(roots[0]);
+				double root_of_root_1 = sqrt(roots[1]);
+				*x0 = -root_of_root_1 - a_4;
+				*x1 = -root_of_root_0 - a_4;
+				*x2 = root_of_root_0 - a_4;
+				*x3 = root_of_root_1 - a_4;
+				return 4;
+			}
+			if (roots[1] >= 0.) {
+				double root_of_root_1 = sqrt(roots[1]);
+				*x0 = -root_of_root_1 - a_4;
+				*x1 = root_of_root_1 - a_4;
+				return 2;
+			}
+			return 0.;
+		}
+
+		// Now split the depressed quartic into two quadratics:
+		// y^4 + py^2 + qy + r = (y^2 + sy + u)(y^2 - sy + v) = y^4 + (v+u-s^2)y^2 + s(v - u)y + uv
+		// So p = v+u-s^2, q = s(v - u), r = uv.
+		// Then (v+u)^2 - (v-u)^2 = 4uv = 4r = (p+s^2)^2 - q^2/s^2.
+		// Multiply through by s^2 to get s^2(p+s^2)^2 - q^2 - 4rs^2 = 0, which is a cubic in s^2.
+		// Then we let z = s^2, to get
+		// z^3 + 2pz^2 + (p^2 - 4r)z - q^2 = 0.
+		int z_root_num = gsl_poly_solve_cubic(2. * p, p * p - 4 * r, -q * q, roots, roots + 1, roots + 2);
+		// z = s^2, so s = sqrt(z).
+		// Hence we require a root > 0, and for the sake of sanity we should take the largest one:
+		const double largest_root = z_root_num == 1 ? roots[0] : roots[2];
+		// No real roots:
+		if (largest_root <= 0.) // This should never happen mathematically.
+			return 0;
+		const double s = sqrt(largest_root);
+		// s is nonzero, because we took care of the biquadratic case.
+		const double v = (p + largest_root + q / s) / 2;
+		const double u = v - q / s;
+		// Now solve y^2 + sy + u = 0:
+		int root_num_su = gsl_poly_solve_quadratic(1, s, u, roots, roots + 1);
+		// Now solve y^2 - sy + v = 0:
+		int root_num_sv = gsl_poly_solve_quadratic(1, s, u, roots + root_num_su, roots + root_num_su + 1);
+		if (int sum = root_num_su + root_num_sv; sum == 0)
+			return 0;
+		else if (sum == 2) {
+			*x0 = roots[0] - a_4;
+			*x1 = roots[1] - a_4;
+			return 2;
+		}
+		sort(roots, roots + 4);
+		*x0 = roots[0] - a_4;
+		*x1 = roots[1] - a_4;
+		*x2 = roots[2] - a_4;
+		*x3 = roots[3] - a_4;
+		return 4;
 	}
 	double EllipticIntegral(int p5, double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4, double b4) {
 		if (x == y)
