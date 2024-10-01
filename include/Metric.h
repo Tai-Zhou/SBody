@@ -52,6 +52,16 @@ namespace SBody {
 					  CIRCULAR,
 					  HELICAL };
 
+	struct KerrFastTraceParameters {
+		const double a, a2;
+		const double u_plus, u_minus, u_r;
+		const double u_obs, u_tgt;
+		const double mu_obs, mu_tgt;
+		const double theta_tgt;
+		const double phi_tgt;
+		KerrFastTraceParameters(double a, double u_obs, double u_tgt, double mu_obs, double mu_tgt, double theta_tgt, double phi_tgt);
+	};
+
 	/**
 	 * @brief The base class of all kinds of metrics.
 	 *
@@ -268,6 +278,10 @@ namespace SBody {
 		static int LagrangianGeodesic(double t, const double y[], double dydt[], void *params);
 	};
 	class Kerr : public Schwarzschild {
+	  protected:
+		static int MuFSolver(int alpha_1, double M_plus, double M_minus, double mu_plus, double mu_minus, double q2, double I_u, double int_to_mu_plus, double int_mu_full_turn, double A, double x, double k, double a, double mu_obs, double &mu_f);
+		static int DifferenceOfUMuPhi(const gsl_vector *alpha_beta, void *params, gsl_vector *delta_u_mu_phi);
+
 	  public:
 		const double a_, a2_, a4_;
 		Kerr(double spin);
@@ -355,6 +369,7 @@ namespace SBody {
 
 	// Kerr
 	int KerrTLagrangianGeodesic(double t, const double y[], double dydt[], void *params);
+	int KerrTLagrangianCircular(double t, const double y[], double dydt[], void *params);
 	int KerrTLagrangianHelical(double t, const double y[], double dydt[], void *params);
 	int KerrTHamiltonianGeodesic(double t, const double y[], double dydt[], void *params);
 	int KerrTauLagrangianGeodesic(double t, const double y[], double dydt[], void *params);

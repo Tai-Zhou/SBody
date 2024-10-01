@@ -19,6 +19,8 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_permutation.h>
 #include <gsl/gsl_poly.h>
+#include <gsl/gsl_sf_ellint.h>
+#include <gsl/gsl_sf_elljac.h>
 #include <gsl/gsl_vector.h>
 
 #include "IO.h"
@@ -27,6 +29,7 @@
 using namespace std;
 
 namespace SBody {
+	KerrFastTraceParameters::KerrFastTraceParameters(double a, double u_obs, double u_tgt, double mu_obs, double mu_tgt, double theta_tgt, double phi_tgt) : a(a), a2(gsl_pow_2(a)), u_plus(1. / (1. + sqrt(1. - a2))), u_minus(1. / (1. - sqrt(1. - a2))), u_r(-0.5 / sqrt(1. - a2)), u_obs(u_obs), u_tgt(u_tgt), mu_obs(mu_obs), mu_tgt(mu_tgt), theta_tgt(theta_tgt), phi_tgt(phi_tgt) {}
 	int Metric::LocalInertialFrame(const double position[], TimeSystem time, gsl_matrix *coordinate) {
 		GslBlock collector;
 		gsl_matrix *metric = collector.MatrixAlloc(4, 4), *product = collector.MatrixAlloc(4, 4), *product_LU = collector.MatrixAlloc(4, 4);
@@ -66,7 +69,7 @@ namespace SBody {
 		return -DotProduct(y, y + 4, photon + 4, 4);
 	}
 
-	Newton::Newton(int PN) : PN_(PN){};
+	Newton::Newton(int PN) : PN_(PN) {};
 	string Newton::Name() {
 		return "Newton";
 	}
@@ -94,7 +97,7 @@ namespace SBody {
 	int Newton::HamiltonianToLagrangian(double y[]) {
 		return GSL_FAILURE;
 	}
-	int Newton::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) {
+	int Newton::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double photon[]) {
 		const double sin_theta_target = abs(sin(theta_target)), cos_theta_target = GSL_SIGN(theta_target) * cos(theta_target), sin_phi_target = sin(phi_target), cos_phi_target = cos(phi_target);
 		photon[1] = r_target * sin_theta_target * cos_phi_target;
 		photon[2] = r_target * sin_theta_target * sin_phi_target;
@@ -166,7 +169,7 @@ namespace SBody {
 		}
 		return make_unique<Integrator>(NewtonTLagrangianGeodesic, Jacobian, const_cast<int *>(&this->PN_));
 	}
-	PN1::PN1(double fSP) : Newton(1), PN1_(fSP){};
+	PN1::PN1(double fSP) : Newton(1), PN1_(fSP) {};
 	unique_ptr<Integrator> PN1::GetIntegrator(TimeSystem time, DynamicalSystem dynamics, MotionMode motion) {
 		if (time != T || dynamics != LAGRANGIAN || motion != GEODESIC) {
 			PrintlnError("{}::GetIntegrator() {}, {}, {} invaild", Name(), time, dynamics, motion);
@@ -213,7 +216,7 @@ namespace SBody {
 		y[7] *= gsl_pow_2(r_1 / sin(y[2])) * y[4];
 		return GSL_SUCCESS;
 	}
-	int Schwarzschild::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) {
+	int Schwarzschild::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double photon[]) {
 		const double sin_theta_target = abs(sin(theta_target)), cos_theta_target = GSL_SIGN(theta_target) * cos(theta_target), sin_phi_target = sin(phi_target), cos_phi_target = cos(phi_target);
 		const double cos_observer_target = sin_theta_observer * sin_theta_target * cos_phi_target + cos_theta_observer * cos_theta_target;
 		const double delta_phi = acos(cos_observer_target), sin_observer_target = sqrt(1. - gsl_pow_2(cos_observer_target));
@@ -235,13 +238,12 @@ namespace SBody {
 		}
 		double impact_parameter_upper_limit = r_target / sqrt(g11_1), turning_phi;
 		if (double x0, x1, x2; u1 * 3. < 1. && gsl_poly_solve_cubic(-0.5, 0., 0.5 / gsl_pow_2(impact_parameter_upper_limit), &x0, &x1, &x2) == 3)
-			turning_phi = M_SQRT1_2 * EllipticIntegral(0, u0, u1, 0., 0., -x0, 1., u1, -1., x2, -1.); // use u1 instead of x1, prevent x1 < u1 < x1 + EPSILON
+			turning_phi = M_SQRT1_2 * EllipticIntegral(0, u0, u1, 0., 0., -x0, 1., max(x1, u1), -1., x2, -1.); // prevent x1 < u1 < x1 + EPSILON
 		else {
 			impact_parameter_upper_limit = M_SQRT27 - EPSILON;
 			turning_phi = M_PI; // make delta_phi <= turning_phi
 		}
-		double integrate_parameters[4] = {u0, u1, delta_phi, turning_phi};
-		FunctionSolver impact_solver;
+		const double integrate_parameters[4] = {u0, u1, delta_phi, turning_phi};
 		gsl_function impact_function{
 			[](double x, void *params) -> double {
 				const double *p = static_cast<double *>(params);
@@ -257,11 +259,10 @@ namespace SBody {
 				} else // impact_parameter < sqrt(27)
 					return M_SQRT1_2 * EllipticIntegral2Complex(0, p[0], p[1], 0., 0., -0.5 / (gsl_pow_2(x) * x0), x0 - 0.5, 1., -x0, 1.) - p[2];
 			},
-			&integrate_parameters};
-		if (delta_phi > turning_phi)
-			impact_solver.Set(&impact_function, M_SQRT27 + EPSILON, impact_parameter_upper_limit);
-		else
-			impact_solver.Set(&impact_function, 0, impact_parameter_upper_limit);
+			const_cast<double *>(integrate_parameters)};
+		FunctionSolver impact_solver;
+		if (int status = impact_solver.Set(&impact_function, delta_phi > turning_phi ? M_SQRT27 + EPSILON : 0., impact_parameter_upper_limit); status != GSL_SUCCESS)
+			return status;
 		if (int status = impact_solver.Solve(); status != GSL_SUCCESS)
 			return status;
 		alpha = impact_solver.Root() / sin_observer_target * sin_theta_target * sin_phi_target;
@@ -290,9 +291,9 @@ namespace SBody {
 		photon[3] = phi_target;
 		photon[4] = g11_1 / (1. - 2. * u0); // dt/d\tau = 1. when r = r_observer
 		if (delta_phi > turning_phi)
-			photon[5] = -g11_1 * sqrt(1. - g11_1 * gsl_pow_2(u1 * impact_solver.Root()));
+			photon[5] = -g11_1 * SquareRoot(1. - g11_1 * gsl_pow_2(u1 * impact_solver.Root()));
 		else
-			photon[5] = g11_1 * sqrt(1. - g11_1 * gsl_pow_2(u1 * impact_solver.Root()));
+			photon[5] = g11_1 * SquareRoot(1. - g11_1 * gsl_pow_2(u1 * impact_solver.Root()));
 		// the direction of the angular momentum is [alpha * cos_theta_observer, beta, -alpha * sin_theta_observer],
 		// the y component should have the same sign as the component perpendicular to [cos(phi), sin(phi), 0],
 		// which is also the component along the [-sin(phi), cos(phi), 0] direction.
@@ -300,7 +301,7 @@ namespace SBody {
 			photon[6] = GSL_SIGN(beta * cos_phi_target - alpha * cos_theta_observer * sin_phi_target) * g11_1 * gsl_pow_2(u1) * impact_solver.Root();
 			photon[7] = 0.;
 		} else {
-			photon[6] = GSL_SIGN(beta * cos_phi_target - alpha * cos_theta_observer * sin_phi_target) * g11_1 * gsl_pow_2(u1) * sqrt(gsl_pow_2(impact_solver.Root()) - gsl_pow_2(alpha * sin_theta_observer / sin_theta_target));
+			photon[6] = GSL_SIGN(beta * cos_phi_target - alpha * cos_theta_observer * sin_phi_target) * g11_1 * gsl_pow_2(u1) * SquareRoot(gsl_pow_2(impact_solver.Root()) - gsl_pow_2(alpha * sin_theta_observer / sin_theta_target));
 			photon[7] = -g11_1 * alpha * sin_theta_observer * gsl_pow_2(u1 / sin_theta_target);
 		}
 		return GSL_SUCCESS;
@@ -410,7 +411,7 @@ namespace SBody {
 		y[7] *= gsl_pow_2(r_1 / sin(y[2])) * y[4];
 		return GSL_SUCCESS;
 	}
-	int ReissnerNordstrom::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) {
+	int ReissnerNordstrom::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double photon[]) {
 		return GSL_FAILURE;
 	}
 	double ReissnerNordstrom::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
@@ -550,46 +551,249 @@ namespace SBody {
 			y[7] = (-r_rho_2 * a_ * pt + (1. - r_rho_2) / sin2_theta * y[7]) / Delta * y[4];
 		return GSL_SUCCESS;
 	}
-	int Kerr::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) { // TODO:
+	int Kerr::MuFSolver(int alpha_1, double M_plus, double M_minus, double mu_plus, double mu_minus, double q2, double I_u, double int_to_mu_plus, double int_mu_full_turn, double A, double x, double k, double a, double mu_obs, double &mu_f) {
+		if (q2 == 0.) {
+			const double mu0_mu_plus = mu_obs / mu_plus;
+			mu_f = mu_plus / cosh(abs(a * mu_plus) * I_u - alpha_1 * GSL_SIGN(mu_obs) * log((1. + sqrt(1. - gsl_pow_2(mu0_mu_plus))) / mu0_mu_plus));
+			return GSL_SUCCESS;
+		}
+		// Here the first turning point is determined by the `beta`.
+		const int N = alpha_1 > 0 ? ceil((I_u - int_to_mu_plus) / int_mu_full_turn) : floor((I_u + int_to_mu_plus) / int_mu_full_turn); // s_mu = 1
+		const int alpha_2 = N & 1 ? -alpha_1 : alpha_1;
+		const int alpha_3 = 2 * floor((2 * N + 3 - alpha_1) / 4) - 1;
+		const double I = (I_u - alpha_1 * int_to_mu_plus - alpha_3 * int_mu_full_turn) / alpha_2;
+		if (M_minus > 0.) {
+			// const double A = mu_plus * abs(param->a);
+			// const double x = sqrt((M_plus - gsl_pow_2(param->mu_obs)) / (M_plus - M_minus));
+			// const double k = sqrt(1. - gsl_pow_2(mu_minus / mu_plus));
+			const double J = mu_plus * abs(a) * I;
+			double sn, cn, dn;
+			if (int status = gsl_sf_elljac_e(J, k, &sn, &cn, &dn); status != GSL_SUCCESS)
+				return status;
+			mu_f = mu_minus / dn;
+		} else {
+			// const double A = sqrt(M_plus - M_minus) * abs(param->a);
+			// const double x = sqrt(1. - gsl_pow_2(param->mu_obs / mu_plus));
+			// const double k = sqrt(1. + M_minus / (gsl_pow_2(mu_plus) - M_minus));
+			const double J = sqrt(gsl_pow_2(mu_plus) - M_minus) * abs(a) * I;
+			double sn, cn, dn;
+			if (int status = gsl_sf_elljac_e(J, k, &sn, &cn, &dn); status != GSL_SUCCESS)
+				return status;
+			mu_f = mu_minus * cn;
+		}
+		return GSL_SUCCESS;
+	}
+	int Kerr::DifferenceOfUMuPhi(const gsl_vector *alpha_beta, void *params, gsl_vector *delta_u_mu_phi) {
+		const auto *param = static_cast<KerrFastTraceParameters *>(params);
+		// The photon in the observer's frame has the tetrad velocity: [1, r / R, beta / R, -alpha / R], where R = sqrt(r^2 + alpha^2 + beta^2).
+		const double alpha = gsl_vector_get(alpha_beta, 0);
+		const double beta = gsl_vector_get(alpha_beta, 1);
+		const double l = gsl_vector_get(alpha_beta, 0), l2 = gsl_pow_2(l); // FIXME:
+		const double q2 = gsl_vector_get(alpha_beta, 1);				   // FIXME:
+		const double c = param->a2 - l2 - q2, d = 2. * (gsl_pow_2(param->a - l) + q2), e = -param->a * q2;
+		// U=1−2u+[a^2−q^2−l^2]u^2+2[(a−l)^2+q^2]u^3−a^2q^2u^4
+		double u0, u1, u2, u3, I_u_0, I_u_1 = GSL_NAN, mu_f_0, mu_f_1, phi_f_0, phi_f_1;
+		double int_u_plus_0, int_u_plus_1;
+		double int_u_minus_0, int_u_minus_1;
+		double int_u_0, int_u_1;
+		double int_u2_0, int_u2_1;
+		if (q2 == 0.) {			 // U=1−2u+[a^2−l^2]u^2+2(a−l)^2u^3
+			if (param->a == l) { // U=1−2u
+				I_u_0 = sqrt(1. - 2. * param->u_obs) - sqrt(1. - 2. * param->u_tgt);
+				I_u_1 = 0.;
+				const double x_0 = sqrt(1. - 2. * param->u_obs), x_1 = sqrt(1. - 2. * param->u_tgt);
+				const double sqrt_2_u_plus = sqrt(1. - 2. * param->u_plus);
+				const double sqrt_2_u_minus = sqrt(1. - 2. * param->u_minus);
+				int_u_plus_0 = param->u_plus * 2. / sqrt_2_u_plus * (log(sqrt_2_u_plus + x_1) - log(sqrt_2_u_plus + x_0) + log(sqrt_2_u_plus - x_1) - log(sqrt_2_u_plus - x_0));		// TODO: Check
+				int_u_minus_0 = param->u_minus * 2. / sqrt_2_u_minus * (log(sqrt_2_u_minus + x_1) - log(sqrt_2_u_minus + x_0) + log(sqrt_2_u_minus - x_1) - log(sqrt_2_u_minus - x_0)); // TODO: Check
+			} else {
+				const double B_1 = 0.5 / gsl_pow_2(param->a - l);
+				if (int root_num_U = gsl_poly_solve_cubic((param->a2 - l2) * B_1, -2. * B_1, B_1, &u0, &u1, &u2); root_num_U == 1) {
+					const double f = 2. * u0 / gsl_pow_2(param->a - l);
+					I_u_0 = EllipticIntegral2Complex(0, param->u_obs, param->u_tgt, 1., 0., f, f / u0, 1., -u0, 1.);
+					I_u_1 = 0.;
+					int_u_plus_0 = EllipticIntegral2Complex(-2, param->u_obs, param->u_tgt, -1., 1. / param->u_plus, f, f / u0, 1., -u0, 1.);
+					int_u_minus_0 = EllipticIntegral2Complex(-2, param->u_obs, param->u_tgt, -1., 1. / param->u_minus, f, f / u0, 1., -u0, 1.);
+				} else {
+					I_u_0 = EllipticIntegral(0, param->u_obs, u1, 1., 0., -u0, 1., u1, -1., u2, -1.);
+					int_u_plus_0 = EllipticIntegral(-2, param->u_obs, u1, -1., 1. / param->u_plus, -u0, 1., u1, -1., u2, -1.);
+					int_u_minus_0 = EllipticIntegral(-2, param->u_obs, u1, -1., 1. / param->u_minus, -u0, 1., u1, -1., u2, -1.);
+					if (u1 >= param->u_tgt) {
+						I_u_1 = I_u_0 * 2.;
+						I_u_0 -= EllipticIntegral(0, param->u_tgt, u1, 1., 0., -u0, 1., u1, -1., u2, -1.);
+						I_u_1 -= I_u_0;
+						int_u_plus_1 = int_u_plus_0 * 2.;
+						int_u_plus_0 -= EllipticIntegral(-2, param->u_tgt, u1, -1., 1. / param->u_plus, -u0, 1., u1, -1., u2, -1.);
+						int_u_plus_1 -= int_u_plus_0;
+						int_u_minus_1 = int_u_minus_0 * 2.;
+						int_u_minus_0 -= EllipticIntegral(-2, param->u_tgt, u1, -1., 1. / param->u_minus, -u0, 1., u1, -1., u2, -1.);
+						int_u_minus_1 -= int_u_minus_0;
+					}
+				}
+			}
+		} else {
+			const double A_1 = -1. / e, q2_sign = GSL_SIGN(q2);
+			if (int root_num_U = PolySolveQuartic(d * A_1, c * A_1, 2. * A_1, A_1, &u0, &u1, &u2, &u3); root_num_U == 0) {
+				const double sqrt_e = sqrt(e), sqrt_e_1 = 1. / sqrt_e;
+				const double c_sqrt_e = c * sqrt_e_1, d_e = d / e;
+				double h1_params[2] = {c_sqrt_e, 2. * c_sqrt_e - sqrt_e * gsl_pow_2(d_e)};
+				gsl_function_fdf h1_function{
+					[](double x, void *params) -> double {
+						const double *param = static_cast<double *>(params);
+						const double h2 = gsl_pow_2(x), h4 = gsl_pow_2(h2);
+						return h2 * h4 - x * (param[0] * (h4 + 1.) - param[1] * h2) - h4 - h2 + 1;
+					},
+					[](double x, void *params) -> double {
+						const double *param = static_cast<double *>(params);
+						const double h2 = gsl_pow_2(x), h4 = gsl_pow_2(h2);
+						return x * (6. * h4 - 4. * h2 - 2.) - param[0] * (5. * h4 + 1.) + param[1] * 3. * h2;
+					},
+					[](double x, void *params, double *f, double *df) {
+						const double *param = static_cast<double *>(params);
+						const double h2 = gsl_pow_2(x), h4 = gsl_pow_2(h2);
+						*f = h2 * h4 - x * (param[0] * (h4 + 1.) - param[1] * h2) - h4 - h2 + 1;
+						*df = x * (6. * h4 - 4. * h2 - 2.) - param[0] * (5. * h4 + 1.) + param[1] * 3. * h2;
+					},
+					h1_params};
+				DerivativeSolver h1_solver(&h1_function, 0.5); // f(0) = 1, f(1) = -sqrt(e) * (d/e)^2 < 0
+				if (int status = h1_solver.Solve(); status != GSL_SUCCESS)
+					return status;
+				const double h1 = h1_solver.Root(), h2 = 1. / h1, g1 = d_e / (h2 - h1);
+				I_u_0 = EllipticIntegral4Complex(0, param->u_obs, param->u_tgt, 1., 0., sqrt_e_1, g1, h1, sqrt_e_1, -g1, h2);
+				I_u_1 = 0.;
+				int_u_plus_0 = EllipticIntegral4Complex(-2, param->u_obs, param->u_tgt, -1., 1. / param->u_plus, sqrt_e_1, g1, h1, sqrt_e_1, -g1, h2);
+				int_u_minus_0 = EllipticIntegral4Complex(-2, param->u_obs, param->u_tgt, -1., 1. / param->u_minus, sqrt_e_1, g1, h1, sqrt_e_1, -g1, h2);
+			} else if (root_num_U == 2) {
+				const double f = A_1 / (u0 * u1); // 1. / (−a^2*q^2*u_1*u_4)
+				I_u_0 = EllipticIntegral2Complex(0, param->u_obs, u1, 1., 0., f, (1. / u0 + 1. / u1) * f, 1., -u0, 1., q2_sign * u1, -q2_sign);
+				int_u_plus_0 = EllipticIntegral2Complex(-2, param->u_obs, u1, -1., 1. / param->u_plus, f, (1. / u0 + 1. / u1) * f, 1., -u0, 1., q2_sign * u1, -q2_sign);
+				int_u_minus_0 = EllipticIntegral2Complex(-2, param->u_obs, u1, -1., 1. / param->u_minus, f, (1. / u0 + 1. / u1) * f, 1., -u0, 1., q2_sign * u1, -q2_sign);
+				if (u1 >= param->u_tgt) {
+					I_u_1 = I_u_0 * 2;
+					I_u_0 -= EllipticIntegral2Complex(0, param->u_tgt, u1, 1., 0., f, (1. / u0 + 1. / u1) * f, 1., -u0, 1., q2_sign * u1, -q2_sign);
+					I_u_1 -= I_u_0;
+					int_u_plus_1 = int_u_plus_0 * 2.;
+					int_u_plus_0 -= EllipticIntegral2Complex(-2, param->u_tgt, u1, -1., 1. / param->u_plus, f, (1. / u0 + 1. / u1) * f, 1., -u0, 1., q2_sign * u1, -q2_sign);
+					int_u_plus_1 -= int_u_plus_0;
+					int_u_minus_1 = int_u_minus_0 * 2.;
+					int_u_minus_0 -= EllipticIntegral2Complex(-2, param->u_tgt, u1, -1., 1. / param->u_minus, f, (1. / u0 + 1. / u1) * f, 1., -u0, 1., q2_sign * u1, -q2_sign);
+					int_u_minus_1 -= int_u_minus_0;
+				}
+			} else { // root_num_U == 4
+				I_u_0 = EllipticIntegral(0, param->u_obs, u1, 1., 0., -u0, 1., u1, -1., u2, -1., u3, -1.);
+				int_u_plus_0 = EllipticIntegral(-2, param->u_obs, u1, -1., 1. / param->u_plus, -u0, 1., u1, -1., u2, -1., u3, -1.);
+				int_u_minus_0 = EllipticIntegral(-2, param->u_obs, u1, -1., 1. / param->u_minus, -u0, 1., u1, -1., u2, -1., u3, -1.);
+				if (u1 >= param->u_tgt) {
+					I_u_1 = I_u_0 * 2;
+					I_u_0 -= EllipticIntegral(0, param->u_tgt, u1, 1., 0., -u0, 1., u1, -1., u2, -1., u3, -1.);
+					I_u_1 -= I_u_0;
+					int_u_plus_1 = int_u_plus_0 * 2.;
+					int_u_plus_0 -= EllipticIntegral(-2, param->u_tgt, u1, -1., 1. / param->u_plus, -u0, 1., u1, -1., u2, -1., u3, -1.);
+					int_u_plus_1 -= int_u_plus_0;
+					int_u_minus_1 = int_u_minus_0 * 2.;
+					int_u_minus_0 -= EllipticIntegral(0, param->u_tgt, u1, -1., 1. / param->u_minus, -u0, 1., u1, -1., u2, -1., u3, -1.);
+					int_u_minus_1 -= int_u_minus_0;
+				}
+			}
+		}
+		// M = q^2 + (a^2-q^2-l^2)*mu^2-a^2*mu^4
+		double M_plus, M_minus;
+		if (int root_num_M = gsl_poly_solve_quadratic(-param->a2, c, q2, &M_minus, &M_plus); root_num_M == 0)
+			return GSL_FAILURE;
+		double mu_plus, mu_minus;
+		double int_to_mu_plus, int_mu_full_turn = gsl_sf_ellint_Kcomp(sqrt(1. - gsl_pow_2(mu_minus / mu_plus)), GSL_PREC_DOUBLE); // FIXME: check equal
+		if (M_minus > 0.) {
+			if (param->mu_obs >= 0.) {
+				mu_plus = sqrt(M_plus);
+				mu_minus = sqrt(M_minus);
+				int_to_mu_plus = EllipticIntegral(0, param->mu_obs, mu_plus, 1., 0., mu_plus, 1., mu_minus, 1., -mu_minus, 1., mu_plus, -1.) / abs(param->a);
+				int_mu_full_turn = EllipticIntegral(0, mu_minus, mu_plus, 1., 0., mu_plus, 1., mu_minus, 1., -mu_minus, 1., mu_plus, -1.) / abs(param->a);
+			} else {
+				mu_plus = -sqrt(M_minus);
+				mu_minus = -sqrt(M_plus);
+				int_to_mu_plus = EllipticIntegral(0, param->mu_obs, mu_plus, 1., 0., -mu_minus, 1., mu_plus, -1., -mu_plus, -1., -mu_minus, -1.) / abs(param->a);
+				int_mu_full_turn = EllipticIntegral(0, mu_minus, mu_plus, 1., 0., -mu_minus, 1., mu_plus, -1., -mu_plus, -1., -mu_minus, -1.) / abs(param->a);
+			}
+		} else {
+			mu_plus = sqrt(M_plus);
+			mu_minus = -mu_plus;
+			int_to_mu_plus = EllipticIntegral2Complex(0, param->mu_obs, mu_plus, 1., 0., 1., 0., -M_minus, -mu_minus, 1., mu_plus, -1.) / abs(param->a);
+			int_mu_full_turn = EllipticIntegral2Complex(0, mu_minus, mu_plus, 1., 0., 1., 0., -M_minus, -mu_minus, 1., mu_plus, -1.) / abs(param->a);
+		}
+		const int alpha_1 = beta >= 0. ? 1. : -1.;
+		const double n = M_minus > 0. ? (M_plus + M_minus) / (1 - M_plus) : 1. / (1. + gsl_pow_2(mu_plus)) - 1.;
+		double A;
+		double x;
+		double k;
+		if (M_minus > 0.) {
+			A = mu_plus * abs(param->a);
+			x = sqrt((M_plus - gsl_pow_2(param->mu_obs)) / (M_plus - M_minus));
+			k = sqrt(1. - gsl_pow_2(mu_minus / mu_plus));
+		} else {
+			A = sqrt(M_plus - M_minus) * abs(param->a);
+			x = sqrt(1. - gsl_pow_2(param->mu_obs / mu_plus));
+			k = sqrt(1. + M_minus / (gsl_pow_2(mu_plus) - M_minus));
+		}
+		if (int status = MuFSolver(alpha_1, M_plus, M_minus, mu_plus, mu_minus, q2, I_u_0, int_to_mu_plus, int_mu_full_turn, A, x, k, param->a, param->mu_obs, mu_f_0); status != GSL_SUCCESS)
+			return status;
+		const double phi_mu_0 = l * (-I_u_0 + gsl_sf_ellint_P(x, k, n, GSL_PREC_DOUBLE) / (A * (1. - M_plus)));
+		const double phi_u_0 = param->u_r * ((l / param->u_plus + 2. * (param->a - l)) * int_u_plus_0 - (l / param->u_minus + 2. * (param->a - l)) * int_u_minus_0);
+		gsl_vector_set(delta_u_mu_phi, 1, mu_f_0 - param->mu_tgt);
+		gsl_vector_set(delta_u_mu_phi, 2, phi_u_0 + phi_mu_0 - param->phi_tgt);
+		if (I_u_1 == 0.) {
+			gsl_vector_set(delta_u_mu_phi, 0, 0.);
+			return GSL_SUCCESS;
+		}
+		gsl_vector_set(delta_u_mu_phi, 0, param->u_tgt - u1);
+		if (isnan(I_u_1))
+			return GSL_SUCCESS;
+		if (int status = MuFSolver(alpha_1, M_plus, M_minus, mu_plus, mu_minus, q2, I_u_1, int_to_mu_plus, int_mu_full_turn, A, x, k, param->a, param->mu_obs, mu_f_1); status != GSL_SUCCESS)
+			return status;
+		const double phi_mu_1 = l * (-I_u_1 + gsl_sf_ellint_P(x, k, n, GSL_PREC_DOUBLE) / (A * (1. - M_plus)));
+		const double phi_u_1 = param->u_r * ((l / param->u_plus + 2. * (param->a - l)) * int_u_plus_1 - (l / param->u_minus + 2. * (param->a - l)) * int_u_minus_1);
+		const double square_diff_0 = gsl_pow_2(acos(mu_f_0) - param->theta_tgt) + gsl_pow_2(phi_u_0 + phi_mu_0 - param->phi_tgt);
+		const double square_diff_1 = gsl_pow_2(acos(mu_f_1) - param->theta_tgt) + gsl_pow_2(phi_u_1 + phi_mu_1 - param->phi_tgt);
+		if (square_diff_0 > square_diff_1) {
+			gsl_vector_set(delta_u_mu_phi, 1, mu_f_1 - param->mu_tgt);
+			gsl_vector_set(delta_u_mu_phi, 2, phi_u_1 + phi_mu_1 - param->phi_tgt);
+		}
+		return GSL_SUCCESS;
+	}
+	int Kerr::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double photon[]) { // TODO:
 		const double sin_theta_target = abs(sin(theta_target)), cos_theta_target = GSL_SIGN(theta_target) * cos(theta_target), sin_phi_target = sin(phi_target), cos_phi_target = cos(phi_target);
 		const double sin2_theta_target = gsl_pow_2(sin_theta_target), cos2_theta_target = gsl_pow_2(cos_theta_target);
+		const double sin2_theta_observer = gsl_pow_2(sin_theta_observer), cos2_theta_observer = gsl_pow_2(cos_theta_observer);
 		const double cos_observer_target = sin_theta_observer * sin_theta_target * cos_phi_target + cos_theta_observer * cos_theta_target;
 		const double delta_phi = acos(cos_observer_target), sin_observer_target = sqrt(1. - gsl_pow_2(cos_observer_target));
-		const double r2_target = gsl_pow_2(r_target), u0 = 1. / r_observer, u1 = 1. / r_target;
-		const double Delta = r_target * (r_target - 2.) + a2_, rho2 = r2_target + a2_ * cos2_theta_target;
-		const double rho_2 = 1. / rho2;
-		const double g00 = -(1. - 2. * r_target * rho_2), g03 = -2. * r_target * rho_2 * a_ * sin2_theta_target;
-		const double g11 = rho2 / Delta, g22 = rho2, g33 = (r2_target + a2_) * sin2_theta_target - g03 * a_ * sin2_theta_target;
-		double integrate_parameters[] = {u0, theta_observer, u1, theta_target, phi_target, sin_theta_observer};
+		const double r2_target = gsl_pow_2(r_target), r2_observer = gsl_pow_2(r_observer), u_observer = 1. / r_observer, u_target = 1. / r_target;
+		const double Delta_target = r_target * (r_target - 2.) + a2_, rho2_target = r2_target + a2_ * cos2_theta_target;
+		const double Delta_observer = r_observer * (r_observer - 2.) + a2_, rho2_observer = r2_observer + a2_ * cos2_theta_observer;
+		const double rho_2_target = 1. / rho2_target, rho_2_observer = 1. / rho2_observer;
+		const double g00_target = -(1. - 2. * r_target * rho_2_target), g03_target = -2. * r_target * rho_2_target * a_ * sin2_theta_target;
+		const double g11_target = rho2_target / Delta_target, g22_target = rho2_target, g33_target = (r2_target + a2_) * sin2_theta_target - g03_target * a_ * sin2_theta_target;
+		const double g00_observer = -(1. - 2. * r_observer * rho_2_observer), g03_observer = -2. * r_observer * rho_2_observer * a_ * sin2_theta_observer;
+		const double g11_observer = rho2_observer / Delta_observer, g22_observer = rho2_observer, g33_observer = (r2_observer + a2_) * sin2_theta_observer - g03_observer * a_ * sin2_theta_observer;
+		// The observer's frame
+		const double e0_observer = sqrt(-1. / g00_observer), e1_observer = sqrt(1. / g11_observer), e2_observer = sqrt(1. / g22_observer), e3_observer = sqrt(1. / g33_observer);
+		KerrFastTraceParameters fast_trace_parameters(a_, u_observer, u_target, cos_theta_observer, cos_theta_target, theta_target, phi_target);
 		GslBlock collector;
-		gsl_vector *initial_value = collector.VectorAlloc(2);
-		MultiFunctionSolver alpha_beta_solver(2);
-		gsl_multiroot_function alpha_beta_function{
-			[](const gsl_vector *x, void *params, gsl_vector *f) -> int {
-				const double *p = static_cast<double *>(params);
-				double E = 1., L = -gsl_vector_get(x, 0) * p[5];
-				if (p[1] == 0. || p[1] == M_PI)
-					L = 0.;
-				double theta, phi;
-				gsl_vector_set(f, 0, theta - p[3]);
-				gsl_vector_set(f, 1, PhiDifference(phi - p[4]));
-				return GSL_FAILURE;
-			},
-			2,
-			&integrate_parameters};
-		alpha_beta_solver.Set(&alpha_beta_function, initial_value);
+		gsl_vector *alpha_beta_initial_value = collector.VectorAlloc(3);
+		gsl_multiroot_function alpha_beta_function{DifferenceOfUMuPhi, 2, &fast_trace_parameters};
+		MultiFunctionSolver alpha_beta_solver(&alpha_beta_function, alpha_beta_initial_value, 3);
 		if (int status = alpha_beta_solver.Solve(); status != GSL_SUCCESS)
 			return status;
+		// const double R = sqrt(p[7] + gsl_pow_2(gsl_vector_get(x, 0)) + gsl_pow_2(gsl_vector_get(x, 1))), R_1 = 1. / R;
+		// const double E = -p[8] * p[12] + p[9] * p[14] * gsl_vector_get(x, 0) * R_1, L = (p[1] == 0. || p[1] == M_PI) ? 0. : p[9] * p[12] - p[11] * p[14] * gsl_vector_get(x, 0) * R_1;
 		alpha = gsl_vector_get(alpha_beta_solver.Root(), 0);
 		beta = gsl_vector_get(alpha_beta_solver.Root(), 1);
 		// [1., 1., beta / r2, -alpha / r2 / sin_theta] * r2 / (r2 + alpha2 + beta2)
-		const double E = 1. - 2. * u0, L = -alpha * sin_theta_observer;
+		const double E = 1. - 2. * u_observer, L = -alpha * sin_theta_observer;
 		photon[0] = 0.;
 		photon[1] = r_target;
 		photon[2] = theta_target;
 		photon[3] = phi_target;
-		photon[4] = (gsl_pow_2(g03 * g03) - g00 * g33) / (E * g33 + L * g03);
-		photon[7] = -(g00 * L + g03 * E) / (g03 * L + g33 * E);
+		photon[4] = (gsl_pow_2(g03_target * g03_target) - g00_target * g33_target) / (E * g33_target + L * g03_target);
+		photon[7] = -(g00_target * L + g03_target * E) / (g03_target * L + g33_target * E);
 		return GSL_FAILURE;
 	}
 	double Kerr::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
@@ -655,6 +859,8 @@ namespace SBody {
 			if (dynamics == LAGRANGIAN) {
 				if (motion == GEODESIC)
 					return make_unique<Integrator>(KerrTLagrangianGeodesic, Jacobian, this);
+				else if (motion == CIRCULAR)
+					return make_unique<Integrator>(KerrTLagrangianCircular, Jacobian, this);
 				else if (motion == HELICAL)
 					return make_unique<Integrator>(KerrTLagrangianHelical, Jacobian, this);
 			} else if (dynamics == HAMILTONIAN && motion == GEODESIC)
@@ -729,7 +935,7 @@ namespace SBody {
 			y[7] = (-r_rho_2 * a_ * pt + (1. - r_rho_2) / sin2_theta * y[7]) / Delta * y[4];
 		return GSL_SUCCESS;
 	}
-	int KerrNewman::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) {
+	int KerrNewman::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double photon[]) {
 		return GSL_FAILURE;
 	}
 	double KerrNewman::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
@@ -835,7 +1041,7 @@ namespace SBody {
 		y[7] = (-2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * pt + (Delta - a2_ * sin2_theta) * y[7]) / (Delta * rho2 * sin2_theta) * y[4];
 		return GSL_SUCCESS;
 	}
-	int KerrTaubNUT::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double *photon) {
+	int KerrTaubNUT::FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target, double &alpha, double &beta, double photon[]) {
 		return GSL_FAILURE;
 	}
 	double KerrTaubNUT::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
@@ -1058,6 +1264,18 @@ namespace SBody {
 		dydt[6] = (2. * a2 * r * sin_theta_cos_theta - a2 * sin_theta_cos_theta * rho4 * (Delta_1 * gsl_pow_2(y[5]) - gsl_pow_2(y[6])) - 2. * r * rho4 * y[5] * y[6] - 4. * a * r * sin_theta_cos_theta * a2_r2 * y[7] + sin_theta_cos_theta * (2. * a4 * r * sin4_theta + 4. * a2 * r * sin2_theta * rho2 + a2_r2 * rho4) * gsl_pow_2(y[7])) * rho_6 + dydt4 * y[6];
 		// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 		dydt[7] = (-2. * a * r2_a2_cos2_theta * Delta_1 * y[5] + 4. * a * r * cot_theta * y[6] - 2. * Delta_1 * (r * rho4 - 2. * r2 * rho2 - r2_a2_cos2_theta * a2 * sin2_theta) * y[5] * y[7] - 2. * cot_theta * (rho4 + 2. * a2 * r * sin2_theta) * y[6] * y[7]) * rho_4 + dydt4 * y[7];
+		return GSL_SUCCESS;
+	}
+	int KerrTLagrangianCircular(double t, const double y[], double dydt[], void *params) {
+		Kerr *kerr = static_cast<Kerr *>(params);
+		dydt[0] = y[4]; // d\tau/dt
+		dydt[1] = 0.;	// dr/dt
+		dydt[2] = 0.;	// d\theta/dt
+		dydt[3] = y[7]; // d\phi/dt
+		dydt[4] = 0.;
+		dydt[5] = 0.;
+		dydt[6] = 0.;
+		dydt[7] = 0.;
 		return GSL_SUCCESS;
 	}
 	int KerrTLagrangianHelical(double t, const double y[], double dydt[], void *params) {
