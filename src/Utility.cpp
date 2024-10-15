@@ -76,10 +76,6 @@ namespace SBody {
 	FunctionSolver::FunctionSolver(const gsl_root_fsolver_type *type) {
 		solver_ = gsl_root_fsolver_alloc(type);
 	}
-	FunctionSolver::FunctionSolver(gsl_function *function, double lower, double upper, const gsl_root_fsolver_type *type) {
-		solver_ = gsl_root_fsolver_alloc(type);
-		gsl_root_fsolver_set(solver_, function, lower, upper);
-	}
 	FunctionSolver::~FunctionSolver() {
 		gsl_root_fsolver_free(solver_);
 	}
@@ -136,8 +132,8 @@ namespace SBody {
 	MultiFunctionSolver::MultiFunctionSolver(size_t n, const gsl_multiroot_fsolver_type *type) {
 		solver_ = gsl_multiroot_fsolver_alloc(type, n);
 	}
-	MultiFunctionSolver::MultiFunctionSolver(gsl_multiroot_function *function, const gsl_vector *x, size_t n, const gsl_multiroot_fsolver_type *type) {
-		solver_ = gsl_multiroot_fsolver_alloc(type, n);
+	MultiFunctionSolver::MultiFunctionSolver(gsl_multiroot_function *function, const gsl_vector *x, const gsl_multiroot_fsolver_type *type) {
+		solver_ = gsl_multiroot_fsolver_alloc(type, function->n);
 		gsl_multiroot_fsolver_set(solver_, function, x);
 	}
 	MultiFunctionSolver::~MultiFunctionSolver() {
@@ -149,10 +145,11 @@ namespace SBody {
 	int MultiFunctionSolver::Iterate() {
 		return gsl_multiroot_fsolver_iterate(solver_);
 	}
-	int MultiFunctionSolver::Solve() {
-		while (gsl_multiroot_test_residual(gsl_multiroot_fsolver_f(solver_), absolute_accuracy) != GSL_SUCCESS)
+	int MultiFunctionSolver::Solve(double epsabs, double epsrel) {
+		do
 			if (int status = gsl_multiroot_fsolver_iterate(solver_); status != GSL_SUCCESS)
 				return status;
+		while (gsl_multiroot_test_delta(gsl_multiroot_fsolver_dx(solver_), gsl_multiroot_fsolver_root(solver_), epsabs, epsrel) != GSL_SUCCESS);
 		return GSL_SUCCESS;
 	}
 	gsl_vector *MultiFunctionSolver::Root() {
@@ -182,8 +179,8 @@ namespace SBody {
 	int MultiDerivativeSolver::Iterate() {
 		return gsl_multiroot_fdfsolver_iterate(solver_);
 	}
-	int MultiDerivativeSolver::Solve() {
-		while (gsl_multiroot_test_residual(gsl_multiroot_fdfsolver_f(solver_), absolute_accuracy) != GSL_SUCCESS)
+	int MultiDerivativeSolver::Solve(double epsabs, double epsrel) {
+		while (gsl_multiroot_test_delta(gsl_multiroot_fdfsolver_dx(solver_), gsl_multiroot_fdfsolver_root(solver_), epsabs, epsrel) != GSL_SUCCESS)
 			if (int status = gsl_multiroot_fdfsolver_iterate(solver_); status != GSL_SUCCESS)
 				return status;
 		return GSL_SUCCESS;
@@ -244,6 +241,11 @@ namespace SBody {
 	}
 
 	// Maths
+	double SquareRoot(double x) {
+		if (x <= 0.)
+			return 0.;
+		return sqrt(x);
+	}
 	double Dot(const double x[], const double y[], size_t dimension) {
 		if (dimension == 3)
 			return x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
@@ -360,10 +362,9 @@ namespace SBody {
 		copy(x, x + dimension, spherical);
 		return SphericalToCartesian(spherical, x, dimension);
 	}
-	double SquareRoot(double x) {
-		if (x <= 0.)
-			return 0.;
-		return sqrt(x);
+	double SphericalAngle(double cos_theta_x, double cos_theta_y, double delta_theta_xy, double delta_phi_xy) {
+		const double a = gsl_pow_2(sin(0.5 * delta_theta_xy)) + cos_theta_x * cos_theta_y * gsl_pow_2(sin(0.5 * PhiDifference(delta_phi_xy)));
+		return 2. * atan2(SquareRoot(a), SquareRoot(1. - a));
 	}
 	int OppositeSign(double x, double y) {
 		return (x > 0. && y < 0.) || (x < 0. && y > 0.);
@@ -380,18 +381,16 @@ namespace SBody {
 		return GSL_SUCCESS;
 	}
 	int ModBy2Pi(double &phi) {
-		while (phi < 0)
-			phi += M_2PI;
-		while (phi >= M_2PI)
-			phi -= M_2PI;
+		phi -= floor(phi / M_2PI) * M_2PI;
 		return GSL_SUCCESS;
 	}
 	double PhiDifference(double phi) {
-		while (phi <= -M_PI)
-			phi += M_2PI;
-		while (phi > M_PI)
-			phi -= M_2PI;
-		return phi;
+		return phi - floor(phi / M_2PI + 0.5) * M_2PI;
+	}
+	int AMinusPlusB(double a, double b, double &a_minus_b, double &a_plus_b) {
+		a_minus_b = a - b;
+		a_plus_b = a + b;
+		return GSL_SUCCESS;
 	}
 	double LinearInterpolation(double x, double x0, double x1, double y0, double y1) {
 		if (x0 == x1)
@@ -422,45 +421,56 @@ namespace SBody {
 	double FluxDensity(double spectral_density, double magnification) {
 		return spectral_density * magnification;
 	}
-	int PolySolveQuarticWithZero(double a, double b, double c, double offset, double *x0, double *x1, double *x2, double *x3) {
-		double roots[4];
+	int PolishQuarticRoot(double a, double b, double c, double d, double roots[], int root_num) {
+		for (int i = 0; i < root_num; ++i) {
+			double f = roots[i] + a;
+			f = fma(f, roots[i], b);
+			f = fma(f, roots[i], c);
+			f = fma(f, roots[i], d);
+			double df = fma(4., roots[i], 3. * a);
+			df = fma(df, roots[i], 2. * b);
+			df = fma(df, roots[i], c);
+			double d2f = fma(12., roots[i], 6. * a);
+			d2f = fma(d2f, roots[i], 2. * b);
+			if (const double denom = 2. * df * df - f * d2f; abs(denom) > 0.)
+				roots[i] -= 2. * f * df / denom;
+		}
+		return root_num;
+	}
+	int PolySolveQuarticWithZero(double a, double b, double c, double offset, double roots[]) {
 		if (int root_num = gsl_poly_solve_cubic(a, b, c, roots, roots + 1, roots + 2); root_num == 1) {
 			if (roots[0] < 0.) {
-				*x0 = roots[0] + offset;
-				*x1 = offset;
+				roots[0] += offset;
+				roots[1] = offset;
 			} else {
-				*x0 = offset;
-				*x1 = roots[0] + offset;
+				roots[1] = roots[0] + offset;
+				roots[0] = offset;
 			}
 			return 2;
 		}
 		// root_num == 3
-		roots[3] = 0.;
+		roots[3] = offset;
+		if (offset != 0.)
+			for (int i = 0; i < 3; ++i)
+				roots[i] += offset;
 		for (int i = 3; i > 0 && roots[i] < roots[i - 1]; --i)
 			swap(roots[i], roots[i - 1]);
-		*x0 = roots[0] + offset;
-		*x1 = roots[1] + offset;
-		*x2 = roots[2] + offset;
-		*x3 = roots[3] + offset;
 		return 4;
 	}
-	int PolySolveQuartic(double a, double b, double c, double d, double *x0, double *x1, double *x2, double *x3) {
-		using std::abs;
-		using std::sqrt;
-		double roots[4];
+	int PolySolveQuartic(double a, double b, double c, double d, double roots[]) {
 		if (d == 0.)
-			return PolySolveQuarticWithZero(a, b, c, 0., x0, x1, x2, x3);
+			return PolishQuarticRoot(a, b, c, d, roots, PolySolveQuarticWithZero(a, b, c, 0., roots));
 		// Now solve x^4 + ax^3 + bx^2 + cx + d = 0.
-		const double a2 = a * a;
 		const double a_4 = a / 4;
+		const double a2_16 = gsl_pow_2(a_4);
 		// Let x = y - a/4:
 		// Mathematica: Expand[(y - a/4)^4 + a*(y - a/4)^3 + b*(y - a/4)^2 + c*(y - a/4) + d]
 		// We now solve the depressed quartic y^4 + py^2 + qy + r = 0.
-		const double p = b - 3 * a2 / 8;
-		const double q = c - a * b / 2 + a2 * a / 8;
-		const double r = d - a_4 * c + a2 * b / 16 - 3 * a2 * a2 / 256;
+		const double p = b - 6. * a2_16;
+		const double q = c - 2. * b * a_4 + 2. * a * a2_16;
+		const double r = d - c * a_4 + b * a2_16 - 3. * a2_16 * a2_16;
 		if (r == 0.)
-			return PolySolveQuarticWithZero(0., p, q, -a_4, x0, x1, x2, x3);
+			return PolishQuarticRoot(a, b, c, d, roots, PolySolveQuarticWithZero(0., p, q, -a_4, roots));
 		// Biquadratic case:
 		if (q == 0.) {
 			if (int root_num = gsl_poly_solve_quadratic(1, p, r, roots, roots + 1); root_num == 0)
@@ -468,19 +478,19 @@ namespace SBody {
 			if (roots[0] >= 0.) { // roots[1] >= roots[0]
 				double root_of_root_0 = sqrt(roots[0]);
 				double root_of_root_1 = sqrt(roots[1]);
-				*x0 = -root_of_root_1 - a_4;
-				*x1 = -root_of_root_0 - a_4;
-				*x2 = root_of_root_0 - a_4;
-				*x3 = root_of_root_1 - a_4;
-				return 4;
+				roots[0] = -root_of_root_1 - a_4;
+				roots[1] = -root_of_root_0 - a_4;
+				roots[2] = root_of_root_0 - a_4;
+				roots[3] = root_of_root_1 - a_4;
+				return PolishQuarticRoot(a, b, c, d, roots, 4);
 			}
 			if (roots[1] >= 0.) {
 				double root_of_root_1 = sqrt(roots[1]);
-				*x0 = -root_of_root_1 - a_4;
-				*x1 = root_of_root_1 - a_4;
-				return 2;
+				roots[0] = -root_of_root_1 - a_4;
+				roots[1] = root_of_root_1 - a_4;
+				return PolishQuarticRoot(a, b, c, d, roots, 2);
 			}
-			return 0.;
+			return 0;
 		}
 
 		// Now split the depressed quartic into two quadratics:
@@ -490,34 +500,32 @@ namespace SBody {
 		// Multiply through by s^2 to get s^2(p+s^2)^2 - q^2 - 4rs^2 = 0, which is a cubic in s^2.
 		// Then we let z = s^2, to get
 		// z^3 + 2pz^2 + (p^2 - 4r)z - q^2 = 0.
-		int z_root_num = gsl_poly_solve_cubic(2. * p, p * p - 4 * r, -q * q, roots, roots + 1, roots + 2);
+		int z_root_num = gsl_poly_solve_cubic(2. * p, p * p - 4. * r, -q * q, roots, roots + 1, roots + 2);
 		// z = s^2, so s = sqrt(z).
 		// Hence we require a root > 0, and for the sake of sanity we should take the largest one:
 		const double largest_root = z_root_num == 1 ? roots[0] : roots[2];
 		// No real roots:
-		if (largest_root <= 0.) // This should never happen mathematically.
+		if (largest_root <= 0.)
 			return 0;
 		const double s = sqrt(largest_root);
 		// s is nonzero, because we took care of the biquadratic case.
-		const double v = (p + largest_root + q / s) / 2;
+		const double v = 0.5 * (p + largest_root + q / s);
 		const double u = v - q / s;
 		// Now solve y^2 + sy + u = 0:
-		int root_num_su = gsl_poly_solve_quadratic(1, s, u, roots, roots + 1);
+		int root_num_su = gsl_poly_solve_quadratic(1., s, u, roots, roots + 1);
 		// Now solve y^2 - sy + v = 0:
-		int root_num_sv = gsl_poly_solve_quadratic(1, s, u, roots + root_num_su, roots + root_num_su + 1);
+		int root_num_sv = gsl_poly_solve_quadratic(1., -s, v, roots + root_num_su, roots + root_num_su + 1);
 		if (int sum = root_num_su + root_num_sv; sum == 0)
 			return 0;
 		else if (sum == 2) {
-			*x0 = roots[0] - a_4;
-			*x1 = roots[1] - a_4;
-			return 2;
+			roots[0] -= a_4;
+			roots[1] -= a_4;
+			return PolishQuarticRoot(a, b, c, d, roots, 2);
 		}
 		sort(roots, roots + 4);
-		*x0 = roots[0] - a_4;
-		*x1 = roots[1] - a_4;
-		*x2 = roots[2] - a_4;
-		*x3 = roots[3] - a_4;
-		return 4;
+		for (int i = 0; i < 4; ++i)
+			roots[i] -= a_4;
+		return PolishQuarticRoot(a, b, c, d, roots, 4);
 	}
 	double EllipticIntegral(int p5, double y, double x, double a5, double b5, double a1, double b1, double a2, double b2, double a3, double b3, double a4, double b4) {
 		if (x == y)
@@ -560,7 +568,7 @@ namespace SBody {
 		const double c2_11 = 2 * (f * b12 - g * a1 * b1 + h * a1 * a1), c2_44 = 2 * (f * b4 * b4 - g * a4 * b4 + h * a4 * a4);
 		const double c2_14 = 2. * f * b1 * b4 - g * (a1 * b4 + a4 * b1) + 2. * h * a1 * a4, c2_15 = 2. * f * b1 * b5 - g * (a1 * b5 + a5 * b1) + 2. * h * a1 * a5;
 		const double c11 = sqrt(c2_11), c44 = sqrt(c2_44), c11_c44 = c11 * c44;
-		const double L2m = M2 + c2_14 - c11_c44, L2p = M2 + c2_14 + c11_c44;
+		const double L2m = max(0., M2 + c2_14 - c11_c44), L2p = max(0., M2 + c2_14 + c11_c44);
 		const double I1 = 4. * gsl_sf_ellint_RF(M2, L2m, L2p, GSL_PREC_DOUBLE);
 		if (p5 == 0)
 			return I1;
@@ -599,13 +607,13 @@ namespace SBody {
 		const double M2 = gsl_pow_2(M);
 		const double delta11_2 = 4. * f1 * h1 - gsl_pow_2(g1), delta12_2 = 2. * (f1 * h2 + f2 * h1) - g1 * g2, delta22_2 = 4. * f2 * h2 - gsl_pow_2(g2);
 		const double Delta = sqrt(gsl_pow_2(delta12_2) - delta11_2 * delta22_2);
-		const double Deltam = delta12_2 - Delta, Deltap = delta12_2 + Delta;
-		const double L2m = M2 + Deltam, L2p = M2 + Deltap;
+		const double Delta_m = delta12_2 - Delta, Delta_p = delta12_2 + Delta;
+		const double L2m = M2 + Delta_m, L2p = M2 + Delta_p;
 		const double RF = gsl_sf_ellint_RF(M2, L2m, L2p, GSL_PREC_DOUBLE);
 		if (p5 == 0)
 			return 4. * RF;
-		const double G = 2. * Delta * Deltap * gsl_sf_ellint_RD(M2, L2m, L2p, GSL_PREC_DOUBLE) / 3. + Delta / (2. * U) + (delta12_2 * theta1 - delta11_2 * theta2) / (4. * xi1 * eta1 * U);
-		const double Sigma = G - Deltap * RF + B;
+		const double G = 2. * Delta * Delta_p * gsl_sf_ellint_RD(M2, L2m, L2p, GSL_PREC_DOUBLE) / 3. + Delta / (2. * U) + (delta12_2 * theta1 - delta11_2 * theta2) / (4. * xi1 * eta1 * U);
+		const double Sigma = G - Delta_p * RF + B;
 		const double alpha15 = 2. * f1 * b5 - g1 * a5, beta15 = g1 * b5 - 2. * h1 * a5;
 		const double alpha25 = 2. * f2 * b5 - g2 * a5, beta25 = g2 * b5 - 2. * h2 * a5;
 		const double gamma1 = 0.5 * (alpha15 * b5 - beta15 * a5), gamma2 = 0.5 * (alpha25 * b5 - beta25 * a5);

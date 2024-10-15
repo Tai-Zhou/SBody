@@ -27,6 +27,8 @@ namespace SBody {
 		std::shared_ptr<Metric> metric_;
 		/// Distance to the center black hole
 		const double r_;
+		/// Square of the distance to the center black hole
+		const double r2_;
 		/// Angle between the observer and the \f$z\f$ axis, \f$\theta\f$.
 		const double theta_;
 		/// \f$\sin\theta\f$

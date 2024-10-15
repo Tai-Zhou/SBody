@@ -52,16 +52,6 @@ namespace SBody {
 					  CIRCULAR,
 					  HELICAL };
 
-	struct KerrFastTraceParameters {
-		const double a, a2;
-		const double u_plus, u_minus, u_r;
-		const double u_obs, u_tgt;
-		const double mu_obs, mu_tgt;
-		const double theta_tgt;
-		const double phi_tgt;
-		KerrFastTraceParameters(double a, double u_obs, double u_tgt, double mu_obs, double mu_tgt, double theta_tgt, double phi_tgt);
-	};
-
 	/**
 	 * @brief The base class of all kinds of metrics.
 	 *
@@ -130,6 +120,8 @@ namespace SBody {
 		 * @return status
 		 */
 		virtual int HamiltonianToLagrangian(double y[]) = 0;
+
+		int InitializePhoton(double photon[], double alpha, double beta, double r, double r2, double theta, double sin_theta);
 
 		/**
 		 * @brief Trace the photon from the observer to the target, using elliptic integrals.
@@ -279,7 +271,7 @@ namespace SBody {
 	};
 	class Kerr : public Schwarzschild {
 	  protected:
-		static int MuFSolver(int alpha_1, double M_plus, double M_minus, double mu_plus, double mu_minus, double q2, double I_u, double int_to_mu_plus, double int_mu_full_turn, double A, double x, double k, double a, double mu_obs, double &mu_f);
+		static int MuFSolver(int alpha_1, double M_plus, double M_minus, double mu_plus, double mu_minus, double q2, double I_u, double int_mu_0, double int_mu_full_turn, double elli_int_t_mu_full_turn, double elli_int_phi_mu_full_turn, double k, double n, double a, double mu_obs, int &alpha_2, int &alpha_3, double &mu_f, double &elli_int_t_mu_f, double &elli_int_phi_mu_f);
 		static int DifferenceOfUMuPhi(const gsl_vector *alpha_beta, void *params, gsl_vector *delta_u_mu_phi);
 
 	  public:
@@ -299,6 +291,24 @@ namespace SBody {
 		int NormalizeNullGeodesic(double y[], double frequency = 1.) override;
 		std::unique_ptr<Integrator> GetIntegrator(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override;
 	};
+
+	struct KerrFastTraceParameters {
+		Kerr *const kerr;
+		const double u_plus_1, u_minus_1;
+		const double u_plus, u_minus, u_r;
+		const double r, r2;
+		const double u_obs, u_tgt;
+		const double mu_obs, mu_tgt;
+		const double theta_obs, theta_tgt;
+		const double sin_theta_obs;
+		const double phi_tgt;
+		double E, L, Q;
+		double t;
+		double tau;
+		int u_dir, mu_dir;
+		KerrFastTraceParameters(Kerr *kerr, double r, double r2, double u_obs, double u_tgt, double mu_obs, double mu_tgt, double theta_obs, double theta_tgt, double sin_theta_obs, double phi_tgt);
+	};
+
 	class KerrNewman : public Kerr {
 	  public:
 		const double r_Q_, r_Q2_, r_Q4_;

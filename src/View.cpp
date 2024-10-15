@@ -33,40 +33,17 @@
 using namespace std;
 
 namespace SBody {
-	View::View(shared_ptr<Metric> metric, double r, double theta, double iota) : metric_(metric), r_(r), theta_(theta), sin_theta_(sin(theta)), cos_theta_(cos(theta)), iota_(iota), sin_iota_(sin(iota)), cos_iota_(cos(iota)), t_final_(-r - 2e4) {
+	View::View(shared_ptr<Metric> metric, double r, double theta, double iota) : metric_(metric), r_(r), r2_(gsl_pow_2(r)), theta_(theta), sin_theta_(sin(theta)), cos_theta_(cos(theta)), iota_(iota), sin_iota_(sin(iota)), cos_iota_(cos(iota)), t_final_(-2e4) {
 		bar_ = make_unique<indicators::BlockProgressBar>(indicators::option::ShowElapsedTime{true},
 														 indicators::option::ShowRemainingTime{true},
 														 indicators::option::ForegroundColor{indicators::Color(4)},
 														 indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}});
 	}
 	int View::InitializePhoton(double photon[], double alpha, double beta) {
-		photon[0] = 0.;
-		photon[1] = r_;
-		photon[4] = 1.;
-		photon[5] = 1.;
-		photon[8] = 0.;
-		if (sin_theta_ < EPSILON) {
-			const double k = gsl_hypot(alpha, beta);
-			if (theta_ < M_PI_2) {
-				photon[2] = 1e-15;
-				photon[3] = atan2(alpha, -beta);
-				photon[6] = -k / gsl_pow_2(r_);
-			} else {
-				photon[2] = M_PI - 1e-15;
-				photon[3] = atan2(alpha, beta);
-				photon[6] = k / gsl_pow_2(r_);
-			}
-			photon[7] = 0.;
-		} else {
-			photon[2] = theta_;
-			photon[3] = 0.,
-			photon[6] = beta / gsl_pow_2(r_);
-			photon[7] = -alpha / (gsl_pow_2(r_) * sin_theta_);
-		}
-		return metric_->NormalizeNullGeodesic(photon, 1.);
+		return metric_->InitializePhoton(photon, alpha, beta, r_, r2_, theta_, sin_theta_);
 	}
 	int View::Trace(const double position[], TimeSystem object_time, double record[], bool calculate_magnification, bool fast_trace) {
-		double photon[9], last_step_record[9], alpha, delta_alpha, beta, delta_beta, h, t = 0.;
+		double photon[9], last_step_record[9], alpha, delta_alpha, beta, delta_beta, h;
 		if (fast_trace && metric_->FastTrace(r_, theta_, sin_theta_, cos_theta_, position[1], position[2], position[3], alpha, beta, photon) == GSL_SUCCESS) {
 			PhotonInformation(position, object_time, record, photon, alpha, beta);
 			return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : GSL_SUCCESS;
@@ -102,27 +79,24 @@ namespace SBody {
 			InitializePhoton(photon, alpha, beta);
 			metric_->LagrangianToHamiltonian(photon);
 			int status = 0, fixed = 0;
-			h = -1.;
-			t = 0.;
+			h = -0.01 * r_;
 			while (status <= 0) {
-#ifndef GSL_RANGE_CHECK_OFF
-				if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(1000)) {
-#else
+#ifdef GSL_RANGE_CHECK_OFF
 				if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(5)) {
-#endif
 					PrintlnWarning("View::Trace() timeout! Object position is:\nr = {}\ntheta = {}\nphi = {}", position[1], position[2], position[3]);
 					return GSL_FAILURE;
 				}
+#endif
 				if (status == GSL_FAILURE) {
 					h *= 0.5;
 					fixed = 0;
 				}
 				copy(photon, photon + 9, last_step_record);
 				if (fixed)
-					status = integrator->ApplyFixedStep(&t, h, photon);
+					status = integrator->ApplyFixedStep(photon + 8, h, photon);
 				else
-					status = integrator->ApplyStep(&t, t_final_, &h, photon);
-				if (const double cos_observer_object_photon = (r_object * sin_theta_object * cos_phi_object - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * sin_theta_ + (r_object * cos_theta_object - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * cos_theta_; cos_observer_object_photon > r_object * EPSILON) {
+					status = integrator->ApplyStep(photon + 8, t_final_, &h, photon);
+				if (const double cos_observer_object_photon = (r_object * sin_theta_object * cos_phi_object - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * sin_theta_ + (r_object * cos_theta_object - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * cos_theta_; cos_observer_object_photon > r_object * 1e-13) {
 					// photon goes through the plane of the object
 					copy(last_step_record, last_step_record + 9, photon);
 					h *= 0.3;
@@ -130,15 +104,11 @@ namespace SBody {
 					integrator->Reset();
 				} else if (cos_observer_object_photon >= 0) {
 					// photon in the same plane with the object
-					photon[8] += t;
 					delta_alpha = r_object * sin_theta_object * sin_phi_object - photon[1] * abs(sin(photon[2])) * sin(photon[3]);
 					delta_beta = (r_object * cos_theta_object - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * sin_theta_ - (r_object * sin_theta_object * cos_phi_object - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * cos_theta_;
 					break;
-				} else if (t >= t_final_ * 1e-8)
-					continue;
+				}
 				// photon not reaches the plane of the object
-				photon[8] += t;
-				t = 0.;
 				if (photon[8] > t_final_)
 					continue;
 				// photon runs away
@@ -162,6 +132,7 @@ namespace SBody {
 			beta += iteration_coefficient * delta_beta;
 			integrator->Reset();
 		}
+		photon[8] -= r_;
 		PhotonInformation(position, object_time, record, photon, alpha, beta);
 		return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : GSL_SUCCESS;
 	}

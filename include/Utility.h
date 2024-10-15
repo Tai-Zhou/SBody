@@ -42,6 +42,7 @@
 
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_mode.h>
+#include <gsl/gsl_multimin.h>
 #include <gsl/gsl_multiroots.h>
 #include <gsl/gsl_odeiv2.h>
 #include <gsl/gsl_permutation.h>
@@ -183,7 +184,6 @@ namespace SBody {
 
 	  public:
 		FunctionSolver(const gsl_root_fsolver_type *type = gsl_root_fsolver_brent);
-		FunctionSolver(gsl_function *function, double lower, double upper, const gsl_root_fsolver_type *type = gsl_root_fsolver_brent);
 		~FunctionSolver();
 		int Set(gsl_function *function, double lower, double upper);
 		int Iterate() override;
@@ -210,7 +210,7 @@ namespace SBody {
 	class MultiSolver {
 	  public:
 		virtual int Iterate() = 0;
-		virtual int Solve() = 0;
+		virtual int Solve(double epsabs, double epsrel) = 0;
 		virtual gsl_vector *Root() = 0;
 		virtual gsl_vector *Value() = 0;
 		virtual gsl_vector *StepSize() = 0;
@@ -222,11 +222,11 @@ namespace SBody {
 
 	  public:
 		MultiFunctionSolver(size_t n, const gsl_multiroot_fsolver_type *type = gsl_multiroot_fsolver_broyden);
-		MultiFunctionSolver(gsl_multiroot_function *function, const gsl_vector *x, size_t n, const gsl_multiroot_fsolver_type *type = gsl_multiroot_fsolver_broyden);
+		MultiFunctionSolver(gsl_multiroot_function *function, const gsl_vector *x, const gsl_multiroot_fsolver_type *type = gsl_multiroot_fsolver_broyden);
 		~MultiFunctionSolver();
 		int Set(gsl_multiroot_function *function, const gsl_vector *x);
 		int Iterate() override;
-		int Solve() override;
+		int Solve(double epsabs = absolute_accuracy, double epsrel = relative_accuracy) override;
 		gsl_vector *Root() override;
 		gsl_vector *Value() override;
 		gsl_vector *StepSize() override;
@@ -242,12 +242,36 @@ namespace SBody {
 		~MultiDerivativeSolver();
 		int Set(gsl_multiroot_function_fdf *function, const gsl_vector *x);
 		int Iterate() override;
-		int Solve() override;
+		int Solve(double epsabs, double epsrel) override;
 		gsl_vector *Root() override;
 		gsl_vector *Value() override;
 		gsl_vector *StepSize() override;
 	};
 
+	class MultiMinimizer {
+	  public:
+		virtual int Iterate() = 0;
+		virtual int Solve() = 0;
+		virtual gsl_vector *Root() = 0;
+		virtual gsl_vector *Value() = 0;
+		virtual gsl_vector *StepSize() = 0;
+	};
+
+	class MultiFunctionMinimizer : public MultiMinimizer {
+	  private:
+		gsl_multimin_fminimizer *solver_;
+
+	  public:
+		MultiFunctionMinimizer(size_t n, const gsl_multimin_fminimizer_type *type = gsl_multimin_fminimizer_nmsimplex2rand);
+		MultiFunctionMinimizer(gsl_multimin_function *function, const gsl_vector *x, const gsl_multimin_fminimizer_type *type = gsl_multimin_fminimizer_nmsimplex2rand);
+		~MultiFunctionMinimizer();
+		int Set(gsl_multimin_function *function, const gsl_vector *x);
+		int Iterate() override;
+		int Solve() override;
+		gsl_vector *Root() override;
+		gsl_vector *Value() override;
+		gsl_vector *StepSize() override;
+	};
 	/**
 	 * @brief A wrapper of the `gsl_vector`, `gsl_matrix`, and `gsl_permutation`.
 	 *
@@ -341,6 +365,14 @@ namespace SBody {
 		 */
 		gsl_permutation *PermutationCalloc(size_t n);
 	};
+
+	/**
+	 * @brief Square root of `x`. Return `0` if `x` is negative.
+	 *
+	 * @param x number
+	 * @return result
+	 */
+	double SquareRoot(double x);
 
 	/**
 	 * @brief Dot product of vector `x` and `y`. \f$\vec{x}\cdot\vec{y}\f$
@@ -441,13 +473,7 @@ namespace SBody {
 	 */
 	int SphericalToCartesian(double x[], size_t dimension = 8);
 
-	/**
-	 * @brief Square root of `x`. Return `0` if `x` is negative.
-	 *
-	 * @param x number
-	 * @return result
-	 */
-	double SquareRoot(double x);
+	double SphericalAngle(double cos_theta_x, double cos_theta_y, double delta_theta_xy, double delta_phi_xy);
 
 	/**
 	 * @brief Return `1` if `x`, `y` have opposite signs, else `0`.
@@ -478,12 +504,14 @@ namespace SBody {
 	int ModBy2Pi(double &phi);
 
 	/**
-	 * @brief Similar to `ModBy2Pi`, but return `phi` in \f$(-\pi, \pi]\f$.
+	 * @brief Similar to `ModBy2Pi`, but return `phi` in \f$[-\pi, \pi)\f$.
 	 *
 	 * @param phi \f$\phi\f$
 	 * @return result
 	 */
 	double PhiDifference(double phi);
+
+	int AMinusPlusB(double a, double b, double &a_minus_b, double &a_plus_b);
 
 	/**
 	 * @brief Linear interpolation of points (`x0`, `y0`) and (`x1`, `y1`) at `x`. \f[y=\frac{y_0(x_1-x)+y_1(x-x_0)}{x_1-x_0}\f]
@@ -543,7 +571,9 @@ namespace SBody {
 	 */
 	double FluxDensity(double spectral_density, double magnification);
 
-	int PolySolveQuarticWithZero(double a, double b, double c, double offset, double *x0, double *x1, double *x2, double *x3);
+	int PolishQuarticRoot(double a, double b, double c, double d, double roots[], int root_num);
+
+	int PolySolveQuarticWithZero(double a, double b, double c, double offset, double roots[]);
 
 	/**
 	 * @brief Solve for real roots of the quartic equation \f$x^4+ax^3+bx^2+cx=0\f$. The roots are returned in `x0`, `x1`, `x2`, and `x3` and satisfied \f$x_0\leq x_1\leq x_2\leq x_3\f$. The function is based on `quartic_roots` from `boost/math/tools/quartic_roots.hpp`.
@@ -552,14 +582,11 @@ namespace SBody {
 	 * @param b \f$b\f$
 	 * @param c \f$c\f$
 	 * @param d \f$d\f$
-	 * @param x0 \f$x_0\f$
-	 * @param x1 \f$x_1\f$
-	 * @param x2 \f$x_2\f$
-	 * @param x3 \f$x_3\f$
+	 * @param roots
 	 *
 	 * @return number of real roots
 	 */
-	int PolySolveQuartic(double a, double b, double c, double d, double *x0, double *x1, double *x2, double *x3);
+	int PolySolveQuartic(double a, double b, double c, double d, double roots[]);
 
 	/**
 	 * @brief \f[\int_y^x(a_5+b_5t)^{p_5/2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
