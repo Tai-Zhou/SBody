@@ -210,6 +210,7 @@ namespace SBody {
 	class MultiSolver {
 	  public:
 		virtual int Iterate() = 0;
+		virtual int Solve(double epsabs) = 0;
 		virtual int Solve(double epsabs, double epsrel) = 0;
 		virtual gsl_vector *Root() = 0;
 		virtual gsl_vector *Value() = 0;
@@ -226,7 +227,8 @@ namespace SBody {
 		~MultiFunctionSolver();
 		int Set(gsl_multiroot_function *function, const gsl_vector *x);
 		int Iterate() override;
-		int Solve(double epsabs = absolute_accuracy, double epsrel = relative_accuracy) override;
+		int Solve(double epsabs) override;
+		int Solve(double epsabs, double epsrel) override;
 		gsl_vector *Root() override;
 		gsl_vector *Value() override;
 		gsl_vector *StepSize() override;
@@ -373,6 +375,14 @@ namespace SBody {
 	 * @return result
 	 */
 	double SquareRoot(double x);
+
+	/**
+	 * @brief Square root of `abs(x)` with the sign of `x`.
+	 *
+	 * @param x number
+	 * @return result
+	 */
+	double SignSquareRoot(double x);
 
 	/**
 	 * @brief Dot product of vector `x` and `y`. \f$\vec{x}\cdot\vec{y}\f$

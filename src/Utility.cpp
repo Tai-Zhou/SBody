@@ -145,11 +145,16 @@ namespace SBody {
 	int MultiFunctionSolver::Iterate() {
 		return gsl_multiroot_fsolver_iterate(solver_);
 	}
-	int MultiFunctionSolver::Solve(double epsabs, double epsrel) {
-		do
+	int MultiFunctionSolver::Solve(double epsabs) {
+		while (gsl_multiroot_test_residual(gsl_multiroot_fsolver_f(solver_), epsabs) != GSL_SUCCESS)
 			if (int status = gsl_multiroot_fsolver_iterate(solver_); status != GSL_SUCCESS)
 				return status;
-		while (gsl_multiroot_test_delta(gsl_multiroot_fsolver_dx(solver_), gsl_multiroot_fsolver_root(solver_), epsabs, epsrel) != GSL_SUCCESS);
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::Solve(double epsabs, double epsrel) {
+		while (gsl_multiroot_test_delta(gsl_multiroot_fsolver_dx(solver_), gsl_multiroot_fsolver_root(solver_), epsabs, epsrel) != GSL_SUCCESS || gsl_multiroot_test_residual(gsl_multiroot_fsolver_f(solver_), epsabs) != GSL_SUCCESS)
+			if (int status = gsl_multiroot_fsolver_iterate(solver_); status != GSL_SUCCESS)
+				return status;
 		return GSL_SUCCESS;
 	}
 	gsl_vector *MultiFunctionSolver::Root() {
@@ -244,6 +249,11 @@ namespace SBody {
 	double SquareRoot(double x) {
 		if (x <= 0.)
 			return 0.;
+		return sqrt(x);
+	}
+	double SignSquareRoot(double x) {
+		if (x < 0.)
+			return -sqrt(-x);
 		return sqrt(x);
 	}
 	double Dot(const double x[], const double y[], size_t dimension) {
