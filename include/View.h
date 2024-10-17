@@ -43,6 +43,8 @@ namespace SBody {
 		const double cos_iota_;
 		/// time limit for the integration of photons.
 		const double t_final_;
+		double alpha;
+		double beta;
 		std::unique_ptr<indicators::BlockProgressBar> bar_;
 
 	  public:
