@@ -7,7 +7,29 @@
  *
  * @copyright Copyright (c) 2022
  *
- * PolySolveQuartic is based on `quartic_roots` from `boost/math/tools/quartic_roots.hpp`.
+ * The MultiFunctionSolver::Hybrid functions are based on code from `gsl/multiroots/hybrid.c`.
+ *
+ * The MultiFunctionSolver::Dnewton functions are based on code from `gsl/multiroots/dnewton.c`.
+ *
+ * Copyright (C) 1996, 1997, 1998, 1999, 2000, 2007 Brian Gough
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ * ----------------------------------------------------------------------------------------------------
+ *
+ * The function PolySolveQuartic is based on `quartic_roots` from `boost/math/tools/quartic_roots.hpp`.
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -76,6 +98,8 @@ namespace SBody {
 
 	/// Area of a circle with radius of EPSILON. \f$\pi\varepsilon^2\f$
 	constexpr double EPSILON_CIRCLE_AREA = M_PI * EPSILON * EPSILON;
+
+	constexpr double GSL_ROOT3_2_DBL_EPSILON = 3.666852862501036033408990023698041e-11;
 
 	/// Sample number.
 	constexpr int SAMPLE_NUMBER = 100;
@@ -170,7 +194,6 @@ namespace SBody {
 	class Solver {
 	  public:
 		virtual int Iterate() = 0;
-		virtual int Solve() = 0;
 		virtual double Root() = 0;
 	};
 
@@ -187,7 +210,7 @@ namespace SBody {
 		~FunctionSolver();
 		int Set(gsl_function *function, double lower, double upper);
 		int Iterate() override;
-		int Solve() override;
+		int Solve();
 		double Root() override;
 		double Lower();
 		double Upper();
@@ -203,23 +226,64 @@ namespace SBody {
 		~DerivativeSolver();
 		int Set(gsl_function_fdf *function, double root);
 		int Iterate() override;
-		int Solve() override;
+		int Solve(double epsabs, int max_iteration = 256);
 		double Root() override;
 	};
 
 	class MultiSolver {
 	  public:
 		virtual int Iterate() = 0;
-		virtual int Solve(double epsabs) = 0;
-		virtual int Solve(double epsabs, double epsrel) = 0;
+		virtual int Solve(double epsabs, int max_iteration) = 0;
+		virtual int Solve(double epsabs, double epsrel, int max_iteration) = 0;
 		virtual gsl_vector *Root() = 0;
 		virtual gsl_vector *Value() = 0;
 		virtual gsl_vector *StepSize() = 0;
 	};
 
+	struct HybridState {
+		double iteration_coefficient;
+		size_t iter;
+		size_t ncfail;
+		size_t ncsuc;
+		size_t nslow1;
+		size_t nslow2;
+		double fnorm;
+		double delta;
+		gsl_matrix *J;
+		gsl_matrix *q;
+		gsl_matrix *r;
+		gsl_vector *tau;
+		gsl_vector *diag;
+		gsl_vector *qtf;
+		gsl_vector *newton;
+		gsl_vector *gradient;
+		gsl_vector *x_trial;
+		gsl_vector *f_trial;
+		gsl_vector *df;
+		gsl_vector *qtdf;
+		gsl_vector *rdx;
+		gsl_vector *w;
+		gsl_vector *v;
+	};
+
+	struct DnewtonState {
+		double iteration_coefficient;
+		gsl_matrix *J;
+		gsl_matrix *lu;
+		gsl_permutation *permutation;
+	};
+
+	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_hybrid;
+	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_hybrids;
+	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_dnewton;
+
 	class MultiFunctionSolver : public MultiSolver {
 	  private:
 		gsl_multiroot_fsolver *solver_;
+		static void ComputeDiag(const gsl_matrix *J, gsl_vector *diag);
+		static void UpdateDiag(const gsl_matrix *J, gsl_vector *diag);
+		static double ScaledEnorm(const gsl_vector *d, const gsl_vector *f);
+		static int Dogleg(const gsl_matrix *r, const gsl_vector *qtf, const gsl_vector *diag, double delta, gsl_vector *newton, gsl_vector *gradient, gsl_vector *p);
 
 	  public:
 		MultiFunctionSolver(size_t n, const gsl_multiroot_fsolver_type *type = gsl_multiroot_fsolver_broyden);
@@ -227,11 +291,24 @@ namespace SBody {
 		~MultiFunctionSolver();
 		int Set(gsl_multiroot_function *function, const gsl_vector *x);
 		int Iterate() override;
-		int Solve(double epsabs) override;
-		int Solve(double epsabs, double epsrel) override;
+		int Solve(double epsabs, int max_iteration = 256) override;
+		int Solve(double epsabs, double epsrel, int max_iteration = 256) override;
 		gsl_vector *Root() override;
 		gsl_vector *Value() override;
 		gsl_vector *StepSize() override;
+		int SetIterationCoefficient(double coefficient);
+		static int HybridAlloc(void *vstate, size_t n);
+		static int HybridSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int HybridScaleSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int HybridSetCore(void *vstate, gsl_multiroot_function *func, gsl_vector *x, gsl_vector *f, gsl_vector *dx, bool scale);
+		static int HybridIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int HybridScaleIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int HybridIterateCore(void *vstate, gsl_multiroot_function *func, gsl_vector *x, gsl_vector *f, gsl_vector *dx, bool scale);
+		static void HybridFree(void *vstate);
+		static int DnewtonAlloc(void *vstate, size_t n);
+		static int DnewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int DnewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static void DnewtonFree(void *vstate);
 	};
 
 	class MultiDerivativeSolver : public MultiSolver {
@@ -244,7 +321,7 @@ namespace SBody {
 		~MultiDerivativeSolver();
 		int Set(gsl_multiroot_function_fdf *function, const gsl_vector *x);
 		int Iterate() override;
-		int Solve(double epsabs, double epsrel) override;
+		int Solve(double epsabs, double epsrel, int max_iteration = 128) override;
 		gsl_vector *Root() override;
 		gsl_vector *Value() override;
 		gsl_vector *StepSize() override;
@@ -253,10 +330,9 @@ namespace SBody {
 	class MultiMinimizer {
 	  public:
 		virtual int Iterate() = 0;
-		virtual int Solve() = 0;
+		virtual int Solve(double epsabs) = 0;
 		virtual gsl_vector *Root() = 0;
-		virtual gsl_vector *Value() = 0;
-		virtual gsl_vector *StepSize() = 0;
+		virtual double Value() = 0;
 	};
 
 	class MultiFunctionMinimizer : public MultiMinimizer {
@@ -265,14 +341,13 @@ namespace SBody {
 
 	  public:
 		MultiFunctionMinimizer(size_t n, const gsl_multimin_fminimizer_type *type = gsl_multimin_fminimizer_nmsimplex2rand);
-		MultiFunctionMinimizer(gsl_multimin_function *function, const gsl_vector *x, const gsl_multimin_fminimizer_type *type = gsl_multimin_fminimizer_nmsimplex2rand);
 		~MultiFunctionMinimizer();
-		int Set(gsl_multimin_function *function, const gsl_vector *x);
+		int Set(gsl_multimin_function *function, const gsl_vector *x, const gsl_vector *step_size);
 		int Iterate() override;
-		int Solve() override;
+		int Solve(double epsabs) override;
 		gsl_vector *Root() override;
-		gsl_vector *Value() override;
-		gsl_vector *StepSize() override;
+		double Value() override;
+		double StepSize();
 	};
 	/**
 	 * @brief A wrapper of the `gsl_vector`, `gsl_matrix`, and `gsl_permutation`.
@@ -375,6 +450,14 @@ namespace SBody {
 	 * @return result
 	 */
 	double SquareRoot(double x);
+
+	/**
+	 * @brief Square of `x` with the sign of `x`.
+	 *
+	 * @param x number
+	 * @return result
+	 */
+	double SignSquare(double x);
 
 	/**
 	 * @brief Square root of `abs(x)` with the sign of `x`.

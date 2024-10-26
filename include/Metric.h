@@ -123,6 +123,8 @@ namespace SBody {
 
 		int InitializePhoton(double photon[], double alpha, double beta, double r, double r2, double theta, double sin_theta);
 
+		int AngularMomentumCarterConstantToAlphaBeta(double l, double q2, double &alpha, double &abs_beta);
+
 		/**
 		 * @brief Trace the photon from the observer to the target, using elliptic integrals.
 		 *
@@ -276,6 +278,8 @@ namespace SBody {
 
 	  public:
 		const double a_, a2_, a4_;
+		const double u_plus_1, u_minus_1;
+		const double u_plus, u_minus, u_r;
 		Kerr(double spin);
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;
@@ -294,8 +298,6 @@ namespace SBody {
 
 	struct KerrFastTraceParameters {
 		Kerr *const kerr;
-		const double u_plus_1, u_minus_1;
-		const double u_plus, u_minus, u_r;
 		const double r, r2;
 		const double u_obs, u_obj;
 		const double mu_obs, mu_obj;

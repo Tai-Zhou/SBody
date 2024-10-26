@@ -34,8 +34,6 @@ using namespace std;
 
 namespace SBody {
 	View::View(shared_ptr<Metric> metric, double r, double theta, double iota) : metric_(metric), r_(r), r2_(gsl_pow_2(r)), theta_(theta), sin_theta_(sin(theta)), cos_theta_(cos(theta)), iota_(iota), sin_iota_(sin(iota)), cos_iota_(cos(iota)), t_final_(-2e4) {
-		alpha = GSL_NAN;
-		beta = GSL_NAN;
 		bar_ = make_unique<indicators::BlockProgressBar>(indicators::option::ShowElapsedTime{true},
 														 indicators::option::ShowRemainingTime{true},
 														 indicators::option::ForegroundColor{indicators::Color(4)},
@@ -45,7 +43,7 @@ namespace SBody {
 		return metric_->InitializePhoton(photon, alpha, beta, r_, r2_, theta_, sin_theta_);
 	}
 	int View::Trace(const double position[], TimeSystem object_time, double record[], bool calculate_magnification, bool fast_trace) {
-		double photon[9], last_step_record[9], delta_alpha, delta_beta, h;
+		double photon[9], last_step_record[9], alpha, delta_alpha, beta, delta_beta, h;
 		if (fast_trace && metric_->FastTrace(r_, theta_, sin_theta_, cos_theta_, position[1], position[2], position[3], alpha, beta, photon) == GSL_SUCCESS) {
 			PhotonInformation(position, object_time, record, photon, alpha, beta);
 			return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : GSL_SUCCESS;
@@ -58,23 +56,21 @@ namespace SBody {
 				return GSL_FAILURE;
 		}
 		const double cos_observer_object = sin_theta_ * sin_theta_object * cos_phi_object + cos_theta_ * cos_theta_object, iteration_coefficient = tanh((2. + cos_observer_object) * 0.02 * r_object);
-		if (isnan(alpha) || isnan(beta)) {
-			const double alpha_coefficient = sin_theta_object * sin_phi_object, beta_coefficient = cos_theta_object * sin_theta_ - sin_theta_object * cos_phi_object * cos_theta_, sin_observer_object = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_object = acos(cos_observer_object);
-			if (cos_observer_object == -1.) {
-				PrintlnWarning("Object behind black hole, cos(theta) = {:.6f}\n", cos_observer_object);
-				alpha = 2. * sqrt(r_object);
-				beta = 0.;
-			} else if (cos_observer_object < 1.) { // initial guessing
-				double effective_radius;
-				if (theta_observer_object < M_PI_2)
-					effective_radius = r_object + gsl_pow_3(theta_observer_object / M_PI_2) / sin_observer_object;
-				else
-					// b-r*sin(theta)=(b-1.)*(2.*theta/pi-1.)+1.+(b-4.)/pi*sin(theta*2.)
-					// b=(r*sin(theta)*M_PI+M_2_PI-2.*theta-8.*sin(theta)*cos(theta))/(2.*(M_PI-theta-sin(theta)*cos(theta)))
-					effective_radius = 1. / sin_observer_object + 0.5 * (M_PI * r_object - 6. * cos_observer_object) / (M_PI - theta_observer_object - sin_observer_object * cos_observer_object);
-				alpha = effective_radius * alpha_coefficient;
-				beta = effective_radius * beta_coefficient;
-			}
+		const double alpha_coefficient = sin_theta_object * sin_phi_object, beta_coefficient = cos_theta_object * sin_theta_ - sin_theta_object * cos_phi_object * cos_theta_, sin_observer_object = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_object = acos(cos_observer_object);
+		if (cos_observer_object == -1.) {
+			PrintlnWarning("Object behind black hole, cos(theta) = {:.6f}\n", cos_observer_object);
+			alpha = 2. * sqrt(r_object);
+			beta = 0.;
+		} else if (cos_observer_object < 1.) { // initial guessing
+			double effective_radius;
+			if (theta_observer_object < M_PI_2)
+				effective_radius = r_object + gsl_pow_3(theta_observer_object / M_PI_2) / sin_observer_object;
+			else
+				// b-r*sin(theta)=(b-1.)*(2.*theta/pi-1.)+1.+(b-4.)/pi*sin(theta*2.)
+				// b=(r*sin(theta)*M_PI+M_2_PI-2.*theta-8.*sin(theta)*cos(theta))/(2.*(M_PI-theta-sin(theta)*cos(theta)))
+				effective_radius = 1. / sin_observer_object + 0.5 * (M_PI * r_object - 6. * cos_observer_object) / (M_PI - theta_observer_object - sin_observer_object * cos_observer_object);
+			alpha = effective_radius * alpha_coefficient;
+			beta = effective_radius * beta_coefficient;
 		}
 		unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
 		int retry = 0;
