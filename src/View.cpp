@@ -81,8 +81,8 @@ namespace SBody {
 			h = -0.01 * r_;
 			while (status <= 0) {
 #ifdef GSL_RANGE_CHECK_OFF
-				if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(5)) {
-					PrintlnWarning("View::Trace() timeout! Object position is:\nr = {}\ntheta = {}\nphi = {}", position[1], position[2], position[3]);
+				if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(1)) {
+					PrintlnWarning("View::Trace() timeout! Object position is:\nr = {}\ntheta = {}\nphi = {}\nobserver theta={}", position[1], position[2], position[3], theta_);
 					return GSL_FAILURE;
 				}
 #endif
@@ -123,7 +123,7 @@ namespace SBody {
 				PrintlnWarning("View::Trece() status = {}\n", status);
 				return status;
 			}
-			if (gsl_hypot(delta_alpha, delta_beta) <= EPSILON * (1. + gsl_hypot(alpha, beta))) {
+			if (gsl_hypot(delta_alpha, delta_beta) <= GSL_SQRT_DBL_EPSILON * (1. + gsl_hypot(alpha, beta))) {
 				metric_->HamiltonianToLagrangian(photon);
 				break;
 			}
@@ -326,7 +326,7 @@ namespace SBody {
 				for (int i = 0; i < SAMPLE_NUMBER; ++i)
 					cone_record.Save(rec[i], 3);
 			}
-			cone_record.Save({abs(area) / (M_2PI * gsl_pow_2(EPSILON))});
+			cone_record.Save({abs(area) / (M_2PI * gsl_pow_2(GSL_SQRT_DBL_EPSILON))});
 			ProgressBar::bars_[0].tick();
 		}
 		return 0;
@@ -341,7 +341,7 @@ namespace SBody {
 		for (int i = 0; i < SAMPLE_NUMBER; ++i) {
 			const double angle = i * ANGLE_INTERVAL, sin_angle = sin(angle), cos_angle = cos(angle);
 			int status = 0;
-			while (rout - rin > EPSILON * (rin + rout)) {
+			while (rout - rin > GSL_SQRT_DBL_EPSILON * (rin + rout)) {
 				rmid = 0.5 * (rin + rout);
 				InitializePhoton(photon, rmid * cos_angle, rmid * sin_angle);
 				h = -1.;
@@ -410,7 +410,7 @@ namespace SBody {
 				for (auto objP : Object::object_list_)
 					if (objP->Hit(ph, last))
 						screen_[i][j] = objP->Redshift(ph, T); // FIXME: if multi objects
-				if (screen_[i][j] > EPSILON)
+				if (screen_[i][j] > GSL_SQRT_DBL_EPSILON)
 					break;
 			}
 			if (status > 0)

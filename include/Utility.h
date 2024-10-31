@@ -78,6 +78,9 @@ namespace SBody {
 	/// Global relative accuracy.
 	extern double relative_accuracy;
 
+	/// \f$3\pi/4\f$.
+	constexpr double M_3PI_4 = 2.35619449019234492884698253745962716;
+
 	/// \f$2\pi\f$.
 	constexpr double M_2PI = 6.28318530717958647692528676655900576;
 
@@ -96,8 +99,8 @@ namespace SBody {
 	/// \f$\cos\varepsilon\f$.
 	constexpr double COS_EPSILON = 0.999999999999999999995;
 
-	/// Area of a circle with radius of EPSILON. \f$\pi\varepsilon^2\f$
-	constexpr double EPSILON_CIRCLE_AREA = M_PI * EPSILON * EPSILON;
+	/// Area of a circle with radius of GSL_SQRT_DBL_EPSILON. \f$\pi\varepsilon^2\f$
+	constexpr double EPSILON_CIRCLE_AREA = M_PI * GSL_DBL_EPSILON;
 
 	constexpr double GSL_ROOT3_2_DBL_EPSILON = 3.666852862501036033408990023698041e-11;
 
@@ -268,6 +271,7 @@ namespace SBody {
 
 	struct DnewtonState {
 		double iteration_coefficient;
+		gsl_vector *dx;
 		gsl_matrix *J;
 		gsl_matrix *lu;
 		gsl_permutation *permutation;
@@ -284,6 +288,7 @@ namespace SBody {
 		static void UpdateDiag(const gsl_matrix *J, gsl_vector *diag);
 		static double ScaledEnorm(const gsl_vector *d, const gsl_vector *f);
 		static int Dogleg(const gsl_matrix *r, const gsl_vector *qtf, const gsl_vector *diag, double delta, gsl_vector *newton, gsl_vector *gradient, gsl_vector *p);
+		static int Jacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *f, double epsrel, gsl_matrix *jacobian);
 
 	  public:
 		MultiFunctionSolver(size_t n, const gsl_multiroot_fsolver_type *type = gsl_multiroot_fsolver_broyden);
@@ -592,9 +597,9 @@ namespace SBody {
 	 * @brief Return `phi` in \f$[0, 2\pi)\f$.
 	 *
 	 * @param phi \f$\phi\f$
-	 * @return status
+	 * @return result
 	 */
-	int ModBy2Pi(double &phi);
+	double ModBy2Pi(double phi);
 
 	/**
 	 * @brief Similar to `ModBy2Pi`, but return `phi` in \f$[-\pi, \pi)\f$.
@@ -664,6 +669,8 @@ namespace SBody {
 	 */
 	double FluxDensity(double spectral_density, double magnification);
 
+	int PolishQuadraticRoot(double a, double b, double roots[], int root_num);
+	int PolishCubicRoot(double a, double b, double c, double roots[], int root_num);
 	int PolishQuarticRoot(double a, double b, double c, double d, double roots[], int root_num);
 
 	int PolySolveQuarticWithZero(double a, double b, double c, double offset, double roots[]);

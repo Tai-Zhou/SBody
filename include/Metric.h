@@ -273,13 +273,15 @@ namespace SBody {
 	};
 	class Kerr : public Schwarzschild {
 	  protected:
-		static int MuFSolver(int alpha_1, double M_plus, double M_minus, double mu_plus, double mu_minus, double q2, double I_u, double int_mu_0, double int_mu_full_turn, double elli_int_t_mu_full_turn, double elli_int_phi_mu_full_turn, double k, double n, double a, double mu_obs, int &alpha_2, int &alpha_3, double &mu_f, double &elli_int_t_mu_f, double &elli_int_phi_mu_f);
-		static int DifferenceOfUMuPhi(const gsl_vector *alpha_beta, void *params, gsl_vector *delta_u_mu_phi);
+		static int DeltaUMuPhi(const gsl_vector *alpha_beta, void *params, gsl_vector *delta_u_mu_phi);
+		static int UIntegral(double a, double a2, double u_plus_1, double u_minus_1, double u_plus, double u_minus, double l, double l2, double q2, double r_obs, double u_obs, double u_obj, double &I_u_0, double &I_u_1, double &I_u_plus_0, double &I_u_plus_1, double &I_u_minus_0, double &I_u_minus_1, double &I_u_2_0, double &I_u_2_1, double &I_u_4_0, double &I_u_4_1);
+		static int Mu0Integral(double a, double q2, double M_plus, double M_minus, double delta_M, double delta_M_plus, int beta_sign, double mu_obs, double &mu_plus, double &mu_minus, double &A, double &k, double &n, int &alpha_1, double &I_mu_0, double &I_mu_full_turn, double &I_t_mu_0, double &I_t_mu_full_turn, double &I_phi_mu_0, double &I_phi_mu_full_turn);
+		static int MuFIntegral(double a, double a2, double l, double q2, double M_plus, double M_minus, double delta_M, double delta_M_plus, double mu_plus, double mu_minus, double I_u, double I_mu_0, double I_mu_full_turn, double I_t_mu_0, double I_t_mu_full_turn, double I_phi_mu_0, double I_phi_mu_full_turn, double A, double k, double n, int alpha_1, int &alpha_2, double &mu_f, double &t_mu, double &phi_mu);
 
 	  public:
 		const double a_, a2_, a4_;
-		const double u_plus_1, u_minus_1;
-		const double u_plus, u_minus, u_r;
+		const double sqrt_delta_a2_;
+		const double u_plus_1, u_plus, u_minus_1, u_minus, u_r;
 		Kerr(double spin);
 		std::string Name() override;
 		int MetricTensor(const double position[], gsl_matrix *metric) override;
@@ -288,6 +290,7 @@ namespace SBody {
 		int LagrangianToHamiltonian(double y[]) override;
 		int HamiltonianToLagrangian(double y[]) override;
 		int FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_object, const double theta_object, const double phi_object, double &alpha, double &beta, double photon[]) override;
+		int CalcThetaPhi(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, double alpha, double beta, const std::vector<double> &u, double theta_0[], double theta_1[], double phi_0[], double phi_1[]);
 		double Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) override;
 		double AngularMomentum(const double y[], TimeSystem time, DynamicalSystem dynamics) override;
 		double CarterConstant(const double y[], const double mu2, TimeSystem time, DynamicalSystem dynamics) override;
@@ -301,14 +304,14 @@ namespace SBody {
 		const double r, r2;
 		const double u_obs, u_obj;
 		const double mu_obs, mu_obj;
-		const double theta_obs, theta_obj;
-		const double sin_theta_obs;
+		const double theta_obs;
+		const double sin_theta_obs, sin_theta_obj;
 		const double phi_obj;
 		double E, L, Q;
 		double t;
 		double tau;
 		int u_dir, mu_dir;
-		KerrFastTraceParameters(Kerr *kerr, double r, double r2, double u_obs, double u_obj, double mu_obs, double mu_obj, double theta_obs, double theta_obj, double sin_theta_obs, double phi_obj);
+		KerrFastTraceParameters(Kerr *kerr, double r, double r2, double u_obs, double u_obj, double mu_obs, double mu_obj, double theta_obs, double sin_theta_obs, double sin_theta_obj, double phi_obj);
 	};
 
 	class KerrNewman : public Kerr {

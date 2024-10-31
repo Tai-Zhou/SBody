@@ -1,39 +1,3 @@
-if(WITH_CFITSIO)
-    find_library(CFITSIO cfitsio)
-
-    if(NOT CFITSIO STREQUAL "CFITSIO-NOTFOUND")
-        add_compile_definitions(WITH_CFITSIO)
-        list(APPEND OPTIONAL_LIBS ${CFITSIO})
-    else()
-        set(WITH_CFITSIO OFF)
-        message(NOTICE "cfitsio not found")
-    endif()
-endif()
-
-if(WITH_OPENMP)
-    find_package(OpenMP)
-
-    if(OpenMP_FOUND)
-        add_compile_definitions(WITH_OPENMP)
-        list(APPEND OPTIONAL_LIBS OpenMP::OpenMP_CXX)
-    else()
-        set(WITH_OPENMP OFF)
-        message(NOTICE "OpenMP not found")
-    endif()
-endif()
-
-if(RECORD_TRACE)
-    add_compile_definitions(RECORD_TRACE)
-endif()
-
-if(VIEW_TAU)
-    add_compile_definitions(VIEW_TAU)
-endif()
-
-if(VIEW_HAMILTONIAN)
-    add_compile_definitions(VIEW_HAMILTONIAN)
-endif()
-
 add_library(SBodyLibStatic STATIC IO.cpp Metric.cpp Object.cpp Unit.cpp Utility.cpp View.cpp)
 set_target_properties(SBodyLibStatic PROPERTIES OUTPUT_NAME "SBody")
 target_link_libraries(SBodyLibStatic GSL::gsl fmt::fmt ${OPTIONAL_LIBS})
@@ -45,6 +9,7 @@ if(SBODY_LIB_SHARED)
 endif()
 
 if(WITH_PYTHON)
+    find_package(Python3 COMPONENTS Interpreter Development)
     find_package(pybind11 CONFIG)
 
     if(pybind11_FOUND)
