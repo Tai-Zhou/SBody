@@ -83,7 +83,7 @@ namespace SBody {
 		return NormalizeNullGeodesic(photon, 1.);
 	}
 	int AngularMomentumCarterConstantToAlphaBeta(double l, double q2, double cos_theta, double sin_theta, double &alpha, double &abs_beta) {
-		if (sin_theta = 0.)
+		if (sin_theta == 0.)
 			return GSL_FAILURE;
 		alpha = -l / sin_theta;
 		const double beta2 = q2 - gsl_pow_2(cos_theta * alpha);
