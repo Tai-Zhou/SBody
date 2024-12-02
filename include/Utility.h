@@ -111,7 +111,7 @@ namespace SBody {
 	constexpr double ANGLE_INTERVAL = M_2PI / SAMPLE_NUMBER;
 
 	/// Area of the regular polygon with SAMPLE_NUMBER edges.
-	constexpr double EPSILON_POLYGON_AREA = std::sin(ANGLE_INTERVAL) / ANGLE_INTERVAL * EPSILON_CIRCLE_AREA;
+	constexpr double EPSILON_POLYGON_AREA = 0.06279051952931337 / ANGLE_INTERVAL * EPSILON_CIRCLE_AREA;
 
 	enum Axis { X,
 				Y,
