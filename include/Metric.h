@@ -123,7 +123,7 @@ namespace SBody {
 
 		int InitializePhoton(double photon[], double alpha, double beta, double r, double r2, double theta, double sin_theta);
 
-		int AngularMomentumCarterConstantToAlphaBeta(double l, double q2, double &alpha, double &abs_beta);
+		int AngularMomentumCarterConstantToAlphaBeta(double l, double q2, double cos_theta, double sin_theta, double &alpha, double &abs_beta);
 
 		/**
 		 * @brief Trace the photon from the observer to the target, using elliptic integrals.
@@ -142,6 +142,7 @@ namespace SBody {
 		 */
 		virtual int FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_object, const double theta_object, const double phi_object, double &alpha, double &beta, double photon[]) = 0;
 
+		virtual int FastShadow(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double alpha, const double beta, const double r_min);
 		/**
 		 * @brief Calculate the energy of the object.
 		 *
@@ -245,6 +246,7 @@ namespace SBody {
 		int LagrangianToHamiltonian(double y[]) override;
 		int HamiltonianToLagrangian(double y[]) override;
 		int FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_object, const double theta_object, const double phi_object, double &alpha, double &beta, double photon[]) override;
+		int FastShadow(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double alpha, const double beta, const double r_min) override;
 		double Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) override;
 		double AngularMomentum(const double y[], TimeSystem time, DynamicalSystem dynamics) override;
 		double CarterConstant(const double y[], const double mu2, TimeSystem time, DynamicalSystem dynamics) override;
@@ -291,6 +293,7 @@ namespace SBody {
 		int HamiltonianToLagrangian(double y[]) override;
 		int FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_object, const double theta_object, const double phi_object, double &alpha, double &beta, double photon[]) override;
 		int CalcThetaPhi(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, double alpha, double beta, const std::vector<double> &u, double theta_0[], double theta_1[], double phi_0[], double phi_1[]);
+		int FastShadow(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double alpha, const double beta, const double r_min) override;
 		double Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) override;
 		double AngularMomentum(const double y[], TimeSystem time, DynamicalSystem dynamics) override;
 		double CarterConstant(const double y[], const double mu2, TimeSystem time, DynamicalSystem dynamics) override;

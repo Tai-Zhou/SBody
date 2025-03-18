@@ -82,7 +82,7 @@ namespace SBody {
 		}
 		return NormalizeNullGeodesic(photon, 1.);
 	}
-	int AngularMomentumCarterConstantToAlphaBeta(double l, double q2, double cos_theta, double sin_theta, double &alpha, double &abs_beta) {
+	int Metric::AngularMomentumCarterConstantToAlphaBeta(double l, double q2, double cos_theta, double sin_theta, double &alpha, double &abs_beta) {
 		if (sin_theta == 0.)
 			return GSL_FAILURE;
 		alpha = -l / sin_theta;
@@ -91,6 +91,9 @@ namespace SBody {
 			return GSL_EDOM;
 		abs_beta = sqrt(beta2);
 		return GSL_SUCCESS;
+	}
+	int Metric::FastShadow(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double alpha, const double beta, const double r_min) {
+		return GSL_FAILURE;
 	}
 	double Metric::Redshift(const double y[], const double photon[], TimeSystem object_time, TimeSystem photon_time) {
 		const double u[4] = {1., y[5], y[6], y[7]}, v[4] = {1., photon[5], photon[6], photon[7]};
@@ -272,22 +275,25 @@ namespace SBody {
 			return GSL_SUCCESS;
 		}
 		double impact_parameter_upper_limit = r_object / sqrt(g11_1), turning_phi;
-		if (double x0, x2; u1 * 3. < 1. && gsl_poly_solve_quadratic(2., -g11_1, -g11_1 * u1, &x0, &x2) == 3) // remove (x-u1) as x1 = u1
+		if (double x0, x2; u1 * 3. < 1. && gsl_poly_solve_quadratic(2., -g11_1, -g11_1 * u1, &x0, &x2) == 2) // remove (x-u1) as x1 = u1
 			turning_phi = M_SQRT1_2 * EllipticIntegral(0, u0, u1, 0., 0., u1, -1., -x0, 1., x2, -1.);
-		else {
+		else { // there is no turning point on the trajectory
 			impact_parameter_upper_limit = M_SQRT27 - GSL_SQRT_DBL_EPSILON;
 			turning_phi = M_PI; // make delta_phi <= turning_phi
 		}
 		double integrate_parameters[7] = {u0, u1, delta_phi, turning_phi};
 		gsl_function impact_function{
-			[](double x, void *params) -> double {
+			[](double l, void *params) -> double {
 				double *p = static_cast<double *>(params);
-				if (x == 0.)
+				if (l == 0.)
 					return -p[2];
-				double &x0 = p[4], &x1 = p[5], &x2 = p[6];
-				if (gsl_poly_solve_cubic(-0.5, 0., 0.5 / gsl_pow_2(x), &x0, &x1, &x2) == 3) {
+				double &x0 = p[4], &x1 = p[5], &x2 = p[6], l_2 = 0.5 / gsl_pow_2(l);
+				if (gsl_poly_solve_cubic(-0.5, 0., l_2, &x0, &x1, &x2) == 3) {
+					PolishCubicRoot(-0.5, 0., l_2, p + 4, 3);
 					if (x1 < p[1]) // x1 < u1 < x1 + EPSILON
-						return M_SQRT1_2 * EllipticIntegral(0, p[0], p[1], 0., 1., p[1], -1., -x0, 1., x2, -1.) - p[2];
+						return M_SQRT1_2 *
+								   EllipticIntegral(0, p[0], p[1], 0., 1., p[1], -1., -x0, 1., x2, -1.) -
+							   p[2];
 					else if (p[2] > p[3]) // u1 -> turning point -> u1 -> u0
 						return M_SQRT2 * EllipticIntegral(0., p[1], x1, 0., 1., x1, -1., -x0, 1., x2, -1.) + M_SQRT1_2 * EllipticIntegral(0, p[0], p[1], 0., 1., x1, -1., -x0, 1., x2, -1.) - p[2];
 					else // u1 -> u0
@@ -295,14 +301,16 @@ namespace SBody {
 				}
 				// impact_parameter < sqrt(27)
 				x1 = GSL_NAN;
-				return M_SQRT1_2 * EllipticIntegral2Complex(0, p[0], p[1], 0., 1., -0.5 / (gsl_pow_2(x) * x0), x0 - 0.5, 1., -x0, 1.) - p[2];
+				return M_SQRT1_2 * EllipticIntegral2Complex(0, p[0], p[1], 0., 1., -l_2 / x0, x0 - 0.5, 1., -x0, 1.) - p[2];
 			},
 			const_cast<double *>(integrate_parameters)};
 		FunctionSolver impact_solver;
 		if (int status = impact_solver.Set(&impact_function, delta_phi > turning_phi ? M_SQRT27 + GSL_SQRT_DBL_EPSILON : 0., impact_parameter_upper_limit); status != GSL_SUCCESS)
 			return status;
-		if (int status = impact_solver.Solve(); status != GSL_SUCCESS)
+		if (int status = impact_solver.Solve(); status != GSL_SUCCESS) {
+			PrintlnWarning("Schwarzschild FastTrace() failed with status = {}", status);
 			return status;
+		}
 		alpha = impact_solver.Root() / sin_observer_object * sin_theta_object * sin_phi_object;
 		beta = impact_solver.Root() / sin_observer_object * (cos_theta_object * sin_theta_observer - sin_theta_object * cos_phi_object * cos_theta_observer);
 		double &x0 = integrate_parameters[4], &x1 = integrate_parameters[5], &x2 = integrate_parameters[6];
@@ -344,6 +352,11 @@ namespace SBody {
 			photon[7] = -g11_1 * alpha * sin_theta_observer * gsl_pow_2(u1 / sin_theta_object);
 		}
 		return GSL_SUCCESS;
+	}
+	int Schwarzschild::FastShadow(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double alpha, const double beta, const double r_min) {
+		if (gsl_pow_2(alpha) + gsl_pow_2(beta) <= 27.)
+			return 0;
+		return 1;
 	}
 	double Schwarzschild::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
 		if (dynamics == LAGRANGIAN) {
@@ -610,14 +623,35 @@ namespace SBody {
 		gsl_vector_set(alpha_beta_initial_value, 0, effective_radius * alpha_coefficient);
 		gsl_vector_set(alpha_beta_initial_value, 1, effective_radius * beta_coefficient);
 		gsl_multiroot_function alpha_beta_function{DeltaUMuPhi, 2, &fast_trace_parameters};
-		MultiFunctionSolver alpha_beta_solver(&alpha_beta_function, alpha_beta_initial_value, gsl_multiroot_fsolver_sbody_dnewton);
-		alpha_beta_solver.SetIterationCoefficient(min(1., max(100. * abs(sin_phi_object), 0.2)));
-		if (int status = alpha_beta_solver.Solve(GSL_SQRT_DBL_EPSILON, GSL_SQRT_DBL_EPSILON); status != GSL_SUCCESS) {
-			PrintlnWarning("Kerr FastTrace() failed with status = {}", status);
+		MultiFunctionSolver alpha_beta_rotation_solver(2, gsl_multiroot_fsolver_sbody_dnewton_rotation);
+		int status;
+		if (status = alpha_beta_rotation_solver.Set(&alpha_beta_function, alpha_beta_initial_value, theta_observer, sin_theta_observer, cos_theta_observer, r_object, sin_theta_object, cos_theta_object, phi_object, sin_phi_object, cos_phi_object, false); status != GSL_SUCCESS)
 			return status;
+		if (status = alpha_beta_rotation_solver.Solve(GSL_SQRT_DBL_EPSILON); status == GSL_SUCCESS) {
+			alpha = gsl_vector_get(alpha_beta_rotation_solver.Root(), 0);
+			beta = gsl_vector_get(alpha_beta_rotation_solver.Root(), 1);
+		} else {
+			// PrintlnWarning("Kerr FastTrace() ROTATION failed with status = {}", status);
+			MultiFunctionSolver alpha_beta_translation_solver(2, gsl_multiroot_fsolver_sbody_dnewton_translation);
+			if (status = alpha_beta_translation_solver.Set(&alpha_beta_function, alpha_beta_rotation_solver.Root(), theta_observer, sin_theta_observer, cos_theta_observer, r_object, sin_theta_object, cos_theta_object, phi_object, sin_phi_object, cos_phi_object, false); status != GSL_SUCCESS)
+				return status;
+			if (status = alpha_beta_translation_solver.Solve(GSL_SQRT_DBL_EPSILON); status == GSL_SUCCESS) {
+				alpha = gsl_vector_get(alpha_beta_translation_solver.Root(), 0);
+				beta = gsl_vector_get(alpha_beta_translation_solver.Root(), 1);
+			} else {
+				MultiFunctionSolver alpha_beta_direction_solver(2, gsl_multiroot_fsolver_sbody_direction);
+				if (status = alpha_beta_direction_solver.Set(&alpha_beta_function, alpha_beta_translation_solver.Root()); status != GSL_SUCCESS) {
+					PrintlnWarning("Kerr FastTrace() set DIRECTION failed with status = {}", status);
+					return status;
+				}
+				if (status = alpha_beta_direction_solver.Solve(GSL_SQRT_DBL_EPSILON, 2048); status != GSL_SUCCESS) {
+					PrintlnWarning("Kerr FastTrace() DIRECTION failed with status = {}", status);
+					return status;
+				}
+				alpha = gsl_vector_get(alpha_beta_direction_solver.Root(), 0);
+				beta = gsl_vector_get(alpha_beta_direction_solver.Root(), 1);
+			}
 		}
-		alpha = gsl_vector_get(alpha_beta_solver.Root(), 0);
-		beta = gsl_vector_get(alpha_beta_solver.Root(), 1);
 		photon[0] = fast_trace_parameters.tau; // not important
 		photon[1] = r_object;
 		photon[2] = theta_object;
@@ -632,8 +666,9 @@ namespace SBody {
 	int Kerr::DeltaUMuPhi(const gsl_vector *alpha_beta, void *params, gsl_vector *delta_u_mu_phi) {
 		auto *const param = static_cast<KerrFastTraceParameters *>(params);
 		// The photon in the observer's frame has the tetrad velocity: [1, r / R, beta / R, -alpha / R], where R = sqrt(r^2 + alpha^2 + beta^2).
-		double alpha = gsl_vector_get(alpha_beta, 0);
-		double beta = gsl_vector_get(alpha_beta, 1);
+		double alpha = gsl_vector_get(alpha_beta, 0), beta = gsl_vector_get(alpha_beta, 1);
+		if (!isfinite(alpha) || !isfinite(beta))
+			return GSL_ERUNAWAY;
 		double photon[9];
 		if (int status = param->kerr->InitializePhoton(photon, alpha, beta, param->r, param->r2, param->theta_obs, param->sin_theta_obs); status != GSL_SUCCESS)
 			return status;
@@ -705,7 +740,7 @@ namespace SBody {
 		// U=1+[a^2−q^2−l^2]u^2+2[(a−l)^2+q^2]u^3−a^2q^2u^4
 		const double c = a2 - l2 - q2, d = 2. * (gsl_pow_2(a - l) + q2), e = -a2 * q2;
 		double u_roots[4];
-		if (abs(q2) < absolute_accuracy) {
+		if (abs(e) < absolute_accuracy) {
 			// U=1+[a^2−l^2]u^2+2(a−l)^2u^3
 			// This means the observer and the object are on the equatorial plane.
 			if (a == l) { // U=1.
@@ -717,8 +752,8 @@ namespace SBody {
 				return GSL_SUCCESS;
 			}
 			const double d_1 = 1. / d, sqrt_d_1 = M_SQRT1_2 / abs(a - l);
-			if (int root_num_U = gsl_poly_solve_cubic((a2 - l2) * d_1, 0., d_1, u_roots, u_roots + 1, u_roots + 2); root_num_U == 1) {
-				const double f = 2. * u_roots[0] / gsl_pow_2(a - l), g = f / u_roots[0];
+			if (int root_num_U = gsl_poly_solve_cubic(c * d_1, 0., d_1, u_roots, u_roots + 1, u_roots + 2); root_num_U == 1) {
+				const double f = -1. / (u_roots[0] * d), g = f / u_roots[0];
 				I_u_0 = sqrt_d_1 * EllipticIntegral2Complex(0, u_obs, u_obj, 1., 0., f, g, 1., -u_roots[0], 1.);
 				I_u_plus_0 = sqrt_d_1 * -EllipticIntegral2Complex(-2, u_obs, u_obj, 1., -u_plus_1, f, g, 1., -u_roots[0], 1.);
 				I_u_minus_0 = sqrt_d_1 * -EllipticIntegral2Complex(-2, u_obs, u_obj, 1., -u_minus_1, f, g, 1., -u_roots[0], 1.);
@@ -730,7 +765,7 @@ namespace SBody {
 				I_u_0 = u_roots[1] / u_obj;
 				return GSL_EDOM;
 			}
-			if (u_roots[1] >= 1.) { // photon falls into the BH
+			if (u_roots[1] >= u_plus) { // photon falls into the BH
 				I_u_0 = sqrt_d_1 * EllipticIntegral(0, u_obs, u_obj, 1., 0., u_roots[1], -1., -u_roots[0], 1., u_roots[2], -1.);
 				I_u_plus_0 = sqrt_d_1 * -EllipticIntegral(-2, u_obs, u_obj, 1., -u_plus_1, u_roots[1], -1., -u_roots[0], 1., u_roots[2], -1.);
 				I_u_minus_0 = sqrt_d_1 * -EllipticIntegral(-2, u_obs, u_obj, 1., -u_minus_1, u_roots[1], -1., -u_roots[0], 1., u_roots[2], -1.);
@@ -792,7 +827,7 @@ namespace SBody {
 				I_u_0 = u_roots[1] / u_obj;
 				return GSL_EDOM;
 			}
-			if (u_roots[1] >= 1.) { // photon falls into the BH
+			if (u_roots[1] >= u_plus) { // photon falls into the BH
 				I_u_0 = sqrt_e_1 * EllipticIntegral2Complex(0, u_obs, u_obj, 1., 0., f, g, 1., u_roots[1], -1., -u_roots[0], 1.);
 				I_u_plus_0 = sqrt_e_1 * -EllipticIntegral2Complex(-2, u_obs, u_obj, 1., -u_plus_1, f, g, 1., u_roots[1], -1., -u_roots[0], 1.);
 				I_u_minus_0 = sqrt_e_1 * -EllipticIntegral2Complex(-2, u_obs, u_obj, 1., -u_minus_1, f, g, 1., u_roots[1], -1., -u_roots[0], 1.);
@@ -1067,6 +1102,50 @@ namespace SBody {
 				return GSL_FAILURE;
 		}
 		return GSL_SUCCESS;
+	}
+	int Kerr::FastShadow(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double alpha, const double beta, const double r_min) {
+		double photon[9];
+		if (int status = InitializePhoton(photon, alpha, beta, r_observer, gsl_pow_2(r_observer), theta_observer, sin_theta_observer); status != GSL_SUCCESS)
+			return status;
+		const double E = Energy(photon, T, LAGRANGIAN), E_1 = 1. / E;
+		const double L = AngularMomentum(photon, T, LAGRANGIAN), l = L * E_1, l2 = gsl_pow_2(l);
+		const double Q = CarterConstant(photon, 0., T, LAGRANGIAN), q2 = Q * gsl_pow_2(E_1);
+		const double c = a2_ - l2 - q2, d = 2. * (gsl_pow_2(a_ - l) + q2), e = -a2_ * q2;
+		double u_roots[4];
+		if (abs(e) < absolute_accuracy) {
+			// U=1+[a^2−l^2]u^2+2(a−l)^2u^3
+			// This means the observer and the object are on the equatorial plane.
+			if (a_ == l) // U=1.
+				return 0;
+			const double d_1 = 1. / d, sqrt_d_1 = M_SQRT1_2 / abs(a_ - l);
+			if (int root_num_U = gsl_poly_solve_cubic(c * d_1, 0., d_1, u_roots, u_roots + 1, u_roots + 2); root_num_U == 1) {
+				return 0;
+			}
+			if (u_roots[1] >= 1.) { // photon falls into the BH
+				return 0;
+			}
+			return 1;
+		}
+		const double e_1 = 1. / e, sqrt_e = sqrt(abs(e)), sqrt_e_1 = 1. / sqrt_e;
+		const double c_sqrt_e = c * sqrt_e_1, d_e = d * e_1;
+		if (int root_num_U = PolySolveQuartic(d_e, c * e_1, 0., e_1, u_roots); root_num_U == 0) { // q2 < 0., e > 0.
+			return 0;
+		} else if (root_num_U == 2) {
+			const double f = e_1 / (u_roots[0] * u_roots[1]), g = (1. / u_roots[0] + 1. / u_roots[1]) * f; // 1. / (−a^2*q^2*u_1*u_4)
+			if (q2 < 0.) {
+				// root[0] < root[1] < 0.
+				return 0;
+			}
+			if (u_roots[1] >= 1.) { // photon falls into the BH
+				return 0;
+			}
+			return 1;
+		}
+		// root_num_U == 4
+		if (u_roots[1] >= 1.) { // photon falls into the BH
+			return 0;
+		}
+		return 1;
 	}
 	double Kerr::Energy(const double y[], TimeSystem time, DynamicalSystem dynamics) {
 		if (dynamics == LAGRANGIAN) {

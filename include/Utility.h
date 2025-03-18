@@ -78,6 +78,9 @@ namespace SBody {
 	/// Global relative accuracy.
 	extern double relative_accuracy;
 
+	/// \f$\pi/3\f$.
+	constexpr double M_PI_3 = 1.047197551196597746154214461093167628;
+
 	/// \f$3\pi/4\f$.
 	constexpr double M_3PI_4 = 2.35619449019234492884698253745962716;
 
@@ -244,76 +247,175 @@ namespace SBody {
 	};
 
 	struct HybridState {
-		double iteration_coefficient;
-		size_t iter;
-		size_t ncfail;
-		size_t ncsuc;
-		size_t nslow1;
-		size_t nslow2;
-		double fnorm;
-		double delta;
-		gsl_matrix *J;
-		gsl_matrix *q;
-		gsl_matrix *r;
-		gsl_vector *tau;
-		gsl_vector *diag;
-		gsl_vector *qtf;
-		gsl_vector *newton;
-		gsl_vector *gradient;
 		gsl_vector *x_trial;
 		gsl_vector *f_trial;
-		gsl_vector *df;
-		gsl_vector *qtdf;
-		gsl_vector *rdx;
-		gsl_vector *w;
-		gsl_vector *v;
-	};
-
-	struct DnewtonState {
-		double iteration_coefficient;
-		gsl_vector *dx;
-		gsl_matrix *J;
+		gsl_matrix *jacobian;
 		gsl_matrix *lu;
 		gsl_permutation *permutation;
+		gsl_vector *newton;
+		gsl_vector *gradient;
+		double trust_radius;
+		double epsilon_coefficient;
+		bool directional;
+	};
+
+	struct HybridAdditionState {
+		gsl_vector *x_trial;
+		gsl_vector *x_trial2;
+		gsl_vector *f_trial;
+		gsl_vector *f_trial2;
+		gsl_matrix *jacobian;
+		gsl_matrix *lu;
+		gsl_permutation *permutation;
+		gsl_vector *newton;
+		gsl_vector *gradient;
+		double trust_radius;
+		double epsilon_coefficient;
+		double gradient_coefficient;
+		bool directional;
+	};
+
+	struct DNewtonState {
+		gsl_vector *x_trial;
+		gsl_vector *f_trial;
+		gsl_matrix *jacobian;
+		gsl_matrix *lu;
+		gsl_permutation *permutation;
+		double trust_radius;
+		double epsilon_coefficient;
+		bool directional;
+	};
+	struct DNewtonRotationTranslationState {
+		gsl_vector *x_trial;
+		gsl_vector *dx_translation;
+		gsl_vector *f_trial;
+		gsl_matrix *jacobian;
+		gsl_matrix *lu;
+		gsl_permutation *permutation;
+		double theta_obs;
+		double sin_theta_obs;
+		double cos_theta_obs;
+		double r_obj;
+		double sin_theta_obj;
+		double cos_theta_obj;
+		double phi_obj;
+		double projected_x;
+		double projected_y;
+		double iota_obj;
+		double trust_radius;
+		double epsilon_coefficient;
+		bool directional;
+		bool trace_to_plane;
+	};
+	struct D2NewtonState {
+		gsl_vector *x_trial;
+		gsl_vector *f_trial;
+		gsl_vector *jacobian;
+		gsl_matrix *hessian;
+		gsl_matrix *lu;
+		gsl_permutation *permutation;
+		double trust_radius;
+	};
+	struct ConjugateGradientState {
+		double iteration_coefficient;
+		gsl_vector *x_trial;
+		gsl_vector *f_trial;
+		gsl_vector *last_dx;
+		double gradient_norm;
+		gsl_matrix *jacobian;
+		gsl_matrix *lu;
+		gsl_permutation *permutation;
+		double trust_radius;
+	};
+	struct TriangleState {
+		gsl_vector *x_trial;
+		gsl_vector *f_trial;
+		gsl_vector *x_a;
+		gsl_vector *x_b;
+		gsl_vector *f_a;
+		gsl_vector *f_b;
+	};
+	struct DirectionState {
+		int directional_num;
+		double trust_radius;
+		double delta_angle;
+		double central_angle;
+		gsl_vector *x_trial, *x_rec;
+		gsl_vector *f_trial, *f_rec;
 	};
 
 	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_hybrid;
-	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_hybrids;
+	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_hybrid_addition;
 	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_dnewton;
+	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_dnewton_rotation;
+	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_dnewton_translation;
+	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_d2newton;
+	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_gradient;
+	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_conjugate;
+	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_triangle;
+	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_direction;
 
 	class MultiFunctionSolver : public MultiSolver {
 	  private:
 		gsl_multiroot_fsolver *solver_;
+		static int ScaleX(gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f);
+		static int OneSidedJacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *f, double epsrel, gsl_matrix *jacobian);
+		static int TwoSidedJacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *f, double epsrel, gsl_matrix *jacobian);
+		static int OneSidedDirectionalJacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *direction, const gsl_vector *f, double epsrel, gsl_matrix *jacobian);
+		static int TwoSidedDirectionalJacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *direction, const gsl_vector *f, double epsrel, gsl_matrix *jacobian);
+		static int Hessian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *f, double epsrel, gsl_vector *jacobian, gsl_matrix *hessian);
 		static void ComputeDiag(const gsl_matrix *J, gsl_vector *diag);
 		static void UpdateDiag(const gsl_matrix *J, gsl_vector *diag);
 		static double ScaledEnorm(const gsl_vector *d, const gsl_vector *f);
 		static int Dogleg(const gsl_matrix *r, const gsl_vector *qtf, const gsl_vector *diag, double delta, gsl_vector *newton, gsl_vector *gradient, gsl_vector *p);
-		static int Jacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *f, double epsrel, gsl_matrix *jacobian);
+		static int Dogleg(double trust_radius, double newton_norm, double newton_norm2, double gradient_norm, double gradient_norm2, double newton_gradient_dot, const gsl_vector *newton, const gsl_vector *gradient, gsl_vector *dx);
 
 	  public:
-		MultiFunctionSolver(size_t n, const gsl_multiroot_fsolver_type *type = gsl_multiroot_fsolver_broyden);
-		MultiFunctionSolver(gsl_multiroot_function *function, const gsl_vector *x, const gsl_multiroot_fsolver_type *type = gsl_multiroot_fsolver_broyden);
+		MultiFunctionSolver(size_t n, const gsl_multiroot_fsolver_type *type = gsl_multiroot_fsolver_dnewton);
 		~MultiFunctionSolver();
 		int Set(gsl_multiroot_function *function, const gsl_vector *x);
+		int Set(gsl_multiroot_function *function, const gsl_vector *x, double theta_obs, double sin_theta_obs, double cos_theta_obs, double r_obj, double sin_theta_obj, double cos_theta_obj, double phi_obj, double sin_phi_obj, double cos_phi_obj, bool trace_to_plane);
 		int Iterate() override;
 		int Solve(double epsabs, int max_iteration = 256) override;
 		int Solve(double epsabs, double epsrel, int max_iteration = 256) override;
 		gsl_vector *Root() override;
 		gsl_vector *Value() override;
 		gsl_vector *StepSize() override;
-		int SetIterationCoefficient(double coefficient);
 		static int HybridAlloc(void *vstate, size_t n);
 		static int HybridSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int HybridScaleSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int HybridSetCore(void *vstate, gsl_multiroot_function *func, gsl_vector *x, gsl_vector *f, gsl_vector *dx, bool scale);
 		static int HybridIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int HybridScaleIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int HybridIterateCore(void *vstate, gsl_multiroot_function *func, gsl_vector *x, gsl_vector *f, gsl_vector *dx, bool scale);
 		static void HybridFree(void *vstate);
-		static int DnewtonAlloc(void *vstate, size_t n);
-		static int DnewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int DnewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static void DnewtonFree(void *vstate);
+		static int HybridAdditionAlloc(void *vstate, size_t n);
+		static int HybridAdditionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int HybridAdditionIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static void HybridAdditionFree(void *vstate);
+		static int DNewtonAlloc(void *vstate, size_t n);
+		static int DNewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int DNewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static void DNewtonFree(void *vstate);
+		static int DNewtonRotationTranslationAlloc(void *vstate, size_t n);
+		static int DNewtonRotationTranslationSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int DNewtonRotationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int DNewtonTranslationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static void DNewtonRotationTranslationFree(void *vstate);
+		static int D2NewtonAlloc(void *vstate, size_t n);
+		static int D2NewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int D2NewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static void D2NewtonFree(void *vstate);
+		static int GradientIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int ConjugateGradientAlloc(void *vstate, size_t n);
+		static int ConjugateGradientSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int ConjugateGradientIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static void ConjugateGradientFree(void *vstate);
+		static int TriangleAlloc(void *vstate, size_t n);
+		static int TriangleSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int TriangleRotationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int TriangleLongestIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static void TriangleFree(void *vstate);
+		static int DirectionAlloc(void *vstate, size_t n);
+		static int DirectionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static int DirectionIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		static void DirectionFree(void *vstate);
 	};
 
 	class MultiDerivativeSolver : public MultiSolver {
@@ -448,6 +550,8 @@ namespace SBody {
 		gsl_permutation *PermutationCalloc(size_t n);
 	};
 
+	int CoordinateOrthogonalization(const gsl_vector *x, gsl_matrix *coordinate);
+
 	/**
 	 * @brief Square root of `x`. Return `0` if `x` is negative.
 	 *
@@ -520,8 +624,51 @@ namespace SBody {
 	 */
 	double DotCross(const double x[], const double y[], const double z[]);
 
+	/**
+	 * @brief Calculate the area of a triangle
+	 *
+	 * @param a side length
+	 * @param b side length
+	 * @param c side length
+	 * @return result
+	 */
 	double TriangleArea(double a, double b, double c);
+
+	/**
+	 * @brief Calculate the area of a triangle
+	 *
+	 * @param a side length
+	 * @param b side length
+	 * @param c side length
+	 * @return result
+	 */
 	double TriangleArea(const double x[], const double y[], const double z[]);
+
+	/**
+	 * @brief Calculate whether point \f$(x, y)\f$ locates inside the triangle \f$\Delta abc\f$.
+	 *
+	 * @param xa x coordiante of the vertex a
+	 * @param ya y coordiante of the vertex a
+	 * @param xb x coordiante of the vertex b
+	 * @param yb y coordiante of the vertex b
+	 * @param xc x coordiante of the vertex c
+	 * @param yc y coordiante of the vertex c
+	 * @param x x coordiante of the point
+	 * @param y y coordiante of the point
+	 * @return result
+	 */
+	bool PointInTriangle(double xa, double ya, double xb, double yb, double xc, double yc, double x = 0.0, double y = 0.0);
+
+	/**
+	 * @brief Calculate whether point \f$p\f$ locates inside the triangle \f$\Delta abc\f$.
+	 *
+	 * @param a vertex a
+	 * @param b vertex b
+	 * @param c vertex c
+	 * @param p point p
+	 * @return result
+	 */
+	bool PointInTriangle(const gsl_vector *a, const gsl_vector *b, const gsl_vector *c, const gsl_vector *p = nullptr);
 
 	/**
 	 * @brief Rotate vector `x` around the `axis` by `angle`.

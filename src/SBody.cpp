@@ -82,9 +82,10 @@ int Benchmark() {
 	Unit::Initialize(4.261e6);
 	double t = 0., t1 = 0., t_step = 3600. * Unit::s / T_STEP_NUMBER;
 	shared_ptr<Metric> main_metric = make_shared<Kerr>(0.3);
-	unique_ptr<View> view_ptr = make_unique<View>(make_unique<Kerr>(0.3), 8180. * Unit::pc, M_PI_4, 0.);
+	// shared_ptr<Metric> main_metric = make_shared<Schwarzschild>();
+	unique_ptr<View> view_ptr = make_unique<View>(main_metric, 8180. * Unit::pc, M_PI_2 - 0.01, 0.);
 	Particle star_0(main_metric, T, LAGRANGIAN, false);
-	star_0.InitializeKeplerian(10., 0.1, M_PI * 30. / 180., 0., 0., 0., M_PI_4);
+	star_0.InitializeKeplerian(4., 0.1, 0.2, 0., 0., 0., M_PI_4);
 	double temp[17];
 	int status = 0;
 	double h = 1., stepPercent = 100. / T_STEP_NUMBER;
@@ -113,6 +114,8 @@ int Benchmark() {
 }
 
 int main(int argc, char *argv[]) {
+	gsl_set_error_handler_off();
+	return Benchmark();
 	// Application Entry
 	auto TStart = chrono::steady_clock::now();
 	signal(SIGINT, InterruptHandler);

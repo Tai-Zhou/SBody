@@ -21,6 +21,7 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_poly.h>
 #include <gsl/gsl_sf_ellint.h>
+#include <gsl/gsl_vector.h>
 
 #include "IO.h"
 
@@ -135,36 +136,57 @@ namespace SBody {
 	MultiFunctionSolver::MultiFunctionSolver(size_t n, const gsl_multiroot_fsolver_type *type) {
 		solver_ = gsl_multiroot_fsolver_alloc(type, n);
 	}
-	MultiFunctionSolver::MultiFunctionSolver(gsl_multiroot_function *function, const gsl_vector *x, const gsl_multiroot_fsolver_type *type) {
-		solver_ = gsl_multiroot_fsolver_alloc(type, function->n);
-		gsl_multiroot_fsolver_set(solver_, function, x);
-	}
 	MultiFunctionSolver::~MultiFunctionSolver() {
 		gsl_multiroot_fsolver_free(solver_);
 	}
 	int MultiFunctionSolver::Set(gsl_multiroot_function *function, const gsl_vector *x) {
+		if (solver_->type == gsl_multiroot_fsolver_sbody_dnewton_rotation || solver_->type == gsl_multiroot_fsolver_sbody_dnewton_translation)
+			return GSL_EINVAL;
 		return gsl_multiroot_fsolver_set(solver_, function, x);
+	}
+	int MultiFunctionSolver::Set(gsl_multiroot_function *function, const gsl_vector *x, double theta_obs, double sin_theta_obs, double cos_theta_obs, double r_obj, double sin_theta_obj, double cos_theta_obj, double phi_obj, double sin_phi_obj, double cos_phi_obj, bool trace_to_plane) {
+		if (int status = gsl_multiroot_fsolver_set(solver_, function, x); status != GSL_SUCCESS)
+			return status;
+		if (solver_->type == gsl_multiroot_fsolver_sbody_dnewton_rotation || solver_->type == gsl_multiroot_fsolver_sbody_dnewton_translation) {
+			auto state = static_cast<DNewtonRotationTranslationState *>(solver_->state);
+			state->theta_obs = theta_obs;
+			state->sin_theta_obs = sin_theta_obs;
+			state->cos_theta_obs = cos_theta_obs;
+			state->r_obj = r_obj;
+			state->sin_theta_obj = sin_theta_obj;
+			state->cos_theta_obj = cos_theta_obj;
+			state->phi_obj = phi_obj;
+			state->projected_x = sin_theta_obj * sin_phi_obj;
+			state->projected_y = cos_theta_obj * sin_theta_obs - sin_theta_obj * cos_phi_obj * cos_theta_obs;
+			state->iota_obj = atan2(state->projected_y, state->projected_x);
+			state->trace_to_plane = trace_to_plane;
+			return GSL_SUCCESS;
+		}
+		return GSL_EINVAL;
 	}
 	int MultiFunctionSolver::Iterate() {
 		return gsl_multiroot_fsolver_iterate(solver_);
 	}
 	int MultiFunctionSolver::Solve(double epsabs, int max_iteration) {
-		for (; max_iteration > 0 && gsl_multiroot_test_residual(gsl_multiroot_fsolver_f(solver_), epsabs) != GSL_SUCCESS; --max_iteration)
+		for (; max_iteration > 0 && gsl_multiroot_test_residual(gsl_multiroot_fsolver_f(solver_), epsabs) != GSL_SUCCESS; --max_iteration) {
 			if (int status = gsl_multiroot_fsolver_iterate(solver_); status != GSL_SUCCESS)
 				return status;
+			if (any_of(solver_->x->data, solver_->x->data + solver_->x->size, [](double x) { return !isfinite(x); }))
+				return GSL_EFAILED;
+		}
 		if (max_iteration <= 0)
 			return GSL_EMAXITER;
 		return GSL_SUCCESS;
 	}
 	int MultiFunctionSolver::Solve(double epsabs, double epsrel, int max_iteration) {
-		for (; max_iteration > 0 && (gsl_multiroot_test_delta(gsl_multiroot_fsolver_dx(solver_), gsl_multiroot_fsolver_root(solver_), epsabs, epsrel) != GSL_SUCCESS || gsl_multiroot_test_residual(gsl_multiroot_fsolver_f(solver_), epsabs) != GSL_SUCCESS); --max_iteration)
+		for (; max_iteration > 0 && (gsl_multiroot_test_delta(gsl_multiroot_fsolver_dx(solver_), gsl_multiroot_fsolver_root(solver_), epsabs, epsrel) != GSL_SUCCESS || gsl_multiroot_test_residual(gsl_multiroot_fsolver_f(solver_), epsabs) != GSL_SUCCESS); --max_iteration) {
 			if (int status = gsl_multiroot_fsolver_iterate(solver_); status != GSL_SUCCESS)
 				return status;
-		if (max_iteration <= 0) {
-			// for (int status = gsl_multiroot_fsolver_iterate(solver_); status == GSL_SUCCESS;)
-			// 	status = gsl_multiroot_fsolver_iterate(solver_);
-			return GSL_EMAXITER;
+			if (any_of(solver_->x->data, solver_->x->data + solver_->x->size, [](double x) { return !isfinite(x); }))
+				return GSL_EFAILED;
 		}
+		if (max_iteration <= 0)
+			return GSL_EMAXITER;
 		return GSL_SUCCESS;
 	}
 	gsl_vector *MultiFunctionSolver::Root() {
@@ -176,16 +198,15 @@ namespace SBody {
 	gsl_vector *MultiFunctionSolver::StepSize() {
 		return gsl_multiroot_fsolver_dx(solver_);
 	}
-	int MultiFunctionSolver::SetIterationCoefficient(double coefficient) {
-		if (solver_->type == gsl_multiroot_fsolver_sbody_dnewton)
-			static_cast<DnewtonState *>(solver_->state)->iteration_coefficient = coefficient;
-		else if (solver_->type == gsl_multiroot_fsolver_sbody_hybrid || solver_->type == gsl_multiroot_fsolver_sbody_hybrids)
-			static_cast<HybridState *>(solver_->state)->iteration_coefficient = coefficient;
-		else
-			return GSL_FAILURE;
+	int MultiFunctionSolver::ScaleX(gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f) {
+		for (int status = GSL_MULTIROOT_FN_EVAL(function, x, f); status != GSL_SUCCESS; status = GSL_MULTIROOT_FN_EVAL(function, x, f)) {
+			if (status != GSL_EDOM)
+				return GSL_EBADFUNC;
+			gsl_vector_scale(x, gsl_vector_get(f, 0));
+		}
 		return GSL_SUCCESS;
 	}
-	int MultiFunctionSolver::Jacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *f, double epsrel, gsl_matrix *jacobian) {
+	int MultiFunctionSolver::OneSidedJacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *f, double epsrel, gsl_matrix *jacobian) {
 		const size_t n = x->size;
 		const size_t m = f->size;
 		const size_t n1 = jacobian->size1;
@@ -198,22 +219,281 @@ namespace SBody {
 		gsl_vector_memcpy(x1, x); /* copy x into x1 */
 		for (size_t j = 0; j < n; ++j) {
 			double x_j = gsl_vector_get(x, j);
-			double dx = abs(x_j) >= 1 ? -epsrel * x_j : -epsrel * GSL_SIGN(x_j);
+			double dx = abs(x_j) >= 1. ? -epsrel * x_j : -epsrel * GSL_SIGN(x_j);
 			gsl_vector_set(x1, j, x_j + dx);
 			gsl_vector_view col_j = gsl_matrix_column(jacobian, j);
-			if (int f_stat = GSL_MULTIROOT_FN_EVAL(F, x1, &col_j.vector); f_stat != GSL_SUCCESS) {
+			if (int status = GSL_MULTIROOT_FN_EVAL(F, x1, &col_j.vector); status != GSL_SUCCESS) {
 				gsl_vector_free(x1);
 				return GSL_EBADFUNC;
 			}
 			gsl_blas_daxpy(-1., f, &col_j.vector);
 			gsl_blas_dscal(1. / dx, &col_j.vector);
-			if (gsl_vector_isnull(&col_j.vector)) {
-				gsl_vector_free(x1);
-				return GSL_ESING;
+			gsl_vector_set(x1, j, x_j);
+		}
+		gsl_vector_free(x1);
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::TwoSidedJacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *f, double epsrel, gsl_matrix *jacobian) {
+		const size_t n = x->size;
+		const size_t m = f->size;
+		const size_t n1 = jacobian->size1;
+		const size_t n2 = jacobian->size2;
+		int status = GSL_SUCCESS;
+		if (m != n1 || n != n2)
+			GSL_ERROR("function and jacobian are not conformant", GSL_EBADLEN);
+		gsl_vector *x1 = gsl_vector_alloc(n);
+		if (x1 == nullptr)
+			GSL_ERROR("failed to allocate space for x1 workspace", GSL_ENOMEM);
+		gsl_vector *f_trial = gsl_vector_alloc(n);
+		if (f_trial == nullptr) {
+			gsl_vector_free(x1);
+			GSL_ERROR("failed to allocate space for f_trial workspace", GSL_ENOMEM);
+		}
+		gsl_vector_memcpy(x1, x); /* copy x into x1 */
+		for (size_t j = 0; j < n; ++j) {
+			double x_j = gsl_vector_get(x, j);
+			gsl_vector_view col_j = gsl_matrix_column(jacobian, j);
+			double dx = abs(x_j) >= 1. ? -epsrel * x_j : -epsrel * GSL_SIGN(x_j);
+			for (status = GSL_CONTINUE; status != GSL_SUCCESS; dx *= 0.5) {
+				if (abs(dx) < abs(x_j) * GSL_DBL_EPSILON) {
+					status = GSL_EBADFUNC;
+					break;
+				}
+				gsl_vector_set(x1, j, x_j + dx);
+				if (status = GSL_MULTIROOT_FN_EVAL(F, x1, &col_j.vector); status != GSL_SUCCESS)
+					if (status != GSL_EDOM) {
+						status = GSL_EBADFUNC;
+						break;
+					}
+			}
+			gsl_vector_set(x1, j, x_j - dx);
+			if (status = GSL_MULTIROOT_FN_EVAL(F, x1, f_trial); status != GSL_SUCCESS) {
+				status = GSL_SUCCESS;
+				gsl_blas_daxpy(-1., f, &col_j.vector);
+				gsl_blas_dscal(1. / dx, &col_j.vector);
+			} else {
+				gsl_blas_daxpy(-1., f_trial, &col_j.vector);
+				gsl_blas_dscal(0.5 / dx, &col_j.vector);
 			}
 			gsl_vector_set(x1, j, x_j);
 		}
 		gsl_vector_free(x1);
+		gsl_vector_free(f_trial);
+		return status;
+	}
+	int MultiFunctionSolver::OneSidedDirectionalJacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *direction, const gsl_vector *f, double epsrel, gsl_matrix *jacobian) {
+		const size_t n = x->size;
+		const size_t m = f->size;
+		const size_t n1 = jacobian->size1;
+		const size_t n2 = jacobian->size2;
+		int status = GSL_SUCCESS;
+		if (m != n1 || n != n2)
+			GSL_ERROR("function and jacobian are not conformant", GSL_EBADLEN);
+		gsl_vector *x1 = gsl_vector_alloc(n);
+		if (x1 == nullptr)
+			GSL_ERROR("failed to allocate space for x1 workspace", GSL_ENOMEM);
+		gsl_vector *f_trial = gsl_vector_alloc(n);
+		if (f_trial == nullptr) {
+			gsl_vector_free(x1);
+			GSL_ERROR("failed to allocate space for f_trial workspace", GSL_ENOMEM);
+		}
+		gsl_matrix *coordinate = gsl_matrix_alloc(n, n);
+		if (coordinate == nullptr) {
+			gsl_vector_free(x1);
+			gsl_vector_free(f_trial);
+			GSL_ERROR("failed to allocate space for coordinate workspace", GSL_ENOMEM);
+		}
+		if (status = CoordinateOrthogonalization(direction, coordinate); status != GSL_SUCCESS)
+			return status;
+		gsl_matrix_set_zero(jacobian);
+		double x_norm = gsl_blas_dnrm2(x), dx_limit = x_norm * GSL_DBL_EPSILON;
+		for (size_t j = 0; j < n; ++j) {
+			gsl_vector_view coordinate_j = gsl_matrix_column(coordinate, j);
+			double dot_product;
+			gsl_blas_ddot(x, &coordinate_j.vector, &dot_product);
+			double dx = -epsrel * max(1., x_norm) * GSL_SIGN(dot_product);
+			gsl_blas_daxpy(dx, &coordinate_j.vector, x1);
+			for (status = GSL_CONTINUE; status != GSL_SUCCESS; dx *= 0.5) {
+				if (abs(dx) < dx_limit) {
+					status = GSL_EBADFUNC;
+					break;
+				}
+				gsl_vector_memcpy(x1, x);
+				gsl_blas_daxpy(dx, &coordinate_j.vector, x1);
+				if (status = GSL_MULTIROOT_FN_EVAL(F, x1, f_trial); status != GSL_SUCCESS)
+					if (status != GSL_EDOM) {
+						status = GSL_EBADFUNC;
+						break;
+					}
+			}
+			gsl_blas_daxpy(-1., f, f_trial);
+			gsl_blas_dscal(1. / dx, f_trial);
+			gsl_blas_dger(1., f_trial, &coordinate_j.vector, jacobian);
+		}
+		gsl_vector_free(x1);
+		gsl_vector_free(f_trial);
+		gsl_matrix_free(coordinate);
+		return status;
+	}
+	int MultiFunctionSolver::TwoSidedDirectionalJacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *direction, const gsl_vector *f, double epsrel, gsl_matrix *jacobian) {
+		const size_t n = x->size;
+		const size_t m = f->size;
+		const size_t n1 = jacobian->size1;
+		const size_t n2 = jacobian->size2;
+		int status = GSL_SUCCESS;
+		if (m != n1 || n != n2)
+			GSL_ERROR("function and jacobian are not conformant", GSL_EBADLEN);
+		gsl_vector *x1 = gsl_vector_alloc(n);
+		if (x1 == nullptr)
+			GSL_ERROR("failed to allocate space for x1 workspace", GSL_ENOMEM);
+		gsl_vector *f_trial_plus = gsl_vector_alloc(n);
+		if (f_trial_plus == nullptr) {
+			gsl_vector_free(x1);
+			GSL_ERROR("failed to allocate space for f_trial_plus workspace", GSL_ENOMEM);
+		}
+		gsl_vector *f_trial_minus = gsl_vector_alloc(n);
+		if (f_trial_minus == nullptr) {
+			gsl_vector_free(x1);
+			gsl_vector_free(f_trial_plus);
+			GSL_ERROR("failed to allocate space for f_trial_minus workspace", GSL_ENOMEM);
+		}
+		gsl_matrix *coordinate = gsl_matrix_alloc(n, n);
+		if (coordinate == nullptr) {
+			gsl_vector_free(x1);
+			gsl_vector_free(f_trial_plus);
+			gsl_vector_free(f_trial_minus);
+			GSL_ERROR("failed to allocate space for coordinate workspace", GSL_ENOMEM);
+		}
+		if (status = CoordinateOrthogonalization(direction, coordinate); status != GSL_SUCCESS)
+			return status;
+		gsl_matrix_set_zero(jacobian);
+		double x_norm = gsl_blas_dnrm2(x), dx_limit = x_norm * GSL_DBL_EPSILON;
+		for (size_t j = 0; j < n; ++j) {
+			gsl_vector_view coordinate_j = gsl_matrix_column(coordinate, j);
+			double dot_product;
+			gsl_blas_ddot(x, &coordinate_j.vector, &dot_product);
+			double dx = -epsrel * max(1., x_norm) * GSL_SIGN(dot_product);
+			for (status = GSL_CONTINUE; status != GSL_SUCCESS; dx *= 0.5) {
+				if (abs(dx) < dx_limit) {
+					status = GSL_EBADFUNC;
+					break;
+				}
+				gsl_vector_memcpy(x1, x);
+				gsl_blas_daxpy(dx, &coordinate_j.vector, x1);
+				if (status = GSL_MULTIROOT_FN_EVAL(F, x1, f_trial_plus); status != GSL_SUCCESS)
+					if (status != GSL_EDOM) {
+						status = GSL_EBADFUNC;
+						break;
+					}
+			}
+			gsl_blas_daxpy(-1., f, f_trial_plus);
+			gsl_blas_dscal(1. / dx, f_trial_plus);
+			gsl_vector_memcpy(x1, x);
+			gsl_blas_daxpy(-dx, &coordinate_j.vector, x1);
+			if (status = GSL_MULTIROOT_FN_EVAL(F, x1, f_trial_minus); status != GSL_SUCCESS) {
+				status = GSL_SUCCESS;
+				gsl_blas_dger(1., f_trial_plus, &coordinate_j.vector, jacobian);
+			} else {
+				gsl_blas_daxpy(-1., f, f_trial_minus);
+				gsl_blas_daxpy(-1. / dx, f_trial_minus, f_trial_plus);
+				gsl_blas_dger(0.5, f_trial_plus, &coordinate_j.vector, jacobian);
+			}
+		}
+		gsl_vector_free(x1);
+		gsl_vector_free(f_trial_plus);
+		gsl_vector_free(f_trial_minus);
+		gsl_matrix_free(coordinate);
+		return status;
+	}
+	int MultiFunctionSolver::Hessian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *f, double epsrel, gsl_vector *jacobian, gsl_matrix *hessian) {
+		const size_t n = x->size;
+		const size_t m = f->size;
+		const size_t n1 = hessian->size1;
+		const size_t n2 = hessian->size2;
+		if (m != n1 || n != n2)
+			GSL_ERROR("function and hessian are not conformant", GSL_EBADLEN);
+		gsl_vector *x1 = gsl_vector_alloc(n);
+		if (x1 == nullptr)
+			GSL_ERROR("failed to allocate space for x1 workspace", GSL_ENOMEM);
+		gsl_vector *f_trial = gsl_vector_alloc(n);
+		if (f_trial == nullptr) {
+			gsl_vector_free(x1);
+			GSL_ERROR("failed to allocate space for f_trial workspace", GSL_ENOMEM);
+		}
+		const double f_norm = gsl_blas_dnrm2(f);
+		double dx[n];
+		// f_{0, 0} = f0
+		// f_{-1,0} = f0 - g0 * dx0 + 0.5 * G00 * dx0^2
+		// f_{1, 0} = f0 + g0 * dx0 + 0.5 * G00 * dx0^2
+		// f_{0,-1} = f0 - g1 * dx1 + 0.5 * G11 * dx1^2
+		// f_{0, 1} = f0 + g1 * dx1 + 0.5 * G11 * dx1^2
+		// f_{-1,-1}= f0 - g0 * dx0 - g1 * dx1 + 0.5 * G00 * dx0^2 + 0.5 * G11 * dx1^2 + G01 * dx0 * dx1
+		// f_{1, 1} = f0 + g0 * dx0 + g1 * dx1 + 0.5 * G00 * dx0^2 + 0.5 * G11 * dx1^2 + G01 * dx0 * dx1
+		// f_{-1,1} = f0 - g0 * dx0 + g1 * dx1 + 0.5 * G00 * dx0^2 + 0.5 * G11 * dx1^2 - G01 * dx0 * dx1
+		// f_{1,-1} = f0 + g0 * dx0 - g1 * dx1 + 0.5 * G00 * dx0^2 + 0.5 * G11 * dx1^2 - G01 * dx0 * dx1
+
+		gsl_vector_memcpy(x1, x); // copy x into x1
+		for (size_t i = 0; i < n; ++i) {
+			double x_i = gsl_vector_get(x, i);
+			dx[i] = abs(x_i) >= 1. ? epsrel * x_i : epsrel * x_i;
+			gsl_vector_set(x1, i, x_i + dx[i]);
+			if (int f_stat = GSL_MULTIROOT_FN_EVAL(F, x1, f_trial); f_stat != GSL_SUCCESS) {
+				gsl_vector_free(x1);
+				gsl_vector_free(f_trial);
+				return GSL_EBADFUNC;
+			}
+			double f_trial_norm = gsl_blas_dnrm2(f_trial);
+			gsl_vector_set(x1, i, x_i - dx[i]);
+			if (int f_stat = GSL_MULTIROOT_FN_EVAL(F, x1, f_trial); f_stat != GSL_SUCCESS) {
+				gsl_vector_free(x1);
+				gsl_vector_free(f_trial);
+				return GSL_EBADFUNC;
+			}
+			gsl_vector_set(x1, i, x_i);
+			gsl_vector_set(jacobian, i, (f_trial_norm - gsl_blas_dnrm2(f_trial)) / (2. * dx[i]));
+			gsl_matrix_set(hessian, i, i, (f_trial_norm + gsl_blas_dnrm2(f_trial) - 2. * f_norm) / gsl_pow_2(dx[i]));
+		}
+		for (size_t i = 1; i < n; ++i) {
+			gsl_vector_memcpy(x1, x);
+			double x_i = gsl_vector_get(x, i);
+			for (size_t j = 0; j < i; ++j) {
+				double df = 0., x_j = gsl_vector_get(x, j);
+				gsl_vector_set(x1, i, x_i + dx[i]);
+				gsl_vector_set(x1, j, x_j + dx[j]);
+				if (int f_stat = GSL_MULTIROOT_FN_EVAL(F, x1, f_trial); f_stat != GSL_SUCCESS) {
+					gsl_vector_free(x1);
+					gsl_vector_free(f_trial);
+					return GSL_EBADFUNC;
+				}
+				df += gsl_blas_dnrm2(f_trial);
+				gsl_vector_set(x1, j, x_j - dx[j]);
+				if (int f_stat = GSL_MULTIROOT_FN_EVAL(F, x1, f_trial); f_stat != GSL_SUCCESS) {
+					gsl_vector_free(x1);
+					gsl_vector_free(f_trial);
+					return GSL_EBADFUNC;
+				}
+				df -= gsl_blas_dnrm2(f_trial);
+				gsl_vector_set(x1, i, x_i - dx[i]);
+				if (int f_stat = GSL_MULTIROOT_FN_EVAL(F, x1, f_trial); f_stat != GSL_SUCCESS) {
+					gsl_vector_free(x1);
+					gsl_vector_free(f_trial);
+					return GSL_EBADFUNC;
+				}
+				df += gsl_blas_dnrm2(f_trial);
+				gsl_vector_set(x1, j, x_j + dx[j]);
+				if (int f_stat = GSL_MULTIROOT_FN_EVAL(F, x1, f_trial); f_stat != GSL_SUCCESS) {
+					gsl_vector_free(x1);
+					gsl_vector_free(f_trial);
+					return GSL_EBADFUNC;
+				}
+				df -= gsl_blas_dnrm2(f_trial);
+				df /= 4. * dx[i] * dx[j];
+				gsl_matrix_set(hessian, i, j, df);
+				gsl_matrix_set(hessian, j, i, df);
+			}
+		}
+		gsl_vector_free(x1);
+		gsl_vector_free(f_trial);
 		return GSL_SUCCESS;
 	}
 	void MultiFunctionSolver::ComputeDiag(const gsl_matrix *J, gsl_vector *diag) {
@@ -246,8 +526,8 @@ namespace SBody {
 	}
 	int MultiFunctionSolver::Dogleg(const gsl_matrix *r, const gsl_vector *qtf, const gsl_vector *diag, double delta, gsl_vector *newton, gsl_vector *gradient, gsl_vector *p) {
 		double qnorm, gnorm, sgnorm, bnorm, temp;
-		gsl_linalg_R_solve(r, qtf, p);
-		gsl_vector_scale(p, -1.);
+		gsl_linalg_R_solve(r, qtf, newton);
+		gsl_vector_scale(newton, -1.);
 		if (qnorm = ScaledEnorm(diag, newton); qnorm <= delta) {
 			gsl_vector_memcpy(p, newton);
 			return GSL_SUCCESS;
@@ -293,367 +573,1274 @@ namespace SBody {
 		}
 		return GSL_SUCCESS;
 	}
+	int MultiFunctionSolver::Dogleg(double trust_radius, double newton_norm, double newton_norm2, double gradient_norm, double gradient_norm2, double newton_gradient_dot, const gsl_vector *newton, const gsl_vector *gradient, gsl_vector *dx) {
+		if (newton_norm <= trust_radius) {
+			gsl_vector_memcpy(dx, newton);
+			return GSL_SUCCESS;
+		}
+		gsl_vector_set_zero(dx);
+		if (gradient_norm >= trust_radius) {
+			gsl_blas_daxpy(trust_radius / gradient_norm, gradient, dx);
+			return GSL_SUCCESS;
+		}
+		gsl_blas_ddot(newton, gradient, &newton_gradient_dot);
+		const double a = gradient_norm2 + newton_norm2 - 2. * newton_gradient_dot; // a > 0
+		const double b = 2. * (newton_gradient_dot - gradient_norm2);
+		const double c = gradient_norm2 - gsl_pow_2(trust_radius); // c < 0
+		double s_minus, s_plus;
+		if (int root_num = gsl_poly_solve_quadratic(a, b, c, &s_minus, &s_plus); root_num != 2 || s_plus > 1.) {
+			gsl_vector_memcpy(dx, gradient); // fallback to gradient
+			return GSL_SUCCESS;
+		}
+		gsl_blas_daxpy(s_plus, newton, dx);
+		gsl_blas_daxpy(1. - s_plus, gradient, dx);
+		return GSL_SUCCESS;
+	}
 	int MultiFunctionSolver::HybridAlloc(void *vstate, size_t n) {
-		HybridState *state = static_cast<HybridState *>(vstate);
-		gsl_matrix *J, *q, *r;
-		gsl_vector *tau, *diag, *qtf, *newton, *gradient, *x_trial, *f_trial, *df, *qtdf, *rdx, *w, *v;
-		if (J = gsl_matrix_calloc(n, n); J == nullptr)
-			GSL_ERROR("failed to allocate space for J", GSL_ENOMEM);
-		state->J = J;
-		if (q = gsl_matrix_calloc(n, n); q == nullptr) {
-			HybridFree(state);
-			GSL_ERROR("failed to allocate space for q", GSL_ENOMEM);
-		}
-		state->q = q;
-		if (r = gsl_matrix_calloc(n, n); r == nullptr) {
-			HybridFree(state);
-			GSL_ERROR("failed to allocate space for r", GSL_ENOMEM);
-		}
-		state->r = r;
-		if (tau = gsl_vector_calloc(n); tau == nullptr) {
-			HybridFree(state);
-			GSL_ERROR("failed to allocate space for tau", GSL_ENOMEM);
-		}
-		state->tau = tau;
-		if (diag = gsl_vector_calloc(n); diag == nullptr) {
-			HybridFree(state);
-			GSL_ERROR("failed to allocate space for diag", GSL_ENOMEM);
-		}
-		state->diag = diag;
-		if (qtf = gsl_vector_calloc(n); qtf == nullptr) {
-			HybridFree(state);
-			GSL_ERROR("failed to allocate space for qtf", GSL_ENOMEM);
-		}
-		state->qtf = qtf;
-		if (newton = gsl_vector_calloc(n); newton == nullptr) {
-			HybridFree(state);
-			GSL_ERROR("failed to allocate space for newton", GSL_ENOMEM);
-		}
-		state->newton = newton;
-		if (gradient = gsl_vector_calloc(n); gradient == nullptr) {
-			HybridFree(state);
-			GSL_ERROR("failed to allocate space for gradient", GSL_ENOMEM);
-		}
-		state->gradient = gradient;
-		if (x_trial = gsl_vector_calloc(n); x_trial == nullptr) {
-			HybridFree(state);
+		auto state = static_cast<HybridState *>(vstate);
+		if (state->x_trial = gsl_vector_calloc(n); state->x_trial == nullptr)
 			GSL_ERROR("failed to allocate space for x_trial", GSL_ENOMEM);
-		}
-		state->x_trial = x_trial;
-		if (f_trial = gsl_vector_calloc(n); f_trial == nullptr) {
+
+		if (state->f_trial = gsl_vector_calloc(n); state->f_trial == nullptr) {
 			HybridFree(state);
 			GSL_ERROR("failed to allocate space for f_trial", GSL_ENOMEM);
 		}
-		state->f_trial = f_trial;
-		if (df = gsl_vector_calloc(n); df == nullptr) {
+		if (state->jacobian = gsl_matrix_calloc(n, n); state->jacobian == nullptr) {
 			HybridFree(state);
-			GSL_ERROR("failed to allocate space for df", GSL_ENOMEM);
+			GSL_ERROR("failed to allocate space for jacobian", GSL_ENOMEM);
 		}
-		state->df = df;
-		if (qtdf = gsl_vector_calloc(n); qtdf == nullptr) {
-			HybridFree(state);
-			GSL_ERROR("failed to allocate space for qtdf", GSL_ENOMEM);
-		}
-		state->qtdf = qtdf;
-		if (rdx = gsl_vector_calloc(n); rdx == nullptr) {
-			HybridFree(state);
-			GSL_ERROR("failed to allocate space for rdx", GSL_ENOMEM);
-		}
-		state->rdx = rdx;
-		if (w = gsl_vector_calloc(n); w == nullptr) {
-			HybridFree(state);
-			GSL_ERROR("failed to allocate space for w", GSL_ENOMEM);
-		}
-		state->w = w;
-		if (v = gsl_vector_calloc(n); v == nullptr) {
-			HybridFree(state);
-			GSL_ERROR("failed to allocate space for v", GSL_ENOMEM);
-		}
-		state->v = v;
-		return GSL_SUCCESS;
-	}
-	int MultiFunctionSolver::HybridSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
-		return HybridSetCore(vstate, function, x, f, dx, false);
-	}
-	int MultiFunctionSolver::HybridScaleSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
-		return HybridSetCore(vstate, function, x, f, dx, true);
-	}
-	int MultiFunctionSolver::HybridSetCore(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx, bool scale) {
-		HybridState *state = static_cast<HybridState *>(vstate);
-		gsl_matrix *J = state->J;
-		gsl_matrix *q = state->q;
-		gsl_matrix *r = state->r;
-		gsl_vector *tau = state->tau;
-		gsl_vector *diag = state->diag;
-		if (int status = GSL_MULTIROOT_FN_EVAL(function, x, f); status == GSL_EDOM)
-			gsl_vector_scale(x, gsl_vector_get(f, 0));
-		else if (status != GSL_SUCCESS)
-			return status;
-		if (int status = Jacobian(function, x, f, GSL_SQRT_DBL_EPSILON, J); status != GSL_SUCCESS)
-			return status;
-		state->iter = 1;
-		state->fnorm = gsl_blas_dnrm2(f);
-		state->ncfail = 0;
-		state->ncsuc = 0;
-		state->nslow1 = 0;
-		state->nslow2 = 0;
-		gsl_vector_set_zero(dx);
-		/* Store column norms in diag */
-		if (scale)
-			ComputeDiag(J, diag);
-		else
-			gsl_vector_set_all(diag, 1.0);
-		/* Set delta to factor |D x| or to factor if |D x| is zero */
-		double Dx = ScaledEnorm(diag, x);
-		state->delta = Dx > 0. ? 100. * Dx : 100.;
-		/* Factorize J into QR decomposition */
-		if (int status = gsl_linalg_QR_decomp(J, tau); status != GSL_SUCCESS)
-			return status;
-		return gsl_linalg_QR_unpack(J, tau, q, r);
-	}
-	int MultiFunctionSolver::HybridIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
-		return HybridIterateCore(vstate, function, x, f, dx, false);
-	}
-	int MultiFunctionSolver::HybridScaleIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
-		return HybridIterateCore(vstate, function, x, f, dx, true);
-	}
-	int MultiFunctionSolver::HybridIterateCore(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx, bool scale) {
-		HybridState *state = static_cast<HybridState *>(vstate);
-
-		const double fnorm = state->fnorm;
-
-		gsl_matrix *J = state->J;
-		gsl_matrix *q = state->q;
-		gsl_matrix *r = state->r;
-		gsl_vector *tau = state->tau;
-		gsl_vector *diag = state->diag;
-		gsl_vector *qtf = state->qtf;
-		gsl_vector *x_trial = state->x_trial;
-		gsl_vector *f_trial = state->f_trial;
-		gsl_vector *df = state->df;
-		gsl_vector *qtdf = state->qtdf;
-		gsl_vector *rdx = state->rdx;
-		gsl_vector *w = state->w;
-		gsl_vector *v = state->v;
-
-		double prered, actred;
-		double pnorm, fnorm1, fnorm1p;
-		double ratio;
-		double p1 = 0.1, p5 = 0.5, p001 = 0.001, p0001 = 0.0001;
-
-		/* Compute qtf = Q^T f */
-
-		gsl_blas_dgemv(CblasTrans, 1., q, f, 0., qtf);
-
-		/* Compute dogleg step */
-
-		Dogleg(r, qtf, diag, state->delta, state->newton, state->gradient, dx);
-
-		/* Take a trial step */
-
-		gsl_vector_memcpy(state->x_trial, x);
-		gsl_vector_add(state->x_trial, dx);
-
-		pnorm = ScaledEnorm(diag, dx);
-
-		if (state->iter == 1) {
-			if (pnorm < state->delta) {
-				state->delta = pnorm;
-			}
-		}
-
-		/* Evaluate function at x + p */
-
-		if (int status = GSL_MULTIROOT_FN_EVAL(function, x_trial, f_trial); status == GSL_EDOM)
-			gsl_vector_scale(x, gsl_vector_get(f, 0));
-		else if (status != GSL_SUCCESS)
-			return GSL_EBADFUNC;
-
-		/* Set df = f_trial - f */
-		gsl_vector_memcpy(df, f_trial);
-		gsl_vector_sub(df, f);
-
-		/* Compute the scaled actual reduction */
-
-		fnorm1 = gsl_blas_dnrm2(f_trial);
-
-		actred = fnorm1 < fnorm ? 1. - gsl_pow_2(fnorm1 / fnorm) : -1.;
-
-		/* Compute rdx = R dx */
-
-		gsl_blas_dgemv(CblasNoTrans, 1., r, dx, 0., rdx);
-
-		/* Compute the scaled predicted reduction phi1p = |Q^T f + R dx| */
-
-		gsl_vector_add(qtf, rdx);
-		fnorm1p = gsl_blas_dnrm2(qtf);
-
-		prered = fnorm1p < fnorm ? 1. - gsl_pow_2(fnorm1p / fnorm) : 0.;
-
-		/* Compute the ratio of the actual to predicted reduction */
-
-		if (prered > 0)
-			ratio = actred / prered;
-		else
-			ratio = 0.;
-
-		/* Update the step bound */
-
-		if (ratio < p1) {
-			state->ncsuc = 0;
-			state->ncfail++;
-			state->delta *= p5;
-		} else {
-			state->ncfail = 0;
-			state->ncsuc++;
-
-			if (ratio >= p5 || state->ncsuc > 1)
-				state->delta = GSL_MAX(state->delta, pnorm / p5);
-			if (fabs(ratio - 1) <= p1)
-				state->delta = pnorm / p5;
-		}
-
-		/* Test for successful iteration */
-
-		if (ratio >= p0001) {
-			gsl_vector_memcpy(x, x_trial);
-			gsl_vector_memcpy(f, f_trial);
-			state->fnorm = fnorm1;
-			state->iter++;
-		}
-
-		/* Determine the progress of the iteration */
-
-		state->nslow1++;
-		if (actred >= p001)
-			state->nslow1 = 0;
-
-		if (actred >= p1)
-			state->nslow2 = 0;
-
-		if (state->ncfail == 2) {
-			Jacobian(function, x, f, GSL_SQRT_DBL_EPSILON, J);
-			state->nslow2++;
-			if (state->iter == 1) {
-				if (scale)
-					ComputeDiag(J, diag);
-				double Dx = ScaledEnorm(diag, x);
-				state->delta = Dx > 0. ? 100. * Dx : 100.;
-			} else if (scale)
-				UpdateDiag(J, diag);
-
-			/* Factorize J into QR decomposition */
-
-			gsl_linalg_QR_decomp(J, tau);
-			gsl_linalg_QR_unpack(J, tau, q, r);
-
-			return GSL_SUCCESS;
-		}
-		/* Compute qtdf = Q^T df, w = (Q^T df - R dx)/|dx|,  v = D^2 dx/|dx| */
-		gsl_blas_dgemv(CblasTrans, 1., q, df, 0., qtdf);
-		gsl_vector_memcpy(w, qtdf);
-		gsl_vector_sub(w, rdx);
-		gsl_vector_scale(w, 1. / pnorm);
-		gsl_vector_memcpy(v, diag);
-		gsl_vector_mul(v, diag);
-		gsl_vector_mul(v, dx);
-		gsl_vector_scale(v, 1. / pnorm);
-
-		/* Rank-1 update of the jacobian Q'R' = Q(R + w v^T) */
-		gsl_linalg_QR_update(q, r, w, v);
-		/* No progress as measured by jacobian evaluations */
-		if (state->nslow2 == 5)
-			return GSL_ENOPROGJ;
-		/* No progress as measured by function evaluations */
-		if (state->nslow1 == 10)
-			return GSL_ENOPROG;
-		return GSL_SUCCESS;
-	}
-	void MultiFunctionSolver::HybridFree(void *vstate) {
-		HybridState *state = static_cast<HybridState *>(vstate);
-
-		gsl_vector_free(state->v);
-		gsl_vector_free(state->w);
-		gsl_vector_free(state->rdx);
-		gsl_vector_free(state->qtdf);
-		gsl_vector_free(state->df);
-		gsl_vector_free(state->f_trial);
-		gsl_vector_free(state->x_trial);
-		gsl_vector_free(state->gradient);
-		gsl_vector_free(state->newton);
-		gsl_vector_free(state->qtf);
-		gsl_vector_free(state->diag);
-		gsl_vector_free(state->tau);
-		gsl_matrix_free(state->r);
-		gsl_matrix_free(state->q);
-		gsl_matrix_free(state->J);
-	}
-	int MultiFunctionSolver::DnewtonAlloc(void *vstate, size_t n) {
-		DnewtonState *state = static_cast<DnewtonState *>(vstate);
-		if (state->dx = gsl_vector_calloc(n); state->dx == nullptr)
-			GSL_ERROR("failed to allocate space for dx", GSL_ENOMEM);
 		if (state->lu = gsl_matrix_calloc(n, n); state->lu == nullptr) {
-			DnewtonFree(vstate);
+			HybridFree(state);
 			GSL_ERROR("failed to allocate space for lu", GSL_ENOMEM);
 		}
 		if (state->permutation = gsl_permutation_calloc(n); state->permutation == nullptr) {
-			DnewtonFree(vstate);
+			HybridFree(state);
 			GSL_ERROR("failed to allocate space for permutation", GSL_ENOMEM);
 		}
-		if (state->J = gsl_matrix_calloc(n, n); state->J == nullptr) {
-			DnewtonFree(vstate);
+		if (state->newton = gsl_vector_calloc(n); state->newton == nullptr) {
+			HybridFree(state);
+			GSL_ERROR("failed to allocate space for newton", GSL_ENOMEM);
+		}
+		if (state->gradient = gsl_vector_calloc(n); state->gradient == nullptr) {
+			HybridFree(state);
+			GSL_ERROR("failed to allocate space for gradient", GSL_ENOMEM);
+		}
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::HybridSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<HybridState *>(vstate);
+		for (int status = GSL_MULTIROOT_FN_EVAL(function, x, f); status != GSL_SUCCESS; status = GSL_MULTIROOT_FN_EVAL(function, x, f)) {
+			if (status != GSL_EDOM)
+				return GSL_EBADFUNC;
+			gsl_vector_scale(x, min(0.99999999, gsl_vector_get(f, 0)));
+		}
+		if (int status = TwoSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON, state->jacobian); status != GSL_SUCCESS)
+			return status;
+		state->trust_radius = gsl_blas_dnrm2(x);
+		state->epsilon_coefficient = 1.;
+		state->directional = false;
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::HybridIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<HybridState *>(vstate);
+		gsl_vector *x_trial = state->x_trial, *f_trial = state->f_trial, *newton = state->newton, *gradient = state->gradient;
+		gsl_matrix *jacobian = state->jacobian;
+		int signum, status;
+		const double f_norm = gsl_blas_dnrm2(f);
+		const double trust_radius_limit = gsl_blas_dnrm2(x) * GSL_DBL_EPSILON;
+		double dx_norm, newton_norm, newton_norm2, gradient_norm, gradient_norm2, newton_gradient_dot, jacobian_gradient_norm2, t;
+		gsl_matrix_memcpy(state->lu, jacobian);
+		if (status = gsl_linalg_LU_decomp(state->lu, state->permutation, &signum); status != GSL_SUCCESS)
+			return status;
+		if (status = gsl_linalg_LU_solve(state->lu, state->permutation, f, dx); status != GSL_SUCCESS)
+			return status;
+		dx_norm = gsl_blas_dnrm2(dx);
+		for (int iteration_count = 0; true;) {
+			gsl_vector_memcpy(x_trial, x);
+			if (dx_norm > state->trust_radius)
+				gsl_blas_daxpy(-state->trust_radius / dx_norm, dx, x_trial);
+			else
+				gsl_blas_daxpy(-1., dx, x_trial);
+			if (status = GSL_MULTIROOT_FN_EVAL(function, x_trial, f_trial); status != GSL_SUCCESS) {
+				if (status != GSL_EDOM)
+					return GSL_EBADFUNC;
+				gsl_vector_scale(x_trial, min(0.99999999, gsl_vector_get(f_trial, 0)));
+				gsl_vector_sub(x_trial, x);
+				// here x_trial is the difference between x and x_trial
+				state->trust_radius = min(0.5 * state->trust_radius, gsl_blas_dnrm2(x_trial));
+				continue;
+			}
+			if (double f_trial_norm = gsl_blas_dnrm2(f_trial); f_trial_norm < f_norm) {
+				gsl_vector_memcpy(x, x_trial);
+				gsl_vector_memcpy(f, f_trial);
+				if (dx_norm > state->trust_radius)
+					state->trust_radius *= 2.;
+				else
+					state->trust_radius = 2. * dx_norm;
+				break;
+			}
+			if (state->epsilon_coefficient > GSL_ROOT5_DBL_EPSILON)
+				state->epsilon_coefficient *= 0.5;
+			if (++iteration_count == 2) {
+				if (status = TwoSidedDirectionalJacobian(function, x, dx, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian); status != GSL_SUCCESS)
+					return GSL_EBADFUNC;
+				gsl_matrix_memcpy(state->lu, jacobian);
+				if (status = gsl_linalg_LU_decomp(state->lu, state->permutation, &signum); status != GSL_SUCCESS)
+					return status;
+				if (status = gsl_linalg_LU_solve(state->lu, state->permutation, f, newton); status != GSL_SUCCESS)
+					return status;
+				gsl_blas_dgemv(CblasTrans, 1., jacobian, f, 0., gradient);
+				gsl_blas_ddot(newton, newton, &newton_norm2);
+				gsl_blas_ddot(gradient, gradient, &gradient_norm2);
+				gsl_blas_dgemv(CblasTrans, 1., jacobian, gradient, 0., x_trial);
+				gsl_blas_ddot(x_trial, x_trial, &jacobian_gradient_norm2);
+				t = gradient_norm2 / jacobian_gradient_norm2;
+				gsl_vector_scale(gradient, t);
+				gradient_norm2 *= gsl_pow_2(t);
+				newton_norm = sqrt(newton_norm2);
+				gradient_norm = sqrt(gradient_norm2);
+				gsl_blas_ddot(newton, gradient, &newton_gradient_dot);
+				Dogleg(state->trust_radius, newton_norm, newton_norm2, gradient_norm, gradient_norm2, newton_gradient_dot, newton, gradient, dx);
+				dx_norm = gsl_blas_dnrm2(dx);
+				state->directional = true;
+			} else {
+				state->trust_radius *= 0.5;
+				if (state->trust_radius < trust_radius_limit)
+					return GSL_ENOPROG;
+				if (iteration_count > 2) {
+					Dogleg(state->trust_radius, newton_norm, newton_norm2, gradient_norm, gradient_norm2, newton_gradient_dot, newton, gradient, dx);
+					dx_norm = gsl_blas_dnrm2(dx);
+				}
+			}
+		}
+		if (state->directional)
+			status = TwoSidedDirectionalJacobian(function, x, dx, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian);
+		else
+			status = TwoSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian);
+		if (status != GSL_SUCCESS)
+			return GSL_EBADFUNC;
+		return GSL_SUCCESS;
+	}
+	void MultiFunctionSolver::HybridFree(void *vstate) {
+		auto state = static_cast<HybridState *>(vstate);
+		gsl_vector_free(state->x_trial);
+		gsl_vector_free(state->f_trial);
+		gsl_matrix_free(state->jacobian);
+		gsl_matrix_free(state->lu);
+		gsl_permutation_free(state->permutation);
+		gsl_vector_free(state->newton);
+		gsl_vector_free(state->gradient);
+	}
+	int MultiFunctionSolver::HybridAdditionAlloc(void *vstate, size_t n) {
+		auto state = static_cast<HybridAdditionState *>(vstate);
+		if (state->x_trial = gsl_vector_calloc(n); state->x_trial == nullptr)
+			GSL_ERROR("failed to allocate space for x_trial", GSL_ENOMEM);
+		if (state->x_trial2 = gsl_vector_calloc(n); state->x_trial2 == nullptr) {
+			HybridAdditionFree(state);
+			GSL_ERROR("failed to allocate space for x_trial2", GSL_ENOMEM);
+		}
+		if (state->f_trial = gsl_vector_calloc(n); state->f_trial == nullptr) {
+			HybridAdditionFree(state);
+			GSL_ERROR("failed to allocate space for f_trial", GSL_ENOMEM);
+		}
+		if (state->f_trial2 = gsl_vector_calloc(n); state->f_trial2 == nullptr) {
+			HybridAdditionFree(state);
+			GSL_ERROR("failed to allocate space for f_trial2", GSL_ENOMEM);
+		}
+		if (state->jacobian = gsl_matrix_calloc(n, n); state->jacobian == nullptr) {
+			HybridAdditionFree(state);
+			GSL_ERROR("failed to allocate space for jacobian", GSL_ENOMEM);
+		}
+		if (state->lu = gsl_matrix_calloc(n, n); state->lu == nullptr) {
+			HybridAdditionFree(state);
+			GSL_ERROR("failed to allocate space for lu", GSL_ENOMEM);
+		}
+		if (state->permutation = gsl_permutation_calloc(n); state->permutation == nullptr) {
+			HybridAdditionFree(state);
+			GSL_ERROR("failed to allocate space for permutation", GSL_ENOMEM);
+		}
+		if (state->newton = gsl_vector_calloc(n); state->newton == nullptr) {
+			HybridAdditionFree(state);
+			GSL_ERROR("failed to allocate space for newton", GSL_ENOMEM);
+		}
+		if (state->gradient = gsl_vector_calloc(n); state->gradient == nullptr) {
+			HybridAdditionFree(state);
+			GSL_ERROR("failed to allocate space for gradient", GSL_ENOMEM);
+		}
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::HybridAdditionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<HybridAdditionState *>(vstate);
+		for (int status = GSL_MULTIROOT_FN_EVAL(function, x, f); status != GSL_SUCCESS; status = GSL_MULTIROOT_FN_EVAL(function, x, f)) {
+			if (status != GSL_EDOM)
+				return GSL_EBADFUNC;
+			gsl_vector_scale(x, min(0.99999999, gsl_vector_get(f, 0)));
+		}
+		if (int status = TwoSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON, state->jacobian); status != GSL_SUCCESS)
+			return status;
+		state->trust_radius = gsl_blas_dnrm2(x);
+		state->epsilon_coefficient = 1.;
+		state->gradient_coefficient = 0.;
+		state->directional = false;
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::HybridAdditionIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<HybridAdditionState *>(vstate);
+		gsl_vector *x_trial = state->x_trial, *x_trial2 = state->x_trial2, *f_trial = state->f_trial, *f_trial2 = state->f_trial2, *newton = state->newton, *gradient = state->gradient;
+		gsl_matrix *jacobian = state->jacobian;
+		int signum, status;
+		double &trust_radius = state->trust_radius;
+		gsl_matrix_memcpy(state->lu, jacobian);
+		if (status = gsl_linalg_LU_decomp(state->lu, state->permutation, &signum); status != GSL_SUCCESS)
+			return status;
+		if (status = gsl_linalg_LU_solve(state->lu, state->permutation, f, dx); status != GSL_SUCCESS)
+			return status;
+		const double f_norm = gsl_blas_dnrm2(f);
+		const double recalc_radius_limit = gsl_blas_dnrm2(x) * GSL_ROOT4_DBL_EPSILON;
+		const double trust_radius_limit = gsl_blas_dnrm2(x) * GSL_DBL_EPSILON;
+		double newton_norm, gradient_norm = -1., dx_norm = gsl_blas_dnrm2(dx), f_trial_norm, f_trial2_norm, newton_gradient_dot, gradient_coefficient = 0., negative_direction_coefficient, positive_direction_coefficient;
+		for (; true; trust_radius *= 0.5) {
+			gsl_vector_memcpy(x_trial, x);
+			if (dx_norm > trust_radius)
+				gsl_blas_daxpy(-trust_radius / dx_norm, dx, x_trial);
+			else
+				gsl_blas_daxpy(-1., dx, x_trial);
+			if (status = GSL_MULTIROOT_FN_EVAL(function, x_trial, f_trial); status != GSL_SUCCESS) {
+				if (status != GSL_EDOM)
+					return GSL_EBADFUNC;
+				gsl_vector_scale(x_trial, min(0.99999999, gsl_vector_get(f_trial, 0)));
+				gsl_vector_sub(x_trial, x);
+				// here x_trial is the difference between x and x_trial
+				if (double trust_radius_limit = 2. * gsl_blas_dnrm2(x_trial); trust_radius_limit < trust_radius)
+					trust_radius = trust_radius_limit; // there is a *= 0.5
+				continue;
+			}
+			if (f_trial_norm = gsl_blas_dnrm2(f_trial); f_trial_norm < f_norm) {
+				gsl_vector_memcpy(x, x_trial);
+				gsl_vector_memcpy(f, f_trial);
+				if (dx_norm > trust_radius)
+					trust_radius *= 2.;
+				else
+					trust_radius = 2. * dx_norm;
+				break;
+			}
+			if (state->epsilon_coefficient > GSL_ROOT5_DBL_EPSILON)
+				state->epsilon_coefficient *= 0.5;
+			if (trust_radius < trust_radius_limit)
+				return GSL_ENOPROG;
+			if (trust_radius < recalc_radius_limit) {
+				if (!state->directional) {
+					if (status = TwoSidedDirectionalJacobian(function, x, dx, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian); status != GSL_SUCCESS)
+						return GSL_EBADFUNC;
+					gsl_matrix_memcpy(state->lu, jacobian);
+					if (status = gsl_linalg_LU_decomp(state->lu, state->permutation, &signum); status != GSL_SUCCESS)
+						return status;
+					if (status = gsl_linalg_LU_solve(state->lu, state->permutation, f, dx); status != GSL_SUCCESS)
+						return status;
+					dx_norm = gsl_blas_dnrm2(dx);
+					state->directional = true;
+				}
+				if (gradient_norm == -1.) {
+					gsl_vector_memcpy(newton, dx);
+					newton_norm = dx_norm;
+					gsl_blas_dgemv(CblasTrans, 1., jacobian, f, 0., gradient);
+					gsl_blas_ddot(newton, gradient, &newton_gradient_dot);
+					gsl_blas_daxpy(-newton_gradient_dot / newton_norm, newton, gradient); // gradient now is prep to newton.
+					gradient_norm = gsl_blas_dnrm2(gradient);
+				}
+				if (gradient_coefficient == 0.) {
+					if (newton_norm < trust_radius)
+						positive_direction_coefficient = GSL_SQRT_DBL_EPSILON * newton_norm / gradient_norm;
+					else
+						positive_direction_coefficient = max(100. * trust_radius_limit, 2. * trust_radius_limit * dx_norm / trust_radius) / gradient_norm;
+					negative_direction_coefficient = -positive_direction_coefficient;
+				} else if (double lower_limit = 10. * trust_radius_limit * dx_norm / trust_radius / gradient_norm; positive_direction_coefficient < lower_limit) {
+					positive_direction_coefficient = lower_limit;
+					negative_direction_coefficient = -positive_direction_coefficient;
+				}
+				gsl_vector_memcpy(dx, newton);
+				gsl_blas_daxpy(gradient_coefficient + negative_direction_coefficient, gradient, dx);
+				for (int iteration_limit = 64; iteration_limit > 0 && newton_norm >= gradient_norm * negative_direction_coefficient; --iteration_limit) {
+					gsl_vector_memcpy(x_trial2, x);
+					if (dx_norm = gsl_blas_dnrm2(dx); dx_norm > trust_radius)
+						gsl_blas_daxpy(-trust_radius / dx_norm, dx, x_trial2);
+					else
+						gsl_blas_daxpy(-1., dx, x_trial2);
+					if (status = GSL_MULTIROOT_FN_EVAL(function, x_trial2, f_trial2); status != GSL_SUCCESS)
+						break;
+					if (f_trial2_norm = gsl_blas_dnrm2(f_trial2); f_trial2_norm >= f_trial_norm)
+						break;
+					f_trial_norm = f_trial2_norm;
+					gsl_vector_memcpy(x_trial, x_trial2);
+					gsl_vector_memcpy(f_trial, f_trial2);
+					gsl_blas_daxpy(negative_direction_coefficient, gradient, dx);
+					if (f_norm < f_trial_norm)
+						negative_direction_coefficient *= 2.;
+					else if (gradient_coefficient == 0.)
+						negative_direction_coefficient *= 1.5;
+					else
+						negative_direction_coefficient *= 0.9;
+				}
+				if (positive_direction_coefficient != -negative_direction_coefficient) {
+					if (f_trial_norm < f_norm) {
+						gsl_vector_memcpy(x, x_trial);
+						gsl_vector_memcpy(f, f_trial);
+						break;
+					}
+					negative_direction_coefficient *= 0.1;
+					positive_direction_coefficient = -negative_direction_coefficient;
+					gradient_coefficient += negative_direction_coefficient;
+					gsl_blas_daxpy(-negative_direction_coefficient, gradient, dx);
+					continue;
+				}
+				gsl_vector_memcpy(dx, newton);
+				gsl_blas_daxpy(gradient_coefficient + positive_direction_coefficient, gradient, dx);
+				for (int iteration_limit = 64; iteration_limit > 0 && newton_norm >= gradient_norm * positive_direction_coefficient; --iteration_limit) {
+					gsl_vector_memcpy(x_trial2, x);
+					if (dx_norm = gsl_blas_dnrm2(dx); dx_norm > trust_radius)
+						gsl_blas_daxpy(-trust_radius / dx_norm, dx, x_trial2);
+					else
+						gsl_blas_daxpy(-1., dx, x_trial2);
+					if (status = GSL_MULTIROOT_FN_EVAL(function, x_trial2, f_trial2); status != GSL_SUCCESS)
+						break;
+					if (f_trial2_norm = gsl_blas_dnrm2(f_trial2); f_trial2_norm >= f_trial_norm)
+						break;
+					f_trial_norm = f_trial2_norm;
+					gsl_vector_memcpy(x_trial, x_trial2);
+					gsl_vector_memcpy(f_trial, f_trial2);
+					gsl_blas_daxpy(positive_direction_coefficient, gradient, dx);
+					if (f_norm < f_trial_norm)
+						positive_direction_coefficient *= 2.;
+					else if (gradient_coefficient == 0.)
+						positive_direction_coefficient *= 1.5;
+					else
+						positive_direction_coefficient *= 0.9;
+				}
+				if (positive_direction_coefficient != -negative_direction_coefficient) {
+					if (f_trial_norm < f_norm) {
+						gsl_vector_memcpy(x, x_trial);
+						gsl_vector_memcpy(f, f_trial);
+						break;
+					}
+					positive_direction_coefficient *= 0.1;
+					negative_direction_coefficient = -positive_direction_coefficient;
+					gradient_coefficient += positive_direction_coefficient;
+					gsl_blas_daxpy(-positive_direction_coefficient, gradient, dx);
+					continue;
+				}
+				gsl_vector_memcpy(dx, newton);
+				gsl_blas_daxpy(gradient_coefficient, gradient, dx);
+				dx_norm = gsl_blas_dnrm2(dx);
+			}
+		}
+		if (state->directional)
+			status = TwoSidedDirectionalJacobian(function, x, dx, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian);
+		else
+			status = TwoSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian);
+		if (status != GSL_SUCCESS)
+			return GSL_EBADFUNC;
+		return GSL_SUCCESS;
+	}
+	void MultiFunctionSolver::HybridAdditionFree(void *vstate) {
+		auto state = static_cast<HybridAdditionState *>(vstate);
+		gsl_vector_free(state->x_trial);
+		gsl_vector_free(state->x_trial2);
+		gsl_vector_free(state->f_trial);
+		gsl_vector_free(state->f_trial2);
+		gsl_matrix_free(state->jacobian);
+		gsl_matrix_free(state->lu);
+		gsl_permutation_free(state->permutation);
+		gsl_vector_free(state->newton);
+		gsl_vector_free(state->gradient);
+	}
+	int MultiFunctionSolver::DNewtonAlloc(void *vstate, size_t n) {
+		auto state = static_cast<DNewtonState *>(vstate);
+		if (state->x_trial = gsl_vector_calloc(n); state->x_trial == nullptr)
+			GSL_ERROR("failed to allocate space for x_trial", GSL_ENOMEM);
+		if (state->f_trial = gsl_vector_calloc(n); state->f_trial == nullptr) {
+			DNewtonFree(vstate);
+			GSL_ERROR("failed to allocate space for f_trial", GSL_ENOMEM);
+		}
+		if (state->lu = gsl_matrix_calloc(n, n); state->lu == nullptr) {
+			DNewtonFree(vstate);
+			GSL_ERROR("failed to allocate space for lu", GSL_ENOMEM);
+		}
+		if (state->permutation = gsl_permutation_calloc(n); state->permutation == nullptr) {
+			DNewtonFree(vstate);
+			GSL_ERROR("failed to allocate space for permutation", GSL_ENOMEM);
+		}
+		if (state->jacobian = gsl_matrix_calloc(n, n); state->jacobian == nullptr) {
+			DNewtonFree(vstate);
 			GSL_ERROR("failed to allocate space for d", GSL_ENOMEM);
 		}
 		return GSL_SUCCESS;
 	}
-	int MultiFunctionSolver::DnewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
-		DnewtonState *state = static_cast<DnewtonState *>(vstate);
+	int MultiFunctionSolver::DNewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<DNewtonState *>(vstate);
+		for (int status = GSL_MULTIROOT_FN_EVAL(function, x, f); status != GSL_SUCCESS; status = GSL_MULTIROOT_FN_EVAL(function, x, f)) {
+			if (status != GSL_EDOM)
+				return GSL_EBADFUNC;
+			gsl_vector_scale(x, min(0.99999999, gsl_vector_get(f, 0)));
+		}
+		state->trust_radius = gsl_blas_dnrm2(x);
+		state->epsilon_coefficient = 1.;
+		state->directional = false;
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::DNewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<DNewtonState *>(vstate);
+		gsl_vector *x_trial = state->x_trial, *f_trial = state->f_trial;
+		gsl_matrix *jacobian = state->jacobian;
+		int signum, status;
+		double &trust_radius = state->trust_radius;
+		if (state->directional)
+			status = TwoSidedDirectionalJacobian(function, x, dx, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian);
+		else
+			status = TwoSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian);
+		if (status != GSL_SUCCESS)
+			return GSL_EBADFUNC;
+		gsl_matrix_memcpy(state->lu, jacobian);
+		if (status = gsl_linalg_LU_decomp(state->lu, state->permutation, &signum); status != GSL_SUCCESS)
+			return status;
+		if (status = gsl_linalg_LU_solve(state->lu, state->permutation, f, dx); status != GSL_SUCCESS)
+			return status;
+		const double x_norm = gsl_blas_dnrm2(x), f_norm = gsl_blas_dnrm2(f);
+		const double trust_radius_limit = max(1., x_norm) * GSL_DBL_EPSILON;
+		double dx_norm = gsl_blas_dnrm2(dx);
+		while (true) {
+			gsl_vector_memcpy(x_trial, x);
+			if (dx_norm > trust_radius)
+				gsl_blas_daxpy(-trust_radius / dx_norm, dx, x_trial);
+			else
+				gsl_blas_daxpy(-1., dx, x_trial);
+			if (status = GSL_MULTIROOT_FN_EVAL(function, x_trial, f_trial); status != GSL_SUCCESS) {
+				if (status != GSL_EDOM)
+					return GSL_EBADFUNC;
+				gsl_vector_scale(x_trial, min(0.99999999, gsl_vector_get(f_trial, 0)));
+				gsl_vector_sub(x_trial, x);
+				// here x_trial is the difference between x and x_trial
+				trust_radius = min(0.5 * trust_radius, gsl_blas_dnrm2(x_trial));
+				continue;
+			}
+			if (double f_trial_norm = gsl_blas_dnrm2(f_trial); f_trial_norm < f_norm) {
+				gsl_vector_memcpy(x, x_trial);
+				gsl_vector_memcpy(f, f_trial);
+				if (dx_norm > trust_radius)
+					trust_radius *= 2.;
+				else
+					trust_radius = 2. * dx_norm;
+				return GSL_SUCCESS;
+			}
+			if (!state->directional) {
+				state->directional = true;
+				return GSL_SUCCESS;
+			}
+			if (state->epsilon_coefficient > GSL_ROOT5_DBL_EPSILON)
+				state->epsilon_coefficient *= 0.5;
+			if (trust_radius *= 0.5; trust_radius < trust_radius_limit)
+				return GSL_ENOPROG;
+		}
+	}
+	void MultiFunctionSolver::DNewtonFree(void *vstate) {
+		auto state = static_cast<DNewtonState *>(vstate);
+		gsl_vector_free(state->x_trial);
+		gsl_vector_free(state->f_trial);
+		gsl_matrix_free(state->jacobian);
+		gsl_matrix_free(state->lu);
+		gsl_permutation_free(state->permutation);
+	}
+	int MultiFunctionSolver::DNewtonRotationTranslationAlloc(void *vstate, size_t n) {
+		auto state = static_cast<DNewtonRotationTranslationState *>(vstate);
+		if (state->x_trial = gsl_vector_calloc(n); state->x_trial == nullptr)
+			GSL_ERROR("failed to allocate space for x_trial", GSL_ENOMEM);
+		if (state->dx_translation = gsl_vector_calloc(n); state->dx_translation == nullptr) {
+			DNewtonRotationTranslationFree(vstate);
+			GSL_ERROR("failed to allocate space for dx_translation", GSL_ENOMEM);
+		}
+		if (state->f_trial = gsl_vector_calloc(n); state->f_trial == nullptr) {
+			DNewtonRotationTranslationFree(vstate);
+			GSL_ERROR("failed to allocate space for f_trial", GSL_ENOMEM);
+		}
+		if (state->lu = gsl_matrix_calloc(n, n); state->lu == nullptr) {
+			DNewtonRotationTranslationFree(vstate);
+			GSL_ERROR("failed to allocate space for lu", GSL_ENOMEM);
+		}
+		if (state->permutation = gsl_permutation_calloc(n); state->permutation == nullptr) {
+			DNewtonRotationTranslationFree(vstate);
+			GSL_ERROR("failed to allocate space for permutation", GSL_ENOMEM);
+		}
+		if (state->jacobian = gsl_matrix_calloc(n, n); state->jacobian == nullptr) {
+			DNewtonRotationTranslationFree(vstate);
+			GSL_ERROR("failed to allocate space for d", GSL_ENOMEM);
+		}
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::DNewtonRotationTranslationSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<DNewtonRotationTranslationState *>(vstate);
+		if (int status = ScaleX(function, x, f); status != GSL_SUCCESS)
+			return status;
+		state->trust_radius = max(1., gsl_blas_dnrm2(x));
+		state->epsilon_coefficient = 1.;
+		state->directional = false;
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::DNewtonRotationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<DNewtonRotationTranslationState *>(vstate);
+		gsl_vector *x_trial = state->x_trial, *f_trial = state->f_trial;
+		gsl_matrix *jacobian = state->jacobian;
+		int signum, status;
+		double &trust_radius = state->trust_radius;
+		if (state->directional)
+			status = TwoSidedDirectionalJacobian(function, x, dx, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian);
+		else
+			status = TwoSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian);
+		if (status != GSL_SUCCESS)
+			return GSL_EBADFUNC;
+		gsl_matrix_memcpy(state->lu, jacobian);
+		if (status = gsl_linalg_LU_decomp(state->lu, state->permutation, &signum); status != GSL_SUCCESS)
+			return status;
+		if (status = gsl_linalg_LU_solve(state->lu, state->permutation, f, dx); status != GSL_SUCCESS)
+			return status;
+		const double x_norm = gsl_blas_dnrm2(x), f_norm = gsl_blas_dnrm2(f);
+		const double rotation_radius_limit = max(1., x_norm) * GSL_ROOT3_DBL_EPSILON;
+		const double trust_radius_limit = max(1., x_norm) * GSL_DBL_EPSILON;
+		double dx_norm = gsl_blas_dnrm2(dx);
+		while (true) {
+			gsl_vector_memcpy(x_trial, x);
+			if (dx_norm > trust_radius)
+				gsl_blas_daxpy(-trust_radius / dx_norm, dx, x_trial);
+			else
+				gsl_blas_daxpy(-1., dx, x_trial);
+			if (status = GSL_MULTIROOT_FN_EVAL(function, x_trial, f_trial); status != GSL_SUCCESS) {
+				if (status != GSL_EDOM)
+					return GSL_EBADFUNC;
+				gsl_vector_scale(x_trial, gsl_vector_get(f_trial, 0));
+				gsl_vector_sub(x_trial, x);
+				// here x_trial is the difference between x and x_trial
+				trust_radius = min(0.5 * trust_radius, gsl_blas_dnrm2(x_trial));
+				continue;
+			}
+			if (double f_trial_norm = gsl_blas_dnrm2(f_trial); f_trial_norm < f_norm) {
+				gsl_vector_memcpy(x, x_trial);
+				gsl_vector_memcpy(f, f_trial);
+				if (dx_norm > trust_radius)
+					trust_radius *= 2.;
+				else
+					trust_radius = 2. * dx_norm;
+				return GSL_SUCCESS;
+			}
+			if (!state->directional) {
+				state->directional = true;
+				return GSL_SUCCESS;
+			}
+			if (state->epsilon_coefficient > GSL_ROOT5_DBL_EPSILON)
+				state->epsilon_coefficient *= 0.5;
+			if (trust_radius < rotation_radius_limit) {
+				double projected_x, projected_y;
+				if (state->trace_to_plane) {
+					projected_x = state->projected_x + gsl_vector_get(f, 0);
+					projected_y = state->projected_y + gsl_vector_get(f, 1);
+				} else {
+					double cos_theta_photon = state->cos_theta_obj + gsl_vector_get(f, 0);
+					double theta_photon = acos(cos_theta_photon);
+					double phi_photon = state->phi_obj - gsl_vector_get(f, 1);
+					double sin_theta_photon = sin(theta_photon);
+					projected_x = sin_theta_photon * sin(phi_photon);
+					projected_y = cos_theta_photon * state->sin_theta_obs - sin_theta_photon * cos(phi_photon) * state->cos_theta_obs;
+				}
+				double iota_photon = atan2(projected_y, projected_x);
+				double cos_delta_iota = cos(state->iota_obj - iota_photon);
+				double sin_delta_iota = sin(state->iota_obj - iota_photon);
+				gsl_vector_set(dx, 0, gsl_vector_get(x, 0) * (1. - cos_delta_iota) + gsl_vector_get(x, 1) * sin_delta_iota);
+				gsl_vector_set(dx, 1, -gsl_vector_get(x, 0) * sin_delta_iota + gsl_vector_get(x, 1) * (1. - cos_delta_iota));
+				dx_norm = gsl_blas_dnrm2(dx);
+				gsl_vector_memcpy(x_trial, x);
+				if (dx_norm * GSL_ROOT6_DBL_EPSILON > trust_radius)
+					gsl_blas_daxpy(-GSL_ROOT6_DBL_EPSILON, dx, x_trial);
+				else if (dx_norm > trust_radius)
+					gsl_blas_daxpy(-trust_radius / dx_norm, dx, x_trial);
+				else
+					gsl_blas_daxpy(-1., dx, x_trial);
+				if (status = ScaleX(function, x_trial, f_trial); status != GSL_SUCCESS)
+					return status;
+				gsl_vector_memcpy(x, x_trial);
+				gsl_vector_memcpy(f, f_trial);
+				if (double f_trial_norm = gsl_blas_dnrm2(f_trial); f_trial_norm < f_norm)
+					trust_radius *= 2.;
+				else if (trust_radius *= 0.5; trust_radius < trust_radius_limit)
+					return GSL_ENOPROG;
+				return GSL_SUCCESS;
+			}
+			trust_radius *= 0.5;
+		}
+	}
+	int MultiFunctionSolver::DNewtonTranslationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<DNewtonRotationTranslationState *>(vstate);
+		gsl_vector *x_trial = state->x_trial, *f_trial = state->f_trial, *dx_translation = state->dx_translation;
+		gsl_matrix *jacobian = state->jacobian;
+		int signum, status;
+		double &trust_radius = state->trust_radius;
+		if (state->directional)
+			status = TwoSidedDirectionalJacobian(function, x, dx, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian);
+		else
+			status = TwoSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian);
+		if (status != GSL_SUCCESS)
+			return GSL_EBADFUNC;
+		gsl_matrix_memcpy(state->lu, jacobian);
+		if (status = gsl_linalg_LU_decomp(state->lu, state->permutation, &signum); status != GSL_SUCCESS)
+			return status;
+		if (status = gsl_linalg_LU_solve(state->lu, state->permutation, f, dx); status != GSL_SUCCESS)
+			return status;
+		const double f_norm = gsl_blas_dnrm2(f);
+		const double translation_radius_limit = gsl_blas_dnrm2(x) * GSL_ROOT3_DBL_EPSILON;
+		const double trust_radius_limit = gsl_blas_dnrm2(x) * GSL_DBL_EPSILON;
+		double dx_norm = gsl_blas_dnrm2(dx), dx_translation_norm;
+		while (true) {
+			gsl_vector_memcpy(x_trial, x);
+			if (dx_norm > trust_radius)
+				gsl_blas_daxpy(-trust_radius / dx_norm, dx, x_trial);
+			else
+				gsl_blas_daxpy(-1., dx, x_trial);
+			if (status = GSL_MULTIROOT_FN_EVAL(function, x_trial, f_trial); status != GSL_SUCCESS) {
+				if (status != GSL_EDOM)
+					return GSL_EBADFUNC;
+				gsl_vector_scale(x_trial, gsl_vector_get(f_trial, 0));
+				gsl_vector_sub(x_trial, x);
+				// here x_trial is the difference between x and x_trial
+				trust_radius = min(0.5 * trust_radius, gsl_blas_dnrm2(x_trial));
+				continue;
+			}
+			if (double f_trial_norm = gsl_blas_dnrm2(f_trial); f_trial_norm < f_norm) {
+				gsl_vector_memcpy(x, x_trial);
+				gsl_vector_memcpy(f, f_trial);
+				if (dx_norm > trust_radius)
+					trust_radius *= 2.;
+				else
+					trust_radius = 2. * dx_norm;
+				return GSL_SUCCESS;
+			}
+			if (!state->directional) {
+				state->directional = true;
+				return GSL_SUCCESS;
+			}
+			if (state->epsilon_coefficient > GSL_ROOT5_DBL_EPSILON)
+				state->epsilon_coefficient *= 0.5;
+			if (trust_radius < translation_radius_limit) {
+				if (state->trace_to_plane) {
+					gsl_vector_memcpy(dx_translation, f);
+				} else {
+					double cos_theta_photon = state->cos_theta_obj + gsl_vector_get(f, 0);
+					double theta_photon = acos(cos_theta_photon);
+					double phi_photon = state->phi_obj - gsl_vector_get(f, 1);
+					double sin_theta_photon = sin(theta_photon);
+					double projected_x = sin_theta_photon * sin(phi_photon);
+					double projected_y = cos_theta_photon * state->sin_theta_obs - sin_theta_photon * cos(phi_photon) * state->cos_theta_obs;
+					gsl_vector_set(dx_translation, 0, state->r_obj * (projected_x - state->projected_x));
+					gsl_vector_set(dx_translation, 1, state->r_obj * (projected_y - state->projected_y));
+				}
+				dx_translation_norm = gsl_blas_dnrm2(dx_translation);
+				gsl_vector_memcpy(x_trial, x);
+				if (dx_translation_norm * GSL_ROOT6_DBL_EPSILON > trust_radius)
+					gsl_blas_daxpy(-GSL_ROOT6_DBL_EPSILON, dx_translation, x_trial);
+				else if (dx_translation_norm > trust_radius)
+					gsl_blas_daxpy(-trust_radius / dx_translation_norm, dx_translation, x_trial);
+				else
+					gsl_blas_daxpy(-1., dx_translation, x_trial);
+				if (status = ScaleX(function, x_trial, f_trial); status != GSL_SUCCESS)
+					return status;
+				gsl_vector_memcpy(x, x_trial);
+				gsl_vector_memcpy(f, f_trial);
+				if (double f_trial_norm = gsl_blas_dnrm2(f_trial); f_trial_norm < f_norm)
+					trust_radius *= 2.;
+				else if (trust_radius *= 0.5; trust_radius < trust_radius_limit)
+					return GSL_ENOPROG;
+				return GSL_SUCCESS;
+			}
+			trust_radius *= 0.5;
+		}
+		return GSL_SUCCESS;
+	}
+	void MultiFunctionSolver::DNewtonRotationTranslationFree(void *vstate) {
+		auto state = static_cast<DNewtonRotationTranslationState *>(vstate);
+		gsl_vector_free(state->x_trial);
+		gsl_vector_free(state->dx_translation);
+		gsl_vector_free(state->f_trial);
+		gsl_matrix_free(state->jacobian);
+		gsl_matrix_free(state->lu);
+		gsl_permutation_free(state->permutation);
+	}
+	int MultiFunctionSolver::D2NewtonAlloc(void *vstate, size_t n) {
+		auto state = static_cast<D2NewtonState *>(vstate);
+		if (state->x_trial = gsl_vector_calloc(n); state->x_trial == nullptr)
+			GSL_ERROR("failed to allocate space for x_trial", GSL_ENOMEM);
+		if (state->f_trial = gsl_vector_calloc(n); state->f_trial == nullptr) {
+			DNewtonFree(vstate);
+			GSL_ERROR("failed to allocate space for f_trial", GSL_ENOMEM);
+		}
+		if (state->jacobian = gsl_vector_calloc(n); state->jacobian == nullptr) {
+			DNewtonFree(vstate);
+			GSL_ERROR("failed to allocate space for jacobian", GSL_ENOMEM);
+		}
+		if (state->hessian = gsl_matrix_calloc(n, n); state->hessian == nullptr) {
+			DNewtonFree(vstate);
+			GSL_ERROR("failed to allocate space for hessian", GSL_ENOMEM);
+		}
+		if (state->lu = gsl_matrix_calloc(n, n); state->lu == nullptr) {
+			DNewtonFree(vstate);
+			GSL_ERROR("failed to allocate space for lu", GSL_ENOMEM);
+		}
+		if (state->permutation = gsl_permutation_calloc(n); state->permutation == nullptr) {
+			DNewtonFree(vstate);
+			GSL_ERROR("failed to allocate space for permutation", GSL_ENOMEM);
+		}
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::D2NewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<D2NewtonState *>(vstate);
+		for (int status = GSL_MULTIROOT_FN_EVAL(function, x, f); status != GSL_SUCCESS; status = GSL_MULTIROOT_FN_EVAL(function, x, f)) {
+			if (status != GSL_EDOM)
+				return GSL_EBADFUNC;
+			gsl_vector_scale(x, gsl_vector_get(f, 0));
+		}
+		if (int status = OneSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON, state->hessian); status != GSL_SUCCESS)
+			return status;
+		state->trust_radius = gsl_blas_dnrm2(x);
+		gsl_vector_set_zero(dx);
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::D2NewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<D2NewtonState *>(vstate);
+		int signum;
+		gsl_matrix_memcpy(state->lu, state->hessian);
+		if (int status = gsl_linalg_LU_decomp(state->lu, state->permutation, &signum); status != GSL_SUCCESS)
+			return status;
+		// gsl_vector_memcpy(state->dx, dx);
+		if (int status = gsl_linalg_LU_solve(state->lu, state->permutation, f, dx); status != GSL_SUCCESS)
+			return status;
+		const double f_norm = gsl_blas_dnrm2(f);
+		const double trust_radius_limit = gsl_blas_dnrm2(x) * GSL_SQRT_DBL_EPSILON;
+		double dx_norm = gsl_blas_dnrm2(dx);
+		int limit_iteration = 0;
+		while (true) {
+			gsl_vector_memcpy(state->x_trial, x);
+			if (dx_norm > state->trust_radius)
+				gsl_blas_daxpy(-state->trust_radius / dx_norm, dx, state->x_trial);
+			else
+				gsl_blas_daxpy(-1., dx, state->x_trial);
+			if (int status = GSL_MULTIROOT_FN_EVAL(function, state->x_trial, state->f_trial); status != GSL_SUCCESS) {
+				if (status != GSL_EDOM)
+					return GSL_EBADFUNC;
+				gsl_vector_scale(state->x_trial, min(0.99999999, gsl_vector_get(state->f_trial, 0)));
+				gsl_vector_sub(state->x_trial, x);
+				// here x_trial is the difference between x and x_trial
+				if (state->trust_radius = min(0.5 * state->trust_radius, gsl_blas_dnrm2(state->x_trial)); state->trust_radius < trust_radius_limit) {
+					if (limit_iteration == 20)
+						return GSL_ENOPROG;
+					else if (limit_iteration == 0) {
+						if (int status = Hessian(function, x, f, GSL_SQRT_DBL_EPSILON, state->jacobian, state->hessian); status != GSL_SUCCESS)
+							return GSL_EBADFUNC;
+						gsl_matrix_memcpy(state->lu, state->hessian);
+						if (int status = gsl_linalg_LU_decomp(state->lu, state->permutation, &signum); status != GSL_SUCCESS)
+							return status;
+						// gsl_vector_memcpy(state->dx, dx);
+						if (int status = gsl_linalg_LU_solve(state->lu, state->permutation, state->jacobian, dx); status != GSL_SUCCESS)
+							return status;
+						dx_norm = gsl_blas_dnrm2(dx);
+						state->trust_radius *= 2.;
+					}
+					++limit_iteration;
+				}
+				continue;
+			}
+			if (double f_trial_norm = gsl_blas_dnrm2(state->f_trial); f_trial_norm < f_norm) {
+				gsl_vector_memcpy(x, state->x_trial);
+				gsl_vector_memcpy(f, state->f_trial);
+				if (dx_norm > state->trust_radius)
+					state->trust_radius *= 2.;
+				else
+					state->trust_radius = 2. * dx_norm;
+				break;
+			} else {
+				if (state->trust_radius *= 0.5; state->trust_radius < trust_radius_limit) {
+					if (limit_iteration == 20)
+						return GSL_ENOPROG;
+					else if (limit_iteration == 0) {
+						if (int status = Hessian(function, x, f, GSL_SQRT_DBL_EPSILON, state->f_trial, state->hessian); status != GSL_SUCCESS)
+							return GSL_EBADFUNC;
+						gsl_matrix_memcpy(state->lu, state->hessian);
+						if (int status = gsl_linalg_LU_decomp(state->lu, state->permutation, &signum); status != GSL_SUCCESS)
+							return status;
+						// gsl_vector_memcpy(state->dx, dx);
+						if (int status = gsl_linalg_LU_solve(state->lu, state->permutation, state->f_trial, state->x_trial); status != GSL_SUCCESS)
+							return status;
+						gsl_vector_add(dx, state->x_trial);
+						dx_norm = gsl_blas_dnrm2(dx);
+						state->trust_radius *= 2.;
+					}
+					++limit_iteration;
+				}
+			}
+		}
+		if (int status = OneSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON, state->hessian); status != GSL_SUCCESS)
+			return GSL_EBADFUNC;
+		return GSL_SUCCESS;
+	}
+	void MultiFunctionSolver::D2NewtonFree(void *vstate) {
+		auto state = static_cast<D2NewtonState *>(vstate);
+		gsl_vector_free(state->x_trial);
+		gsl_vector_free(state->f_trial);
+		gsl_vector_free(state->jacobian);
+		gsl_matrix_free(state->hessian);
+		gsl_matrix_free(state->lu);
+		gsl_permutation_free(state->permutation);
+	}
+
+	int MultiFunctionSolver::GradientIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<DNewtonState *>(vstate);
+		gsl_vector *x_trial = state->x_trial, *f_trial = state->f_trial;
+		gsl_matrix *jacobian = state->jacobian;
+		int signum, status;
+		gsl_matrix_memcpy(state->lu, jacobian);
+		if (status = gsl_linalg_LU_decomp(state->lu, state->permutation, &signum); status != GSL_SUCCESS)
+			return status;
+		if (status = gsl_linalg_LU_solve(state->lu, state->permutation, f, dx); status != GSL_SUCCESS)
+			return status;
+		const double f_norm = gsl_blas_dnrm2(f);
+		const double trust_radius_limit = gsl_blas_dnrm2(x) * GSL_DBL_EPSILON;
+		double dx_norm = gsl_blas_dnrm2(dx);
+		int iteration_count = 0;
+		while (true) {
+			gsl_vector_memcpy(x_trial, x);
+			if (dx_norm > state->trust_radius)
+				gsl_blas_daxpy(-state->trust_radius / dx_norm, dx, x_trial);
+			else
+				gsl_blas_daxpy(-1., dx, x_trial);
+			if (status = GSL_MULTIROOT_FN_EVAL(function, x_trial, f_trial); status != GSL_SUCCESS) {
+				if (status != GSL_EDOM)
+					return GSL_EBADFUNC;
+				gsl_vector_scale(x_trial, min(0.99999999, gsl_vector_get(f_trial, 0)));
+				gsl_vector_sub(x_trial, x);
+				// here x_trial is the difference between x and x_trial
+				state->trust_radius = min(0.5 * state->trust_radius, gsl_blas_dnrm2(x_trial));
+				continue;
+			}
+			if (double f_trial_norm = gsl_blas_dnrm2(f_trial); f_trial_norm < f_norm) {
+				gsl_vector_memcpy(x, x_trial);
+				gsl_vector_memcpy(f, f_trial);
+				if (dx_norm > state->trust_radius)
+					state->trust_radius *= 2.;
+				else
+					state->trust_radius = 2. * dx_norm;
+				break;
+			}
+			++iteration_count;
+			if (state->epsilon_coefficient > GSL_ROOT5_DBL_EPSILON)
+				state->epsilon_coefficient *= 0.5;
+			if (!state->directional && iteration_count == 2) {
+				state->trust_radius *= 2.;
+				if (status = TwoSidedDirectionalJacobian(function, x, dx, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian); status != GSL_SUCCESS)
+					return GSL_EBADFUNC;
+				gsl_blas_dgemv(CblasTrans, 1., jacobian, f, 0., dx);
+				dx_norm = gsl_blas_dnrm2(dx);
+				state->directional = true;
+			} else {
+				state->trust_radius *= 0.5;
+				if (state->trust_radius < trust_radius_limit)
+					return GSL_ENOPROG;
+			}
+		}
+		if (state->directional)
+			status = TwoSidedDirectionalJacobian(function, x, dx, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian);
+		else
+			status = TwoSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON * state->epsilon_coefficient, jacobian);
+		if (status != GSL_SUCCESS)
+			return GSL_EBADFUNC;
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::ConjugateGradientAlloc(void *vstate, size_t n) {
+		auto state = static_cast<ConjugateGradientState *>(vstate);
+		if (state->x_trial = gsl_vector_calloc(n); state->x_trial == nullptr)
+			GSL_ERROR("failed to allocate space for x_trial", GSL_ENOMEM);
+		if (state->f_trial = gsl_vector_calloc(n); state->f_trial == nullptr) {
+			ConjugateGradientFree(vstate);
+			GSL_ERROR("failed to allocate space for f_trial", GSL_ENOMEM);
+		}
+		if (state->last_dx = gsl_vector_calloc(n); state->last_dx == nullptr) {
+			ConjugateGradientFree(vstate);
+			GSL_ERROR("failed to allocate space for jacobian", GSL_ENOMEM);
+		}
+		if (state->jacobian = gsl_matrix_calloc(n, n); state->jacobian == nullptr) {
+			ConjugateGradientFree(vstate);
+			GSL_ERROR("failed to allocate space for jacobian", GSL_ENOMEM);
+		}
+		if (state->lu = gsl_matrix_calloc(n, n); state->lu == nullptr) {
+			ConjugateGradientFree(vstate);
+			GSL_ERROR("failed to allocate space for lu", GSL_ENOMEM);
+		}
+		if (state->permutation = gsl_permutation_calloc(n); state->permutation == nullptr) {
+			ConjugateGradientFree(vstate);
+			GSL_ERROR("failed to allocate space for permutation", GSL_ENOMEM);
+		}
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::ConjugateGradientSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<ConjugateGradientState *>(vstate);
 		state->iteration_coefficient = 1.0;
 		for (int status = GSL_MULTIROOT_FN_EVAL(function, x, f); status != GSL_SUCCESS; status = GSL_MULTIROOT_FN_EVAL(function, x, f)) {
 			if (status != GSL_EDOM)
 				return GSL_EBADFUNC;
 			gsl_vector_scale(x, gsl_vector_get(f, 0));
 		}
-		if (int status = Jacobian(function, x, f, GSL_SQRT_DBL_EPSILON, state->J); status != GSL_SUCCESS)
+		if (int status = OneSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON, state->jacobian); status != GSL_SUCCESS)
 			return status;
+		state->gradient_norm = 1.;
+		state->trust_radius = state->iteration_coefficient * gsl_blas_dnrm2(x);
 		gsl_vector_set_zero(dx);
+		gsl_vector_set_zero(state->last_dx);
 		return GSL_SUCCESS;
 	}
-	int MultiFunctionSolver::DnewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
-		DnewtonState *state = static_cast<DnewtonState *>(vstate);
-		int signum;
-		gsl_matrix_memcpy(state->lu, state->J);
-		if (int status = gsl_linalg_LU_decomp(state->lu, state->permutation, &signum); status != GSL_SUCCESS)
+	int MultiFunctionSolver::ConjugateGradientIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<ConjugateGradientState *>(vstate);
+		const double f_norm = gsl_blas_dnrm2(f);
+		const double trust_radius_limit = gsl_blas_dnrm2(x) * GSL_SQRT_DBL_EPSILON;
+		if (int status = gsl_blas_dgemv(CblasTrans, 1., state->jacobian, f, 0., state->x_trial); status != GSL_SUCCESS)
 			return status;
-		gsl_vector_memcpy(state->dx, dx);
-		if (int status = gsl_linalg_LU_solve(state->lu, state->permutation, f, dx); status != GSL_SUCCESS)
-			return status;
-		const double norm_dx = gsl_blas_dnrm2(dx) * state->iteration_coefficient;
-		const double norm_x = gsl_blas_dnrm2(x);
-		if (norm_dx > 0.5 * state->iteration_coefficient * norm_x + GSL_SQRT_DBL_EPSILON)
-			gsl_blas_daxpy(-(0.5 * state->iteration_coefficient * norm_x + GSL_SQRT_DBL_EPSILON) / norm_dx, dx, x);
-		else
-			gsl_blas_daxpy(-state->iteration_coefficient, dx, x);
-		for (int status = GSL_MULTIROOT_FN_EVAL(function, x, f); status != GSL_SUCCESS; status = GSL_MULTIROOT_FN_EVAL(function, x, f)) {
-			if (status != GSL_EDOM)
-				return GSL_EBADFUNC;
-			gsl_vector_memcpy(dx, x);
-			gsl_vector_scale(x, gsl_vector_get(f, 0));
-			gsl_vector_sub(dx, x);
-			state->iteration_coefficient *= min(0.9, gsl_vector_get(f, 0));
-			if (state->iteration_coefficient < 0.1)
-				state->iteration_coefficient = 0.1;
+		double gradient_norm = gsl_blas_dnrm2(state->x_trial);
+		double step_beta = gradient_norm / state->gradient_norm;
+		state->gradient_norm = gradient_norm;
+		gsl_vector_memcpy(dx, state->x_trial);
+		gsl_blas_daxpy(step_beta, state->last_dx, dx);
+		double dx_norm = gsl_blas_dnrm2(dx);
+		int limit_iteration = 0;
+		while (true) {
+			gsl_vector_memcpy(state->x_trial, x);
+			if (dx_norm > state->trust_radius)
+				gsl_blas_daxpy(-state->trust_radius / dx_norm, dx, state->x_trial);
+			else
+				gsl_blas_daxpy(-1., dx, state->x_trial);
+			if (int status = GSL_MULTIROOT_FN_EVAL(function, state->x_trial, state->f_trial); status != GSL_SUCCESS) {
+				if (status != GSL_EDOM)
+					return GSL_EBADFUNC;
+				gsl_vector_scale(state->x_trial, min(0.99999999, gsl_vector_get(state->f_trial, 0)));
+				gsl_vector_sub(state->x_trial, x);
+				// here x_trial is the difference between x and x_trial
+				if (state->trust_radius = min(0.5 * state->trust_radius, gsl_blas_dnrm2(state->x_trial)); state->trust_radius < trust_radius_limit) {
+					if (int status = TwoSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON, state->jacobian); status != GSL_SUCCESS)
+						return GSL_EBADFUNC;
+					state->trust_radius *= 2.;
+				}
+				continue;
+			}
+			if (double f_trial_norm = gsl_blas_dnrm2(state->f_trial); f_trial_norm < f_norm) {
+				gsl_vector_memcpy(x, state->x_trial);
+				gsl_vector_memcpy(f, state->f_trial);
+				gsl_vector_memcpy(state->last_dx, dx);
+				if (dx_norm > state->trust_radius)
+					state->trust_radius *= 2.;
+				else
+					state->trust_radius = 2. * dx_norm;
+				break;
+			} else {
+				if (state->trust_radius *= 0.5; state->trust_radius < trust_radius_limit) {
+					if (limit_iteration == 20)
+						return GSL_ENOPROG;
+					else if (limit_iteration == 0) {
+						if (int status = TwoSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON, state->jacobian); status != GSL_SUCCESS)
+							return GSL_EBADFUNC;
+						if (int status = gsl_blas_dgemv(CblasTrans, 1., state->jacobian, f, 0., state->x_trial); status != GSL_SUCCESS)
+							return status;
+						gsl_vector_memcpy(dx, state->x_trial);
+						gsl_blas_daxpy(step_beta, state->last_dx, dx);
+						dx_norm = gsl_blas_dnrm2(dx);
+						state->trust_radius *= 2.;
+					}
+					++limit_iteration;
+				}
+			}
 		}
-		if (int status = Jacobian(function, x, f, GSL_SQRT_DBL_EPSILON, state->J); status != GSL_SUCCESS)
-			return status;
+		if (int status = TwoSidedJacobian(function, x, f, GSL_SQRT_DBL_EPSILON, state->jacobian); status != GSL_SUCCESS)
+			return GSL_EBADFUNC;
 		return GSL_SUCCESS;
 	}
-	void MultiFunctionSolver::DnewtonFree(void *vstate) {
-		DnewtonState *state = static_cast<DnewtonState *>(vstate);
-		gsl_vector_free(state->dx);
-		gsl_matrix_free(state->J);
+	void MultiFunctionSolver::ConjugateGradientFree(void *vstate) {
+		auto state = static_cast<ConjugateGradientState *>(vstate);
+		gsl_vector_free(state->x_trial);
+		gsl_vector_free(state->f_trial);
+		gsl_vector_free(state->last_dx);
+		gsl_matrix_free(state->jacobian);
 		gsl_matrix_free(state->lu);
 		gsl_permutation_free(state->permutation);
+	}
+	int MultiFunctionSolver::TriangleAlloc(void *vstate, size_t n) {
+		auto state = static_cast<TriangleState *>(vstate);
+		if (state->x_trial = gsl_vector_calloc(n); state->x_trial == nullptr)
+			GSL_ERROR("failed to allocate space for x_trial", GSL_ENOMEM);
+		if (state->f_trial = gsl_vector_calloc(n); state->f_trial == nullptr) {
+			TriangleFree(vstate);
+			GSL_ERROR("failed to allocate space for f_trial", GSL_ENOMEM);
+		}
+		if (state->x_a = gsl_vector_calloc(n); state->x_a == nullptr) {
+			TriangleFree(vstate);
+			GSL_ERROR("failed to allocate space for x_a", GSL_ENOMEM);
+		}
+		if (state->x_b = gsl_vector_calloc(n); state->x_b == nullptr) {
+			TriangleFree(vstate);
+			GSL_ERROR("failed to allocate space for x_b", GSL_ENOMEM);
+		}
+		if (state->f_a = gsl_vector_calloc(n); state->f_a == nullptr) {
+			TriangleFree(vstate);
+			GSL_ERROR("failed to allocate space for f_a", GSL_ENOMEM);
+		}
+		if (state->f_b = gsl_vector_calloc(n); state->f_b == nullptr) {
+			TriangleFree(vstate);
+			GSL_ERROR("failed to allocate space for f_b", GSL_ENOMEM);
+		}
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::TriangleSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<TriangleState *>(vstate);
+		gsl_vector *x_a = state->x_a, *x_b = state->x_b, *f_a = state->f_a, *f_b = state->f_b;
+		int status;
+		for (status = GSL_MULTIROOT_FN_EVAL(function, x, f); status != GSL_SUCCESS; status = GSL_MULTIROOT_FN_EVAL(function, x, f)) {
+			if (status != GSL_EDOM)
+				return GSL_EBADFUNC;
+			gsl_vector_scale(x, min(0.99999999, gsl_vector_get(f, 0)));
+		}
+		// double dx = -gsl_vector_get(x, 0) * GSL_SQRT_DBL_EPSILON, dy = gsl_vector_get(x, 1) * GSL_SQRT_DBL_EPSILON;
+		gsl_vector_memcpy(x_a, x);
+		gsl_vector_memcpy(x_b, x);
+		gsl_vector_set(x_a, 0, gsl_vector_get(x, 0) * (1. - 0.01));
+		gsl_vector_set(x_b, 1, gsl_vector_get(x, 1) * (1. - 0.01));
+		for (int iteration = 0; iteration < 10; ++iteration) {
+			for (status = GSL_MULTIROOT_FN_EVAL(function, x_a, f_a); status != GSL_SUCCESS; status = GSL_MULTIROOT_FN_EVAL(function, x_a, f_a)) {
+				if (status != GSL_EDOM)
+					return GSL_EBADFUNC;
+				gsl_vector_scale(x_a, min(0.99999999, gsl_vector_get(f_a, 0)));
+			}
+			for (status = GSL_MULTIROOT_FN_EVAL(function, x_b, f_b); status != GSL_SUCCESS; status = GSL_MULTIROOT_FN_EVAL(function, x_b, f_b)) {
+				if (status != GSL_EDOM)
+					return GSL_EBADFUNC;
+				gsl_vector_scale(x_b, min(0.99999999, gsl_vector_get(f_b, 0)));
+			}
+			if (PointInTriangle(f, f_a, f_b))
+				return GSL_SUCCESS;
+			gsl_vector_sub(f_a, f);
+			gsl_vector_sub(f_b, f);
+			double x_a_coeff = -3. * (gsl_vector_get(f, 0) * gsl_vector_get(f_b, 1) - gsl_vector_get(f, 1) * gsl_vector_get(f_b, 0)) / (gsl_vector_get(f_a, 0) * gsl_vector_get(f_b, 1) - gsl_vector_get(f_a, 1) * gsl_vector_get(f_b, 0));
+			double x_b_coeff = -3. * (gsl_vector_get(f, 0) * gsl_vector_get(f_a, 1) - gsl_vector_get(f, 1) * gsl_vector_get(f_a, 0)) / (gsl_vector_get(f_b, 0) * gsl_vector_get(f_a, 1) - gsl_vector_get(f_b, 1) * gsl_vector_get(f_a, 0));
+			gsl_vector_sub(x_a, x);
+			gsl_vector_scale(x_a, x_a_coeff);
+			gsl_vector_add(x_a, x);
+			gsl_vector_sub(x_b, x);
+			gsl_vector_scale(x_b, x_b_coeff);
+			gsl_vector_add(x_b, x);
+		}
+		return GSL_FAILURE;
+	}
+	int MultiFunctionSolver::TriangleRotationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<TriangleState *>(vstate);
+		gsl_vector *x_trial = state->x_trial, *f_trial = state->f_trial;
+		// find the middle point in edge a-b
+		gsl_vector_memcpy(x_trial, state->x_a);
+		gsl_vector_add(x_trial, state->x_b);
+		gsl_vector_scale(x_trial, 0.5);
+		for (int status = GSL_MULTIROOT_FN_EVAL(function, x_trial, f_trial); status != GSL_SUCCESS; status = GSL_MULTIROOT_FN_EVAL(function, x_trial, f_trial)) {
+			if (status != GSL_EDOM)
+				return GSL_EBADFUNC;
+			gsl_vector_scale(x_trial, min(0.99999999, gsl_vector_get(f_trial, 0)));
+		}
+		gsl_vector_memcpy(dx, x_trial);
+		gsl_vector_sub(dx, x);
+		if (PointInTriangle(f_trial, f, state->f_a)) {
+			gsl_vector_memcpy(state->x_b, state->x_a);
+			gsl_vector_memcpy(state->f_b, state->f_a);
+			gsl_vector_memcpy(state->x_a, x);
+			gsl_vector_memcpy(state->f_a, f);
+			gsl_vector_memcpy(x, x_trial);
+			gsl_vector_memcpy(f, f_trial);
+			return GSL_SUCCESS;
+		}
+		if (PointInTriangle(f_trial, state->f_b, f)) {
+			gsl_vector_memcpy(state->x_a, x);
+			gsl_vector_memcpy(state->f_a, f);
+			gsl_vector_memcpy(x, state->x_b);
+			gsl_vector_memcpy(f, state->f_b);
+			gsl_vector_memcpy(state->x_b, x_trial);
+			gsl_vector_memcpy(state->f_b, f_trial);
+			return GSL_SUCCESS;
+		}
+		return GSL_FAILURE;
+	}
+	int MultiFunctionSolver::TriangleLongestIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<TriangleState *>(vstate);
+		gsl_vector *x_trial = state->x_trial, *f_trial = state->f_trial;
+		// find the longest edge
+		gsl_vector_memcpy(x_trial, x);
+		gsl_vector_sub(x_trial, state->x_a);
+		const double x_a_norm = gsl_blas_dnrm2(x_trial);
+		gsl_vector_memcpy(x_trial, x);
+		gsl_vector_sub(x_trial, state->x_b);
+		const double x_b_norm = gsl_blas_dnrm2(x_trial);
+		gsl_vector_memcpy(x_trial, state->x_a);
+		gsl_vector_sub(x_trial, state->x_b);
+		const double a_b_norm = gsl_blas_dnrm2(x_trial);
+		if (x_a_norm >= x_b_norm && x_a_norm >= a_b_norm) {
+			gsl_blas_dswap(x, state->x_b);
+			gsl_blas_dswap(f, state->f_b);
+		} else if (x_b_norm >= x_a_norm && x_b_norm >= a_b_norm) {
+			gsl_blas_dswap(x, state->x_a);
+			gsl_blas_dswap(f, state->f_a);
+		}
+		gsl_vector_memcpy(x_trial, state->x_a);
+		gsl_vector_add(x_trial, state->x_b);
+		gsl_vector_scale(x_trial, 0.5);
+		for (int status = GSL_MULTIROOT_FN_EVAL(function, x_trial, f_trial); status != GSL_SUCCESS; status = GSL_MULTIROOT_FN_EVAL(function, x_trial, f_trial)) {
+			if (status != GSL_EDOM)
+				return GSL_EBADFUNC;
+			gsl_vector_scale(x_trial, min(0.99999999, gsl_vector_get(f_trial, 0)));
+		}
+		gsl_vector_memcpy(dx, x_trial);
+		gsl_vector_sub(dx, x);
+		if (PointInTriangle(f_trial, f, state->f_a)) {
+			gsl_vector_memcpy(state->x_b, state->x_a);
+			gsl_vector_memcpy(state->f_b, state->f_a);
+			gsl_vector_memcpy(state->x_a, x);
+			gsl_vector_memcpy(state->f_a, f);
+			gsl_vector_memcpy(x, x_trial);
+			gsl_vector_memcpy(f, f_trial);
+			return GSL_SUCCESS;
+		}
+		if (PointInTriangle(f_trial, state->f_b, f)) {
+			gsl_vector_memcpy(state->x_a, x);
+			gsl_vector_memcpy(state->f_a, f);
+			gsl_vector_memcpy(x, state->x_b);
+			gsl_vector_memcpy(f, state->f_b);
+			gsl_vector_memcpy(state->x_b, x_trial);
+			gsl_vector_memcpy(state->f_b, f_trial);
+			return GSL_SUCCESS;
+		}
+		return GSL_FAILURE;
+	}
+	void MultiFunctionSolver::TriangleFree(void *vstate) {
+		auto state = static_cast<TriangleState *>(vstate);
+		gsl_vector_free(state->x_trial);
+		gsl_vector_free(state->f_trial);
+		gsl_vector_free(state->x_a);
+		gsl_vector_free(state->x_b);
+		gsl_vector_free(state->f_a);
+		gsl_vector_free(state->f_b);
+	}
+	int MultiFunctionSolver::DirectionAlloc(void *vstate, size_t n) {
+		auto state = static_cast<DirectionState *>(vstate);
+		if (state->x_trial = gsl_vector_calloc(n); state->x_trial == nullptr)
+			GSL_ERROR("failed to allocate space for x_trial", GSL_ENOMEM);
+		if (state->x_rec = gsl_vector_calloc(n); state->x_rec == nullptr) {
+			TriangleFree(vstate);
+			GSL_ERROR("failed to allocate space for x_rec", GSL_ENOMEM);
+		}
+		if (state->f_trial = gsl_vector_calloc(n); state->f_trial == nullptr) {
+			TriangleFree(vstate);
+			GSL_ERROR("failed to allocate space for f_trial", GSL_ENOMEM);
+		}
+		if (state->f_rec = gsl_vector_calloc(n); state->f_rec == nullptr) {
+			TriangleFree(vstate);
+			GSL_ERROR("failed to allocate space for f_rec", GSL_ENOMEM);
+		}
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::DirectionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<DirectionState *>(vstate);
+		state->directional_num = 1;
+		state->delta_angle = M_PI_2;
+		state->central_angle = 0.;
+		if (int status = ScaleX(function, x, f); status != GSL_SUCCESS)
+			return status;
+		state->trust_radius = max(1., gsl_blas_dnrm2(x) / gsl_blas_dnrm2(f)) * GSL_SQRT_DBL_EPSILON;
+		return GSL_SUCCESS;
+	}
+	int MultiFunctionSolver::DirectionIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
+		auto state = static_cast<DirectionState *>(vstate);
+		gsl_vector *x_trial = state->x_trial, *x_rec = state->x_rec, *f_trial = state->f_trial, *f_rec = state->f_rec;
+		int status;
+		const double f_norm = gsl_blas_dnrm2(f), trust_radius_limit = gsl_blas_dnrm2(x) * GSL_DBL_EPSILON * 100;
+		for (double effective_radius = max(trust_radius_limit, state->trust_radius * f_norm); state->directional_num < 64; effective_radius = max(trust_radius_limit, state->trust_radius * f_norm)) {
+			double min_norm, delta_angle = state->delta_angle, next_angle = state->central_angle;
+			double delta_x = effective_radius * cos(state->central_angle), delta_y = effective_radius * sin(state->central_angle);
+			gsl_vector_set(x_trial, 0, gsl_vector_get(x, 0) + delta_x);
+			gsl_vector_set(x_trial, 1, gsl_vector_get(x, 1) + delta_y);
+			if (status = ScaleX(function, x_trial, f_trial); status != GSL_SUCCESS)
+				return status;
+			if (min_norm = gsl_blas_dnrm2(f_trial); min_norm < f_norm) {
+				next_angle = state->central_angle;
+				gsl_vector_memcpy(x_rec, x_trial);
+				gsl_vector_memcpy(f_rec, f_trial);
+			} else {
+				gsl_vector_set(x_trial, 0, gsl_vector_get(x, 0) - delta_x);
+				gsl_vector_set(x_trial, 1, gsl_vector_get(x, 1) - delta_y);
+				if (status = ScaleX(function, x_trial, f_trial); status != GSL_SUCCESS)
+					return status;
+				if (double f_dir_norm = gsl_blas_dnrm2(f_trial); f_dir_norm < min_norm) {
+					min_norm = f_dir_norm;
+					next_angle = state->central_angle + M_PI;
+					gsl_vector_memcpy(x_rec, x_trial);
+					gsl_vector_memcpy(f_rec, f_trial);
+				}
+			}
+			for (int i = state->directional_num; i > 0; --i) {
+				for (int sign = 1; sign > -2; sign -= 2) {
+					double angle = state->central_angle + sign * delta_angle;
+					delta_x = state->trust_radius * cos(angle);
+					delta_y = state->trust_radius * sin(angle);
+					gsl_vector_set(x_trial, 0, gsl_vector_get(x, 0) + delta_x);
+					gsl_vector_set(x_trial, 1, gsl_vector_get(x, 1) + delta_y);
+					if (status = ScaleX(function, x_trial, f_trial); status != GSL_SUCCESS)
+						return status;
+					if (double f_dir_norm = gsl_blas_dnrm2(f_trial); f_dir_norm < min_norm) {
+						min_norm = f_dir_norm;
+						next_angle = angle;
+						gsl_vector_memcpy(x_rec, x_trial);
+						gsl_vector_memcpy(f_rec, f_trial);
+					}
+				}
+				if (delta_angle *= 2.; delta_angle > M_PI) {
+					delta_angle *= 0.5;
+					break;
+				}
+			}
+			if (min_norm >= f_norm) {
+				state->trust_radius *= 0.7;
+				if (next_angle != state->central_angle + M_PI)
+					state->delta_angle = max(state->delta_angle, abs(next_angle - state->central_angle)) * 0.5;
+				else
+					state->delta_angle = M_PI_4 * pow(0.5, state->directional_num);
+				state->directional_num += 2;
+				state->central_angle = ModBy2Pi(next_angle);
+				continue;
+			}
+			gsl_vector_memcpy(dx, x_rec);
+			gsl_vector_sub(dx, x);
+			gsl_vector_memcpy(x, x_rec);
+			gsl_vector_memcpy(f, f_rec);
+			state->trust_radius *= 1.5;
+			if (state->directional_num > 1) {
+				if (next_angle != state->central_angle + M_PI)
+					state->delta_angle = max(state->delta_angle, abs(next_angle - state->central_angle));
+				else
+					state->delta_angle = M_PI_2;
+				state->directional_num = 1;
+			} else if (next_angle == state->central_angle)
+				state->delta_angle *= 0.5;
+			state->central_angle = ModBy2Pi(next_angle);
+			return GSL_SUCCESS;
+		}
+		return GSL_FAILURE;
+	}
+	void MultiFunctionSolver::DirectionFree(void *vstate) {
+		auto state = static_cast<DirectionState *>(vstate);
+		gsl_vector_free(state->x_trial);
+		gsl_vector_free(state->x_rec);
+		gsl_vector_free(state->f_trial);
+		gsl_vector_free(state->f_rec);
 	}
 
 	static const gsl_multiroot_fsolver_type HybridType{"sbody_hybrid",
@@ -663,23 +1850,79 @@ namespace SBody {
 													   &MultiFunctionSolver::HybridIterate,
 													   &MultiFunctionSolver::HybridFree};
 
-	static const gsl_multiroot_fsolver_type HybridsType{"sbody_hybrids",
-														sizeof(HybridState),
-														&MultiFunctionSolver::HybridAlloc,
-														&MultiFunctionSolver::HybridScaleSet,
-														&MultiFunctionSolver::HybridScaleIterate,
-														&MultiFunctionSolver::HybridFree};
+	static const gsl_multiroot_fsolver_type HybridAdditionType{"sbody_hybrid_addition",
+															   sizeof(HybridAdditionState),
+															   &MultiFunctionSolver::HybridAdditionAlloc,
+															   &MultiFunctionSolver::HybridAdditionSet,
+															   &MultiFunctionSolver::HybridAdditionIterate,
+															   &MultiFunctionSolver::HybridAdditionFree};
 
-	static const gsl_multiroot_fsolver_type DnewtonType{"sbody_dnewton",
-														sizeof(DnewtonState),
-														&MultiFunctionSolver::DnewtonAlloc,
-														&MultiFunctionSolver::DnewtonSet,
-														&MultiFunctionSolver::DnewtonIterate,
-														&MultiFunctionSolver::DnewtonFree};
+	static const gsl_multiroot_fsolver_type DNewtonType{"sbody_dnewton",
+														sizeof(DNewtonState),
+														&MultiFunctionSolver::DNewtonAlloc,
+														&MultiFunctionSolver::DNewtonSet,
+														&MultiFunctionSolver::DNewtonIterate,
+														&MultiFunctionSolver::DNewtonFree};
+
+	static const gsl_multiroot_fsolver_type DNewtonRotationType{"sbody_dnewton_rotation",
+																sizeof(DNewtonRotationTranslationState),
+																&MultiFunctionSolver::DNewtonRotationTranslationAlloc,
+																&MultiFunctionSolver::DNewtonRotationTranslationSet,
+																&MultiFunctionSolver::DNewtonRotationIterate,
+																&MultiFunctionSolver::DNewtonRotationTranslationFree};
+
+	static const gsl_multiroot_fsolver_type DNewtonTranslationType{"sbody_dnewton_translation",
+																   sizeof(DNewtonRotationTranslationState),
+																   &MultiFunctionSolver::DNewtonRotationTranslationAlloc,
+																   &MultiFunctionSolver::DNewtonRotationTranslationSet,
+																   &MultiFunctionSolver::DNewtonTranslationIterate,
+																   &MultiFunctionSolver::DNewtonRotationTranslationFree};
+
+	static const gsl_multiroot_fsolver_type D2NewtonType{"sbody_d2newton",
+														 sizeof(D2NewtonState),
+														 &MultiFunctionSolver::D2NewtonAlloc,
+														 &MultiFunctionSolver::D2NewtonSet,
+														 &MultiFunctionSolver::D2NewtonIterate,
+														 &MultiFunctionSolver::D2NewtonFree};
+
+	static const gsl_multiroot_fsolver_type GradientType{"sbody_gradient",
+														 sizeof(DNewtonState),
+														 &MultiFunctionSolver::DNewtonAlloc,
+														 &MultiFunctionSolver::DNewtonSet,
+														 &MultiFunctionSolver::GradientIterate,
+														 &MultiFunctionSolver::DNewtonFree};
+
+	static const gsl_multiroot_fsolver_type ConjugateGradientType{"sbody_conjugate",
+																  sizeof(ConjugateGradientState),
+																  &MultiFunctionSolver::ConjugateGradientAlloc,
+																  &MultiFunctionSolver::ConjugateGradientSet,
+																  &MultiFunctionSolver::ConjugateGradientIterate,
+																  &MultiFunctionSolver::ConjugateGradientFree};
+
+	static const gsl_multiroot_fsolver_type TriangleType{"sbody_triangle_rotation",
+														 sizeof(TriangleState),
+														 &MultiFunctionSolver::TriangleAlloc,
+														 &MultiFunctionSolver::TriangleSet,
+														 &MultiFunctionSolver::TriangleRotationIterate,
+														 &MultiFunctionSolver::TriangleFree};
+
+	static const gsl_multiroot_fsolver_type DirectionType{"sbody_direction",
+														  sizeof(DirectionState),
+														  &MultiFunctionSolver::DirectionAlloc,
+														  &MultiFunctionSolver::DirectionSet,
+														  &MultiFunctionSolver::DirectionIterate,
+														  &MultiFunctionSolver::DirectionFree};
 
 	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_hybrid = &HybridType;
-	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_hybrids = &HybridsType;
-	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_dnewton = &DnewtonType;
+	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_hybrid_addition = &HybridAdditionType;
+	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_dnewton = &DNewtonType;
+	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_dnewton_rotation = &DNewtonRotationType;
+	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_dnewton_translation = &DNewtonTranslationType;
+	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_d2newton = &D2NewtonType;
+	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_gradient = &GradientType;
+	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_conjugate = &ConjugateGradientType;
+	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_triangle = &TriangleType;
+	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_direction = &DirectionType;
 
 	// MultiDerivativeSolver
 	MultiDerivativeSolver::MultiDerivativeSolver(size_t n, const gsl_multiroot_fdfsolver_type *type) {
@@ -791,6 +2034,36 @@ namespace SBody {
 		return permutations_.back();
 	}
 
+	int CoordinateOrthogonalization(const gsl_vector *x, gsl_matrix *coordinate) {
+		size_t n = x->size;
+		if (n != coordinate->size1 || n != coordinate->size2) {
+			PrintlnError("CoordinateOrthogonalization: Invalid size");
+			return GSL_EBADLEN;
+		}
+		gsl_matrix_set_zero(coordinate);
+		gsl_vector_view column_view[n];
+		for (int i = 0; i < n; ++i)
+			column_view[i] = gsl_matrix_column(coordinate, i);
+		int coordinate_idx = 0;
+		gsl_blas_daxpy(1. / gsl_blas_dnrm2(x), x, &column_view[0].vector);
+		for (int i = 1; i < n; ++i) {
+			gsl_vector_set_basis(&column_view[i].vector, coordinate_idx++);
+			for (int j = 0; j < i; ++j) {
+				double dot_product;
+				gsl_blas_ddot(&column_view[i].vector, &column_view[j].vector, &dot_product);
+				gsl_blas_daxpy(-dot_product, &column_view[j].vector, &column_view[i].vector);
+			}
+			double base_norm = gsl_blas_dnrm2(&column_view[i].vector);
+			if (base_norm > GSL_SQRT_DBL_EPSILON)
+				gsl_vector_scale(&column_view[i].vector, 1. / gsl_blas_dnrm2(&column_view[i].vector));
+			else if (coordinate_idx == n)
+				return GSL_EFAILED;
+			else
+				--i;
+		}
+		return GSL_SUCCESS;
+	}
+
 	// Maths
 	double SquareRoot(double x) {
 		if (x <= 0.)
@@ -841,6 +2114,17 @@ namespace SBody {
 					 c = sqrt(gsl_pow_2(x[0] - z[0]) + gsl_pow_2(x[1] - z[1]) + gsl_pow_2(x[2] - z[2])),
 					 s = 0.5 * (a + b + c);
 		return sqrt(s * (s - a) * (s - b) * (s - c));
+	}
+	bool PointInTriangle(double xa, double ya, double xb, double yb, double xc, double yc, double x, double y) {
+		const double ap_cross_ab = (x - xa) * (yb - ya) - (y - ya) * (xb - xa);
+		const double bp_cross_bc = (x - xb) * (yc - yb) - (y - yb) * (xc - xb);
+		const double cp_cross_ca = (x - xc) * (ya - yc) - (y - yc) * (xa - xc);
+		return (ap_cross_ab >= 0. && bp_cross_bc >= 0. && cp_cross_ca >= 0.) || (ap_cross_ab <= 0. && bp_cross_bc <= 0. && cp_cross_ca <= 0.);
+	}
+	bool PointInTriangle(const gsl_vector *a, const gsl_vector *b, const gsl_vector *c, const gsl_vector *p) {
+		if (p == nullptr)
+			return PointInTriangle(gsl_vector_get(a, 0), gsl_vector_get(a, 1), gsl_vector_get(b, 0), gsl_vector_get(b, 1), gsl_vector_get(c, 0), gsl_vector_get(c, 1));
+		return PointInTriangle(gsl_vector_get(a, 0), gsl_vector_get(a, 1), gsl_vector_get(b, 0), gsl_vector_get(b, 1), gsl_vector_get(c, 0), gsl_vector_get(c, 1), gsl_vector_get(p, 0), gsl_vector_get(p, 1));
 	}
 	int RotateAroundAxis(double x[], Axis axis, double angle) {
 		const double sin_angle = sin(angle), cos_angle = cos(angle);
@@ -997,6 +2281,7 @@ namespace SBody {
 		return root_num;
 	}
 	int PolishCubicRoot(double a, double b, double c, double roots[], int root_num) {
+		int polish_state = 0;
 		for (int i = 0; i < root_num; ++i) {
 			for (int j = 32; j > 0; --j) {
 				double f = roots[i] + a;
@@ -1008,11 +2293,13 @@ namespace SBody {
 				const double diff = f * df / (df * df - 0.5 * f * d2f);
 				if (abs(roots[i]) * GSL_DBL_EPSILON < abs(diff))
 					roots[i] -= diff;
-				else
+				else {
+					polish_state |= 1 << i;
 					break;
+				}
 			}
 		}
-		return root_num;
+		return polish_state;
 	}
 	int PolishQuarticRoot(double a, double b, double c, double d, double roots[], int root_num) {
 		int polish_state = 0;
@@ -1113,7 +2400,8 @@ namespace SBody {
 		// z = s^2, so s = sqrt(z).
 		// Hence we require a root > 0, and for the sake of sanity we should take the largest one:
 		double largest_root = z_root_num == 1 ? roots[0] : roots[2];
-		PolishCubicRoot(2. * p, p * p - 4. * r, -q * q, &largest_root, 1);
+		if (int status = PolishCubicRoot(2. * p, p * p - 4. * r, -q * q, &largest_root, 1); status == 0)
+			largest_root = z_root_num == 1 ? roots[0] : roots[2];
 		if (largest_root <= 0.) // No real roots:
 			return 0;
 		const double s = sqrt(largest_root);

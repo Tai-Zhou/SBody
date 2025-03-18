@@ -156,6 +156,14 @@ namespace SBody {
 	};
 
 	class Disk : public Object {
+	  protected:
+		const double inner_radius;
+		const double outer_radius;
+		const double inner_velocity;
+		const double velocity_slope_index;
+
+	  public:
+		int Hit(const double current[], const double last[]);
 	};
 } // namespace SBody
 

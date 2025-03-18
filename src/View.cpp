@@ -42,26 +42,27 @@ namespace SBody {
 	int View::InitializePhoton(double photon[], double alpha, double beta) {
 		return metric_->InitializePhoton(photon, alpha, beta, r_, r2_, theta_, sin_theta_);
 	}
+	TraceParameters::TraceParameters(shared_ptr<Metric> metric, shared_ptr<Integrator> integrator, double photon[], double r, double r2, double theta_obs, double sin_theta_obs, double cos_theta_obs, double r_obj, double sin_theta_obj, double cos_theta_obj, double sin_phi_obj, double cos_phi_obj, double t_final) : metric(metric), integrator(integrator), photon(photon), r(r), r2(r2), theta_obs(theta_obs), sin_theta_obs(sin_theta_obs), cos_theta_obs(cos_theta_obs), r_obj(r_obj), x_obj(r_obj * sin_theta_obj * cos_phi_obj), y_obj(r_obj * sin_theta_obj * sin_phi_obj), z_obj(r_obj * cos_theta_obj), t_final(t_final) {}
 	int View::Trace(const double position[], TimeSystem object_time, double record[], bool calculate_magnification, bool fast_trace) {
-		double photon[9], last_step_record[9], alpha, delta_alpha, beta, delta_beta, h;
+		double photon[9], alpha, beta;
 		if (fast_trace && metric_->FastTrace(r_, theta_, sin_theta_, cos_theta_, position[1], position[2], position[3], alpha, beta, photon) == GSL_SUCCESS) {
 			PhotonInformation(position, object_time, record, photon, alpha, beta);
 			return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : GSL_SUCCESS;
 		}
-		auto t_start = chrono::steady_clock::now();
 		const double r_object = position[1], sin_theta_object = abs(sin(position[2])), cos_theta_object = GSL_SIGN(position[2]) * cos(position[2]), sin_phi_object = sin(position[3]), cos_phi_object = cos(position[3]);
 		if (r_object <= 3.) {
 			PrintlnWarning("Object orbit radius = {:.6f}", r_object);
 			if (r_object < 0)
 				return GSL_FAILURE;
 		}
-		const double cos_observer_object = sin_theta_ * sin_theta_object * cos_phi_object + cos_theta_ * cos_theta_object, iteration_coefficient = tanh((2. + cos_observer_object) * 0.02 * r_object);
+		const double cos_observer_object = sin_theta_ * sin_theta_object * cos_phi_object + cos_theta_ * cos_theta_object;
 		const double alpha_coefficient = sin_theta_object * sin_phi_object, beta_coefficient = cos_theta_object * sin_theta_ - sin_theta_object * cos_phi_object * cos_theta_, sin_observer_object = sqrt(gsl_pow_2(alpha_coefficient) + gsl_pow_2(beta_coefficient)), theta_observer_object = acos(cos_observer_object);
+		GslBlock collector;
+		gsl_vector *alpha_beta_initial_value = collector.VectorCalloc(2);
 		if (cos_observer_object == -1.) {
 			PrintlnWarning("Object behind black hole, cos(theta) = {:.6f}\n", cos_observer_object);
-			alpha = 2. * sqrt(r_object);
-			beta = 0.;
-		} else if (cos_observer_object < 1.) { // initial guessing
+			gsl_vector_set(alpha_beta_initial_value, 0, 2. * sqrt(r_object));
+		} else { // initial guessing
 			double effective_radius;
 			if (theta_observer_object < M_PI_2)
 				effective_radius = r_object + gsl_pow_3(theta_observer_object / M_PI_2) / sin_observer_object;
@@ -69,75 +70,107 @@ namespace SBody {
 				// b-r*sin(theta)=(b-1.)*(2.*theta/pi-1.)+1.+(b-4.)/pi*sin(theta*2.)
 				// b=(r*sin(theta)*M_PI+M_2_PI-2.*theta-8.*sin(theta)*cos(theta))/(2.*(M_PI-theta-sin(theta)*cos(theta)))
 				effective_radius = 1. / sin_observer_object + 0.5 * (M_PI * r_object - 6. * cos_observer_object) / (M_PI - theta_observer_object - sin_observer_object * cos_observer_object);
-			alpha = effective_radius * alpha_coefficient;
-			beta = effective_radius * beta_coefficient;
+			gsl_vector_set(alpha_beta_initial_value, 0, effective_radius * alpha_coefficient);
+			gsl_vector_set(alpha_beta_initial_value, 1, effective_radius * beta_coefficient);
 		}
-		unique_ptr<Integrator> integrator = metric_->GetIntegrator(T, HAMILTONIAN);
-		int retry = 0;
-		while (true) {
-			InitializePhoton(photon, alpha, beta);
-			metric_->LagrangianToHamiltonian(photon);
-			int status = 0, fixed = 0;
-			h = -0.01 * r_;
-			while (status <= 0) {
-#ifdef GSL_RANGE_CHECK_OFF
-				if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(1)) {
-					PrintlnWarning("View::Trace() timeout! Object position is:\nr = {}\ntheta = {}\nphi = {}\nobserver theta={}", position[1], position[2], position[3], theta_);
-					return GSL_FAILURE;
-				}
-#endif
-				if (status == GSL_FAILURE) {
-					h *= 0.5;
-					fixed = 0;
-				}
-				copy(photon, photon + 9, last_step_record);
-				if (fixed)
-					status = integrator->ApplyFixedStep(photon + 8, h, photon);
-				else
-					status = integrator->ApplyStep(photon + 8, t_final_, &h, photon);
-				if (const double cos_observer_object_photon = (r_object * sin_theta_object * cos_phi_object - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * sin_theta_ + (r_object * cos_theta_object - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * cos_theta_; cos_observer_object_photon > r_object * 1e-13) {
-					// photon goes through the plane of the object
-					copy(last_step_record, last_step_record + 9, photon);
-					h *= 0.3;
-					fixed = 1;
-					integrator->Reset();
-				} else if (cos_observer_object_photon >= 0) {
-					// photon in the same plane with the object
-					delta_alpha = r_object * sin_theta_object * sin_phi_object - photon[1] * abs(sin(photon[2])) * sin(photon[3]);
-					delta_beta = (r_object * cos_theta_object - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * sin_theta_ - (r_object * sin_theta_object * cos_phi_object - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * cos_theta_;
-					break;
-				}
-				// photon not reaches the plane of the object
-				if (photon[8] > t_final_)
-					continue;
-				// photon runs away
-				if (++retry < 3) { // retry limit
-					delta_alpha = alpha * 0.2;
-					delta_beta = beta * 0.2;
-					break;
-				}
-				PrintlnWarning("View::Trace() failed! Object position is:\nr = {}\ntheta = {}\nphi = {}", position[1], position[2], position[3]);
-				return GSL_FAILURE;
-			}
-			if (status > 0) {
-				PrintlnWarning("View::Trece() status = {}\n", status);
+		TraceParameters trace_parameters(metric_, metric_->GetIntegrator(T, HAMILTONIAN), photon, r_, r2_, theta_, sin_theta_, cos_theta_, position[1], sin_theta_object, cos_theta_object, sin_phi_object, cos_phi_object, t_final_);
+		gsl_multiroot_function alpha_beta_function{TraceToPlane, 2, &trace_parameters};
+		int status;
+		MultiFunctionSolver alpha_beta_translation_solver(2, gsl_multiroot_fsolver_sbody_dnewton_translation);
+		if (status = alpha_beta_translation_solver.Set(&alpha_beta_function, alpha_beta_initial_value, theta_, sin_theta_, cos_theta_, r_object, sin_theta_object, cos_theta_object, position[3], sin_phi_object, cos_phi_object, true); status != GSL_SUCCESS)
+			return status;
+		if (status = alpha_beta_translation_solver.Solve(r_object * GSL_ROOT3_DBL_EPSILON); status == GSL_SUCCESS) {
+			alpha = gsl_vector_get(alpha_beta_translation_solver.Root(), 0);
+			beta = gsl_vector_get(alpha_beta_translation_solver.Root(), 1);
+		} else {
+			MultiFunctionSolver alpha_beta_rotation_solver(2, gsl_multiroot_fsolver_sbody_dnewton_rotation);
+			if (status = alpha_beta_rotation_solver.Set(&alpha_beta_function, alpha_beta_translation_solver.Root(), theta_, sin_theta_, cos_theta_, r_object, sin_theta_object, cos_theta_object, position[3], sin_phi_object, cos_phi_object, true); status != GSL_SUCCESS)
 				return status;
+			if (status = alpha_beta_rotation_solver.Solve(r_object * GSL_ROOT3_DBL_EPSILON); status == GSL_SUCCESS) {
+				alpha = gsl_vector_get(alpha_beta_rotation_solver.Root(), 0);
+				beta = gsl_vector_get(alpha_beta_rotation_solver.Root(), 1);
+			} else {
+				// PrintlnWarning("Kerr FastTrace() TRANSLATION failed with status = {}", status);
+				MultiFunctionSolver alpha_beta_direction_solver(2, gsl_multiroot_fsolver_sbody_direction);
+				if (status = alpha_beta_direction_solver.Set(&alpha_beta_function, alpha_beta_rotation_solver.Root()); status != GSL_SUCCESS) {
+					PrintlnError("Kerr Trace() set DIRECTION failed with status = {}", status);
+					return status;
+				}
+				if (status = alpha_beta_direction_solver.Solve(r_object * GSL_ROOT3_DBL_EPSILON); status != GSL_SUCCESS) {
+					PrintlnError("Kerr Trace() DIRECTION failed with status = {}", status);
+					return status;
+				}
+				alpha = gsl_vector_get(alpha_beta_direction_solver.Root(), 0);
+				beta = gsl_vector_get(alpha_beta_direction_solver.Root(), 1);
 			}
-			if (gsl_hypot(delta_alpha, delta_beta) <= GSL_SQRT_DBL_EPSILON * (1. + gsl_hypot(alpha, beta))) {
-				metric_->HamiltonianToLagrangian(photon);
-				break;
-			}
-			alpha += iteration_coefficient * delta_alpha;
-			beta += iteration_coefficient * delta_beta;
-			integrator->Reset();
 		}
 		photon[8] -= r_;
 		PhotonInformation(position, object_time, record, photon, alpha, beta);
 		return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : GSL_SUCCESS;
 	}
+	int View::TraceToPlane(const gsl_vector *alpha_beta, void *params, gsl_vector *delta_apparent_alpha_beta) {
+		auto *const param = static_cast<TraceParameters *>(params);
+		double alpha = gsl_vector_get(alpha_beta, 0), beta = gsl_vector_get(alpha_beta, 1);
+		auto integrator = param->integrator;
+		integrator->Reset();
+		if (!isfinite(alpha) || !isfinite(beta))
+			return GSL_ERUNAWAY;
+		double *photon = param->photon, last_step_record[9];
+		if (int status = param->metric->InitializePhoton(photon, alpha, beta, param->r, param->r2, param->theta_obs, param->sin_theta_obs); status != GSL_SUCCESS)
+			return status;
+		param->metric->LagrangianToHamiltonian(photon);
+		int status = 0, fixed = 0;
+		double h = -0.01 * param->r, last_h;
+#ifdef GSL_RANGE_CHECK_OFF
+		auto t_start = chrono::steady_clock::now();
+#endif
+		while (status <= 0) {
+			if (status == GSL_FAILURE) {
+				h *= 0.5;
+				fixed = 0;
+			}
+			copy(photon, photon + 9, last_step_record);
+			last_h = h;
+			if (fixed)
+				status = integrator->ApplyFixedStep(photon + 8, h, photon);
+			else
+				status = integrator->ApplyStep(photon + 8, param->t_final, &h, photon);
+			if (const double cos_observer_object_photon = (param->x_obj - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * param->sin_theta_obs + (param->z_obj - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * param->cos_theta_obs; cos_observer_object_photon > param->r_obj * GSL_SQRT_DBL_EPSILON) {
+				// photon goes through the plane of the object
+				copy(last_step_record, last_step_record + 9, photon);
+				h = last_h * 0.3;
+				fixed = 1;
+				integrator->Reset();
+			} else if (cos_observer_object_photon >= 0) {
+				// photon in the same plane with the object
+				gsl_vector_set(delta_apparent_alpha_beta, 0, param->y_obj - photon[1] * abs(sin(photon[2])) * sin(photon[3]));
+				gsl_vector_set(delta_apparent_alpha_beta, 1, (param->z_obj - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * param->sin_theta_obs - (param->x_obj - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * param->cos_theta_obs);
+				return GSL_SUCCESS;
+			}
+			// photon fall into the BH
+			if (abs(photon[5]) * GSL_SQRT_DBL_EPSILON > 1.) {
+				gsl_vector_set(delta_apparent_alpha_beta, 0, 1.1);
+				return GSL_EDOM;
+			}
+#ifdef GSL_RANGE_CHECK_OFF
+			if (auto now = chrono::steady_clock::now(); now - t_start > chrono::milliseconds(100)) {
+				gsl_vector_set(delta_apparent_alpha_beta, 0, 1.1);
+				return GSL_EDOM;
+			}
+#endif
+			// photon has not reached the plane of the object
+			if (photon[8] > param->t_final)
+				continue;
+			// photon failed to hit the plane, the impact params need to be larger
+			gsl_vector_set(delta_apparent_alpha_beta, 0, 1.01);
+			return GSL_EDOM;
+		}
+		PrintlnWarning("View::Trece() status = {}\n", status);
+		return status;
+	}
 	int View::PhotonInformation(const double position[], TimeSystem object_time, double record[], const double photon[], double alpha, double beta) {
-		record[0] = alpha * cos_iota_ + beta * sin_iota_;				 // alpha
-		record[1] = beta * cos_iota_ - alpha * sin_iota_;				 // beta
+		record[0] = alpha * cos_iota_ - beta * sin_iota_;				 // alpha
+		record[1] = beta * cos_iota_ + alpha * sin_iota_;				 // beta
 		record[2] = metric_->Redshift(position, photon, object_time, T); // redshift
 		record[3] = photon[8] / Unit::s;								 // look back time
 		return GSL_SUCCESS;

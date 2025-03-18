@@ -76,6 +76,9 @@ namespace SBody {
 		 * @return status
 		 */
 		int Trace(const double position[], TimeSystem object_time, double record[], bool calculate_magnification, bool fast_trace = true);
+
+		static int TraceToPlane(const gsl_vector *alpha_beta, void *params, gsl_vector *delta_apparent_alpha_beta);
+
 		int PhotonInformation(const double position[], TimeSystem object_time, double record[], const double photon[], double alpha, double beta);
 
 		/**
@@ -99,6 +102,16 @@ namespace SBody {
 		int Shadow(std::string file_name);
 
 		int OmegaTest();
+	};
+	struct TraceParameters {
+		std::shared_ptr<Metric> metric;
+		std::shared_ptr<Integrator> integrator;
+		double *photon;
+		const double r, r2;
+		const double theta_obs, sin_theta_obs, cos_theta_obs;
+		const double r_obj, x_obj, y_obj, z_obj;
+		const double t_final;
+		TraceParameters(std::shared_ptr<Metric> metric, std::shared_ptr<Integrator> integrator, double photon[], double r, double r2, double theta_obs, double sin_theta_obs, double cos_theta_obs, double r_obj, double sin_theta_obj, double cos_theta_obj, double sin_phi_obj, double cos_phi_obj, double t_final);
 	};
 	class Camera : public View {
 	  protected:

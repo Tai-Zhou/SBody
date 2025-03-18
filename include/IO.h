@@ -39,11 +39,11 @@ namespace SBody {
 	}
 	template <typename... T>
 	void PrintlnWarning(std::string format, T &&...args) {
-		fmt::println(stderr, "\033[103m[WRN]\033[0m " + format, std::forward<T>(args)...);
+		fmt::println(stdout, "\033[103m[WRN]\033[0m " + format, std::forward<T>(args)...);
 	}
 	template <typename... T>
 	void PrintlnError(std::string format, T &&...args) {
-		fmt::println(stderr, "\033[101m[ERR]\033[0m " + format, std::forward<T>(args)...);
+		fmt::println(stdout, "\033[101m[ERR]\033[0m " + format, std::forward<T>(args)...);
 	}
 	/**
 	 * @brief

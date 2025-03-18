@@ -228,4 +228,11 @@ namespace SBody {
 		double intrinsic_time = time_ == T ? position_[0] : t;
 		return luminosity_ * pow(redshift, spectral_index_) * exp(-0.5 * gsl_pow_2((intrinsic_time - luminosity_mu_) / luminosity_sigma_));
 	}
+	int Disk::Hit(const double current[], const double last[]) {
+		if (!OppositeSign(current[2], last[2]))
+			return 0;
+		if (abs(current[2]) < M_PI_4)
+			return 0;
+		return 1;
+	}
 } // namespace SBody
