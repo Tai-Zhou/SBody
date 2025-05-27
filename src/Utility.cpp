@@ -1751,7 +1751,7 @@ namespace SBody {
 	int MultiFunctionSolver::DirectionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
 		auto state = static_cast<DirectionState *>(vstate);
 		state->directional_num = 1;
-		state->delta_angle = M_PI_2;
+		state->delta_angle = 2. * M_PI_3;
 		state->central_angle = 0.;
 		if (int status = ScaleX(function, x, f); status != GSL_SUCCESS)
 			return status;
@@ -1774,17 +1774,6 @@ namespace SBody {
 				next_angle = state->central_angle;
 				gsl_vector_memcpy(x_rec, x_trial);
 				gsl_vector_memcpy(f_rec, f_trial);
-			} else {
-				gsl_vector_set(x_trial, 0, gsl_vector_get(x, 0) - delta_x);
-				gsl_vector_set(x_trial, 1, gsl_vector_get(x, 1) - delta_y);
-				if (status = ScaleX(function, x_trial, f_trial); status != GSL_SUCCESS)
-					return status;
-				if (double f_dir_norm = gsl_blas_dnrm2(f_trial); f_dir_norm < min_norm) {
-					min_norm = f_dir_norm;
-					next_angle = state->central_angle + M_PI;
-					gsl_vector_memcpy(x_rec, x_trial);
-					gsl_vector_memcpy(f_rec, f_trial);
-				}
 			}
 			for (int i = state->directional_num; i > 0; --i) {
 				for (int sign = 1; sign > -2; sign -= 2) {
@@ -1817,19 +1806,38 @@ namespace SBody {
 				state->central_angle = ModBy2Pi(next_angle);
 				continue;
 			}
+			delta_x = 0.5 * effective_radius * cos(next_angle);
+			delta_y = 0.5 * effective_radius * sin(next_angle);
+			while (effective_radius > trust_radius_limit) {
+				gsl_vector_set(x_trial, 0, gsl_vector_get(x, 0) + delta_x);
+				gsl_vector_set(x_trial, 1, gsl_vector_get(x, 1) + delta_y);
+				if (status = ScaleX(function, x_trial, f_trial); status != GSL_SUCCESS)
+					return status;
+				if (double f_mid_norm = gsl_blas_dnrm2(f_trial); f_mid_norm < min_norm) {
+					min_norm = f_mid_norm;
+					gsl_vector_memcpy(x_rec, x_trial);
+					gsl_vector_memcpy(f_rec, f_trial);
+					delta_x *= 0.5;
+					delta_y *= 0.5;
+					state->trust_radius *= 0.5;
+				} else
+					break;
+			}
 			gsl_vector_memcpy(dx, x_rec);
 			gsl_vector_sub(dx, x);
 			gsl_vector_memcpy(x, x_rec);
 			gsl_vector_memcpy(f, f_rec);
-			state->trust_radius *= 1.5;
 			if (state->directional_num > 1) {
 				if (next_angle != state->central_angle + M_PI)
 					state->delta_angle = max(state->delta_angle, abs(next_angle - state->central_angle));
 				else
 					state->delta_angle = M_PI_2;
 				state->directional_num = 1;
-			} else if (next_angle == state->central_angle)
-				state->delta_angle *= 0.5;
+			} else {
+				if (next_angle == state->central_angle)
+					state->delta_angle *= 0.5;
+				state->trust_radius *= 1.5;
+			}
 			state->central_angle = ModBy2Pi(next_angle);
 			return GSL_SUCCESS;
 		}

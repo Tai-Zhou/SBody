@@ -33,11 +33,35 @@
 using namespace std;
 
 namespace SBody {
-	View::View(shared_ptr<Metric> metric, double r, double theta, double iota) : metric_(metric), r_(r), r2_(gsl_pow_2(r)), theta_(theta), sin_theta_(sin(theta)), cos_theta_(cos(theta)), iota_(iota), sin_iota_(sin(iota)), cos_iota_(cos(iota)), t_final_(-2e4) {
+	View::View(shared_ptr<Metric> metric, double r, double theta, double iota, double v_alpha, double v_beta) : metric_(metric), r_(r), r2_(gsl_pow_2(r)), theta_(theta), sin_theta_(sin(theta)), cos_theta_(cos(theta)), iota_(iota), sin_iota_(sin(iota)), cos_iota_(cos(iota)), t_final_(-2e4) {
 		bar_ = make_unique<indicators::BlockProgressBar>(indicators::option::ShowElapsedTime{true},
 														 indicators::option::ShowRemainingTime{true},
 														 indicators::option::ForegroundColor{indicators::Color(4)},
 														 indicators::option::FontStyles{vector<indicators::FontStyle>{indicators::FontStyle::bold}});
+		position_[0] = 0.0;
+		position_[1] = r_;
+		position_[2] = theta_;
+		position_[4] = 1.0;
+		position_[5] = 0.0;
+		double v_y = v_alpha * cos_iota_ + v_beta * sin_iota_, v_xz = v_beta * cos_iota_ - v_alpha * sin_iota_;
+		if (sin_theta_ < GSL_SQRT_DBL_EPSILON) {
+			const double v = gsl_hypot(v_y, v_xz);
+			if (theta_ < M_PI_2) {
+				position_[3] = atan2(-v_y, v_xz);
+				position_[6] = v / r_;
+			} else {
+				position_[3] = atan2(-v_y, -v_xz);
+				position_[6] = -v / r_;
+			}
+			position_[7] = 0.0;
+		} else {
+			position_[3] = 0.0;
+			position_[6] = v_xz / r_;
+			position_[7] = -v_y / (r * sin_theta_);
+		}
+		metric_->NormalizeTimelikeGeodesic(position_);
+		// record[0] = alpha * cos_iota_ - beta * sin_iota_; // alpha
+		// record[1] = beta * cos_iota_ + alpha * sin_iota_; // beta
 	}
 	int View::InitializePhoton(double photon[], double alpha, double beta) {
 		return metric_->InitializePhoton(photon, alpha, beta, r_, r2_, theta_, sin_theta_);
@@ -93,11 +117,11 @@ namespace SBody {
 				// PrintlnWarning("Kerr FastTrace() TRANSLATION failed with status = {}", status);
 				MultiFunctionSolver alpha_beta_direction_solver(2, gsl_multiroot_fsolver_sbody_direction);
 				if (status = alpha_beta_direction_solver.Set(&alpha_beta_function, alpha_beta_rotation_solver.Root()); status != GSL_SUCCESS) {
-					PrintlnError("Kerr Trace() set DIRECTION failed with status = {}", status);
+					// PrintlnError("Kerr Trace() set DIRECTION failed with status = {}", status);
 					return status;
 				}
 				if (status = alpha_beta_direction_solver.Solve(r_object * GSL_ROOT3_DBL_EPSILON); status != GSL_SUCCESS) {
-					PrintlnError("Kerr Trace() DIRECTION failed with status = {}", status);
+					// PrintlnError("Kerr Trace() DIRECTION failed with status = {}", status);
 					return status;
 				}
 				alpha = gsl_vector_get(alpha_beta_direction_solver.Root(), 0);

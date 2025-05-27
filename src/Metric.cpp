@@ -641,11 +641,11 @@ namespace SBody {
 			} else {
 				MultiFunctionSolver alpha_beta_direction_solver(2, gsl_multiroot_fsolver_sbody_direction);
 				if (status = alpha_beta_direction_solver.Set(&alpha_beta_function, alpha_beta_translation_solver.Root()); status != GSL_SUCCESS) {
-					PrintlnWarning("Kerr FastTrace() set DIRECTION failed with status = {}", status);
+					// PrintlnWarning("Kerr FastTrace() set DIRECTION failed with status = {}", status);
 					return status;
 				}
 				if (status = alpha_beta_direction_solver.Solve(GSL_SQRT_DBL_EPSILON, 2048); status != GSL_SUCCESS) {
-					PrintlnWarning("Kerr FastTrace() DIRECTION failed with status = {}", status);
+					// PrintlnWarning("Kerr FastTrace() DIRECTION failed with status = {}", status);
 					return status;
 				}
 				alpha = gsl_vector_get(alpha_beta_direction_solver.Root(), 0);

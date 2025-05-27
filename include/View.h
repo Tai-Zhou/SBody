@@ -41,6 +41,8 @@ namespace SBody {
 		const double sin_iota_;
 		/// \f$\cos\iota\f$
 		const double cos_iota_;
+		/// Position and velocity of the observer.
+		double position_[8];
 		/// time limit for the integration of photons.
 		const double t_final_;
 		std::unique_ptr<indicators::BlockProgressBar> bar_;
@@ -53,7 +55,7 @@ namespace SBody {
 		 * @param theta Angle between the observer and the \f$z\f$ axis, \f$\theta\f$.
 		 * @param iota Rotational angle of the coordiante of the view, \f$\iota\f$.
 		 */
-		View(std::shared_ptr<Metric> metric, double r, double theta, double iota);
+		View(std::shared_ptr<Metric> metric, double r, double theta, double iota, double v_alpha = 0.0, double v_beta = 0.0);
 
 		/**
 		 * @brief Initialize the position and velocity of a trace back photon.
@@ -63,7 +65,8 @@ namespace SBody {
 		 * @param beta y position of the target in the observer's view.
 		 * @return status
 		 */
-		int InitializePhoton(double photon[], double alpha, double beta);
+		int
+		InitializePhoton(double photon[], double alpha, double beta);
 
 		/**
 		 * @brief

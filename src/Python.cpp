@@ -377,7 +377,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 	gsl_set_error_handler_off();
 #endif
 	auto t_start = chrono::steady_clock::now();
-	const vector<double> estimate_step = {60., 30., 10., 3., 1., 0.5, 0.3, 0.2, 0.1, 0.};
+	const vector<double> estimate_step = {60., 30., 10., 3., 1., 0.5, 0.1, 0.};
 	size_t estimate_idx = 0;
 	double this_gr_obs_time, last_gr_obs_time, gr_offset = 0.;
 	Unit::Initialize(x.at(0)); // double fSP, double R, double r, double theta, double phi, double v_r, double v_phi, double inclination,
@@ -439,7 +439,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 	double *result_ptr = const_cast<double *>(result.data());
 	for (int i = 0;; ++i) {
 #ifdef GSL_RANGE_CHECK_OFF
-		if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(30)) {
+		if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(10)) {
 			py::print("CalculateHSOrbit() timeout!");
 			return HSExit(x);
 		}
@@ -455,35 +455,28 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 		this_obs_time = (t + vz0 - this_position[1] * (abs(sin(this_position[2])) * cos(this_position[3]) * sin_inc + GSL_SIGN(this_position[2]) * cos(this_position[2]) * cos_inc)) / Unit::s;
 		if (gr_time_delay) {
 			if (this_obs_time + gr_offset + estimate_step[estimate_idx] > obs_time.at(idx)) {
-				if (++estimate_idx < estimate_step.size()) {
-					if (view_ptr->Trace(last_position.data(), hotspot_time, last_record.data(), calculate_magnification) != GSL_SUCCESS) {
-						PrintlnError("Trace star last position Error!");
-						return HSExit(x);
-					}
-					last_gr_obs_time = t / Unit::s + t0 - last_record[3];
-					if (calculate_magnification) {
-						last_record[5] = Flux(hotspot.Luminosity(tStep), last_record[4], last_record[2]);
-						last_record[6] = FluxDensity(hotspot.SpectralDensity(tStep, last_record[2]), last_record[4]);
-					}
-					gr_offset = last_gr_obs_time - this_obs_time;
-					if (abs(gr_offset) > 3600.) {
-						PrintlnError("gr_offset > 3600 s!");
-						for (int i = 0; i < 8; ++i)
-							py::print("this_position[", i, "]=", this_position[i]);
-						return HSExit(x);
-					}
-				} else {
-					estimate_idx = 0;
-					if (view_ptr->Trace(this_position.data(), hotspot_time, this_record.data(), calculate_magnification) != GSL_SUCCESS) {
+				if (view_ptr->Trace(this_position.data(), hotspot_time, this_record.data(), calculate_magnification) != GSL_SUCCESS) {
+					if (this_obs_time + gr_offset - 0.1 > obs_time.at(idx)) {
 						PrintlnError("Trace star this position Error!");
 						return HSExit(x);
 					}
-					this_gr_obs_time = t / Unit::s + t0 - this_record[3];
-					if (calculate_magnification) {
-						this_record[5] = Flux(hotspot.Luminosity(tStep), this_record[4], this_record[2]);
-						this_record[6] = FluxDensity(hotspot.SpectralDensity(tStep, this_record[2]), this_record[4]);
-					}
-					gr_offset = 0.;
+					if (estimate_idx + 2 < estimate_step.size())
+						++estimate_idx;
+					continue;
+				}
+				this_gr_obs_time = t / Unit::s + t0 - this_record[3];
+				if (calculate_magnification) {
+					this_record[5] = Flux(hotspot.Luminosity(tStep), this_record[4], this_record[2]);
+					this_record[6] = FluxDensity(hotspot.SpectralDensity(tStep, this_record[2]), this_record[4]);
+				}
+				if (gr_offset = this_gr_obs_time - this_obs_time; abs(gr_offset) > 3600.) { // difference between Romer delay and full GR delay
+					PrintlnError("gr_offset > 3600 s!");
+					for (int i = 0; i < 8; ++i)
+						py::print("this_position[", i, "]=", this_position[i]);
+					return HSExit(x);
+				}
+				if (++estimate_idx >= estimate_step.size()) {
+					estimate_idx = 0;
 					InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, last_position.data(), this_position.data(), result_ptr);
 					result_ptr[8] = LinearInterpolation(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, tStep - tRec, tStep) / Unit::s;
 					const double delta_epsilon = 1. - 2. / Norm(result_ptr + 1);
@@ -493,10 +486,12 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 					if (++idx >= size)
 						break;
 				}
+				last_gr_obs_time = this_gr_obs_time;
+				swap(last_record, this_record);
 			}
 		} else if (this_obs_time > obs_time.at(idx)) {
 			InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_obs_time, this_obs_time, last_position.data(), this_position.data(), result_ptr);
-			if (ray_tracing || metric == 2) {
+			if (ray_tracing) {
 				CartesianToSpherical(result_ptr);
 				if (ray_tracing) {
 					if (view_ptr->Trace(result_ptr, hotspot_time, result_ptr + 10, calculate_magnification) != GSL_SUCCESS) {
@@ -508,8 +503,6 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 						result_ptr[16] = FluxDensity(hotspot.SpectralDensity(tStep, result_ptr[12]), result_ptr[14]);
 					}
 				}
-				if (metric == 2)
-					result_ptr[1] -= 1.;
 				SphericalToCartesian(result_ptr);
 			}
 			result_ptr[8] = LinearInterpolation(obs_time.at(idx), last_obs_time, this_obs_time, tStep - tRec, tStep) / Unit::s;
@@ -521,7 +514,6 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 		}
 		last_obs_time = this_obs_time;
 		swap(last_position, this_position);
-		swap(last_record, this_record);
 	}
 	return result.reshape({size, HOTSPOT_RETURN_WIDTH});
 }
@@ -574,9 +566,11 @@ double HSChi2(py::array_t<double> &x, int metric, int mode, int gr_switch, py::a
 		prob_sum += result.at(i);
 	if (gr_switch & 16)
 		prob_sum += (gsl_pow_2(x.at(3)) + gsl_pow_2(x.at(4))) * 400.;
-	if (isnan(prob_sum))
+	if (isnan(prob_sum)) {
 		for (int i = 0; i < result.size(); ++i)
 			py::print(result.at(i));
+		return GSL_POSINF;
+	}
 	return prob_sum;
 }
 
