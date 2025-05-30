@@ -31,8 +31,11 @@ Schwarzschild
    Schwarzschild
 
 .. doxygenclass:: SBody::Schwarzschild
-   :members:
    :no-link:
+
+.. math::
+   g_{\mu\nu}=\begin{pmatrix}-1 & 0 & 0 & 0\\ 0 & 1 & 0 & 0\\ 0 & 0 & 1 & 0\\ 0 & 0 & 0 & 1\end{pmatrix}
+
 
 Reissner-Nördstrom
 ==================
