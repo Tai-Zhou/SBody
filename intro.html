@@ -47,6 +47,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#library-tool">Library &amp; Tool</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#required">Required</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#cmake">CMake</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#boost">Boost</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#gsl">GSL</a></li>
 </ul>
 </li>
@@ -94,12 +95,17 @@
 <a class="reference external image-reference" href="https://github.com/Tai-Zhou/SBody/actions/workflows/cmake.yml"><img alt="CMake" src="https://github.com/Tai-Zhou/SBody/actions/workflows/cmake.yml/badge.svg" />
 </a>
 <p>The “S” in the name of SBody stands for “Small”, “Some”, and “Speed”.</p>
+<blockquote>
+<div><p>[!IMPORTANT]
+SBody is currently migrating from GSL to Boost.</p>
+</div></blockquote>
 <ul class="simple">
 <li><p><span class="xref std std-ref">Library &amp; Tool</span></p>
 <ul>
 <li><p><span class="xref std std-ref">Required</span></p>
 <ul>
 <li><p><span class="xref std std-ref">CMake</span></p></li>
+<li><p><span class="xref std std-ref">Boost</span></p></li>
 <li><p><span class="xref std std-ref">GSL</span></p></li>
 </ul>
 </li>
@@ -120,6 +126,14 @@
 <ul class="simple">
 <li><p>Linux: run <code class="docutils literal notranslate"><span class="pre">apt</span> <span class="pre">install</span> <span class="pre">cmake</span></code> or download and install from <a class="reference external" href="https://cmake.org">homepage</a>.</p></li>
 <li><p>macOS: Install CMake via <a class="reference external" href="https://brew.sh">Homebrew</a>, with command <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">cmake</span></code>.</p></li>
+</ul>
+</section>
+<section id="boost">
+<h4>Boost<a class="headerlink" href="#boost" title="Link to this heading"></a></h4>
+<p>The <a class="reference external" href="https://www.boost.org">Boost</a> C++ Libraries are open source, peer-reviewed, portable and free.</p>
+<ul class="simple">
+<li><p>Linux: run <code class="docutils literal notranslate"><span class="pre">apt</span> <span class="pre">install</span> <span class="pre">libboost-all-dev</span></code> or refer to the instructions on the <a class="reference external" href="https://www.boost.org/doc/user-guide/getting-started.html">homepage</a>.</p></li>
+<li><p>macOS: Install Boost via <a class="reference external" href="https://brew.sh">Homebrew</a>, with command <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">boost</span></code>.</p></li>
 </ul>
 </section>
 <section id="gsl">
