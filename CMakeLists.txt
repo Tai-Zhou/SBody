@@ -19,11 +19,35 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 set(SBODY_LIB_SHARED OFF)
 set(WITH_OPENMP ON)
 set(WITH_PYTHON ON)
+option(BUILD_DOC_ONLY "Build documentation without compiling the program" OFF)
+
+find_package(Doxygen)
+
+if(BUILD_DOC_ONLY AND NOT DOXYGEN_FOUND)
+    message(FATAL_ERROR "Doxygen not found, please install it")
+endif()
+
+if(DOXYGEN_FOUND)
+    set(DOXYGEN_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/doxygen")
+    set(DOXYGEN_GENERATE_HTML NO)
+    set(DOXYGEN_GENERATE_LATEX NO)
+    set(DOXYGEN_GENERATE_XML YES)
+    set(DOXYGEN_XML_OUTPUT .)
+    doxygen_add_docs(docs "${PROJECT_SOURCE_DIR}/include")
+    if (BUILD_DOC_ONLY)
+        return()
+    endif()
+endif()
 
 find_package(GSL REQUIRED)
+find_package(Boost 1.71 REQUIRED COMPONENTS unit_test_framework)
 
 if(NOT GSL_FOUND)
     message(FATAL_ERROR "Please install GSL")
+endif()
+
+if(NOT BOOST_FOUND)
+    message(FATAL_ERROR "Please install Boost")
 endif()
 
 if(WITH_OPENMP)
@@ -38,26 +62,13 @@ if(WITH_OPENMP)
     endif()
 endif()
 
-find_package(Doxygen)
-
-if(DOXYGEN_FOUND)
-    set(DOXYGEN_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/doxygen")
-    set(DOXYGEN_GENERATE_HTML NO)
-    set(DOXYGEN_GENERATE_LATEX NO)
-    set(DOXYGEN_GENERATE_XML YES)
-    set(DOXYGEN_XML_OUTPUT .)
-    doxygen_add_docs(docs "${PROJECT_SOURCE_DIR}/include")
-endif()
-
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/include fmt/include indicators/include ${Python3_INCLUDE_DIRS})
 add_subdirectory(${PROJECT_SOURCE_DIR}/fmt)
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)
+add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 add_executable(sbody src/SBody.cpp)
-add_executable(sbody-test src/Test.cpp)
 target_link_libraries(sbody SBodyLibStatic)
-target_link_libraries(sbody-test SBodyLibStatic)
 
 enable_testing()
 
 add_test(help-message ${EXECUTABLE_OUTPUT_PATH}/sbody -h)
-add_test(sbody-test ${EXECUTABLE_OUTPUT_PATH}/sbody-test)

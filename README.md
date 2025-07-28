@@ -4,9 +4,13 @@
 
 The "S" in the name of SBody stands for "Small", "Some", and "Speed".
 
+> [!IMPORTANT]
+> SBody is currently migrating from GSL to Boost.
+
 - [Library \& Tool](#library--tool)
   - [Required](#required)
     - [CMake](#cmake)
+    - [Boost](#boost)
     - [GSL](#gsl)
   - [Submodule](#submodule)
   - [Optional](#optional)
@@ -20,6 +24,12 @@ The "S" in the name of SBody stands for "Small", "Some", and "Speed".
 [CMake](https://cmake.org) is an open-source, cross-platform family of tools designed to build, test and package software. SBody use CMake to get built on different platforms.
 * Linux: run `apt install cmake` or download and install from [homepage](https://cmake.org).
 * macOS: Install CMake via [Homebrew](https://brew.sh), with command `brew install cmake`.
+
+#### Boost
+
+The [Boost](https://www.boost.org) C++ Libraries are open source, peer-reviewed, portable and free.
+* Linux: run `apt install libboost-all-dev` or refer to the instructions on the [homepage](https://www.boost.org/doc/user-guide/getting-started.html).
+* macOS: Install Boost via [Homebrew](https://brew.sh), with command `brew install boost`.
 
 #### GSL
 

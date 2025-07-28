@@ -22,14 +22,13 @@
 #include <getopt.h>
 
 #include <fmt/core.h>
-#include <gsl/gsl_math.h>
 
-#include "IO.h"
-#include "Metric.h"
-#include "Object.h"
-#include "Unit.h"
-#include "Utility.h"
-#include "View.h"
+#include "IO.hpp"
+#include "Metric.hpp"
+#include "Object.hpp"
+#include "Unit.hpp"
+#include "Utility.hpp"
+#include "View.hpp"
 
 using namespace std;
 using namespace SBody;
@@ -37,11 +36,11 @@ using namespace SBody;
 void InterruptHandler(int signum) {
 	fmt::print("\r\033[KSBody exiting...\n");
 	indicators::show_console_cursor(true);
-	SBodyExit(signum);
+	exit(signum);
 }
 
 void Help() {
-	PrintlnBold("\n{}SBODY{} ({})", VERSION);
+	PrintlnBold("\n{}SBODY{} ({}, precision {})", VERSION, LDBL_MANT_DIG);
 	fmt::println("  A relativistic ray tracing program.");
 	PrintlnBold("\n{}OPTIONS{}");
 	fmt::println("  -m --mass    [f]: mass of the source [{}] (M_sun)", MASS);
@@ -79,18 +78,21 @@ void Help() {
 
 int Benchmark() {
 	auto t_start = chrono::steady_clock::now();
-	Unit::Initialize(4.261e6);
-	double t = 0., t1 = 0., t_step = 3600. * Unit::s / T_STEP_NUMBER;
-	shared_ptr<Metric> main_metric = make_shared<Kerr>(0.3);
+	Unit unit(4.261e6);
+	double t = 0., t1 = 0., t_step = 3600. * unit.s / T_STEP_NUMBER;
+	shared_ptr<Metric<double>> main_metric = make_shared<Kerr<double>>(0.3);
 	// shared_ptr<Metric> main_metric = make_shared<Schwarzschild>();
-	unique_ptr<View> view_ptr = make_unique<View>(main_metric, 8180. * Unit::pc, M_PI_2 - 0.01, 0.);
-	Particle star_0(main_metric, T, LAGRANGIAN, false);
+	unique_ptr<View<double>> view_ptr = make_unique<View<double>>(main_metric, 8180. * unit.pc, M_PI_2 - 0.01, 0.);
+	Particle<double> star_0(main_metric, T, LAGRANGIAN, false);
 	star_0.InitializeKeplerian(4., 0.1, 0.2, 0., 0., 0., M_PI_4);
-	double temp[17];
+	double temp[4];
+	array<double, 8> position;
+	array<double, 4> view_info;
 	int status = 0;
 	double h = 1., stepPercent = 100. / T_STEP_NUMBER;
 	indicators::show_console_cursor(false);
-	ProgressBar::bars_[0].set_option(indicators::option::PrefixText{string("Benchmarking...")});
+	ProgressBar bars;
+	bars[0].set_option(indicators::option::PrefixText{string("Benchmarking...")});
 	for (int i = 1; i <= T_STEP_NUMBER; ++i) {
 		t1 += t_step;
 		status = star_0.IntegratorApply(&t, t1, &h);
@@ -99,23 +101,21 @@ int Benchmark() {
 			return GSL_FAILURE;
 		}
 		star_0.Position(temp);
-		temp[8] = t / Unit::s;
-		temp[9] = star_0.Energy();
-		temp[10] = star_0.AngularMomentum();
-		temp[11] = star_0.CarterConstant();
-		view_ptr->Trace(temp, T, temp + 12, false, true);
-		SphericalToCartesian(temp);
-		ProgressBar::bars_[0].set_progress(i * stepPercent);
-		ProgressBar::bars_[0].set_option(indicators::option::PrefixText{fmt::format("Anticipated score is: {}? ", i * 200000000000ul / (T_STEP_NUMBER * chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()))});
+		temp[0] = t / unit.s;
+		temp[1] = star_0.Energy();
+		temp[2] = star_0.AngularMomentum();
+		temp[3] = star_0.CarterConstant();
+		view_ptr->Trace(position, T, view_info, false, true);
+		SphericalToCartesian(position.data());
+		bars[0].set_progress(i * stepPercent);
+		bars[0].set_option(indicators::option::PrefixText{fmt::format("Anticipated score is: {}? ", i * 200000000000ul / (T_STEP_NUMBER * chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()))});
 	}
-	ProgressBar::SetComplete(0, fmt::format("Final score is: {}! ", 200000000000ul / chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()));
-	indicators::show_console_cursor(true);
-	return GSL_SUCCESS;
+	bars.SetComplete(0, fmt::format("Final score is: {}! ", 200000000000ul / chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()));
+	return Status::SUCCESS;
 }
 
 int main(int argc, char *argv[]) {
 	gsl_set_error_handler_off();
-	return Benchmark();
 	// Application Entry
 	auto TStart = chrono::steady_clock::now();
 	signal(SIGINT, InterruptHandler);
@@ -128,15 +128,15 @@ int main(int argc, char *argv[]) {
 	size_t PN = 1;
 	size_t ray = 1;
 	int rest_mass = 1;
-	ProgressBar::display_ = true;
+	bool display_progress = true;
 	string store_format = "NumPy";
 	double inc = M_PI * 0. / 180., eps = 0.;
 	// double a = 8.3, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180. + M_PI_2, ascending_node = M_PI * 25.1 / 180., true_anomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
 	double a = 4.999960135538237, e = 0.884649, inclination = M_PI * 134.567 / 180., periapsis = M_PI * 66.263 / 180., ascending_node = M_PI * 228.171 / 180., true_anomaly = M_PI;
 	double input_parameter[10];
-	unique_ptr<View> viewPtr;
+	unique_ptr<View<double>> viewPtr;
 	unique_ptr<thread> shadowPtr;
-	unique_ptr<Camera> cameraPtr;
+	unique_ptr<Camera<double>> cameraPtr;
 	unique_ptr<thread> lensPtr;
 	const char *optShort = "m:s:l:K:E:I:o:O:t:k:c:n:P:R:a:r:i:e:f:LbBh";
 	const char *separator = ",";
@@ -234,7 +234,7 @@ int main(int argc, char *argv[]) {
 			rest_mass = 0;
 			break;
 		case 'b':
-			ProgressBar::display_ = true;
+			display_progress = true;
 			break;
 		case 'B':
 			return Benchmark();
@@ -242,45 +242,46 @@ int main(int argc, char *argv[]) {
 			Help();
 			return opt != 'h';
 		}
-	Unit::Initialize(mass);
-	tFinal *= Unit::s;
-	tFinal = 18 * Unit::yr;
-	double t = 8.3564958220072 * Unit::yr, tStep = 0., tRec = tFinal / tStepNumber;
+	Unit unit(mass);
+	tFinal *= unit.s;
+	tFinal = 18 * unit.yr;
+	double t = 8.3564958220072 * unit.yr, tStep = 0., tRec = tFinal / tStepNumber;
 	if (metric == 0)
 		ray = 0;
-	shared_ptr<Metric> main_metric = make_shared<Schwarzschild>();
+	shared_ptr<Metric<double>> main_metric = make_shared<Schwarzschild<double>>();
 	// metric::setMetric(metric, PN, mass, spin, charge, NUT);
 	string strFormat = fmt::format(" ({:f},{:f})[{:f},{:f}]", spin, NUT, inc, eps);
-	if (ProgressBar::display_) {
-		indicators::show_console_cursor(false);
-		ProgressBar::bars_[0].set_option(indicators::option::ForegroundColor{indicators::Color(metric)});
-		ProgressBar::bars_[0].set_option(indicators::option::PrefixText{string("?") + strFormat});
+	optional<ProgressBar> bars;
+	if (display_progress) {
+		(*bars)[0].set_option(indicators::option::ForegroundColor{indicators::Color(metric)});
+		(*bars)[0].set_option(indicators::option::PrefixText{string("?") + strFormat});
 	}
 	if (ray & 5) {
-		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps));
-		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view helical({:.2f},{:.6f},{:.6f},{:.6f},{:.6f})[{:f},{:f}]", 10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6, inc, eps));
-		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * Unit::pc, inc, fmt::format("view helical({:f},{:f},{:f},{:f},{:f})[{:f},{:f}]", a, inclination, periapsis, e, ascending_node, inc, eps));
-		viewPtr = make_unique<View>(make_unique<Schwarzschild>(), 8180. * Unit::pc, inc, eps);
+		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * unit.pc, inc, fmt::format("view ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps));
+		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * unit.pc, inc, fmt::format("view helical({:.2f},{:.6f},{:.6f},{:.6f},{:.6f})[{:f},{:f}]", 10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6, inc, eps));
+		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * unit.pc, inc, fmt::format("view helical({:f},{:f},{:f},{:f},{:f})[{:f},{:f}]", a, inclination, periapsis, e, ascending_node, inc, eps));
+		viewPtr = make_unique<View<double>>(make_unique<Schwarzschild<double>>(), 8180. * unit.pc, inc, eps);
 		if (ray & 4)
-			shadowPtr = make_unique<thread>(&View::Shadow, viewPtr.get(), "shadow");
+			shadowPtr = make_unique<thread>(&View<double>::Shadow, viewPtr.get(), "shadow", ref(bars));
 	}
 	if (ray & 10) {
-		cameraPtr = make_unique<Camera>(make_unique<Schwarzschild>(), 1000, 5e-2, 1.e3, inc, eps);
+		cameraPtr = make_unique<Camera<double>>(make_unique<Schwarzschild<double>>(), 1000, 5e-2, 1.e3, inc, eps);
 		if (ray & 8)
-			lensPtr = make_unique<thread>(&Camera::Lens, cameraPtr.get());
+			lensPtr = make_unique<thread>(&Camera<double>::Lens, cameraPtr.get(), ref(bars));
 	}
 	// Integrator integ(metric::function, metric::jacobian, metric != 0);
 	TimeSystem star_time = T;
 	Particle star_0(main_metric, star_time, LAGRANGIAN, false);
-	star_0.InitializeSchwarzschildKeplerianApocenter(a * Unit::mpc, e, inclination, periapsis, ascending_node, inc, eps);
+	star_0.InitializeSchwarzschildKeplerianApocenter(a * unit.mpc, e, inclination, periapsis, ascending_node, inc, eps);
 	// star_0.InitializeGeodesic(a, inclination, periapsis, ascending_node, -0.16707659553531468, 0.3822615764261866, inc, eps);
-	// star_0.InitializeSchwarzschildKeplerianApocenterHarmonic(a * Unit::mpc, e, inclination, periapsis, ascending_node, inc, eps);
+	// star_0.InitializeSchwarzschildKeplerianApocenterHarmonic(a * unit.mpc, e, inclination, periapsis, ascending_node, inc, eps);
 	// star_0.InitializeHelical(10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6);
 	// Integrator &&integrator = main_metric->GetIntegrator(metric != 0);
 	// NumPy rec(main_metric->Name() + strFormat, {12});
 	// NumPy rec(fmt::format("HotSpot a={:.1f} e={:.2f} i={:.6f} o={:.2f}", a, e, inclination, periapsis), {12});
 	NumPy rec(fmt::format("mcmc test", a, inclination, periapsis, e, ascending_node), {17});
-	vector<double> temp(17);
+	array<double, 8> position;
+	array<double, 4> view_info;
 	int status = 0;
 	double h = 1., stepPercent = 100. / tStepNumber;
 	h = -1;
@@ -294,27 +295,28 @@ int main(int argc, char *argv[]) {
 		status = star_0.IntegratorApply(&t, tStep, &h);
 		if (status > 0)
 			PrintlnError("main status = {}", status);
-		star_0.Position(temp.data());
+		star_0.Position(position);
 		if (Hamiltonian)
-			main_metric->HamiltonianToLagrangian(temp.data());
+			main_metric->HamiltonianToLagrangian(position.data());
 		if (ray & 1)
-			viewPtr->Trace(temp.data(), star_time, temp.data() + 12, true);
+			viewPtr->Trace(position, star_time, view_info, true);
 		if (ray & 2)
 			cameraPtr->Trace();
-		SphericalToCartesian(temp.data());
-		temp[8] = t / Unit::s;
-		temp[9] = star_0.Energy();
-		temp[10] = star_0.AngularMomentum();
-		temp[11] = star_0.CarterConstant();
-		rec.Save(temp);
-		if (ProgressBar::display_)
-			ProgressBar::bars_[0].set_progress(i * stepPercent);
+		SphericalToCartesian(position.data());
+		rec.Save(position);
+		rec.Save(t / unit.s);
+		rec.Save(star_0.Energy());
+		rec.Save(star_0.AngularMomentum());
+		rec.Save(star_0.CarterConstant());
+		view_info[3] /= unit.s;
+		rec.Save(view_info);
+		if (display_progress)
+			(*bars)[0].set_progress(i * stepPercent);
 		if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count() >= TCal)
 			break;
 	}
-	if (ProgressBar::display_) {
-		ProgressBar::SetComplete(0, string("!") + strFormat);
-		indicators::show_console_cursor(true);
+	if (display_progress) {
+		bars->SetComplete(0, string("!") + strFormat);
 	}
 	if (ray & 2)
 		cameraPtr->Save("camera");
@@ -322,5 +324,5 @@ int main(int argc, char *argv[]) {
 		shadowPtr->join();
 	if (ray & 8)
 		lensPtr->join();
-	return 0;
+	return Status::SUCCESS;
 }
