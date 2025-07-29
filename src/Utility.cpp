@@ -2012,8 +2012,4 @@ namespace SBody {
 			return PointInTriangle(gsl_vector_get(a, 0), gsl_vector_get(a, 1), gsl_vector_get(b, 0), gsl_vector_get(b, 1), gsl_vector_get(c, 0), gsl_vector_get(c, 1));
 		return PointInTriangle(gsl_vector_get(a, 0), gsl_vector_get(a, 1), gsl_vector_get(b, 0), gsl_vector_get(b, 1), gsl_vector_get(c, 0), gsl_vector_get(c, 1), gsl_vector_get(p, 0), gsl_vector_get(p, 1));
 	}
-	int PolySolveCubic_GSL(double a, double b, double c, double roots[]) { // FIXME
-		int status = gsl_poly_solve_cubic(a, b, c, roots, roots + 1, roots + 2);
-		return PolishCubicRoot(a, b, c, roots, status);
-	}
 } // namespace SBody

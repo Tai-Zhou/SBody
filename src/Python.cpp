@@ -616,7 +616,7 @@ py::array_t<double> KerrCoverage(double spin, double theta) {
 	// double u_roots[4];
 	// PolySolveQuartic(-2225768.312261119, -9.4005613541838091 * -115123.80934897072, 0., -115123.80934897072, u_roots);
 	Unit unit(4.15e6);
-	auto main_metric = Kerr(spin);
+	auto main_metric = Kerr<double>(spin);
 	const double sin_theta = sin(theta), cos_theta = cos(theta);
 	vector<double> u(201);
 	ProgressBar bars;

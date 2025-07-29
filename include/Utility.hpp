@@ -706,6 +706,11 @@ namespace SBody {
 		return (ap_cross_ab >= 0. && bp_cross_bc >= 0. && cp_cross_ca >= 0.) || (ap_cross_ab <= 0. && bp_cross_bc <= 0. && cp_cross_ca <= 0.);
 	}
 
+	template <typename Type>
+	bool PointInTriangle(const std::array<Type, 2> &a, const std::array<Type, 2> &b, const std::array<Type, 2> &c) {
+		return PointInTriangle(a[0], a[1], b[0], b[1], c[0], c[1]);
+	}
+
 	/**
 	 * @brief Calculate whether point \f$p\f$ locates inside the triangle \f$\Delta abc\f$.
 	 *
@@ -715,6 +720,11 @@ namespace SBody {
 	 * @param p point p
 	 * @return result
 	 */
+	template <typename Type>
+	bool PointInTriangle(const std::array<Type, 2> &a, const std::array<Type, 2> &b, const std::array<Type, 2> &c, const std::array<Type, 2> &p) {
+		return PointInTriangle(a[0], a[1], b[0], b[1], c[0], c[1], p[0], p[1]);
+	}
+
 	bool PointInTriangle(const gsl_vector *a, const gsl_vector *b, const gsl_vector *c, const gsl_vector *p = nullptr);
 
 	/**
@@ -1091,8 +1101,6 @@ namespace SBody {
 		std::sort(roots, roots + convinced_root_num);
 		return convinced_root_num;
 	}
-
-	int PolySolveCubic_GSL(double a, double b, double c, double roots[]);
 
 	template <typename Type>
 	int PolySolveCubic(Type a, Type b, Type c, Type roots[]) {

@@ -1,4 +1,4 @@
-add_library(SBodyLibStatic STATIC IO.cpp Utility.cpp)
+add_library(SBodyLibStatic STATIC Utility.cpp)
 set_target_properties(SBodyLibStatic PROPERTIES OUTPUT_NAME "SBody")
 target_link_libraries(SBodyLibStatic GSL::gsl Boost::boost fmt::fmt ${OPTIONAL_LIBS})
 
