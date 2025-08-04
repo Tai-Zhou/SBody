@@ -14,10 +14,12 @@
 
 #include <cerrno>
 #include <cmath>
+#include <functional>
 #include <memory>
 #include <string>
 
 // #include <boost/math/tools/quartic_roots.hpp>
+#include <boost/math/tools/roots.hpp>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_linalg.h>
@@ -309,7 +311,7 @@ namespace SBody {
 		 * @param motion motion mode of the object
 		 * @return integrator system
 		 */
-		virtual std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) = 0;
+		virtual std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, const Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) = 0;
 	};
 
 	/// Post-Newtonian
@@ -351,7 +353,7 @@ namespace SBody {
 			const Type sin_theta_object = abs(sin(theta_object));
 			photon[1] = r_object * sin_theta_object * cos(phi_object);
 			photon[2] = r_object * sin_theta_object * sin(phi_object);
-			photon[3] = r_object * GSL_SIGN(theta_object) * cos(theta_object);
+			photon[3] = r_object * std::copysign(cos(theta_object), theta_object);
 			const Type dx = r_observer * sin_theta_observer - photon[1], dz = r_observer * cos_theta_observer - photon[3];
 			photon[0] = photon[8] = sqrt(gsl_pow_2(dx) + gsl_pow_2(photon[2]) + gsl_pow_2(dz));
 			if (photon[0] == 0.)
@@ -412,12 +414,12 @@ namespace SBody {
 				y[i] *= v_1;
 			return Status::SUCCESS;
 		}
-		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
+		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, const Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
 			if (time != T || dynamics != LAGRANGIAN || motion != GEODESIC) {
 				throw std::invalid_argument(fmt::format("Newton::GetIntegrationSystem({}, {}, {}) invaild", time, dynamics, motion));
 			}
-			return [PN = this->PN_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
-				const Type r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+			return [PN = this->PN_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
+				const Type r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2])), cos_theta = std::copysign(cos(y[2]), y[2]);
 				const Type v_tan2 = gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
 				const Type rdot = y[5], rdot2 = gsl_pow_2(y[5]);
 				const Type v2 = rdot2 + v_tan2;
@@ -456,14 +458,14 @@ namespace SBody {
 		std::string Name() const override {
 			return "Newton-PN1";
 		}
-		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
+		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, const Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
 			if (time != T || dynamics != LAGRANGIAN || motion != GEODESIC) {
 				throw std::invalid_argument(fmt::format("PN1::GetIntegrationSystem({}, {}, {}) invaild", time, dynamics, motion));
 			}
-			return [PN1 = this->PN1_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
-				const Type r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
-				const Type v_tan2 = gsl_pow_2(y[1]) * (gsl_pow_2(y[6]) + gsl_pow_2(sin_theta * y[7]));
-				const Type v2 = gsl_pow_2(y[5]) + v_tan2;
+			return [PN1 = this->PN1_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
+				const Type r_1 = 1. / y[1], r_2 = r_1 * r_1, sin_theta = abs(sin(y[2])), cos_theta = std::copysign(cos(y[2]), y[2]);
+				const Type v_tan2 = y[1] * y[1] * (y[6] * y[6] + Power2(sin_theta * y[7]));
+				const Type v2 = y[5] * y[5] + v_tan2;
 				dydt[0] = y[4];
 				dydt[1] = y[5];
 				dydt[2] = y[6];
@@ -471,7 +473,7 @@ namespace SBody {
 				dydt[4] = 0.;
 				const Type A = 1. + (v2 - 4. * r_1) * PN1, B_r2 = -4. * y[5] * PN1 * r_2;
 				dydt[5] = r_1 * v_tan2 - r_2 * A - B_r2 * y[5];
-				dydt[6] = sin_theta * cos_theta * gsl_pow_2(y[7]) - (2. * y[5] * r_1 + B_r2) * y[6];
+				dydt[6] = sin_theta * cos_theta * y[7] * y[7] - (2. * y[5] * r_1 + B_r2) * y[6];
 				dydt[7] = -(2. * cos_theta / sin_theta * y[6] + 2. * y[5] * r_1 + B_r2) * y[7];
 			};
 		}
@@ -487,13 +489,13 @@ namespace SBody {
 			gsl_matrix_set_zero(metric);
 			gsl_matrix_set(metric, 0, 0, -(1. - 2. / position[1]));
 			gsl_matrix_set(metric, 1, 1, position[1] / (position[1] - 2.));
-			gsl_matrix_set(metric, 2, 2, gsl_pow_2(position[1]));
-			gsl_matrix_set(metric, 3, 3, gsl_pow_2(position[1] * sin(position[2])));
+			gsl_matrix_set(metric, 2, 2, position[1] * position[1]);
+			gsl_matrix_set(metric, 3, 3, Power2(position[1] * sin(position[2])));
 			return position[1] == 2. ? GSL_EZERODIV : Status::SUCCESS;
 		}
 		Type DotProduct(const Type position[], const Type x[], const Type y[], const size_t dimension) override {
 			if (dimension == 3)
-				return position[1] * x[1] * y[1] / (position[1] - 2.) + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
+				return position[1] * x[1] * y[1] / (position[1] - 2.) + position[1] * position[1] * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
 			return -(1. - 2. / position[1]) * x[0] * y[0] + position[1] * x[1] * y[1] / (position[1] - 2.) + gsl_pow_2(position[1]) * x[2] * y[2] + gsl_pow_2(position[1] * sin(position[2])) * x[3] * y[3];
 		}
 		Type DistanceSquare(const Type x[], const Type y[], const size_t dimension) override {
@@ -506,22 +508,22 @@ namespace SBody {
 			y[4] = (y[4] - 1. + 2. / y[1]) * dt_dtau; // 1 + p_t
 			y[5] *= y[1] / (y[1] - 2.) * dt_dtau;
 			y[6] *= r2 * dt_dtau;
-			y[7] *= r2 * gsl_pow_2(sin(y[2])) * dt_dtau;
+			y[7] *= r2 * Power2(sin(y[2])) * dt_dtau;
 			return Status::SUCCESS;
 		}
 		int HamiltonianToLagrangian(Type y[]) override {
 			const Type r_1 = 1. / y[1], g11_1 = 1. - 2. * r_1;
 			y[4] = -g11_1 / (y[4] - 1.);
 			y[5] *= g11_1 * y[4];
-			y[6] *= gsl_pow_2(r_1) * y[4];
-			y[7] *= gsl_pow_2(r_1 / sin(y[2])) * y[4];
+			y[6] *= r_1 * r_1 * y[4];
+			y[7] *= Power2(r_1 / sin(y[2])) * y[4];
 			return Status::SUCCESS;
 		}
 		int FastTrace(const Type r_observer, const Type theta_observer, const Type sin_theta_observer, const Type cos_theta_observer, const Type r_object, const Type theta_object, const Type phi_object, Type &alpha, Type &beta, Type photon[]) override {
-			const Type sin_theta_object = abs(sin(theta_object)), cos_theta_object = GSL_SIGN(theta_object) * cos(theta_object), sin_phi_object = sin(phi_object), cos_phi_object = cos(phi_object);
+			const Type sin_theta_object = abs(sin(theta_object)), cos_theta_object = std::copysign(cos(theta_object), theta_object), sin_phi_object = sin(phi_object), cos_phi_object = cos(phi_object);
 			const Type cos_observer_object = sin_theta_observer * sin_theta_object * cos_phi_object + cos_theta_observer * cos_theta_object;
-			const Type delta_phi = acos(cos_observer_object), sin_observer_object = sqrt(1. - gsl_pow_2(cos_observer_object));
-			const Type u0 = 1. / r_observer, u1 = 1. / r_object;
+			const Type delta_phi = acos(cos_observer_object), sin_observer_object = sqrt(1. - cos_observer_object * cos_observer_object);
+			const Type u0 = 1. / r_observer, u1 = 1. / r_object, u12 = u1 * u1;
 			const Type g11_1 = 1. - 2. * u1;
 			if (delta_phi == 0.) {
 				alpha = 0.;
@@ -541,80 +543,73 @@ namespace SBody {
 			if (Type x02[2]; u1 * 3. < 1. && PolySolveQuadratic(2., -g11_1, -g11_1 * u1, x02) == 2) // remove (x-u1) as x1 = u1
 				turning_phi = boost::math::constants::half_root_two<Type>() * EllipticIntegral(0, u0, u1, 0., 0., u1, -1., -x02[0], 1., x02[1], -1.);
 			else { // there is no turning point on the trajectory
-				impact_parameter_upper_limit = M_SQRT27 - GSL_SQRT_DBL_EPSILON;
+				impact_parameter_upper_limit = M_SQRT27 - boost::math::tools::epsilon<Type>();
 				turning_phi = M_PI; // make delta_phi <= turning_phi
 			}
-			Type integrate_parameters[7] = {u0, u1, delta_phi, turning_phi};
-			gsl_function impact_function{
-				[](double l, void *params) -> double {
-					Type *p = static_cast<Type *>(params);
+			std::array<Type, 7> integrate_parameters = {u0, u1, delta_phi, turning_phi};
+			std::pair<Type, Type> impact_root = boost::math::tools::bisect(
+				[&integrate_parameters](Type l) -> Type {
 					if (l == 0.)
-						return -p[2];
-					Type &x0 = p[4], &x1 = p[5], &x2 = p[6], l_2 = 0.5 / gsl_pow_2(l);
-					if (PolySolveCubic(-0.5, 0., l_2, p + 4) == 3) {
-						if (x1 < p[1]) // x1 < u1 < x1 + EPSILON
-							return boost::math::constants::half_root_two<Type>() * EllipticIntegral(0, p[0], p[1], 0., 1., p[1], -1., -x0, 1., x2, -1.) - p[2];
-						else if (p[2] > p[3]) // u1 -> turning point -> u1 -> u0
-							return boost::math::constants::root_two<Type>() * EllipticIntegral(0., p[1], x1, 0., 1., x1, -1., -x0, 1., x2, -1.) + boost::math::constants::half_root_two<Type>() * EllipticIntegral(0, p[0], p[1], 0., 1., x1, -1., -x0, 1., x2, -1.) - p[2];
+						return -integrate_parameters[2];
+					Type &x0 = integrate_parameters[4], &x1 = integrate_parameters[5], &x2 = integrate_parameters[6], l_2 = 0.5 / (l * l);
+					if (PolySolveCubic(-0.5, 0., l_2, integrate_parameters.begin() + 4) == 3) {
+						if (x1 < integrate_parameters[1]) // x1 < u1 < x1 + EPSILON
+							return boost::math::constants::half_root_two<Type>() * EllipticIntegral(0, integrate_parameters[0], integrate_parameters[1], 0., 1., integrate_parameters[1], -1., -x0, 1., x2, -1.) - integrate_parameters[2];
+						else if (integrate_parameters[2] > integrate_parameters[3]) // u1 -> turning point -> u1 -> u0
+							return boost::math::constants::root_two<Type>() * EllipticIntegral(0., integrate_parameters[1], x1, 0., 1., x1, -1., -x0, 1., x2, -1.) + boost::math::constants::half_root_two<Type>() * EllipticIntegral(0, integrate_parameters[0], integrate_parameters[1], 0., 1., x1, -1., -x0, 1., x2, -1.) - integrate_parameters[2];
 						else // u1 -> u0
-							return boost::math::constants::half_root_two<Type>() * EllipticIntegral(0, p[0], p[1], 0., 1., x1, -1., -x0, 1., x2, -1.) - p[2];
+							return boost::math::constants::half_root_two<Type>() * EllipticIntegral(0, integrate_parameters[0], integrate_parameters[1], 0., 1., x1, -1., -x0, 1., x2, -1.) - integrate_parameters[2];
 					}
 					// impact_parameter < sqrt(27)
-					x1 = GSL_NAN;
-					return boost::math::constants::half_root_two<Type>() * EllipticIntegral2Complex(0, p[0], p[1], 0., 1., -l_2 / x0, x0 - 0.5, 1., -x0, 1.) - p[2];
+					x1 = std::nan("");
+					return boost::math::constants::half_root_two<Type>() * EllipticIntegral2Complex(0, integrate_parameters[0], integrate_parameters[1], 0., 1., -l_2 / x0, x0 - 0.5, 1., -x0, 1.) - integrate_parameters[2];
 				},
-				integrate_parameters};
-			FunctionSolver impact_solver;
-			if (int status = impact_solver.Set(&impact_function, delta_phi > turning_phi ? M_SQRT27 + GSL_SQRT_DBL_EPSILON : 0., impact_parameter_upper_limit); status != Status::SUCCESS)
-				return status;
-			if (int status = impact_solver.Solve(); status != Status::SUCCESS) {
-				PrintlnWarning("Schwarzschild FastTrace() failed with status = {}", status);
-				return status;
-			}
-			alpha = impact_solver.Root() / sin_observer_object * sin_theta_object * sin_phi_object;
-			beta = impact_solver.Root() / sin_observer_object * (cos_theta_object * sin_theta_observer - sin_theta_object * cos_phi_object * cos_theta_observer);
+				delta_phi > turning_phi ? static_cast<Type>(M_SQRT27) + boost::math::tools::epsilon<Type>() : 0., impact_parameter_upper_limit, boost::math::tools::eps_tolerance<Type>());
+			Type impact_root_value = 0.5 * (impact_root.first + impact_root.second), impact_root_value2 = impact_root_value * impact_root_value;
+			alpha = impact_root_value / sin_observer_object * sin_theta_object * sin_phi_object;
+			beta = impact_root_value / sin_observer_object * (cos_theta_object * sin_theta_observer - sin_theta_object * cos_phi_object * cos_theta_observer);
 			Type &x0 = integrate_parameters[4], &x1 = integrate_parameters[5], &x2 = integrate_parameters[6];
 			if (!isnan(x1)) {
 				if (x1 < u1) { // x1 < u1 < x1 + EPSILON
 					const Type ellip_int_4 = EllipticIntegral(-4, u0, u1, 0., 1., u1, -1., -x0, 1., x2, -1.);
-					photon[0] = -boost::math::constants::half_root_two<Type>() * ellip_int_4 / (impact_solver.Root() * (1. - 2. * u0));
-					photon[8] = -boost::math::constants::half_root_two<Type>() * (ellip_int_4 + 2. * EllipticIntegral(-2, u0, u1, 0., 1., u1, -1., -x0, 1., x2, -1.) + 4. * EllipticIntegral(-2, u0, u1, 1., -2., u1, -1., -x0, 1., x2, -1.)) / impact_solver.Root();
+					photon[0] = -boost::math::constants::half_root_two<Type>() * ellip_int_4 / (impact_root_value * (1. - 2. * u0));
+					photon[8] = -boost::math::constants::half_root_two<Type>() * (ellip_int_4 + 2. * EllipticIntegral(-2, u0, u1, 0., 1., u1, -1., -x0, 1., x2, -1.) + 4. * EllipticIntegral(-2, u0, u1, 1., -2., u1, -1., -x0, 1., x2, -1.)) / impact_root_value;
 				} else if (delta_phi > turning_phi) { // u1 -> turning point -> u1 -> u0
 					const Type ellip_int_4 = 2. * EllipticIntegral(-4, u1, x1, 0., 1., x1, -1., -x0, 1., x2, -1.) + EllipticIntegral(-4, u0, u1, 0., 1., x1, -1., -x0, 1., x2, -1.);
-					photon[0] = -boost::math::constants::half_root_two<Type>() * ellip_int_4 / (impact_solver.Root() * (1. - 2. * u0));
-					photon[8] = -boost::math::constants::half_root_two<Type>() * (ellip_int_4 + 4. * EllipticIntegral(-2, u1, x1, 0., 1., x1, -1., -x0, 1., x2, -1.) + 2. * EllipticIntegral(-2, u0, u1, 0., 1., x1, -1., -x0, 1., x2, -1.) + 8. * EllipticIntegral(-2, u1, x1, 1., -2., x1, -1., -x0, 1., x2, -1.) + 4. * EllipticIntegral(-2, u0, u1, 1., -2., x1, -1., -x0, 1., x2, -1.)) / impact_solver.Root();
+					photon[0] = -boost::math::constants::half_root_two<Type>() * ellip_int_4 / (impact_root_value * (1. - 2. * u0));
+					photon[8] = -boost::math::constants::half_root_two<Type>() * (ellip_int_4 + 4. * EllipticIntegral(-2, u1, x1, 0., 1., x1, -1., -x0, 1., x2, -1.) + 2. * EllipticIntegral(-2, u0, u1, 0., 1., x1, -1., -x0, 1., x2, -1.) + 8. * EllipticIntegral(-2, u1, x1, 1., -2., x1, -1., -x0, 1., x2, -1.) + 4. * EllipticIntegral(-2, u0, u1, 1., -2., x1, -1., -x0, 1., x2, -1.)) / impact_root_value;
 				} else { // u1 -> u0
 					const Type ellip_int_4 = EllipticIntegral(-4, u0, u1, 0., 1., x1, -1., -x0, 1., x2, -1.);
-					photon[0] = -boost::math::constants::half_root_two<Type>() * ellip_int_4 / (impact_solver.Root() * (1. - 2. * u0));
-					photon[8] = -boost::math::constants::half_root_two<Type>() * (ellip_int_4 + 2. * EllipticIntegral(-2, u0, u1, 0., 1., x1, -1., -x0, 1., x2, -1.) + 4. * EllipticIntegral(-2, u0, u1, 1., -2., x1, -1., -x0, 1., x2, -1.)) / impact_solver.Root();
+					photon[0] = -boost::math::constants::half_root_two<Type>() * ellip_int_4 / (impact_root_value * (1. - 2. * u0));
+					photon[8] = -boost::math::constants::half_root_two<Type>() * (ellip_int_4 + 2. * EllipticIntegral(-2, u0, u1, 0., 1., x1, -1., -x0, 1., x2, -1.) + 4. * EllipticIntegral(-2, u0, u1, 1., -2., x1, -1., -x0, 1., x2, -1.)) / impact_root_value;
 				}
 			} else { // impact_parameter < sqrt(27)
-				const Type ellip_int_4 = EllipticIntegral2Complex(-4, u0, u1, 0., 1., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.);
-				photon[0] = -boost::math::constants::half_root_two<Type>() * ellip_int_4 / (impact_solver.Root() * (1. - 2. * u0));
-				photon[8] = -boost::math::constants::half_root_two<Type>() * (ellip_int_4 + 2. * EllipticIntegral2Complex(-2, u0, u1, 0., 1., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.) + 4. * EllipticIntegral2Complex(-2, u0, u1, 1., -2., -0.5 / (gsl_pow_2(impact_solver.Root()) * x0), x0 - 0.5, 1., -x0, 1.)) / impact_solver.Root();
+				const Type ellip_int_4 = EllipticIntegral2Complex(-4, u0, u1, 0., 1., -0.5 / (impact_root_value2 * x0), x0 - 0.5, 1., -x0, 1.);
+				photon[0] = -boost::math::constants::half_root_two<Type>() * ellip_int_4 / (impact_root_value * (1. - 2. * u0));
+				photon[8] = -boost::math::constants::half_root_two<Type>() * (ellip_int_4 + 2. * EllipticIntegral2Complex(-2, u0, u1, 0., 1., -0.5 / (impact_root_value2 * x0), x0 - 0.5, 1., -x0, 1.) + 4. * EllipticIntegral2Complex(-2, u0, u1, 1., -2., -0.5 / (impact_root_value2 * x0), x0 - 0.5, 1., -x0, 1.)) / impact_root_value;
 			}
 			photon[1] = r_object;
 			photon[2] = theta_object;
 			photon[3] = phi_object;
 			photon[4] = g11_1 / (1. - 2. * u0); // dt/d\tau = 1. when r = r_observer
 			if (delta_phi > turning_phi)
-				photon[5] = -g11_1 * SquareRoot(1. - g11_1 * gsl_pow_2(u1 * impact_solver.Root()));
+				photon[5] = -g11_1 * SquareRoot(1. - g11_1 * u12 * impact_root_value2);
 			else
-				photon[5] = g11_1 * SquareRoot(1. - g11_1 * gsl_pow_2(u1 * impact_solver.Root()));
+				photon[5] = g11_1 * SquareRoot(1. - g11_1 * u12 * impact_root_value2);
 			// the direction of the angular momentum is [alpha * cos_theta_observer, beta, -alpha * sin_theta_observer],
 			// the y component should have the same sign as the component perpendicular to [cos(phi), sin(phi), 0],
 			// which is also the component along the [-sin(phi), cos(phi), 0] direction.
 			if (alpha == 0.) {
-				photon[6] = GSL_SIGN(beta * cos_phi_object - alpha * cos_theta_observer * sin_phi_object) * g11_1 * gsl_pow_2(u1) * impact_solver.Root();
+				photon[6] = std::copysign(g11_1 * u12 * impact_root_value, beta * cos_phi_object - alpha * cos_theta_observer * sin_phi_object);
 				photon[7] = 0.;
 			} else {
-				photon[6] = GSL_SIGN(beta * cos_phi_object - alpha * cos_theta_observer * sin_phi_object) * g11_1 * gsl_pow_2(u1) * SquareRoot(gsl_pow_2(impact_solver.Root()) - gsl_pow_2(alpha * sin_theta_observer / sin_theta_object));
-				photon[7] = -g11_1 * alpha * sin_theta_observer * gsl_pow_2(u1 / sin_theta_object);
+				photon[6] = std::copysign(g11_1 * u12 * SquareRoot(impact_root_value2 - Power2(alpha * sin_theta_observer / sin_theta_object)), beta * cos_phi_object - alpha * cos_theta_observer * sin_phi_object);
+				photon[7] = -g11_1 * alpha * sin_theta_observer * u12 / (sin_theta_object * sin_theta_object);
 			}
 			return Status::SUCCESS;
 		}
 		int FastShadow(const Type r_observer, const Type theta_observer, const Type sin_theta_observer, const Type cos_theta_observer, const Type alpha, const Type beta, const Type r_min) override {
-			if (gsl_pow_2(alpha) + gsl_pow_2(beta) <= 27.)
+			if (alpha * alpha + beta * beta <= 27.)
 				return 0;
 			return 1;
 		}
@@ -656,7 +651,7 @@ namespace SBody {
 			const Type g11_1 = 1. - 2. / y[1];
 			if (g11_1 <= 0)
 				return 1;
-			const Type coefficient = GSL_SIGN(frequency) * g11_1 / sqrt(gsl_pow_2(y[5]) + g11_1 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+			const Type coefficient = std::copysign(g11_1, frequency) / sqrt(y[5] * y[5] + g11_1 * (Power2(y[1] * y[6]) + Power2(y[1] * sin(y[2]) * y[7])));
 			if (isnan(coefficient))
 				return GSL_EDOM;
 			y[4] = frequency;
@@ -665,16 +660,16 @@ namespace SBody {
 			y[7] *= coefficient;
 			return Status::SUCCESS;
 		}
-		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
+		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, const Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
 			if (time == T) {
 				if (dynamics == LAGRANGIAN) {
 					if (motion == GEODESIC) // return std::make_unique<Integrator>(SchwarzschildTLagrangianGeodesic<double>, Jacobian<double>);
-						return [](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+						return [](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = y[5]; // dr/dt
 							dydt[2] = y[6]; // d\theta/dt
 							dydt[3] = y[7]; // d\phi/dt
-							const Type r = y[1], sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+							const Type r = y[1], sin_theta = abs(sin(y[2])), cos_theta = std::copysign(cos(y[2]), y[2]);
 							const Type rm2 = r - 2., rm3 = r - 3.;
 							const Type rm2r_1 = 1. / (rm2 * r);
 							// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
@@ -692,7 +687,7 @@ namespace SBody {
 								dydt[7] = -2. * (rm3 * rm2r_1 * y[5] + cos_theta / sin_theta * y[6]) * y[7];
 						};
 					else if (motion == CIRCULAR) // return std::make_unique<Integrator>(SchwarzschildTLagrangianCircular<double>, Jacobian<double>);
-						return [](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+						return [](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = 0.;	// dr/dt
 							dydt[2] = 0.;	// d\theta/dt
@@ -703,7 +698,7 @@ namespace SBody {
 							dydt[7] = 0.;
 						};
 					else if (motion == HELICAL) // return std::make_unique<Integrator>(SchwarzschildTLagrangianHelical<double>, Jacobian<double>);
-						return [](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+						return [](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 							const Type r = y[1];
 							if (r <= 2.)
 								throw std::domain_error("r <= 2.");
@@ -723,7 +718,7 @@ namespace SBody {
 							dydt[7] = y[7] * (-2. / r * y[5] + dydt[4] / y[4]);
 						};
 				} else if (dynamics == HAMILTONIAN && motion == GEODESIC) // return std::make_unique<Integrator>(SchwarzschildTHamiltonianGeodesic<double>, Jacobian<double>);
-					return [](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+					return [](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 						const Type r_1 = 1. / y[1], r_2 = gsl_pow_2(r_1), g11_1 = 1. - 2. * r_1, E = 1. - y[4], L2 = gsl_pow_2(y[7]);
 						const Type sin_1_theta = 1. / abs(sin(y[2])), sin_2_theta = gsl_pow_2(sin_1_theta);
 						//[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
@@ -733,16 +728,16 @@ namespace SBody {
 						dydt[3] = y[7] * sin_2_theta * r_2 * dydt[0]; // d\phi/dt
 						dydt[4] = 0.;
 						dydt[5] = (-(gsl_pow_2(y[5]) + gsl_pow_2(E) / gsl_pow_2(g11_1)) + (gsl_pow_2(y[6]) + L2 * sin_2_theta) * r_1) * r_2 * dydt[0];
-						dydt[6] = sin_2_theta * L2 * GSL_SIGN(y[2]) * cos(y[2]) * sin_1_theta * r_2 * dydt[0];
+						dydt[6] = sin_2_theta * L2 * std::copysign(cos(y[2]), y[2]) * sin_1_theta * r_2 * dydt[0];
 						dydt[7] = 0.;
 					};
 			} else if (time == TAU && dynamics == LAGRANGIAN && motion == GEODESIC) // return std::make_unique<Integrator>(SchwarzschildTauLagrangianGeodesic<double>, Jacobian<double>);
-				return [](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+				return [](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 					dydt[0] = y[4]; // dt/d\tau
 					dydt[1] = y[5]; // dr/d\tau
 					dydt[2] = y[6]; // d\theta/d\tau
 					dydt[3] = y[7]; // d\phi/d\tau
-					const Type r = y[1], sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+					const Type r = y[1], sin_theta = abs(sin(y[2])), cos_theta = std::copysign(cos(y[2]), y[2]);
 					const Type rm2 = r - 2., r_1 = 1. / r;
 					const Type rm2r_1 = 1. / (rm2 * r);
 					// d^2\tau/dt^2=-(d\tau/dt)^3*(d^2t/d\tau^2)
@@ -845,7 +840,7 @@ namespace SBody {
 			const Type r_1 = 1. / y[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
 			if (g11_1 <= 0)
 				return 1;
-			const Type coefficient = GSL_SIGN(frequency) * g11_1 / sqrt(gsl_pow_2(y[5]) + g11_1 * (gsl_pow_2(y[1] * y[6]) + gsl_pow_2(y[1] * sin(y[2]) * y[7])));
+			const Type coefficient = std::copysign(g11_1, frequency) / sqrt(gsl_pow_2(y[5]) + g11_1 * (Power2(y[1] * y[6]) + Power2(y[1] * sin(y[2]) * y[7])));
 			if (isnan(coefficient))
 				return GSL_EDOM;
 			y[4] = frequency;
@@ -854,16 +849,16 @@ namespace SBody {
 			y[7] *= coefficient;
 			return Status::SUCCESS;
 		}
-		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
+		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, const Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
 			if (time != T || dynamics != LAGRANGIAN || motion != GEODESIC)
 				throw std::invalid_argument(fmt::format("ReissnerNordstrom::GetIntegrationSystem({}, {}, {}) invaild", time, dynamics, motion));
-			return [r_Q2 = this->r_Q2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+			return [r_Q2 = this->r_Q2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 				dydt[0] = y[4]; // d\tau/dt
 				dydt[1] = y[5]; // dr/dt
 				dydt[2] = y[6]; // d\theta/dt
 				dydt[3] = y[7]; // d\phi/dt
 				const Type r = y[1], r_1 = 1. / r, r_2 = gsl_pow_2(r_1);
-				const Type sin_theta = abs(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+				const Type sin_theta = abs(sin(y[2])), cos_theta = std::copysign(cos(y[2]), y[2]);
 				const Type g11_1 = 1. - (2. - r_Q2 * r_1) * r_1, g11 = 1. / g11_1;
 				const Type m_r_Q_r2 = (1. - r_Q2 * r_1) * r_2, m_r_Q_r2_g11 = m_r_Q_r2 * g11;
 				dydt[4] = 2. * m_r_Q_r2_g11 * y[5] * y[4];
@@ -935,7 +930,7 @@ namespace SBody {
 			param->tau = -t_mu - I_u_4_0;
 			param->t = param->tau - 2. * param->kerr->u_r * ((a * (a - l) + gsl_pow_2(param->kerr->u_plus_1)) * I_u_plus_0 - (a * (a - l) + gsl_pow_2(param->kerr->u_minus_1)) * I_u_minus_0 - 2. * sqrt(1. - a2) * I_u_2_0);
 			param->u_dir = -1.;
-			param->mu_dir = GSL_SIGN(mu_plus) * alpha_2;
+			param->mu_dir = std::copysign(alpha_2, mu_plus);
 			gsl_vector_set(delta_u_mu_phi, 0, mu_f_0 - param->mu_obj);
 			if (phi_0 >= 0. && param->phi_obj > M_PI_2)
 				gsl_vector_set(delta_u_mu_phi, 1, phi_0 + param->phi_obj - M_2PI);
@@ -954,7 +949,7 @@ namespace SBody {
 			param->tau = -t_mu - I_u_4_1;
 			param->t = param->tau - 2. * param->kerr->u_r * ((a * (a - l) + gsl_pow_2(param->kerr->u_plus_1)) * I_u_plus_1 - (a * (a - l) + gsl_pow_2(param->kerr->u_minus_1)) * I_u_minus_1 - 2. * sqrt(1. - a2) * I_u_2_1);
 			param->u_dir = 1.;
-			param->mu_dir = GSL_SIGN(mu_plus) * alpha_2;
+			param->mu_dir = std::copysign(alpha_2, mu_plus);
 			gsl_vector_set(delta_u_mu_phi, 0, mu_f_1 - param->mu_obj);
 			gsl_vector_set(delta_u_mu_phi, 1, delta_phi_1);
 			return Status::SUCCESS;
@@ -1087,9 +1082,9 @@ namespace SBody {
 		}
 		static int Mu0Integral(Type a, Type q2, Type M_plus, Type M_minus, Type delta_M, Type delta_M_plus, int beta_sign, Type mu_obs, Type &mu_plus, Type &mu_minus, Type &A, Type &k, Type &n, int &alpha_1, Type &I_mu_0, Type &I_mu_full_turn, Type &I_t_mu_0, Type &I_t_mu_full_turn, Type &I_phi_mu_0, Type &I_phi_mu_full_turn) {
 			if (abs(q2) < absolute_accuracy) { // M_minus == 0.
-				mu_plus = GSL_SIGN(mu_obs) * SquareRoot(M_plus);
+				mu_plus = std::copysign(SquareRoot(M_plus), mu_obs);
 				mu_minus = 0.;
-				alpha_1 = GSL_SIGN(mu_obs) * beta_sign;
+				alpha_1 = std::copysign(beta_sign, mu_obs);
 				A = mu_plus * abs(a);
 				k = 1.;
 				const Type mu0_mu_plus = std::min(1., abs(mu_obs) / mu_plus);
@@ -1106,9 +1101,9 @@ namespace SBody {
 				return Status::SUCCESS;
 			}
 			if (M_minus > 0.) {
-				mu_plus = GSL_SIGN(mu_obs) * SquareRoot(M_plus);
-				mu_minus = GSL_SIGN(mu_obs) * SquareRoot(M_minus);
-				alpha_1 = GSL_SIGN(mu_obs) * beta_sign;
+				mu_plus = std::copysign(SquareRoot(M_plus), mu_obs);
+				mu_minus = std::copysign(SquareRoot(M_minus), mu_obs);
+				alpha_1 = std::copysign(beta_sign, mu_obs);
 				A = mu_plus * abs(a);
 				k = SquareRoot(delta_M / M_plus);
 				const Type x = std::min(1., SquareRoot((M_plus - gsl_pow_2(mu_obs)) / delta_M));
@@ -1185,7 +1180,7 @@ namespace SBody {
 					if (alpha_1 != alpha_2)
 						phi_mu = 0.;
 					else
-						phi_mu = GSL_SIGN(l) * M_PI;
+						phi_mu = std::copysign(boost::math::constants::pi<Type>(), l);
 				} else
 					phi_mu = l * (-I_u + (alpha_1 * I_phi_mu_0 + alpha_2 * gsl_sf_ellint_P(phi, k, n, GSL_PREC_DOUBLE) + alpha_3 * I_phi_mu_full_turn) / (A * delta_M_plus)); // TODO: simplify;
 				return Status::SUCCESS;
@@ -1207,7 +1202,7 @@ namespace SBody {
 					if (alpha_1 != alpha_2)
 						phi_mu = 0.;
 					else
-						phi_mu = GSL_SIGN(l) * M_PI;
+						phi_mu = std::copysign(boost::math::constants::pi<Type>(), l);
 				} else
 					phi_mu = l * (-I_u + (alpha_1 * I_phi_mu_0 + alpha_2 * gsl_sf_ellint_P(phi, k, n, GSL_PREC_DOUBLE) + alpha_3 * I_phi_mu_full_turn) / (A * delta_M_plus));
 				return Status::SUCCESS;
@@ -1227,7 +1222,7 @@ namespace SBody {
 					if (alpha_1 != alpha_2)
 						phi_mu = 0.;
 					else
-						phi_mu = GSL_SIGN(l) * M_PI;
+						phi_mu = std::copysign(boost::math::constants::pi<Type>(), l);
 				} else
 					phi_mu = l * (-I_u + (alpha_1 * I_phi_mu_0 + alpha_2 * gsl_sf_ellint_P(phi, k, n, GSL_PREC_DOUBLE) + alpha_3 * I_phi_mu_full_turn) / (A * delta_M_plus));
 				return Status::SUCCESS;
@@ -1246,7 +1241,7 @@ namespace SBody {
 				if (alpha_1 != alpha_2)
 					phi_mu = 0.;
 				else
-					phi_mu = GSL_SIGN(l) * M_PI;
+					phi_mu = std::copysign(boost::math::constants::pi<Type>(), l);
 			} else
 				phi_mu = l * (-I_u + (alpha_1 * I_phi_mu_0 - alpha_2 * gsl_sf_ellint_P(phi, k, n, GSL_PREC_DOUBLE) + (alpha_2 + alpha_3) * I_phi_mu_full_turn) / (A * delta_M_plus));
 			return Status::SUCCESS;
@@ -1317,7 +1312,7 @@ namespace SBody {
 			return Status::SUCCESS;
 		}
 		int FastTrace(const Type r_observer, const Type theta_observer, const Type sin_theta_observer, const Type cos_theta_observer, const Type r_object, const Type theta_object, const Type phi_object, Type &alpha, Type &beta, Type photon[]) override {
-			const Type sin_theta_object = abs(sin(theta_object)), cos_theta_object = GSL_SIGN(theta_object) * cos(theta_object), sin_phi_object = sin(phi_object), cos_phi_object = cos(phi_object);
+			const Type sin_theta_object = abs(sin(theta_object)), cos_theta_object = std::copysign(cos(theta_object), theta_object), sin_phi_object = sin(phi_object), cos_phi_object = cos(phi_object);
 			const Type sin2_theta_object = gsl_pow_2(sin_theta_object), cos2_theta_object = gsl_pow_2(cos_theta_object);
 			const Type cos_observer_object = sin_theta_observer * sin_theta_object * cos_phi_object + cos_theta_observer * cos_theta_object;
 			const Type theta_observer_object = acos(cos_observer_object), sin_observer_object = SquareRoot(1. - gsl_pow_2(cos_observer_object));
@@ -1544,7 +1539,7 @@ namespace SBody {
 			const Type a = rho2 / (r2 - 2. * r + a2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2_ + r2) * sin2_theta + r_rho_2 * a2_ * sin4_theta) * gsl_pow_2(y[7]);
 			const Type b = -2. * r_rho_2 * a_ * sin2_theta * y[7];
 			const Type c = r_rho_2 - 1.;
-			const Type coefficient = GSL_SIGN(frequency) * 0.5 * (-b + sqrt(gsl_pow_2(b) - 4. * a * c)) / a;
+			const Type coefficient = std::copysign(0.5 / a, frequency) * (-b + sqrt(b * b - 4. * a * c));
 			if (isnan(coefficient))
 				return GSL_EDOM;
 			y[4] = frequency;
@@ -1553,17 +1548,17 @@ namespace SBody {
 			y[7] *= coefficient;
 			return Status::SUCCESS;
 		}
-		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
+		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, const Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
 			if (time == T) {
 				if (dynamics == LAGRANGIAN) {
 					if (motion == GEODESIC) // return std::make_unique<Integrator>(Kerr<double>::TLagrangianGeodesic, Jacobian<double>, this);
-						return [a = this->a_, a2 = this->a2_, a4 = this->a4_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+						return [a = this->a_, a2 = this->a2_, a4 = this->a4_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = y[5]; // dr/dt
 							dydt[2] = y[6]; // d\theta/dt
 							dydt[3] = y[7]; // d\phi/dt
 							const Type r = y[1], r2 = gsl_pow_2(r), r4 = gsl_pow_2(r2), a2_r2 = a2 + r2;
-							const Type sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin4_theta = gsl_pow_2(sin2_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta), sin_theta_cos_theta = sin_theta * cos_theta, cot_theta = cos_theta / sin_theta;
+							const Type sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin4_theta = gsl_pow_2(sin2_theta), cos_theta = std::copysign(cos(y[2]), y[2]), cos2_theta = gsl_pow_2(cos_theta), sin_theta_cos_theta = sin_theta * cos_theta, cot_theta = cos_theta / sin_theta;
 							const Type Delta = r2 - 2. * r + a2, Delta_1 = 1. / Delta;
 							const Type rho2 = r2 + a2 * cos2_theta, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = rho_2 * rho_4, r2_a2_cos2_theta = r2 - a2 * cos2_theta;
 							const Type dydt4 = 2. * rho_4 * (Delta_1 * a2_r2 * r2_a2_cos2_theta * y[5] - 2. * a2 * r * sin_theta_cos_theta * y[6] * (1. - a * sin2_theta * y[7]) - Delta_1 * a * (2. * r4 + r2 * rho2 + a2 * r2_a2_cos2_theta) * sin2_theta * y[5] * y[7]);
@@ -1577,7 +1572,7 @@ namespace SBody {
 							dydt[7] = (-2. * a * r2_a2_cos2_theta * Delta_1 * y[5] + 4. * a * r * cot_theta * y[6] - 2. * Delta_1 * (r * rho4 - 2. * r2 * rho2 - r2_a2_cos2_theta * a2 * sin2_theta) * y[5] * y[7] - 2. * cot_theta * (rho4 + 2. * a2 * r * sin2_theta) * y[6] * y[7]) * rho_4 + dydt4 * y[7];
 						};
 					else if (motion == CIRCULAR) // return std::make_unique<Integrator>(Kerr<double>::TLagrangianCircular, Jacobian<double>, this);
-						return [](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+						return [](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = 0.;	// dr/dt
 							dydt[2] = 0.;	// d\theta/dt
@@ -1588,7 +1583,7 @@ namespace SBody {
 							dydt[7] = 0.;
 						};
 					else if (motion == HELICAL) // return std::make_unique<Integrator>(Kerr<double>::TLagrangianHelical, Jacobian<double>, this);
-						return [a = this->a_, a2 = this->a2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+						return [a = this->a_, a2 = this->a2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = y[5]; // dr/dt
 							dydt[2] = 0.;	// d\theta/dt = 0.
@@ -1613,12 +1608,12 @@ namespace SBody {
 							dydt[4] = (y[5] * (dg03_dr + dg33_dr * y[7]) + g33 * dydt[7]) * L_1;
 						};
 				} else if (dynamics == HAMILTONIAN && motion == GEODESIC) // return std::make_unique<Integrator>(Kerr<double>::THamiltonianGeodesic, Jacobian<double>, this);
-					return [a = this->a_, a2 = this->a2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
-						const Type r = y[1], r2 = gsl_pow_2(y[1]), a2_r2 = a2 + r2, pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]);
-						const Type E = 1. - y[4], E2 = gsl_pow_2(E), delta_E2 = (2. - y[4]) * y[4], L2 = gsl_pow_2(y[7]);
-						const Type sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin_2_theta = 1. / sin2_theta, sin_4_theta = gsl_pow_2(sin_2_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta);
-						const Type Delta = a2_r2 - 2. * r, Delta_1 = 1. / Delta, Delta_2 = gsl_pow_2(Delta_1);
-						const Type rho2 = r2 + a2 * cos2_theta, rho_2 = 1. / rho2, rho_4 = gsl_pow_2(rho_2);
+					return [a = this->a_, a2 = this->a2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
+						const Type r = y[1], r2 = y[1] * y[1], a2_r2 = a2 + r2, pr2 = y[5] * y[5], ptheta2 = y[6] * y[6];
+						const Type E = 1. - y[4], E2 = E * E, delta_E2 = (2. - y[4]) * y[4], L2 = y[7] * y[7];
+						const Type sin_theta = abs(sin(y[2])), sin2_theta = sin_theta * sin_theta, sin_2_theta = 1. / sin2_theta, sin_4_theta = sin_2_theta * sin_2_theta, cos_theta = std::copysign(cos(y[2]), y[2]), cos2_theta = cos_theta * cos_theta;
+						const Type Delta = a2_r2 - 2. * r, Delta_1 = 1. / Delta, Delta_2 = Delta_1 * Delta_1;
+						const Type rho2 = r2 + a2 * cos2_theta, rho_2 = 1. / rho2, rho_4 = rho_2 * rho_2;
 						const Type Q = ptheta2 + cos2_theta * (a2 * delta_E2 + L2 * sin_2_theta);
 						const Type R = -a2_r2 * r2 * delta_E2 + E2 * 2. * r * a2 + 2. * r * r2 - Delta * Q - (r2 - 2. * r) * L2 - 4. * r * a * E * y[7]; // R = gsl_pow_2(E * a2_r2 - a * y[7]) - Delta * (r2 + gsl_pow_2(y[7] - a * E) + Q);
 						//[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
@@ -1633,13 +1628,13 @@ namespace SBody {
 					};
 			} else if (time == TAU) {
 				if (dynamics == LAGRANGIAN) // return std::make_unique<Integrator>(Kerr<double>::TauLagrangianGeodesic, Jacobian<double>, this);
-					return [a = this->a_, a2 = this->a2_, a4 = this->a4_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+					return [a = this->a_, a2 = this->a2_, a4 = this->a4_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 						dydt[0] = y[4]; // dt/d\tau
 						dydt[1] = y[5]; // dr/d\tau
 						dydt[2] = y[6]; // d\theta/d\tau
 						dydt[3] = y[7]; // d\phi/d\tau
 						const Type r = y[1], r2 = gsl_pow_2(r), a2_r2 = a2 + r2;
-						const Type sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin4_theta = gsl_pow_2(sin2_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta), sin_theta_cos_theta = sin_theta * cos_theta, cot_theta = cos_theta / sin_theta;
+						const Type sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin4_theta = gsl_pow_2(sin2_theta), cos_theta = std::copysign(cos(y[2]), y[2]), cos2_theta = gsl_pow_2(cos_theta), sin_theta_cos_theta = sin_theta * cos_theta, cot_theta = cos_theta / sin_theta;
 						const Type Delta = r2 - 2. * r + a2, Delta_1 = 1. / Delta;
 						const Type rho2 = r2 + a2 * cos2_theta, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = rho_2 * rho_4, r2_a2_cos2_theta = r2 - a2 * cos2_theta;
 						dydt[4] = -2. * rho_4 * (Delta_1 * a2_r2 * r2_a2_cos2_theta * y[5] * (y[4] - a * sin2_theta * y[7]) - 2. * a2 * r * sin_theta_cos_theta * y[6] * (y[4] - a * sin2_theta * y[7]) - 2. * Delta_1 * r2 * rho2 * a * sin2_theta * y[5] * y[7]);
@@ -1651,10 +1646,10 @@ namespace SBody {
 						dydt[7] = (-2. * a * r2_a2_cos2_theta * Delta_1 * y[4] * y[5] + 4. * a * r * cot_theta * y[4] * y[6] - 2. * Delta_1 * (r * rho4 - 2. * r2 * rho2 - r2_a2_cos2_theta * a2 * sin2_theta) * y[5] * y[7] - 2. * cot_theta * (rho4 + 2. * a2 * r * sin2_theta) * y[6] * y[7]) * rho_4;
 					};
 				else if (dynamics == HAMILTONIAN) // return std::make_unique<Integrator>(Kerr<double>::TauHamiltonianGeodesic, Jacobian<double>, this);
-					return [a = this->a_, a2 = this->a2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+					return [a = this->a_, a2 = this->a2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 						const Type r = y[1], r2 = gsl_pow_2(y[1]), a2_r2 = a2 + r2, pr2 = gsl_pow_2(y[5]), ptheta2 = gsl_pow_2(y[6]);
 						const Type E = 1. - y[4], E2 = gsl_pow_2(E), delta_E2 = (2. - y[4]) * y[4], L2 = gsl_pow_2(y[7]);
-						const Type sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin_2_theta = 1. / sin2_theta, sin_4_theta = gsl_pow_2(sin_2_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta);
+						const Type sin_theta = abs(sin(y[2])), sin2_theta = gsl_pow_2(sin_theta), sin_2_theta = 1. / sin2_theta, sin_4_theta = gsl_pow_2(sin_2_theta), cos_theta = std::copysign(cos(y[2]), y[2]), cos2_theta = gsl_pow_2(cos_theta);
 						const Type Delta = a2_r2 - 2. * r, Delta_1 = 1. / Delta, Delta_2 = gsl_pow_2(Delta_1);
 						const Type rho2 = r2 + a2 * cos2_theta, rho_2 = 1. / rho2, rho_4 = gsl_pow_2(rho_2);
 						const Type Q = ptheta2 + cos2_theta * (a2 * delta_E2 + L2 * sin_2_theta);
@@ -1799,7 +1794,7 @@ namespace SBody {
 			const Type a = rho2 / (r2 - 2. * r + a2_ + r_Q2_) * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + ((a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * sin2_theta) * gsl_pow_2(y[7]);
 			const Type b = -2. * r_rho_2 * a_ * sin2_theta * y[7];
 			const Type c = r_rho_2 - 1.;
-			const Type coefficient = GSL_SIGN(frequency) * 0.5 * (-b + sqrt(gsl_pow_2(b) - 4. * a * c)) / a;
+			const Type coefficient = std::copysign(0.5 / a, frequency) * (-b + sqrt(b * b - 4. * a * c));
 			if (isnan(coefficient))
 				return GSL_EDOM;
 			y[4] = frequency;
@@ -1808,7 +1803,7 @@ namespace SBody {
 			y[7] *= coefficient;
 			return Status::SUCCESS;
 		}
-		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
+		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, const Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
 			throw std::invalid_argument(fmt::format("KerrNewman::GetIntegrationSystem({}, {}, {}) invaild", time, dynamics, motion));
 		}
 	};
@@ -1847,7 +1842,7 @@ namespace SBody {
 		}
 		int LagrangianToHamiltonian(Type y[]) override {
 			const Type dt_dtau = 1. / y[4], r = y[1], r2 = gsl_pow_2(r);
-			const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+			const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = std::copysign(cos(y[2]), y[2]);
 			const Type Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta);
 			if (rho2 == 0. || Delta == 0.)
 				return GSL_EZERODIV;
@@ -1860,7 +1855,7 @@ namespace SBody {
 		}
 		int HamiltonianToLagrangian(Type y[]) override {
 			const Type pt = y[4] - 1., r = y[1], r2 = gsl_pow_2(r);
-			const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+			const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = std::copysign(cos(y[2]), y[2]);
 			const Type Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta);
 			if (rho2 == 0. || Delta == 0.)
 				return GSL_EZERODIV;
@@ -1877,7 +1872,7 @@ namespace SBody {
 		Type Energy(const Type y[], TimeSystem time, DynamicalSystem dynamics) override {
 			if (dynamics == LAGRANGIAN) {
 				const Type r = y[1], r2 = gsl_pow_2(r);
-				const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+				const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = std::copysign(cos(y[2]), y[2]);
 				const Type Delta = r2 - 2. * r - l2_ + a2_;
 				if (time == T)
 					return (Delta - a2_ * sin2_theta + 2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * y[7]) / ((r2 + gsl_pow_2(l_ + a_ * cos_theta)) * y[4]);
@@ -1889,7 +1884,7 @@ namespace SBody {
 		Type AngularMomentum(const Type y[], TimeSystem time, DynamicalSystem dynamics) override {
 			if (dynamics == LAGRANGIAN) {
 				const Type r = y[1], r2 = gsl_pow_2(r);
-				const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+				const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = std::copysign(cos(y[2]), y[2]);
 				const Type Delta = r2 - 2. * r - l2_ + a2_;
 				if (time == T)
 					return (-2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) + (gsl_pow_2(r2 + l2_ + a2_) * sin2_theta - gsl_pow_2(a_ * sin2_theta - 2. * l_ * cos_theta) * Delta) * y[7]) / ((r2 + gsl_pow_2(l_ + a_ * cos_theta)) * y[4]);
@@ -1903,7 +1898,7 @@ namespace SBody {
 		}
 		int NormalizeTimelikeGeodesic(Type y[]) override {
 			const Type r = y[1], r2 = gsl_pow_2(r);
-			const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+			const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = std::copysign(cos(y[2]), y[2]);
 			const Type Delta = r2 - 2. * r - l2_ + a2_;
 			const Type rho2 = r2 + gsl_pow_2(l_ + a_ * cos_theta);
 			// y[7] += 2. * a_ * r / (gsl_pow_2(a2_ + r2) - a2_ * Delta * sin2_theta);
@@ -1912,7 +1907,7 @@ namespace SBody {
 		}
 		int NormalizeNullGeodesic(Type y[], Type frequency = 1.) override {
 			const Type r = y[1], r2 = gsl_pow_2(r);
-			const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+			const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = std::copysign(cos(y[2]), y[2]);
 			const Type Delta = r2 - 2. * r - l2_ + a2_;
 			const Type l_a_cos_theta = l_ + a_ * cos_theta;
 			const Type rho2 = r2 + gsl_pow_2(l_a_cos_theta), rho_2 = 1. / rho2;
@@ -1920,7 +1915,7 @@ namespace SBody {
 			const Type a = rho2 / Delta * gsl_pow_2(y[5]) + rho2 * gsl_pow_2(y[6]) + rho_2 * (gsl_pow_2(rho2_a_chi) * sin2_theta - gsl_pow_2(chi) * Delta) * gsl_pow_2(y[7]);
 			const Type b = -4. * rho_2 * ((r + l2_) * chi + l_ * cos_theta * rho2_a_chi) * y[7];
 			const Type c = -rho_2 * (Delta - a2_ * sin2_theta);
-			const Type coefficient = GSL_SIGN(frequency) * 0.5 * (-b + sqrt(gsl_pow_2(b) - 4. * a * c)) / a;
+			const Type coefficient = std::copysign(0.5 / a, frequency) * (-b + sqrt(b * b - 4. * a * c));
 			if (isnan(coefficient))
 				return GSL_EDOM;
 			y[4] = frequency;
@@ -1929,19 +1924,19 @@ namespace SBody {
 			y[7] *= coefficient;
 			return Status::SUCCESS;
 		}
-		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
+		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, const Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
 			if (motion != GEODESIC)
 				throw std::invalid_argument(fmt::format("KerrNewman::GetIntegrationSystem({}, {}, {}) invaild", time, dynamics, motion));
 			if (time == T) {
 				if (dynamics == LAGRANGIAN)
 					if (motion == GEODESIC) // return std::make_unique<Integrator>(KerrTaubNUT<double>::TLagrangianGeodesic, Jacobian<double>, this);
-						return [a = this->a_, a2 = this->a2_, l = this->l_, l2 = this->l2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+						return [a = this->a_, a2 = this->a2_, l = this->l_, l2 = this->l2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = y[5]; // dr/dt
 							dydt[2] = y[6]; // d\theta/dt
 							dydt[3] = y[7]; // d\phi/dt
 							const Type r = y[1], r2 = gsl_pow_2(r);
-							const Type sin_theta = abs(sin(y[2])), sin_1_theta = 1. / sin_theta, sin2_theta = gsl_pow_2(sin_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta);
+							const Type sin_theta = abs(sin(y[2])), sin_1_theta = 1. / sin_theta, sin2_theta = gsl_pow_2(sin_theta), cos_theta = std::copysign(cos(y[2]), y[2]), cos2_theta = gsl_pow_2(cos_theta);
 							const Type Delta = r2 - 2. * r - l2 + a2, Delta_1 = 1. / Delta;
 							const Type l_a_cos_theta = l + a * cos_theta, l_a_cos_theta2 = gsl_pow_2(l_a_cos_theta);
 							const Type rho2 = r2 + l_a_cos_theta2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = rho_2 * rho_4;
@@ -1958,13 +1953,13 @@ namespace SBody {
 							dydt[7] = -2. * a * rho2_r_Delta * Delta_1 * rho_4 * y[5] * (1. - chi * y[7]) + 2. * rho2_a_cos_theta * rho_4 * sin_1_theta * y[6] * (1. - chi * y[7]) - 2. * (1. - a2 * sin2_theta * Delta_1) * r * rho_2 * y[5] * y[7] - 2. * cos_theta * sin_1_theta * y[6] * y[7] + dydt4 * y[7];
 						};
 					else if (motion == HELICAL)
-						return [a = this->a_, a2 = this->a2_, l = this->l_, l2 = this->l2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) { // [TODO]: CHECK
-							dydt[0] = y[4];																													   // d\tau/dt
-							dydt[1] = y[5];																													   // dr/dt
-							dydt[2] = 0.;																													   // d\theta/dt = 0.
-							dydt[3] = y[7];																													   // d\phi/dt
+						return [a = this->a_, a2 = this->a2_, l = this->l_, l2 = this->l2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) { // [TODO]: CHECK
+							dydt[0] = y[4];																															 // d\tau/dt
+							dydt[1] = y[5];																															 // dr/dt
+							dydt[2] = 0.;																															 // d\theta/dt = 0.
+							dydt[3] = y[7];																															 // d\phi/dt
 							const Type r = y[1], r2 = gsl_pow_2(r);
-							const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = GSL_SIGN(y[2]) * cos(y[2]);
+							const Type sin2_theta = gsl_pow_2(sin(y[2])), cos_theta = std::copysign(cos(y[2]), y[2]);
 							const Type Delta = r2 - 2. * r - l2 + a2, Delta_1 = 1. / Delta;
 							const Type l_a_cos_theta2 = gsl_pow_2(l + a * cos_theta);
 							const Type rho2 = r2 + l_a_cos_theta2, rho_2 = 1. / rho2;
@@ -1985,13 +1980,13 @@ namespace SBody {
 						};
 			} else if (time == TAU) {
 				if (dynamics == LAGRANGIAN && motion == GEODESIC) // return std::make_unique<Integrator>(KerrTaubNUT<double>::TauLagrangianGeodesic, Jacobian<double>, this);
-					return [a = this->a_, a2 = this->a2_, l = this->l_, l2 = this->l2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, Type t) {
+					return [a = this->a_, a2 = this->a2_, l = this->l_, l2 = this->l2_](const std::array<Type, 8> &y, std::array<Type, 8> &dydt, const Type t) {
 						dydt[0] = y[4]; // dt/d\tau
 						dydt[1] = y[5]; // dr/d\tau
 						dydt[2] = y[6]; // d\theta/d\tau
 						dydt[3] = y[7]; // d\phi/d\tau
 						const Type r = y[1], r2 = gsl_pow_2(r);
-						const Type sin_theta = abs(sin(y[2])), sin_1_theta = 1. / sin_theta, sin2_theta = gsl_pow_2(sin_theta), cos_theta = GSL_SIGN(y[2]) * cos(y[2]), cos2_theta = gsl_pow_2(cos_theta);
+						const Type sin_theta = abs(sin(y[2])), sin_1_theta = 1. / sin_theta, sin2_theta = gsl_pow_2(sin_theta), cos_theta = std::copysign(cos(y[2]), y[2]), cos2_theta = gsl_pow_2(cos_theta);
 						const Type Delta = r2 - 2. * r - l2 + a2, Delta_1 = 1. / Delta;
 						const Type l_a_cos_theta = l + a * cos_theta, l_a_cos_theta2 = gsl_pow_2(l_a_cos_theta);
 						const Type rho2 = r2 + l_a_cos_theta2, rho_2 = 1. / rho2, rho4 = gsl_pow_2(rho2), rho_4 = gsl_pow_2(rho_2), rho_6 = rho_2 * rho_4;
@@ -2031,7 +2026,7 @@ namespace SBody {
 		Type CarterConstant(const Type y[], const Type mu2, TimeSystem time, DynamicalSystem dynamics) override;
 		int NormalizeTimelikeGeodesic(Type y[]) override;
 		int NormalizeNullGeodesic(Type y[], Type frequency = 1.) override;
-		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override;
+		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, const Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override;
 	};
 } // namespace SBody
 

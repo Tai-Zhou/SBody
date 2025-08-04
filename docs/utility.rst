@@ -44,12 +44,6 @@ Solver
    :members:
    :no-link:
 
-FunctionSolver
---------------
-
-.. doxygenclass:: SBody::FunctionSolver
-   :members:
-   :no-link:
 
 DerivativeSolver
 ----------------

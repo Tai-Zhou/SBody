@@ -95,7 +95,7 @@ int Benchmark() {
 	bars[0].set_option(indicators::option::PrefixText{string("Benchmarking...")});
 	for (int i = 1; i <= T_STEP_NUMBER; ++i) {
 		t1 += t_step;
-		status = star_0.IntegratorApply(&t, t1, &h);
+		status = star_0.IntegratorApply(t, t1);
 		if (status > 0) {
 			PrintlnError("Benchmark error, main status = {}", status);
 			return GSL_FAILURE;
@@ -285,14 +285,13 @@ int main(int argc, char *argv[]) {
 	int status = 0;
 	double h = 1., stepPercent = 100. / tStepNumber;
 	h = -1;
-	if (status = star_0.IntegratorApply(&t, 0., &h); status != 0)
+	auto object_pointer_collector = vector<Object<double> *>{&star_0};
+	if (status = star_0.IntegratorApply(t, 0.); status != 0)
 		PrintlnWarning("star_0.IntegratorApply() = {}", status);
 	h = 1;
-	if (status = star_0.IntegratorReset(); status != 0)
-		PrintlnWarning("star_0.IntegratorReset() = {}", status);
 	for (int i = 1; i <= tStepNumber; ++i) {
 		tStep += tRec;
-		status = star_0.IntegratorApply(&t, tStep, &h);
+		status = star_0.IntegratorApply(t, tStep);
 		if (status > 0)
 			PrintlnError("main status = {}", status);
 		star_0.Position(position);
@@ -301,7 +300,7 @@ int main(int argc, char *argv[]) {
 		if (ray & 1)
 			viewPtr->Trace(position, star_time, view_info, true);
 		if (ray & 2)
-			cameraPtr->Trace();
+			cameraPtr->Trace(object_pointer_collector);
 		SphericalToCartesian(position.data());
 		rec.Save(position);
 		rec.Save(t / unit.s);

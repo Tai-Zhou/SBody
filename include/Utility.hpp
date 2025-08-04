@@ -141,44 +141,6 @@ namespace SBody {
 		virtual long double Root() = 0;
 	};
 
-	/**
-	 * @brief
-	 *
-	 */
-	class FunctionSolver : public Solver {
-	  private:
-		gsl_root_fsolver *solver_;
-
-	  public:
-		FunctionSolver(const gsl_root_fsolver_type *type = gsl_root_fsolver_brent) {
-			solver_ = gsl_root_fsolver_alloc(type);
-		}
-		~FunctionSolver() {
-			gsl_root_fsolver_free(solver_);
-		}
-		int Set(gsl_function *function, long double lower, long double upper) {
-			return gsl_root_fsolver_set(solver_, function, lower, upper);
-		}
-		int Iterate() override {
-			return gsl_root_fsolver_iterate(solver_);
-		}
-		int Solve() {
-			while (gsl_root_test_interval(gsl_root_fsolver_x_lower(solver_), gsl_root_fsolver_x_upper(solver_), absolute_accuracy, relative_accuracy) != Status::SUCCESS)
-				if (int status = gsl_root_fsolver_iterate(solver_); status != Status::SUCCESS)
-					return status;
-			return Status::SUCCESS;
-		}
-		long double Root() override {
-			return gsl_root_fsolver_root(solver_);
-		}
-		long double Lower() {
-			return gsl_root_fsolver_x_lower(solver_);
-		}
-		long double Upper() {
-			return gsl_root_fsolver_x_upper(solver_);
-		}
-	};
-
 	class DerivativeSolver : public Solver {
 	  private:
 		gsl_root_fdfsolver *solver_;

@@ -200,7 +200,7 @@ namespace SBody {
 		static int TraceToPlane(const gsl_vector *alpha_beta, void *params, gsl_vector *delta_apparent_alpha_beta) {
 			auto *const param = static_cast<TraceParameters<Type> *>(params);
 			Type alpha = gsl_vector_get(alpha_beta, 0), beta = gsl_vector_get(alpha_beta, 1);
-			auto integrator = param->integrator;
+			auto integrator = param->integrator; // TODO: USE dense_output_runge_kutta instead
 			integrator->Reset();
 			if (!isfinite(alpha) || !isfinite(beta))
 				return GSL_ERUNAWAY;
@@ -571,7 +571,7 @@ namespace SBody {
 		 *
 		 * @return int
 		 */
-		int Trace() {
+		int Trace(std::vector<Object<Type> *> &object_list) {
 			const Type t1 = -1000.;
 #pragma omp parallel for
 			for (int p = pixel_ * pixel_ - 1; p >= 0; --p) {
@@ -584,9 +584,9 @@ namespace SBody {
 				while (status <= 0 && ph[8] > t1) {
 					std::copy(ph, ph + 10, last);
 					status = integrator->Apply(ph + 8, t1, ph + 9, ph);
-					for (auto objP : Object<Type>::object_list_)
-						if (objP->Hit(ph, last))
-							screen_[i][j] = objP->Redshift(ph, T); // FIXME: if multi objects
+					for (auto object_pointer : object_list)
+						if (object_pointer->Hit(ph, last))
+							screen_[i][j] = object_pointer->Redshift(ph, T); // FIXME: if multi objects
 					if (screen_[i][j] > GSL_SQRT_DBL_EPSILON)
 						break;
 				}

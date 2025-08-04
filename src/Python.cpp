@@ -71,7 +71,7 @@ double CalculatePericenterTime(double mass, int metric, double fSP, double R, do
 	}
 	int status = 0;
 	for (int i = 0;; ++i) {
-		status = star_0.IntegratorApply(&t, tStep, &h);
+		status = star_0.IntegratorApply(t, tStep);
 		if (status > 0)
 			PrintlnError("main status = {}", status);
 		star_0.Position(position);
@@ -118,18 +118,16 @@ py::array_t<double> CalculateFullStarOrbit(double mass, int metric, double fSP, 
 		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
 	double h = -1.;
 	int status = 0;
-	if (status = star_0.IntegratorApply(&t, 0., &h); status != 0)
+	if (status = star_0.IntegratorApply(t, 0.); status != 0)
 		py::print("[!] IntegratorApply status =", status);
 	h = 1.;
-	if (status = star_0.IntegratorReset(); status != 0)
-		py::print("[!] IntegratorReset status =", status);
 	auto result = py::array_t<double>(tStepNumber * 14);
 	double *result_ptr = const_cast<double *>(result.data());
 	array<double, 8> position;
 	array<double, 4> record;
 	for (size_t i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
-		status = star_0.IntegratorApply(&t, tStep, &h);
+		status = star_0.IntegratorApply(t, tStep);
 		if (status > 0)
 			PrintlnError("main status = {}", status);
 		star_0.Position(position);
@@ -194,17 +192,15 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, M_PI, M_PI_4, 0.);
 	double h = -1.;
 	int status = 0;
-	if (status = star_0.IntegratorApply(&t, 0., &h); status != 0)
+	if (status = star_0.IntegratorApply(t, 0.); status != 0)
 		py::print("[!] IntegratorApply status =", status);
 	h = 1.;
-	if (status = star_0.IntegratorReset(); status != 0)
-		py::print("[!] IntegratorReset status =", status);
 	size_t idx = 0, size = obs_time.size();
 	auto result = py::array_t<double>(size * 14);
 	double *result_ptr = const_cast<double *>(result.data());
 	for (int i = 0;; ++i) {
 		tStep += tRec;
-		if (status = star_0.IntegratorApply(&t, tStep, &h); status != 0)
+		if (status = star_0.IntegratorApply(t, tStep); status != 0)
 			py::print("[!] IntegratorApply status =", status);
 		star_0.Position(this_position);
 		if (metric == 2)
@@ -368,7 +364,7 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 	double *result_ptr = const_cast<double *>(result.data());
 	for (size_t i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
-		if (status = hotspot.IntegratorApply(&t, tStep, &h); status != 0)
+		if (status = hotspot.IntegratorApply(t, tStep); status != 0)
 			py::print("[!] IntegratorApply status =", status);
 		hotspot.Position(position);
 		if (gr_time_delay) {
@@ -448,11 +444,9 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 	double vz0 = x0 * sin_inc + z0 * cos_inc;
 	double h = -1.;
 	int status = 0;
-	if (status = hotspot.IntegratorApply(&t, 0., &h); status != 0)
+	if (status = hotspot.IntegratorApply(t, 0.); status != 0)
 		py::print("[!] IntegratorApply status =", status);
 	h = 1.;
-	if (status = hotspot.IntegratorReset(); status != 0)
-		py::print("[!] IntegratorReset status =", status);
 	size_t idx = 0, size = obs_time.size();
 	auto result = py::array_t<double>(size * HOTSPOT_RETURN_WIDTH);
 	double *result_ptr = const_cast<double *>(result.data());
@@ -464,7 +458,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 		}
 #endif
 		tStep += tRec;
-		if (status = hotspot.IntegratorApply(&t, tStep, &h); status != 0)
+		if (status = hotspot.IntegratorApply(t, tStep); status != 0)
 			py::print("[!] IntegratorApply status =", status);
 		hotspot.Position(this_position.data());
 		if (this_position[1] < 3.) {
