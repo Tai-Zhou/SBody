@@ -64,7 +64,7 @@ double CalculatePericenterTime(double mass, int metric, double fSP, double R, do
 	array<double, 4> record;
 	star_0.Position(position);
 	if (metric == 0)
-		t0 = position[1] * GSL_SIGN(position[2]) * cos(position[2]);
+		t0 = position[1] * copysign(cos(position[2]), position[2]);
 	else {
 		view_ptr->Trace(position, T, record, false);
 		t0 = record[3] / unit.s;
@@ -77,7 +77,7 @@ double CalculatePericenterTime(double mass, int metric, double fSP, double R, do
 		star_0.Position(position);
 		if (position[1] > last_radius) {
 			if (metric == 0)
-				return (tStep + t0 - position[1] * GSL_SIGN(position[2]) * cos(position[2])) / unit.yr + 2002.;
+				return (tStep + t0 - position[1] * copysign(cos(position[2]), position[2])) / unit.yr + 2002.;
 			else {
 				view_ptr->Trace(position, T, record, false);
 				return (tStep + (t0 * unit.s - record[3])) / unit.yr + 2002.;
@@ -178,7 +178,7 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 	else
 		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, 0., M_PI_4, 0.);
 	star_0.Position(last_position);
-	z0 = last_position[1] * GSL_SIGN(last_position[2]) * cos(last_position[2]);
+	z0 = last_position[1] * copysign(cos(last_position[2]), last_position[2]);
 	if (gr_time_delay) {
 		if (view_ptr->Trace(last_position, star_time, last_view_info, false) != Status::SUCCESS) {
 			PrintlnError("Initially trace star Error!");
@@ -204,9 +204,9 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 			py::print("[!] IntegratorApply status =", status);
 		star_0.Position(this_position);
 		if (metric == 2)
-			this_obs_time = (t + z0 - (this_position[1] - 1.) * GSL_SIGN(this_position[2]) * cos(this_position[2])) / unit.yr + 2002.;
+			this_obs_time = (t + z0 - (this_position[1] - 1.) * copysign(cos(this_position[2]), this_position[2])) / unit.yr + 2002.;
 		else
-			this_obs_time = (t + z0 - this_position[1] * GSL_SIGN(this_position[2]) * cos(this_position[2])) / unit.yr + 2002.;
+			this_obs_time = (t + z0 - this_position[1] * copysign(cos(this_position[2]), this_position[2])) / unit.yr + 2002.;
 		if (this_obs_time > obs_time.at(idx)) {
 			if (gr_time_delay) {
 				if (view_ptr->Trace(last_position, star_time, last_view_info, false) != Status::SUCCESS) {
@@ -433,7 +433,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 		// py::print("[!] R < 3.0, stop!");
 		return py::array_t<double>();
 	}
-	double x0 = last_position[1] * abs(sin(last_position[2])) * cos(last_position[3]), z0 = last_position[1] * GSL_SIGN(last_position[2]) * cos(last_position[2]);
+	double x0 = last_position[1] * abs(sin(last_position[2])) * cos(last_position[3]), z0 = last_position[1] * copysign(cos(last_position[2]), last_position[2]);
 	if (gr_time_delay) {
 		if (view_ptr->Trace(last_position, hotspot_time, last_view_info, calculate_magnification) != Status::SUCCESS) {
 			PrintlnError("Initially trace star Error!");
@@ -465,7 +465,7 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 			// py::print("[!] R < 3.0, stop!");
 			return py::array_t<double>();
 		}
-		this_obs_time = (t + vz0 - this_position[1] * (abs(sin(this_position[2])) * cos(this_position[3]) * sin_inc + GSL_SIGN(this_position[2]) * cos(this_position[2]) * cos_inc)) / unit.s;
+		this_obs_time = (t + vz0 - this_position[1] * (abs(sin(this_position[2])) * cos(this_position[3]) * sin_inc + copysign(cos(this_position[2]), this_position[2]) * cos_inc)) / unit.s;
 		if (gr_time_delay) {
 			if (this_obs_time + gr_offset + estimate_step[estimate_idx] > obs_time.at(idx)) {
 				if (view_ptr->Trace(this_position, hotspot_time, this_view_info, calculate_magnification) != Status::SUCCESS) {

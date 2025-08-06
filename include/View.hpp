@@ -80,16 +80,16 @@ namespace SBody {
 		 * @param theta Angle between the observer and the \f$z\f$ axis, \f$\theta\f$.
 		 * @param iota Rotational angle of the coordiante of the view, \f$\iota\f$.
 		 */
-		View(std::shared_ptr<Metric<Type>> metric, Type r, Type theta, Type iota, Type v_alpha = 0.0, Type v_beta = 0.0) : metric_(metric), r_(r), r2_(boost::algorithm::power(r, 2)), theta_(theta), sin_theta_(sin(theta)), cos_theta_(cos(theta)), iota_(iota), sin_iota_(sin(iota)), cos_iota_(cos(iota)), t_final_(-2e4) {
+		View(std::shared_ptr<Metric<Type>> metric, Type r, Type theta, Type iota, Type v_alpha = 0.0, Type v_beta = 0.0) : metric_(metric), r_(r), r2_(r * r), theta_(theta), sin_theta_(std::sin(theta)), cos_theta_(std::cos(theta)), iota_(iota), sin_iota_(std::sin(iota)), cos_iota_(std::cos(iota)), t_final_(-2e4) {
 			position_[0] = 0.0;
 			position_[1] = r_;
 			position_[2] = theta_;
 			position_[4] = 1.0;
 			position_[5] = 0.0;
 			Type v_y = v_alpha * cos_iota_ + v_beta * sin_iota_, v_xz = v_beta * cos_iota_ - v_alpha * sin_iota_;
-			if (sin_theta_ < GSL_SQRT_DBL_EPSILON) {
-				const Type v = gsl_hypot(v_y, v_xz);
-				if (theta_ < M_PI_2) {
+			if (sin_theta_ < boost::math::tools::root_epsilon<Type>()) {
+				const Type v = std::hypot(v_y, v_xz);
+				if (theta_ < boost::math::constants::half_pi<Type>()) {
 					position_[3] = atan2(-v_y, v_xz);
 					position_[6] = v / r_;
 				} else {
@@ -137,27 +137,27 @@ namespace SBody {
 				PhotonInformation(position.data(), object_time, record.data(), photon, alpha, beta);
 				return calculate_magnification ? Magnification(position.data(), object_time, record[4], photon, record[2]) : Status::SUCCESS;
 			}
-			const Type r_object = position[1], sin_theta_object = abs(sin(position[2])), cos_theta_object = GSL_SIGN(position[2]) * cos(position[2]), sin_phi_object = sin(position[3]), cos_phi_object = cos(position[3]);
+			const Type r_object = position[1], sin_theta_object = std::abs(std::sin(position[2])), cos_theta_object = std::copysign(std::cos(position[2]), position[2]), sin_phi_object = std::sin(position[3]), cos_phi_object = std::cos(position[3]);
 			if (r_object <= 3.) {
 				PrintlnWarning("Object orbit radius = {:.6f}", r_object);
 				if (r_object < 0)
 					return GSL_FAILURE;
 			}
 			const Type cos_observer_object = sin_theta_ * sin_theta_object * cos_phi_object + cos_theta_ * cos_theta_object;
-			const Type alpha_coefficient = sin_theta_object * sin_phi_object, beta_coefficient = cos_theta_object * sin_theta_ - sin_theta_object * cos_phi_object * cos_theta_, sin_observer_object = sqrt(Power2(alpha_coefficient) + Power2(beta_coefficient)), theta_observer_object = acos(cos_observer_object);
+			const Type alpha_coefficient = sin_theta_object * sin_phi_object, beta_coefficient = cos_theta_object * sin_theta_ - sin_theta_object * cos_phi_object * cos_theta_, sin_observer_object = std::sqrt(Power2(alpha_coefficient) + Power2(beta_coefficient)), theta_observer_object = acos(cos_observer_object);
 			GslBlock collector;
 			gsl_vector *alpha_beta_initial_value = collector.VectorCalloc(2);
 			if (cos_observer_object == -1.) {
 				PrintlnWarning("Object behind black hole, cos(theta) = {:.6f}\n", cos_observer_object);
-				gsl_vector_set(alpha_beta_initial_value, 0, 2. * sqrt(r_object));
+				gsl_vector_set(alpha_beta_initial_value, 0, 2. * std::sqrt(r_object));
 			} else { // initial guessing
 				Type effective_radius;
-				if (theta_observer_object < M_PI_2)
-					effective_radius = r_object + boost::algorithm::power(theta_observer_object / M_PI_2, 3) / sin_observer_object;
+				if (theta_observer_object < boost::math::constants::half_pi<Type>())
+					effective_radius = r_object + Power3(theta_observer_object / boost::math::constants::half_pi<Type>()) / sin_observer_object;
 				else
 					// b-r*sin(theta)=(b-1.)*(2.*theta/pi-1.)+1.+(b-4.)/pi*sin(theta*2.)
-					// b=(r*sin(theta)*M_PI+M_2_PI-2.*theta-8.*sin(theta)*cos(theta))/(2.*(M_PI-theta-sin(theta)*cos(theta)))
-					effective_radius = 1. / sin_observer_object + 0.5 * (M_PI * r_object - 6. * cos_observer_object) / (M_PI - theta_observer_object - sin_observer_object * cos_observer_object);
+					// b=(r*sin(theta)*boost::math::constants::pi<Type>()+M_2_PI-2.*theta-8.*sin(theta)*cos(theta))/(2.*(boost::math::constants::pi<Type>()t::math::constants::pi<Type>()-theta-sin(theta)*cos(theta)))
+					effective_radius = 1. / sin_observer_object + (boost::math::constants::half_pi<Type>() * r_object - 3. * cos_observer_object) / (boost::math::constants::pi<Type>() - theta_observer_object - sin_observer_object * cos_observer_object);
 				gsl_vector_set(alpha_beta_initial_value, 0, effective_radius * alpha_coefficient);
 				gsl_vector_set(alpha_beta_initial_value, 1, effective_radius * beta_coefficient);
 			}
@@ -167,14 +167,14 @@ namespace SBody {
 			MultiFunctionSolver alpha_beta_translation_solver(2, gsl_multiroot_fsolver_sbody_dnewton_translation);
 			if (status = alpha_beta_translation_solver.Set(&alpha_beta_function, alpha_beta_initial_value, theta_, sin_theta_, cos_theta_, r_object, sin_theta_object, cos_theta_object, position[3], sin_phi_object, cos_phi_object, true); status != Status::SUCCESS)
 				return status;
-			if (status = alpha_beta_translation_solver.Solve(r_object * GSL_ROOT3_DBL_EPSILON); status == Status::SUCCESS) {
+			if (status = alpha_beta_translation_solver.Solve(r_object * boost::math::tools::root_epsilon<Type>()); status == Status::SUCCESS) {
 				alpha = gsl_vector_get(alpha_beta_translation_solver.Root(), 0);
 				beta = gsl_vector_get(alpha_beta_translation_solver.Root(), 1);
 			} else {
 				MultiFunctionSolver alpha_beta_rotation_solver(2, gsl_multiroot_fsolver_sbody_dnewton_rotation);
 				if (status = alpha_beta_rotation_solver.Set(&alpha_beta_function, alpha_beta_translation_solver.Root(), theta_, sin_theta_, cos_theta_, r_object, sin_theta_object, cos_theta_object, position[3], sin_phi_object, cos_phi_object, true); status != Status::SUCCESS)
 					return status;
-				if (status = alpha_beta_rotation_solver.Solve(r_object * GSL_ROOT3_DBL_EPSILON); status == Status::SUCCESS) {
+				if (status = alpha_beta_rotation_solver.Solve(r_object * boost::math::tools::root_epsilon<Type>()); status == Status::SUCCESS) {
 					alpha = gsl_vector_get(alpha_beta_rotation_solver.Root(), 0);
 					beta = gsl_vector_get(alpha_beta_rotation_solver.Root(), 1);
 				} else {
@@ -184,7 +184,7 @@ namespace SBody {
 						// PrintlnError("Kerr Trace() set DIRECTION failed with status = {}", status);
 						return status;
 					}
-					if (status = alpha_beta_direction_solver.Solve(r_object * GSL_ROOT3_DBL_EPSILON); status != Status::SUCCESS) {
+					if (status = alpha_beta_direction_solver.Solve(r_object * boost::math::tools::root_epsilon<Type>()); status != Status::SUCCESS) {
 						// PrintlnError("Kerr Trace() DIRECTION failed with status = {}", status);
 						return status;
 					}
@@ -224,7 +224,7 @@ namespace SBody {
 					status = integrator->ApplyFixedStep(photon + 8, h, photon);
 				else
 					status = integrator->ApplyStep(photon + 8, param->t_final, &h, photon);
-				if (const Type cos_observer_object_photon = (param->x_obj - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * param->sin_theta_obs + (param->z_obj - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * param->cos_theta_obs; cos_observer_object_photon > param->r_obj * GSL_SQRT_DBL_EPSILON) {
+				if (const Type cos_observer_object_photon = (param->x_obj - photon[1] * std::abs(std::sin(photon[2])) * std::cos(photon[3])) * param->sin_theta_obs + (param->z_obj - photon[1] * std::copysign(std::cos(photon[2]), photon[2])) * param->cos_theta_obs; cos_observer_object_photon > param->r_obj * boost::math::tools::root_epsilon<Type>()) {
 					// photon goes through the plane of the object
 					std::copy(last_step_record, last_step_record + 9, photon);
 					h = last_h * 0.3;
@@ -232,12 +232,12 @@ namespace SBody {
 					integrator->Reset();
 				} else if (cos_observer_object_photon >= 0) {
 					// photon in the same plane with the object
-					gsl_vector_set(delta_apparent_alpha_beta, 0, param->y_obj - photon[1] * abs(sin(photon[2])) * sin(photon[3]));
-					gsl_vector_set(delta_apparent_alpha_beta, 1, (param->z_obj - photon[1] * GSL_SIGN(photon[2]) * cos(photon[2])) * param->sin_theta_obs - (param->x_obj - photon[1] * abs(sin(photon[2])) * cos(photon[3])) * param->cos_theta_obs);
+					gsl_vector_set(delta_apparent_alpha_beta, 0, param->y_obj - photon[1] * std::abs(std::sin(photon[2])) * std::sin(photon[3]));
+					gsl_vector_set(delta_apparent_alpha_beta, 1, (param->z_obj - photon[1] * std::copysign(std::cos(photon[2]), photon[2])) * param->sin_theta_obs - (param->x_obj - photon[1] * std::abs(std::sin(photon[2])) * std::cos(photon[3])) * param->cos_theta_obs);
 					return Status::SUCCESS;
 				}
 				// photon fall into the BH
-				if (abs(photon[5]) * GSL_SQRT_DBL_EPSILON > 1.) {
+				if (std::abs(photon[5]) * boost::math::tools::root_epsilon<Type>() > 1.) {
 					gsl_vector_set(delta_apparent_alpha_beta, 0, 1.1);
 					return GSL_EDOM;
 				}
@@ -313,10 +313,10 @@ namespace SBody {
 			auto coordinate_static = collector.MatrixCalloc(4, 4);		// object local static frame (only dt/d\tau != 0)
 			auto coordinate_static_gmunu = collector.MatrixAlloc(4, 4); // object local static frame measured by observer
 			auto photon_in_static_frame_cartesian = collector.VectorAlloc(4);
-			gsl_matrix_set(coordinate_static, 0, 0, sqrt(-1. / gmunu->data[0]));
-			gsl_matrix_set(coordinate_static, 1, 1, sqrt(1. / gmunu->data[5]));
-			gsl_matrix_set(coordinate_static, 2, 2, sqrt(1. / gmunu->data[10]));
-			gsl_matrix_set(coordinate_static, 3, 3, sqrt(1. / gmunu->data[15]));
+			gsl_matrix_set(coordinate_static, 0, 0, std::sqrt(-1. / gmunu->data[0]));
+			gsl_matrix_set(coordinate_static, 1, 1, std::sqrt(1. / gmunu->data[5]));
+			gsl_matrix_set(coordinate_static, 2, 2, std::sqrt(1. / gmunu->data[10]));
+			gsl_matrix_set(coordinate_static, 3, 3, std::sqrt(1. / gmunu->data[15]));
 			gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate_static, 0., coordinate_static_gmunu);
 			gsl_blas_dgemv(CblasNoTrans, 1., coordinate_static_gmunu, photon_transform, 0., photon_in_static_frame_cartesian);
 			// local_redshift should equal to sqrt(EPSILON_POLYGON_AREA / cone_local_solid_angle),
@@ -330,8 +330,8 @@ namespace SBody {
 				const Type angle = i * ANGLE_INTERVAL;
 				std::copy(photon, photon + 4, forward_photon);
 				forward_photon[4] = -1.;
-				forward_photon[5] = cos(angle) * SIN_EPSILON;
-				forward_photon[6] = sin(angle) * SIN_EPSILON;
+				forward_photon[5] = std::cos(angle) * SIN_EPSILON;
+				forward_photon[6] = std::sin(angle) * SIN_EPSILON;
 				forward_photon[7] = COS_EPSILON;
 				RotateAroundAxis(forward_photon + 5, Y, photon_in_object_frame_spherical[2]);
 				RotateAroundAxis(forward_photon + 5, Z, photon_in_object_frame_spherical[3]);
@@ -395,9 +395,9 @@ namespace SBody {
 			bar.set_option(indicators::option::PrefixText("? Shadow"));
 			int progress_bar_index = bars.has_value() ? bars->push_back(bar) : -1;
 			for (int i = 0; i < SAMPLE_NUMBER; ++i) {
-				const Type angle = i * ANGLE_INTERVAL, sin_angle = sin(angle), cos_angle = cos(angle);
+				const Type angle = i * ANGLE_INTERVAL, sin_angle = std::sin(angle), cos_angle = std::cos(angle);
 				int status = 0;
-				while (rout - rin > GSL_SQRT_DBL_EPSILON * (rin + rout)) {
+				while (rout - rin > boost::math::tools::root_epsilon<Type>() * (rin + rout)) {
 					rmid = 0.5 * (rin + rout);
 					InitializePhoton(photon, rmid * cos_angle, rmid * sin_angle);
 					h = -1.;
@@ -439,10 +439,10 @@ namespace SBody {
 			gsl_permutation *perm = gsl_permutation_alloc(4);
 			metric_->MetricTensor(position_, gmunu);
 			gsl_matrix_set_zero(coordinate);
-			gsl_matrix_set(coordinate, 0, 0, sqrt(-1. / gmunu->data[0]));
-			gsl_matrix_set(coordinate, 1, 1, sqrt(1. / gmunu->data[5]));
-			gsl_matrix_set(coordinate, 2, 2, sqrt(1. / gmunu->data[10]));
-			gsl_matrix_set(coordinate, 3, 3, sqrt(1. / gmunu->data[15]));
+			gsl_matrix_set(coordinate, 0, 0, std::sqrt(-1. / gmunu->data[0]));
+			gsl_matrix_set(coordinate, 1, 1, std::sqrt(1. / gmunu->data[5]));
+			gsl_matrix_set(coordinate, 2, 2, std::sqrt(1. / gmunu->data[10]));
+			gsl_matrix_set(coordinate, 3, 3, std::sqrt(1. / gmunu->data[15]));
 			gsl_matrix_set_zero(coordinate_gmunu);
 			gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu, coordinate, 0., coordinate_gmunu);
 			int signum;
@@ -453,7 +453,7 @@ namespace SBody {
 			NumPy cone_record("Omega_record", {1});
 			bars.value()[0].set_option(indicators::option::MaxProgress(90));
 			for (Type angle = 90; angle > 0; angle -= 1) {
-				const Type sina = sin(angle / 180. * M_PI), cosa = cos(angle / 180. * M_PI);
+				const Type sina = std::sin(angle / 180. * boost::math::constants::pi<Type>()), cosa = std::cos(angle / 180. * boost::math::constants::pi<Type>());
 				copy(position_, position_ + 4, ph);
 				ph[4] = 1.;
 				ph[5] = sina;
@@ -474,7 +474,7 @@ namespace SBody {
 				while (status <= 0 && ph[1] < 1.e3)
 					status = integrator->Apply(&time_limit, -t_final_, &h, ph);
 				metric_->HamiltonianToLagrangian(ph);
-				const Type sin_theta = GSL_SIGN(ph[2]) * sin(ph[2]), cos_theta = GSL_SIGN(ph[2]) * cos(ph[2]), sin_phi = sin(ph[3]), cos_phi = cos(ph[3]);
+				const Type sin_theta = std::copysign(std::sin(ph[2]), ph[2]), cos_theta = std::copysign(std::cos(ph[2]), ph[2]), sin_phi = std::sin(ph[3]), cos_phi = std::cos(ph[3]);
 				center_ph[0] = ph[5] * sin_theta * cos_phi + ph[1] * (cos_theta * cos_phi * ph[6] - sin_theta * sin_phi * ph[7]);
 				center_ph[1] = ph[5] * sin_theta * sin_phi + ph[1] * (cos_theta * sin_phi * ph[6] + sin_theta * cos_phi * ph[7]);
 				center_ph[2] = ph[5] * cos_theta - ph[1] * sin_theta * ph[6];
@@ -482,7 +482,7 @@ namespace SBody {
 				for (int j = 0; j < 3; ++j)
 					center_ph[j] /= vph_norm;
 				for (int i = 0; i < 100; ++i) {
-					const Type angle_i = i * ANGLE_INTERVAL, sinai = sin(angle_i), cosai = cos(angle_i);
+					const Type angle_i = i * ANGLE_INTERVAL, sinai = std::sin(angle_i), cosai = std::cos(angle_i);
 					copy(position_, position_ + 4, ph);
 					ph[4] = 1.;
 					ph[5] = sina - SIN_EPSILON * cosai * cosa;
@@ -503,7 +503,7 @@ namespace SBody {
 					while (status <= 0 && ph[8] < time_limit)
 						status = integrator->Apply(ph + 8, time_limit, &h, ph);
 					metric_->HamiltonianToLagrangian(ph);
-					const Type sin_theta = GSL_SIGN(ph[2]) * sin(ph[2]), cos_theta = GSL_SIGN(ph[2]) * cos(ph[2]), sin_phi = sin(ph[3]), cos_phi = cos(ph[3]);
+					const Type sin_theta = std::copysign(std::sin(ph[2]), ph[2]), cos_theta = std::copysign(std::cos(ph[2]), ph[2]), sin_phi = std::sin(ph[3]), cos_phi = std::cos(ph[3]);
 					rec[i][0] = ph[5] * sin_theta * cos_phi + ph[1] * (cos_theta * cos_phi * ph[6] - sin_theta * sin_phi * ph[7]);
 					rec[i][1] = ph[5] * sin_theta * sin_phi + ph[1] * (cos_theta * sin_phi * ph[6] + sin_theta * cos_phi * ph[7]);
 					rec[i][2] = ph[5] * cos_theta - ph[1] * sin_theta * ph[6];
@@ -520,7 +520,7 @@ namespace SBody {
 					for (int i = 0; i < SAMPLE_NUMBER; ++i)
 						cone_record.Save(rec[i], 3);
 				}
-				cone_record.Save({abs(area) / (M_2PI * Power2(GSL_SQRT_DBL_EPSILON))});
+				cone_record.Save({std::abs(area) / (boost::math::constants::two_pi<Type>() * boost::math::tools::epsilon<Type>())});
 				bars.value()[0].tick();
 			}
 			return Status::SUCCESS;
@@ -587,7 +587,7 @@ namespace SBody {
 					for (auto object_pointer : object_list)
 						if (object_pointer->Hit(ph, last))
 							screen_[i][j] = object_pointer->Redshift(ph, T); // FIXME: if multi objects
-					if (screen_[i][j] > GSL_SQRT_DBL_EPSILON)
+					if (screen_[i][j] > boost::math::tools::root_epsilon<Type>())
 						break;
 				}
 				if (status > 0)
@@ -627,7 +627,7 @@ namespace SBody {
 					else {
 						this->metric_->HamiltonianToLagrangian(ph);
 						if (ph[2] < 0)
-							ph[2] += M_PI;
+							ph[2] += boost::math::constants::pi<Type>();
 						SphericalToCartesian(ph);
 						rec.Save({ph[6] * pixelPerAngle, (ph[7] * this->sin_theta_ - ph[5] * this->cos_theta_) * pixelPerAngle});
 					}

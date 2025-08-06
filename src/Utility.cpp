@@ -29,35 +29,6 @@
 using namespace std;
 
 namespace SBody {
-	// DerivativeSolver
-	DerivativeSolver::DerivativeSolver(const gsl_root_fdfsolver_type *type) {
-		solver_ = gsl_root_fdfsolver_alloc(type);
-	}
-	DerivativeSolver::DerivativeSolver(gsl_function_fdf *function, long double root, const gsl_root_fdfsolver_type *type) {
-		solver_ = gsl_root_fdfsolver_alloc(type);
-		gsl_root_fdfsolver_set(solver_, function, root);
-	}
-	DerivativeSolver::~DerivativeSolver() {
-		gsl_root_fdfsolver_free(solver_);
-	}
-	int DerivativeSolver::Set(gsl_function_fdf *function, long double root) {
-		return gsl_root_fdfsolver_set(solver_, function, root);
-	}
-	int DerivativeSolver::Iterate() {
-		return gsl_root_fdfsolver_iterate(solver_);
-	}
-	int DerivativeSolver::Solve(long double epsabs, int max_iteration) {
-		for (; max_iteration > 0 && gsl_root_test_residual(GSL_FN_FDF_EVAL_F(solver_->fdf, solver_->root), absolute_accuracy) != GSL_SUCCESS; --max_iteration)
-			if (int status = gsl_root_fdfsolver_iterate(solver_); status != GSL_SUCCESS)
-				return status;
-		if (max_iteration <= 0)
-			return GSL_EMAXITER;
-		return GSL_SUCCESS;
-	}
-	long double DerivativeSolver::Root() {
-		return gsl_root_fdfsolver_root(solver_);
-	}
-
 	// MultiFunctionSolver
 	MultiFunctionSolver::MultiFunctionSolver(size_t n, const gsl_multiroot_fsolver_type *type) {
 		solver_ = gsl_multiroot_fsolver_alloc(type, n);
@@ -447,7 +418,7 @@ namespace SBody {
 		long double e2 = 0.;
 		size_t i, n = f->size;
 		for (i = 0; i < n; i++)
-			e2 += gsl_pow_2(gsl_vector_get(f, i) * gsl_vector_get(d, i));
+			e2 += Power2(gsl_vector_get(f, i) * gsl_vector_get(d, i));
 		return sqrt(e2);
 	}
 	int MultiFunctionSolver::Dogleg(const gsl_matrix *r, const gsl_vector *qtf, const gsl_vector *diag, long double delta, gsl_vector *newton, gsl_vector *gradient, gsl_vector *p) {
@@ -514,7 +485,7 @@ namespace SBody {
 		newton_gradient_dot = d_newton_gradient_dot;
 		const long double a = gradient_norm2 + newton_norm2 - 2. * newton_gradient_dot; // a > 0
 		const long double b = 2. * (newton_gradient_dot - gradient_norm2);
-		const long double c = gradient_norm2 - gsl_pow_2(trust_radius); // c < 0
+		const long double c = gradient_norm2 - trust_radius * trust_radius; // c < 0
 		long double s_minus_plus[2];
 		if (int root_num = PolySolveQuadratic(a, b, c, s_minus_plus); root_num != 2 || s_minus_plus[1] > 1.) {
 			gsl_vector_memcpy(dx, gradient); // fallback to gradient
@@ -628,7 +599,7 @@ namespace SBody {
 				jacobian_gradient_norm2 = d_jacobian_gradient_norm2;
 				t = gradient_norm2 / jacobian_gradient_norm2;
 				gsl_vector_scale(gradient, t);
-				gradient_norm2 *= gsl_pow_2(t);
+				gradient_norm2 *= t * t;
 				newton_norm = sqrt(newton_norm2);
 				gradient_norm = sqrt(gradient_norm2);
 				double d_newton_gradient_dot;
@@ -1686,7 +1657,7 @@ namespace SBody {
 	int MultiFunctionSolver::DirectionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx) {
 		auto state = static_cast<DirectionState *>(vstate);
 		state->directional_num = 1;
-		state->delta_angle = 2. * M_PI_3;
+		state->delta_angle = boost::math::constants::two_thirds_pi<double>();
 		state->central_angle = 0.;
 		if (int status = ScaleX(function, x, f); status != GSL_SUCCESS)
 			return status;
@@ -1766,7 +1737,7 @@ namespace SBody {
 				if (next_angle != state->central_angle + M_PI)
 					state->delta_angle = max(state->delta_angle, abs(next_angle - state->central_angle));
 				else
-					state->delta_angle = M_PI_2;
+					state->delta_angle = boost::math::double_constants::half_pi;
 				state->directional_num = 1;
 			} else {
 				if (next_angle == state->central_angle)

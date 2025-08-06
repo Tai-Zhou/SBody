@@ -19,8 +19,7 @@
 
 #include <boost/numeric/odeint.hpp>
 #include <boost/numeric/odeint/stepper/runge_kutta_dopri5.hpp>
-#include <gsl/gsl_errno.h>
-#include <gsl/gsl_matrix.h>
+#include <boost/numeric/ublas/matrix.hpp>
 
 #include "Metric.hpp"
 #include "Utility.hpp"
@@ -115,23 +114,23 @@ namespace SBody {
 			integration_system_ = this->metric_->GetIntegrationSystem(time_, coordinate_, GEODESIC);
 			position_[0] = 0.;
 			periapsis += true_anomaly;
-			Type r = a * (1. - e * e) / (1. + e * cos(true_anomaly));
-			const Type tp1 = -r * cos(periapsis), tp2 = -r * sin(periapsis) * cos(inclination);
-			const Type xp1 = tp1 * cos(ascending_node) - tp2 * sin(ascending_node), xp2 = tp2 * cos(ascending_node) + tp1 * sin(ascending_node), xp3 = -r * sin(periapsis) * sin(inclination);
-			position_[1] = (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * cos(observer_inclination) + xp3 * sin(observer_inclination);
-			position_[2] = xp2 * cos(observer_rotation) - xp1 * sin(observer_rotation);
-			position_[3] = xp3 * cos(observer_inclination) - (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * sin(observer_inclination);
+			Type r = a * (1. - e * e) / (1. + e * std::cos(true_anomaly));
+			const Type tp1 = -r * std::cos(periapsis), tp2 = -r * std::sin(periapsis) * std::cos(inclination);
+			const Type xp1 = tp1 * std::cos(ascending_node) - tp2 * std::sin(ascending_node), xp2 = tp2 * std::cos(ascending_node) + tp1 * std::sin(ascending_node), xp3 = -r * std::sin(periapsis) * std::sin(inclination);
+			position_[1] = (xp1 * std::cos(observer_rotation) + xp2 * std::sin(observer_rotation)) * std::cos(observer_inclination) + xp3 * std::sin(observer_inclination);
+			position_[2] = xp2 * std::cos(observer_rotation) - xp1 * std::sin(observer_rotation);
+			position_[3] = xp3 * std::cos(observer_inclination) - (xp1 * std::cos(observer_rotation) + xp2 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			if (fixed_) {
 				position_[5] = 0.;
 				position_[6] = 0.;
 				position_[7] = 0.;
 			} else {
-				const Type vphi = sqrt((1 - e * e) * a) / r, vr = GSL_SIGN(PhiDifference(true_anomaly)) * sqrt(std::max(0., 2. / r - 1. / a - vphi * vphi));
-				const Type tp5 = vphi * sin(periapsis) - vr * cos(periapsis), tp6 = -(vphi * cos(periapsis) + vr * sin(periapsis)) * cos(inclination);
-				const Type xp5 = tp5 * cos(ascending_node) - tp6 * sin(ascending_node), xp6 = tp5 * sin(ascending_node) + tp6 * cos(ascending_node), xp7 = -(vphi * cos(periapsis) + vr * sin(periapsis)) * sin(inclination);
-				position_[5] = (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * cos(observer_inclination) + xp7 * sin(observer_inclination);
-				position_[6] = xp6 * cos(observer_rotation) - xp5 * sin(observer_rotation);
-				position_[7] = xp7 * cos(observer_inclination) - (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * sin(observer_inclination);
+				const Type vphi = std::sqrt((1 - e * e) * a) / r, vr = std::copysign(SquareRoot(2. / r - 1. / a - vphi * vphi), PhiDifference(true_anomaly));
+				const Type tp5 = vphi * std::sin(periapsis) - vr * std::cos(periapsis), tp6 = -(vphi * std::cos(periapsis) + vr * std::sin(periapsis)) * std::cos(inclination);
+				const Type xp5 = tp5 * std::cos(ascending_node) - tp6 * std::sin(ascending_node), xp6 = tp5 * std::sin(ascending_node) + tp6 * std::cos(ascending_node), xp7 = -(vphi * std::cos(periapsis) + vr * std::sin(periapsis)) * std::sin(inclination);
+				position_[5] = (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::cos(observer_inclination) + xp7 * std::sin(observer_inclination);
+				position_[6] = xp6 * std::cos(observer_rotation) - xp5 * std::sin(observer_rotation);
+				position_[7] = xp7 * std::cos(observer_inclination) - (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			}
 			CartesianToSpherical(position_.data());
 			return this->metric_->NormalizeTimelikeGeodesic(position_.data());
@@ -139,21 +138,21 @@ namespace SBody {
 		int InitializeGeodesic(Type orbital_radius, Type inclination, Type periapsis, Type ascending_node, Type v_r, Type v_phi, Type observer_inclination = 0., Type observer_rotation = 0.) {
 			integration_system_ = this->metric_->GetIntegrationSystem(time_, coordinate_, GEODESIC);
 			position_[0] = 0.;
-			const Type tp1 = -orbital_radius * cos(periapsis), tp2 = -orbital_radius * sin(periapsis) * cos(inclination);
-			const Type xp1 = tp1 * cos(ascending_node) - tp2 * sin(ascending_node), xp2 = tp2 * cos(ascending_node) + tp1 * sin(ascending_node), xp3 = -orbital_radius * sin(periapsis) * sin(inclination);
-			position_[1] = (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * cos(observer_inclination) + xp3 * sin(observer_inclination);
-			position_[2] = xp2 * cos(observer_rotation) - xp1 * sin(observer_rotation);
-			position_[3] = xp3 * cos(observer_inclination) - (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * sin(observer_inclination);
+			const Type tp1 = -orbital_radius * std::cos(periapsis), tp2 = -orbital_radius * std::sin(periapsis) * std::cos(inclination);
+			const Type xp1 = tp1 * std::cos(ascending_node) - tp2 * std::sin(ascending_node), xp2 = tp2 * std::cos(ascending_node) + tp1 * std::sin(ascending_node), xp3 = -orbital_radius * std::sin(periapsis) * std::sin(inclination);
+			position_[1] = (xp1 * std::cos(observer_rotation) + xp2 * std::sin(observer_rotation)) * std::cos(observer_inclination) + xp3 * std::sin(observer_inclination);
+			position_[2] = xp2 * std::cos(observer_rotation) - xp1 * std::sin(observer_rotation);
+			position_[3] = xp3 * std::cos(observer_inclination) - (xp1 * std::cos(observer_rotation) + xp2 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			if (fixed_) {
 				position_[5] = 0.;
 				position_[6] = 0.;
 				position_[7] = 0.;
 			} else {
-				const Type tp5 = v_phi * sin(periapsis) - v_r * cos(periapsis), tp6 = -(v_phi * cos(periapsis) + v_r * sin(periapsis)) * cos(inclination);
-				const Type xp5 = tp5 * cos(ascending_node) - tp6 * sin(ascending_node), xp6 = tp5 * sin(ascending_node) + tp6 * cos(ascending_node), xp7 = -(v_phi * cos(periapsis) + v_r * sin(periapsis)) * sin(inclination);
-				position_[5] = (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * cos(observer_inclination) + xp7 * sin(observer_inclination);
-				position_[6] = xp6 * cos(observer_rotation) - xp5 * sin(observer_rotation);
-				position_[7] = xp7 * cos(observer_inclination) - (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * sin(observer_inclination);
+				const Type tp5 = v_phi * std::sin(periapsis) - v_r * std::cos(periapsis), tp6 = -(v_phi * std::cos(periapsis) + v_r * std::sin(periapsis)) * std::cos(inclination);
+				const Type xp5 = tp5 * std::cos(ascending_node) - tp6 * std::sin(ascending_node), xp6 = tp5 * std::sin(ascending_node) + tp6 * std::cos(ascending_node), xp7 = -(v_phi * std::cos(periapsis) + v_r * std::sin(periapsis)) * std::sin(inclination);
+				position_[5] = (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::cos(observer_inclination) + xp7 * std::sin(observer_inclination);
+				position_[6] = xp6 * std::cos(observer_rotation) - xp5 * std::sin(observer_rotation);
+				position_[7] = xp7 * std::cos(observer_inclination) - (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			}
 			CartesianToSpherical(position_.data());
 			return this->metric_->NormalizeTimelikeGeodesic(position_.data());
@@ -162,23 +161,23 @@ namespace SBody {
 			integration_system_ = this->metric_->GetIntegrationSystem(time_, coordinate_, GEODESIC);
 			position_[0] = 0.;
 			Type r = a * (1. - e); // pericenter
-			const Type tp1 = -r * cos(periapsis), tp2 = -r * sin(periapsis) * cos(inclination);
-			const Type xp1 = tp1 * cos(ascending_node) - tp2 * sin(ascending_node), xp2 = tp2 * cos(ascending_node) + tp1 * sin(ascending_node), xp3 = -r * sin(periapsis) * sin(inclination);
-			position_[1] = (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * cos(observer_inclination) + xp3 * sin(observer_inclination);
-			position_[2] = xp2 * cos(observer_rotation) - xp1 * sin(observer_rotation);
-			position_[3] = xp3 * cos(observer_inclination) - (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * sin(observer_inclination);
+			const Type tp1 = -r * std::cos(periapsis), tp2 = -r * std::sin(periapsis) * std::cos(inclination);
+			const Type xp1 = tp1 * std::cos(ascending_node) - tp2 * std::sin(ascending_node), xp2 = tp2 * std::cos(ascending_node) + tp1 * std::sin(ascending_node), xp3 = -r * std::sin(periapsis) * std::sin(inclination);
+			position_[1] = (xp1 * std::cos(observer_rotation) + xp2 * std::sin(observer_rotation)) * std::cos(observer_inclination) + xp3 * std::sin(observer_inclination);
+			position_[2] = xp2 * std::cos(observer_rotation) - xp1 * std::sin(observer_rotation);
+			position_[3] = xp3 * std::cos(observer_inclination) - (xp1 * std::cos(observer_rotation) + xp2 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			if (fixed_) {
 				position_[5] = 0.;
 				position_[6] = 0.;
 				position_[7] = 0.;
 			} else {
-				const Type E = (a - 2.) / sqrt(a * (a - 3.));
-				const Type vphi = sqrt(E * E * r * (r - 2.) - Power2(r - 2.)) / (r * E);
-				const Type tp5 = vphi * sin(periapsis), tp6 = -vphi * cos(periapsis) * cos(inclination);
-				const Type xp5 = tp5 * cos(ascending_node) - tp6 * sin(ascending_node), xp6 = tp5 * sin(ascending_node) + tp6 * cos(ascending_node), xp7 = -vphi * cos(periapsis) * sin(inclination);
-				position_[5] = (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * cos(observer_inclination) + xp7 * sin(observer_inclination);
-				position_[6] = xp6 * cos(observer_rotation) - xp5 * sin(observer_rotation);
-				position_[7] = xp7 * cos(observer_inclination) - (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * sin(observer_inclination);
+				const Type E = (a - 2.) / std::sqrt(a * (a - 3.));
+				const Type vphi = std::sqrt(E * E * r * (r - 2.) - Power2(r - 2.)) / (r * E);
+				const Type tp5 = vphi * std::sin(periapsis), tp6 = -vphi * std::cos(periapsis) * std::cos(inclination);
+				const Type xp5 = tp5 * std::cos(ascending_node) - tp6 * std::sin(ascending_node), xp6 = tp5 * std::sin(ascending_node) + tp6 * std::cos(ascending_node), xp7 = -vphi * std::cos(periapsis) * std::sin(inclination);
+				position_[5] = (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::cos(observer_inclination) + xp7 * std::sin(observer_inclination);
+				position_[6] = xp6 * std::cos(observer_rotation) - xp5 * std::sin(observer_rotation);
+				position_[7] = xp7 * std::cos(observer_inclination) - (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			}
 			CartesianToSpherical(position_);
 			return this->metric_->NormalizeTimelikeGeodesic(position_);
@@ -187,23 +186,23 @@ namespace SBody {
 			integration_system_ = this->metric_->GetIntegrationSystem(time_, coordinate_, GEODESIC);
 			position_[0] = 0.;
 			Type r = a * (1. + e); // apocenter
-			const Type tp1 = r * cos(periapsis), tp2 = r * sin(periapsis) * cos(inclination);
-			const Type xp1 = tp1 * cos(ascending_node) - tp2 * sin(ascending_node), xp2 = tp2 * cos(ascending_node) + tp1 * sin(ascending_node), xp3 = r * sin(periapsis) * sin(inclination);
-			position_[1] = (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * cos(observer_inclination) + xp3 * sin(observer_inclination);
-			position_[2] = xp2 * cos(observer_rotation) - xp1 * sin(observer_rotation);
-			position_[3] = xp3 * cos(observer_inclination) - (xp1 * cos(observer_rotation) + xp2 * sin(observer_rotation)) * sin(observer_inclination);
+			const Type tp1 = r * std::cos(periapsis), tp2 = r * std::sin(periapsis) * std::cos(inclination);
+			const Type xp1 = tp1 * std::cos(ascending_node) - tp2 * std::sin(ascending_node), xp2 = tp2 * std::cos(ascending_node) + tp1 * std::sin(ascending_node), xp3 = r * std::sin(periapsis) * std::sin(inclination);
+			position_[1] = (xp1 * std::cos(observer_rotation) + xp2 * std::sin(observer_rotation)) * std::cos(observer_inclination) + xp3 * std::sin(observer_inclination);
+			position_[2] = xp2 * std::cos(observer_rotation) - xp1 * std::sin(observer_rotation);
+			position_[3] = xp3 * std::cos(observer_inclination) - (xp1 * std::cos(observer_rotation) + xp2 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			if (fixed_) {
 				position_[5] = 0.;
 				position_[6] = 0.;
 				position_[7] = 0.;
 			} else {
-				const Type E = (a - 2.) / sqrt(a * (a - 3.));
-				const Type vphi = sqrt(E * E * r * (r - 2.) - Power2(r - 2.)) / (r * E);
-				const Type tp5 = -vphi * sin(periapsis), tp6 = vphi * cos(periapsis) * cos(inclination);
-				const Type xp5 = tp5 * cos(ascending_node) - tp6 * sin(ascending_node), xp6 = tp5 * sin(ascending_node) + tp6 * cos(ascending_node), xp7 = vphi * cos(periapsis) * sin(inclination);
-				position_[5] = (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * cos(observer_inclination) + xp7 * sin(observer_inclination);
-				position_[6] = xp6 * cos(observer_rotation) - xp5 * sin(observer_rotation);
-				position_[7] = xp7 * cos(observer_inclination) - (xp5 * cos(observer_rotation) + xp6 * sin(observer_rotation)) * sin(observer_inclination);
+				const Type E = (a - 2.) / std::sqrt(a * (a - 3.));
+				const Type vphi = std::sqrt(E * E * r * (r - 2.) - Power2(r - 2.)) / (r * E);
+				const Type tp5 = -vphi * std::sin(periapsis), tp6 = vphi * std::cos(periapsis) * std::cos(inclination);
+				const Type xp5 = tp5 * std::cos(ascending_node) - tp6 * std::sin(ascending_node), xp6 = tp5 * std::sin(ascending_node) + tp6 * std::cos(ascending_node), xp7 = vphi * std::cos(periapsis) * std::sin(inclination);
+				position_[5] = (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::cos(observer_inclination) + xp7 * std::sin(observer_inclination);
+				position_[6] = xp6 * std::cos(observer_rotation) - xp5 * std::sin(observer_rotation);
+				position_[7] = xp7 * std::cos(observer_inclination) - (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			}
 			CartesianToSpherical(position_.data());
 			return this->metric_->NormalizeTimelikeGeodesic(position_.data());
@@ -226,7 +225,7 @@ namespace SBody {
 			} else {
 				position_[5] = 0.;
 				position_[6] = 0.;
-				position_[7] = v_phi_ratio / (r * sqrt(r));
+				position_[7] = v_phi_ratio / (r * std::sqrt(r));
 			}
 			return this->metric_->NormalizeTimelikeGeodesic(position_.data());
 		}
@@ -291,14 +290,16 @@ namespace SBody {
 			return this->metric_->Redshift(position_.data(), photon, time_, photon_time);
 		}
 
-		int MetricTensor(gsl_matrix *metric) {
-			return this->metric_->MetricTensor(position_, metric);
+		int MetricTensor(boost::numeric::ublas::matrix<Type> &metric) {
+			return Status::FAILURE;
+			// return this->metric_->MetricTensor(position_, metric);
 		}
 		Type DotProduct(const Type x[], const Type y[], const size_t dimension) {
 			return this->metric_->DotProduct(position_, x, y, dimension);
 		}
-		int LocalInertialFrame(gsl_matrix *coordinate) {
-			return this->metric_->LocalInertialFrame(position_, time_, coordinate);
+		int LocalInertialFrame(boost::numeric::ublas::matrix<Type> &coordinate) {
+			return Status::FAILURE;
+			// return this->metric_->LocalInertialFrame(position_, time_, coordinate);
 		}
 		Type Energy() {
 			return this->metric_->Energy(position_.data(), time_, coordinate_);
@@ -364,7 +365,7 @@ namespace SBody {
 		int Hit(const Type current[], const Type last[]) {
 			if (!OppositeSign(current[2], last[2]))
 				return Status::SUCCESS;
-			if (abs(current[2]) < M_PI_4)
+			if (std::abs(current[2]) < boost::math::constants::third_pi<Type>())
 				return Status::SUCCESS;
 			return Status::FAILURE;
 		}

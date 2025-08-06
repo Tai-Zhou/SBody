@@ -88,17 +88,8 @@ namespace SBody {
 	/// Global relative accuracy.
 	inline double relative_accuracy = 1e-15;
 
-	/// \f$\pi/3\f$.
-	constexpr long double M_PI_3 = 1.047197551196597746154214461093167628l;
-
-	/// \f$3\pi/4\f$.
-	constexpr long double M_3PI_4 = 2.35619449019234492884698253745962716l;
-
 	/// \f$2\pi\f$.
 	constexpr long double M_2PI = 6.28318530717958647692528676655900576l;
-
-	/// \f$\pi^2\f$.
-	constexpr long double M_PI2 = 9.86960440108935861883449099987615111l;
 
 	/// \f$\sqrt{27}\f$
 	constexpr long double M_SQRT27 = 5.19615242270663188058233902451761710l;
@@ -113,7 +104,7 @@ namespace SBody {
 	constexpr long double COS_EPSILON = 0.999999999999999999995l;
 
 	/// Area of a circle with radius of GSL_SQRT_DBL_EPSILON. \f$\pi\varepsilon^2\f$
-	constexpr long double EPSILON_CIRCLE_AREA = M_PI * GSL_DBL_EPSILON;
+	constexpr long double EPSILON_CIRCLE_AREA = boost::math::long_double_constants::pi * GSL_DBL_EPSILON;
 
 	constexpr long double GSL_ROOT3_2_DBL_EPSILON = 3.666852862501036033408990023698041e-11l;
 
@@ -121,7 +112,7 @@ namespace SBody {
 	constexpr int SAMPLE_NUMBER = 100;
 
 	/// The angle corresponding to the sample number.
-	constexpr long double ANGLE_INTERVAL = M_2PI / SAMPLE_NUMBER;
+	constexpr long double ANGLE_INTERVAL = boost::math::long_double_constants::two_pi / SAMPLE_NUMBER;
 
 	/// Area of the regular polygon with SAMPLE_NUMBER edges.
 	constexpr long double EPSILON_POLYGON_AREA = 0.06279051952931337 / ANGLE_INTERVAL * EPSILON_CIRCLE_AREA;
@@ -139,20 +130,6 @@ namespace SBody {
 	  public:
 		virtual int Iterate() = 0;
 		virtual long double Root() = 0;
-	};
-
-	class DerivativeSolver : public Solver {
-	  private:
-		gsl_root_fdfsolver *solver_;
-
-	  public:
-		DerivativeSolver(const gsl_root_fdfsolver_type *type = gsl_root_fdfsolver_steffenson);
-		DerivativeSolver(gsl_function_fdf *function, long double root, const gsl_root_fdfsolver_type *type = gsl_root_fdfsolver_steffenson);
-		~DerivativeSolver();
-		int Set(gsl_function_fdf *function, long double root);
-		int Iterate() override;
-		int Solve(long double epsabs, int max_iteration = 256);
-		long double Root() override;
 	};
 
 	class MultiSolver {
@@ -497,7 +474,7 @@ namespace SBody {
 	Type SquareRoot(Type x) {
 		if (x <= 0.)
 			return 0.;
-		return sqrt(x);
+		return std::sqrt(x);
 	}
 
 	/**
@@ -522,8 +499,8 @@ namespace SBody {
 	template <typename Type>
 	Type SignSquareRoot(Type x) {
 		if (x < 0.)
-			return -sqrt(-x);
-		return sqrt(x);
+			return -std::sqrt(-x);
+		return std::sqrt(x);
 	}
 
 	/**
@@ -571,20 +548,20 @@ namespace SBody {
 	template <typename Type>
 	Type Norm(const Type x[], size_t dimension = 3) {
 		if (dimension == 3)
-			return sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
+			return std::sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
 		Type sum = 0.;
 		while (dimension-- > 0)
 			sum += x[dimension] * x[dimension];
-		return sqrt(sum);
+		return std::sqrt(sum);
 	}
 	template <typename Type, std::size_t N>
 	Type Norm(const std::array<Type, N> &x) {
 		if (N == 3)
-			return sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
+			return std::sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
 		Type sum = 0.;
 		for (int i = 0; i < N; ++i)
 			sum += x[i] * x[i];
-		return sqrt(sum);
+		return std::sqrt(sum);
 	}
 
 	/**
@@ -626,11 +603,11 @@ namespace SBody {
 	 */
 	template <typename Type>
 	Type TriangleArea(const std::array<Type, 3> &x, const std::array<Type, 3> &y, const std::array<Type, 3> &z) {
-		const Type a = sqrt(Power2(y[0] - x[0]) + Power2(y[1] - x[1]) + Power2(y[2] - x[2])),
-				   b = sqrt(Power2(z[0] - y[0]) + Power2(z[1] - y[1]) + Power2(z[2] - y[2])),
-				   c = sqrt(Power2(x[0] - z[0]) + Power2(x[1] - z[1]) + Power2(x[2] - z[2])),
+		const Type a = std::sqrt(Power2(y[0] - x[0]) + Power2(y[1] - x[1]) + Power2(y[2] - x[2])),
+				   b = std::sqrt(Power2(z[0] - y[0]) + Power2(z[1] - y[1]) + Power2(z[2] - y[2])),
+				   c = std::sqrt(Power2(x[0] - z[0]) + Power2(x[1] - z[1]) + Power2(x[2] - z[2])),
 				   s = 0.5 * (a + b + c);
-		return sqrt(s * (s - a) * (s - b) * (s - c));
+		return std::sqrt(s * (s - a) * (s - b) * (s - c));
 	}
 
 	// /**
@@ -699,7 +676,7 @@ namespace SBody {
 	 */
 	template <typename Type>
 	int RotateAroundAxis(Type x[], Axis axis, Type angle) {
-		const Type sin_angle = sin(angle), cos_angle = cos(angle);
+		const Type sin_angle = std::sin(angle), cos_angle = std::cos(angle);
 		switch (axis) {
 		case X:
 			angle = x[1] * cos_angle - x[2] * sin_angle;
@@ -749,7 +726,7 @@ namespace SBody {
 		spherical[5] = Dot(cartesian + 1, cartesian + 5) * r_1;
 		if (const Type r_xy = Norm(cartesian + 1, 2); r_xy == 0.) {
 			spherical[3] = atan2(cartesian[6], cartesian[5]);
-			spherical[6] = GSL_SIGN(cartesian[3]) * Norm(cartesian + 5, 2) * r_1;
+			spherical[6] = std::copysign(r_1, cartesian[3]) * Norm(cartesian + 5, 2);
 			spherical[7] = 0;
 		} else {
 			spherical[3] = atan2(cartesian[2], cartesian[1]);
@@ -788,7 +765,7 @@ namespace SBody {
 			throw std::invalid_argument(fmt::format("Invalid SphericalToCartesian dimension = {}", dimension));
 		}
 #endif
-		const Type sin_theta = abs(sin(spherical[2])), cos_theta = GSL_SIGN(spherical[2]) * cos(spherical[2]), sin_phi = sin(spherical[3]), cos_phi = cos(spherical[3]);
+		const Type sin_theta = std::abs(std::sin(spherical[2])), cos_theta = std::copysign(std::cos(spherical[2]), spherical[2]), sin_phi = std::sin(spherical[3]), cos_phi = std::cos(spherical[3]);
 		cartesian[0] = spherical[0];
 		cartesian[1] = spherical[1] * sin_theta * cos_phi;
 		cartesian[2] = spherical[1] * sin_theta * sin_phi;
@@ -818,7 +795,7 @@ namespace SBody {
 
 	template <typename Type>
 	Type SphericalAngle(Type cos_theta_x, Type cos_theta_y, Type delta_theta_xy, Type delta_phi_xy) {
-		const Type a = Power2(sin(0.5 * delta_theta_xy)) + cos_theta_x * cos_theta_y * Power2(sin(0.5 * PhiDifference(delta_phi_xy)));
+		const Type a = Power2(std::sin(0.5 * delta_theta_xy)) + cos_theta_x * cos_theta_y * Power2(std::sin(0.5 * PhiDifference(delta_phi_xy)));
 		return 2. * atan2(SquareRoot(a), SquareRoot(1. - a));
 	}
 
@@ -847,12 +824,12 @@ namespace SBody {
 	int MapTheta(const Type theta_0, Type y[]) {
 		if (OppositeSign(theta_0, y[2])) {
 			y[2] = -y[2];
-			y[3] += M_PI;
+			y[3] += boost::math::constants::pi<Type>();
 			y[6] = -y[6];
-		} else if (y[2] <= -M_PI_2)
-			y[2] += M_PI;
-		else if (y[2] > M_PI_2)
-			y[2] -= M_PI;
+		} else if (y[2] <= -boost::math::constants::half_pi<Type>())
+			y[2] += boost::math::constants::pi<Type>();
+		else if (y[2] > boost::math::constants::half_pi<Type>())
+			y[2] -= boost::math::constants::pi<Type>();
 		return Status::SUCCESS;
 	}
 
@@ -860,12 +837,12 @@ namespace SBody {
 	int MapTheta(const Type theta_0, double y[]) {
 		if (OppositeSign(theta_0, static_cast<Type>(y[2]))) {
 			y[2] = -y[2];
-			y[3] += M_PI;
+			y[3] += boost::math::constants::pi<Type>();
 			y[6] = -y[6];
-		} else if (y[2] <= -M_PI_2)
-			y[2] += M_PI;
-		else if (y[2] > M_PI_2)
-			y[2] -= M_PI;
+		} else if (y[2] <= -boost::math::constants::half_pi<Type>())
+			y[2] += boost::math::constants::pi<Type>();
+		else if (y[2] > boost::math::constants::half_pi<Type>())
+			y[2] -= boost::math::constants::pi<Type>();
 		return Status::SUCCESS;
 	}
 
@@ -877,7 +854,7 @@ namespace SBody {
 	 */
 	template <typename Type>
 	Type ModBy2Pi(Type phi) {
-		return phi - floor(phi / M_2PI) * M_2PI;
+		return phi - floor(phi / boost::math::constants::two_pi<Type>()) * boost::math::constants::two_pi<Type>();
 	}
 
 	/**
@@ -888,7 +865,7 @@ namespace SBody {
 	 */
 	template <typename Type>
 	Type PhiDifference(Type phi) {
-		return phi - floor(phi / M_2PI + 0.5) * M_2PI;
+		return phi - floor(phi / boost::math::constants::two_pi<Type>() + 0.5) * boost::math::constants::two_pi<Type>();
 	}
 
 	template <typename Type>
@@ -994,7 +971,7 @@ namespace SBody {
 				f = fma(f, roots[i], b);
 				Type df = fma(2.l, roots[i], a);
 				const Type diff = f * df / (df * df - f);
-				if (abs(roots[i]) * boost::math::tools::epsilon<Type>() < abs(diff))
+				if (std::abs(roots[i]) * boost::math::tools::epsilon<Type>() < std::abs(diff))
 					roots[i] -= diff;
 				else {
 					++convinced_root_num;
@@ -1018,7 +995,7 @@ namespace SBody {
 			const Type square_of_root = -c / a;
 			if (square_of_root < 0.)
 				return 0;
-			roots[1] = sqrt(square_of_root);
+			roots[1] = std::sqrt(square_of_root);
 			roots[0] = -roots[1];
 			return 2;
 		}
@@ -1029,7 +1006,7 @@ namespace SBody {
 			roots[0] = roots[1] = -0.5 * b / a;
 			return 2;
 		}
-		const Type numerator = b > 0. ? -0.5 * (b + sqrt(delta)) : -0.5 * (b - sqrt(delta));
+		const Type numerator = b > 0. ? -0.5 * (b + std::sqrt(delta)) : -0.5 * (b - std::sqrt(delta));
 		if (a > 0.) {
 			roots[0] = numerator / a;
 			roots[1] = c / numerator;
@@ -1052,7 +1029,7 @@ namespace SBody {
 				df = fma(df, roots[i], b);
 				Type d2f = fma(6.l, roots[i], 2. * a);
 				const Type diff = f * df / (df * df - 0.5 * f * d2f);
-				if (abs(roots[i]) * boost::math::tools::epsilon<Type>() < abs(diff))
+				if (std::abs(roots[i]) * boost::math::tools::epsilon<Type>() < std::abs(diff))
 					roots[i] -= diff;
 				else {
 					++convinced_root_num;
@@ -1075,16 +1052,16 @@ namespace SBody {
 		Type C = (2. * a * a * a - 9. * a * b + 27. * c) / 54.;
 		Type Delta = C * C - B * B * B;
 		if (Delta < 0.) {
-			Type sqrt_B = sqrt(B);
+			Type sqrt_B = std::sqrt(B);
 			Type theta = acos(C / (B * sqrt_B)) / 3.;
-			Type sqrt3_sin_theta = boost::math::constants::root_three<Type>() * sin(theta);
-			Type cos_theta = cos(theta);
+			Type sqrt3_sin_theta = boost::math::constants::root_three<Type>() * std::sin(theta);
+			Type cos_theta = std::cos(theta);
 			roots[0] = -2. * sqrt_B * cos_theta - a / 3.;
 			roots[1] = sqrt_B * (cos_theta - sqrt3_sin_theta) - a / 3.;
 			roots[2] = sqrt_B * (cos_theta + sqrt3_sin_theta) - a / 3.;
 			return PolishCubicRoot(a, b, c, roots, 3);
 		}
-		Type X = (C >= 0. ? -1. : 1.) * cbrt(abs(C) + sqrt(Delta));
+		Type X = (C >= 0. ? -1. : 1.) * cbrt(std::abs(C) + std::sqrt(Delta));
 		Type Y = X == 0. ? 0. : B / X;
 		roots[0] = X + Y - a / 3.;
 		if (X == Y || Delta == 0.) {
@@ -1109,7 +1086,7 @@ namespace SBody {
 				Type d2f = fma(12., roots[i], 6. * a);
 				d2f = fma(d2f, roots[i], 2. * b);
 				const Type diff = f * df / (df * df - 0.5 * f * d2f);
-				if (abs(roots[i]) * boost::math::tools::epsilon<Type>() < abs(diff))
+				if (std::abs(roots[i]) * boost::math::tools::epsilon<Type>() < std::abs(diff))
 					roots[i] -= diff;
 				else {
 					++convinced_root_num;
@@ -1174,8 +1151,8 @@ namespace SBody {
 			if (int root_num = PolySolveQuadratic(1., p, r, roots); root_num == 0)
 				return 0;
 			if (roots[0] >= 0.) { // roots[1] >= roots[0]
-				Type root_of_root_0 = sqrt(roots[0]);
-				Type root_of_root_1 = sqrt(roots[1]);
+				Type root_of_root_0 = std::sqrt(roots[0]);
+				Type root_of_root_1 = std::sqrt(roots[1]);
 				roots[0] = -root_of_root_1 - a_4;
 				roots[1] = -root_of_root_0 - a_4;
 				roots[2] = root_of_root_0 - a_4;
@@ -1183,7 +1160,7 @@ namespace SBody {
 				return PolishQuarticRoot(a, b, c, d, roots, 4);
 			}
 			if (roots[1] >= 0.) {
-				Type root_of_root_1 = sqrt(roots[1]);
+				Type root_of_root_1 = std::sqrt(roots[1]);
 				roots[0] = -root_of_root_1 - a_4;
 				roots[1] = root_of_root_1 - a_4;
 				return PolishQuarticRoot(a, b, c, d, roots, 2);
@@ -1206,7 +1183,7 @@ namespace SBody {
 			largest_root = z_root_num == 1 ? roots[0] : roots[2];
 		if (largest_root <= 0.) // No real roots:
 			return 0;
-		const Type s = sqrt(largest_root);
+		const Type s = std::sqrt(largest_root);
 		// s is nonzero, because we took care of the biquadratic case.
 		const Type v = 0.5 * (p + largest_root + q / s);
 		const Type u = v - q / s;
@@ -1242,7 +1219,7 @@ namespace SBody {
 	template <typename Type>
 	Type CarlsonRC(Type x, Type y) {
 		if (y < 0.)
-			return sqrt(x / (x - y)) * boost::math::ellint_rc(x - y, -y);
+			return std::sqrt(x / (x - y)) * boost::math::ellint_rc(x - y, -y);
 		return boost::math::ellint_rc(x, y);
 	}
 
@@ -1272,8 +1249,8 @@ namespace SBody {
 			return GSL_NAN;
 		const Type d12 = a1 * b2 - a2 * b1, d13 = a1 * b3 - a3 * b1, d14 = a1 * b4 - a4 * b1;
 		const Type d23 = a2 * b3 - a3 * b2, d24 = a2 * b4 - a4 * b2, d34 = a3 * b4 - a4 * b3;
-		const Type X1 = sqrt(a1 + b1 * x), X2 = sqrt(a2 + b2 * x), X3 = sqrt(a3 + b3 * x), X4 = sqrt(a4 + b4 * x), X52 = a5 + b5 * x;
-		const Type Y1 = sqrt(a1 + b1 * y), Y2 = sqrt(a2 + b2 * y), Y3 = sqrt(a3 + b3 * y), Y4 = sqrt(a4 + b4 * y), Y52 = a5 + b5 * y;
+		const Type X1 = std::sqrt(a1 + b1 * x), X2 = std::sqrt(a2 + b2 * x), X3 = std::sqrt(a3 + b3 * x), X4 = std::sqrt(a4 + b4 * x), X52 = a5 + b5 * x;
+		const Type Y1 = std::sqrt(a1 + b1 * y), Y2 = std::sqrt(a2 + b2 * y), Y3 = std::sqrt(a3 + b3 * y), Y4 = std::sqrt(a4 + b4 * y), Y52 = a5 + b5 * y;
 		const Type U2_12 = Power2((X1 * X2 * Y3 * Y4 + Y1 * Y2 * X3 * X4) / (x - y));
 		const Type U2_13 = U2_12 - d14 * d23;
 		const Type U2_14 = U2_12 - d13 * d24;
@@ -1289,7 +1266,7 @@ namespace SBody {
 		const Type I3 = 2. * (d12 * d13 * d14 * d15_1 / 3. * CarlsonRJ(U2_12, U2_13, U2_14, W2) + RC_P2_Q2);
 		if (p5 == -2)
 			return (b5 * I3 - b1 * I1) * d15_1;
-		const Type I2 = 2. * (d12 * d13 * gsl_sf_ellint_RD(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE) / 3. + X1 * Y1 / (X4 * Y4 * sqrt(U2_14)));
+		const Type I2 = 2. * (d12 * d13 * gsl_sf_ellint_RD(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE) / 3. + X1 * Y1 / (X4 * Y4 * std::sqrt(U2_14)));
 		return -0.5 * d15_1 * (b1 / d15 + b2 / d25 + b3 / d35 + b4 / d45) * b5 * I3 + b52 * d24 * d34 / (2. * d15 * d25 * d35 * d45) * I2 + Power2(b1 * d15_1) * (1. - d12 * d13 * b52 / (2. * b1 * b1 * d25 * d35)) * I1 - b52 / (d15 * d25 * d35) * (X1 * X2 * X3 / (X4 * X52) - Y1 * Y2 * Y3 / (Y4 * Y52));
 	}
 	template <typename Type>
@@ -1300,8 +1277,8 @@ namespace SBody {
 			return GSL_NAN;
 		const Type d12 = a1 * b2 - a2 * b1, d13 = a1 * b3 - a3 * b1, d14 = a1 * b4 - a4 * b1;
 		const Type d23 = a2 * b3 - a3 * b2, d24 = a2 * b4 - a4 * b2, d34 = a3 * b4 - a4 * b3;
-		const Type X1 = sqrt(a1 + b1 * x), X2 = sqrt(a2 + b2 * x), X3 = sqrt(a3 + b3 * x), X4 = sqrt(a4 + b4 * x), X52 = a5 + b5 * x;
-		const Type Y1 = sqrt(a1 + b1 * y), Y2 = sqrt(a2 + b2 * y), Y3 = sqrt(a3 + b3 * y), Y4 = sqrt(a4 + b4 * y), Y52 = a5 + b5 * y;
+		const Type X1 = std::sqrt(a1 + b1 * x), X2 = std::sqrt(a2 + b2 * x), X3 = std::sqrt(a3 + b3 * x), X4 = std::sqrt(a4 + b4 * x), X52 = a5 + b5 * x;
+		const Type Y1 = std::sqrt(a1 + b1 * y), Y2 = std::sqrt(a2 + b2 * y), Y3 = std::sqrt(a3 + b3 * y), Y4 = std::sqrt(a4 + b4 * y), Y52 = a5 + b5 * y;
 		const Type U2_12 = Power2((X1 * X2 * Y3 * Y4 + Y1 * Y2 * X3 * X4) / (x - y));
 		const Type U2_13 = U2_12 - d14 * d23;
 		const Type U2_14 = U2_12 - d13 * d24;
@@ -1317,7 +1294,7 @@ namespace SBody {
 		const Type I3 = 2. * (d12 * d13 * d14 * d15_1 / 3. * CarlsonRJ(U2_12, U2_13, U2_14, W2) + RC_P2_Q2);
 		if (p5 == -2)
 			return (b5 * I3 - b1 * I1) * d15_1;
-		const Type I2 = 2. * (d12 * d13 * boost::math::ellint_rd(U2_12, U2_13, U2_14) / 3. + X1 * Y1 / (X4 * Y4 * sqrt(U2_14)));
+		const Type I2 = 2. * (d12 * d13 * boost::math::ellint_rd(U2_12, U2_13, U2_14) / 3. + X1 * Y1 / (X4 * Y4 * std::sqrt(U2_14)));
 		return -0.5 * d15_1 * (b1 / d15 + b2 / d25 + b3 / d35 + b4 / d45) * b5 * I3 + b52 * d24 * d34 / (2. * d15 * d25 * d35 * d45) * I2 + Power2(b1 * d15_1) * (1. - d12 * d13 * b52 / (2. * b1 * b1 * d25 * d35)) * I1 - b52 / (d15 * d25 * d35) * (X1 * X2 * X3 / (X4 * X52) - Y1 * Y2 * Y3 / (Y4 * Y52));
 	}
 
@@ -1333,19 +1310,19 @@ namespace SBody {
 		if (p5 != 0 && p5 != -2 && p5 != -4)
 			return GSL_NAN;
 		const Type b12 = Power2(b1), b52 = Power2(b5);
-		const Type X1 = sqrt(a1 + b1 * x), X4 = sqrt(a4 + b4 * x);
-		const Type Y1 = sqrt(a1 + b1 * y), Y4 = sqrt(a4 + b4 * y);
-		const Type xi = sqrt(f + (g + h * x) * x), eta = sqrt(f + (g + h * y) * y);
+		const Type X1 = std::sqrt(a1 + b1 * x), X4 = std::sqrt(a4 + b4 * x);
+		const Type Y1 = std::sqrt(a1 + b1 * y), Y4 = std::sqrt(a4 + b4 * y);
+		const Type xi = std::sqrt(f + (g + h * x) * x), eta = std::sqrt(f + (g + h * y) * y);
 		const Type M2 = Power2(X1 * Y4 + X4 * Y1) * (Power2((xi + eta) / (x - y)) - h);
 		const Type c2_11 = 2 * (f * b12 - g * a1 * b1 + h * a1 * a1), c2_44 = 2 * (f * b4 * b4 - g * a4 * b4 + h * a4 * a4);
 		const Type c2_14 = 2. * f * b1 * b4 - g * (a1 * b4 + a4 * b1) + 2. * h * a1 * a4, c2_15 = 2. * f * b1 * b5 - g * (a1 * b5 + a5 * b1) + 2. * h * a1 * a5;
-		const Type c11 = sqrt(c2_11), c44 = sqrt(c2_44), c11_c44 = c11 * c44;
+		const Type c11 = std::sqrt(c2_11), c44 = std::sqrt(c2_44), c11_c44 = c11 * c44;
 		const Type L2m = std::max(0., M2 + c2_14 - c11_c44), L2p = std::max(0., M2 + c2_14 + c11_c44);
 		const Type I1 = 4. * gsl_sf_ellint_RF(M2, L2m, L2p, GSL_PREC_DOUBLE);
 		if (p5 == 0)
 			return I1;
 		const Type X52 = a5 + b5 * x, Y52 = a5 + b5 * y;
-		const Type c2_55 = 2 * (f * b52 - g * a5 * b5 + h * a5 * a5), c55 = sqrt(c2_55);
+		const Type c2_55 = 2 * (f * b52 - g * a5 * b5 + h * a5 * a5), c55 = std::sqrt(c2_55);
 		const Type d14 = a1 * b4 - a4 * b1, d15 = a1 * b5 - a5 * b1, d15_1 = 1. / d15, d45 = a4 * b5 - a5 * b4;
 		const Type W2p = M2 + d14 * (c2_15 + c11 * c55) * d15_1;
 		const Type U = (X1 * X4 * eta + Y1 * Y4 * xi) / (x - y), U2 = Power2(U);
@@ -1366,19 +1343,19 @@ namespace SBody {
 		if (p5 != 0 && p5 != -2 && p5 != -4)
 			return GSL_NAN;
 		const Type b12 = b1 * b1, b52 = b5 * b5;
-		const Type X1 = sqrt(a1 + b1 * x), X4 = sqrt(a4 + b4 * x);
-		const Type Y1 = sqrt(a1 + b1 * y), Y4 = sqrt(a4 + b4 * y);
-		const Type xi = sqrt(f + (g + h * x) * x), eta = sqrt(f + (g + h * y) * y);
+		const Type X1 = std::sqrt(a1 + b1 * x), X4 = std::sqrt(a4 + b4 * x);
+		const Type Y1 = std::sqrt(a1 + b1 * y), Y4 = std::sqrt(a4 + b4 * y);
+		const Type xi = std::sqrt(f + (g + h * x) * x), eta = std::sqrt(f + (g + h * y) * y);
 		const Type M2 = Power2(X1 * Y4 + X4 * Y1) * (Power2((xi + eta) / (x - y)) - h);
 		const Type c2_11 = 2 * (f * b12 - g * a1 * b1 + h * a1 * a1), c2_44 = 2 * (f * b4 * b4 - g * a4 * b4 + h * a4 * a4);
 		const Type c2_14 = 2. * f * b1 * b4 - g * (a1 * b4 + a4 * b1) + 2. * h * a1 * a4, c2_15 = 2. * f * b1 * b5 - g * (a1 * b5 + a5 * b1) + 2. * h * a1 * a5;
-		const Type c11 = sqrt(c2_11), c44 = sqrt(c2_44), c11_c44 = c11 * c44;
+		const Type c11 = std::sqrt(c2_11), c44 = std::sqrt(c2_44), c11_c44 = c11 * c44;
 		const Type L2m = std::max(0., M2 + c2_14 - c11_c44), L2p = std::max(0., M2 + c2_14 + c11_c44);
 		const Type I1 = 4. * boost::math::ellint_rf(M2, L2m, L2p);
 		if (p5 == 0)
 			return I1;
 		const Type X52 = a5 + b5 * x, Y52 = a5 + b5 * y;
-		const Type c2_55 = 2 * (f * b52 - g * a5 * b5 + h * a5 * a5), c55 = sqrt(c2_55);
+		const Type c2_55 = 2 * (f * b52 - g * a5 * b5 + h * a5 * a5), c55 = std::sqrt(c2_55);
 		const Type d14 = a1 * b4 - a4 * b1, d15 = a1 * b5 - a5 * b1, d15_1 = 1. / d15, d45 = a4 * b5 - a5 * b4;
 		const Type W2p = M2 + d14 * (c2_15 + c11 * c55) * d15_1;
 		const Type U = (X1 * X4 * eta + Y1 * Y4 * xi) / (x - y), U2 = U * U;
@@ -1407,18 +1384,18 @@ namespace SBody {
 		const Type x_y_1 = 1. / (x - y);
 		const Type xi12 = f1 + (g1 + h1 * x) * x, eta12 = f1 + (g1 + h1 * y) * y;
 		const Type xi22 = f2 + (g2 + h2 * x) * x, eta22 = f2 + (g2 + h2 * y) * y;
-		const Type xi1 = sqrt(xi12), eta1 = sqrt(eta12);
-		const Type xi2 = sqrt(xi22), eta2 = sqrt(eta22);
+		const Type xi1 = std::sqrt(xi12), eta1 = std::sqrt(eta12);
+		const Type xi2 = std::sqrt(xi22), eta2 = std::sqrt(eta22);
 		const Type xi1p = (g1 + 2. * h1 * x) / (2. * xi1), eta_1p = (g1 + 2. * h1 * y) / (2. * eta1);
 		const Type B = xi1p * xi2 - eta_1p * eta2;
 		const Type theta1 = xi12 + eta12 - h1 * Power2(x - y);
 		const Type theta2 = xi22 + eta22 - h2 * Power2(x - y);
-		const Type zeta1 = sqrt(2. * xi1 * eta1 + theta1), zeta2 = sqrt(2. * xi2 * eta2 + theta2);
+		const Type zeta1 = std::sqrt(2. * xi1 * eta1 + theta1), zeta2 = std::sqrt(2. * xi2 * eta2 + theta2);
 		const Type U = (xi1 * eta2 + xi2 * eta1) * x_y_1, U2 = Power2(U);
 		const Type M = zeta1 * zeta2 * x_y_1;
 		const Type M2 = Power2(M);
 		const Type delta11_2 = 4. * f1 * h1 - Power2(g1), delta12_2 = 2. * (f1 * h2 + f2 * h1) - g1 * g2, delta22_2 = 4. * f2 * h2 - Power2(g2);
-		const Type Delta = sqrt(Power2(delta12_2) - delta11_2 * delta22_2);
+		const Type Delta = std::sqrt(Power2(delta12_2) - delta11_2 * delta22_2);
 		const Type Delta_m = delta12_2 - Delta, Delta_p = delta12_2 + Delta;
 		const Type L2m = M2 + Delta_m, L2p = M2 + Delta_p;
 		const Type RF = gsl_sf_ellint_RF(M2, L2m, L2p, GSL_PREC_DOUBLE);
@@ -1455,18 +1432,18 @@ namespace SBody {
 		const Type x_y_1 = 1. / (x - y);
 		const Type xi12 = f1 + (g1 + h1 * x) * x, eta12 = f1 + (g1 + h1 * y) * y;
 		const Type xi22 = f2 + (g2 + h2 * x) * x, eta22 = f2 + (g2 + h2 * y) * y;
-		const Type xi1 = sqrt(xi12), eta1 = sqrt(eta12);
-		const Type xi2 = sqrt(xi22), eta2 = sqrt(eta22);
+		const Type xi1 = std::sqrt(xi12), eta1 = std::sqrt(eta12);
+		const Type xi2 = std::sqrt(xi22), eta2 = std::sqrt(eta22);
 		const Type xi1p = (g1 + 2. * h1 * x) / (2. * xi1), eta_1p = (g1 + 2. * h1 * y) / (2. * eta1);
 		const Type B = xi1p * xi2 - eta_1p * eta2;
 		const Type theta1 = xi12 + eta12 - h1 * Power2(x - y);
 		const Type theta2 = xi22 + eta22 - h2 * Power2(x - y);
-		const Type zeta1 = sqrt(2. * xi1 * eta1 + theta1), zeta2 = sqrt(2. * xi2 * eta2 + theta2);
+		const Type zeta1 = std::sqrt(2. * xi1 * eta1 + theta1), zeta2 = std::sqrt(2. * xi2 * eta2 + theta2);
 		const Type U = (xi1 * eta2 + xi2 * eta1) * x_y_1, U2 = U * U;
 		const Type M = zeta1 * zeta2 * x_y_1;
 		const Type M2 = M * M;
 		const Type delta11_2 = 4. * f1 * h1 - g1 * g1, delta12_2 = 2. * (f1 * h2 + f2 * h1) - g1 * g2, delta22_2 = 4. * f2 * h2 - g2 * g2;
-		const Type Delta = sqrt(delta12_2 * delta12_2 - delta11_2 * delta22_2);
+		const Type Delta = std::sqrt(delta12_2 * delta12_2 - delta11_2 * delta22_2);
 		const Type Delta_m = delta12_2 - Delta, Delta_p = delta12_2 + Delta;
 		const Type L2m = M2 + Delta_m, L2p = M2 + Delta_p;
 		const Type RF = boost::math::ellint_rf(M2, L2m, L2p);

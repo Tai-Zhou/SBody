@@ -82,7 +82,7 @@ int Benchmark() {
 	double t = 0., t1 = 0., t_step = 3600. * unit.s / T_STEP_NUMBER;
 	shared_ptr<Metric<double>> main_metric = make_shared<Kerr<double>>(0.3);
 	// shared_ptr<Metric> main_metric = make_shared<Schwarzschild>();
-	unique_ptr<View<double>> view_ptr = make_unique<View<double>>(main_metric, 8180. * unit.pc, M_PI_2 - 0.01, 0.);
+	unique_ptr<View<double>> view_ptr = make_unique<View<double>>(main_metric, 8180. * unit.pc, boost::math::double_constants::half_pi - 0.01, 0.);
 	Particle<double> star_0(main_metric, T, LAGRANGIAN, false);
 	star_0.InitializeKeplerian(4., 0.1, 0.2, 0., 0., 0., M_PI_4);
 	double temp[4];
