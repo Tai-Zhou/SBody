@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef SBODY_IO_H
-#define SBODY_IO_H
+#ifndef SBODY_IO_HPP
+#define SBODY_IO_HPP
 
 #include <array>
 #include <fstream>

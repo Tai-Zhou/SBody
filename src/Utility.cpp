@@ -200,7 +200,7 @@ namespace SBody {
 			gsl_vector_free(f_trial);
 			GSL_ERROR("failed to allocate space for coordinate workspace", GSL_ENOMEM);
 		}
-		if (status = CoordinateOrthogonalization(direction, coordinate); status != GSL_SUCCESS)
+		if (status = CoordinateOrthogonalization(direction, coordinate); status != Status::SUCCESS)
 			return status;
 		gsl_matrix_set_zero(jacobian);
 		long double x_norm = gsl_blas_dnrm2(x), dx_limit = x_norm * GSL_DBL_EPSILON;
@@ -261,7 +261,7 @@ namespace SBody {
 			gsl_vector_free(f_trial_minus);
 			GSL_ERROR("failed to allocate space for coordinate workspace", GSL_ENOMEM);
 		}
-		if (status = CoordinateOrthogonalization(direction, coordinate); status != GSL_SUCCESS)
+		if (status = CoordinateOrthogonalization(direction, coordinate); status != Status::SUCCESS)
 			return status;
 		gsl_matrix_set_zero(jacobian);
 		long double x_norm = gsl_blas_dnrm2(x), dx_limit = x_norm * GSL_DBL_EPSILON;
@@ -1838,120 +1838,9 @@ namespace SBody {
 	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_triangle = &TriangleType;
 	const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_direction = &DirectionType;
 
-	// MultiDerivativeSolver
-	MultiDerivativeSolver::MultiDerivativeSolver(size_t n, const gsl_multiroot_fdfsolver_type *type) {
-		solver_ = gsl_multiroot_fdfsolver_alloc(type, n);
-	}
-	MultiDerivativeSolver::MultiDerivativeSolver(gsl_multiroot_function_fdf *function, const gsl_vector *x, size_t n, const gsl_multiroot_fdfsolver_type *type) {
-		solver_ = gsl_multiroot_fdfsolver_alloc(type, n);
-		gsl_multiroot_fdfsolver_set(solver_, function, x);
-	}
-	MultiDerivativeSolver::~MultiDerivativeSolver() {
-		gsl_multiroot_fdfsolver_free(solver_);
-	}
-	int MultiDerivativeSolver::Set(gsl_multiroot_function_fdf *function, const gsl_vector *x) {
-		return gsl_multiroot_fdfsolver_set(solver_, function, x);
-	}
-	int MultiDerivativeSolver::Iterate() {
-		return gsl_multiroot_fdfsolver_iterate(solver_);
-	}
-	int MultiDerivativeSolver::Solve(long double epsabs, long double epsrel, int max_iteration) {
-		for (; max_iteration > 0 && gsl_multiroot_test_delta(gsl_multiroot_fdfsolver_dx(solver_), gsl_multiroot_fdfsolver_root(solver_), epsabs, epsrel) != GSL_SUCCESS; --max_iteration)
-			if (int status = gsl_multiroot_fdfsolver_iterate(solver_); status != GSL_SUCCESS)
-				return status;
-		if (max_iteration <= 0)
-			return GSL_EMAXITER;
-		return GSL_SUCCESS;
-	}
-	gsl_vector *MultiDerivativeSolver::Root() {
-		return gsl_multiroot_fdfsolver_root(solver_);
-	}
-	gsl_vector *MultiDerivativeSolver::Value() {
-		return gsl_multiroot_fdfsolver_f(solver_);
-	}
-	gsl_vector *MultiDerivativeSolver::StepSize() {
-		return gsl_multiroot_fdfsolver_dx(solver_);
-	}
-
-	MultiFunctionMinimizer::MultiFunctionMinimizer(size_t n, const gsl_multimin_fminimizer_type *type) {
-		solver_ = gsl_multimin_fminimizer_alloc(type, n);
-	}
-	MultiFunctionMinimizer::~MultiFunctionMinimizer() {
-		gsl_multimin_fminimizer_free(solver_);
-	}
-	int MultiFunctionMinimizer::Set(gsl_multimin_function *function, const gsl_vector *x, const gsl_vector *step_size) {
-		solver_->fval = 100.;
-		return gsl_multimin_fminimizer_set(solver_, function, x, step_size);
-	}
-	int MultiFunctionMinimizer::Iterate() {
-		return gsl_multimin_fminimizer_iterate(solver_);
-	}
-	int MultiFunctionMinimizer::Solve(long double epsabs) {
-		while (gsl_multimin_test_size(gsl_multimin_fminimizer_size(solver_), epsabs) != GSL_SUCCESS || gsl_multimin_test_size(gsl_multimin_fminimizer_minimum(solver_), epsabs) != GSL_SUCCESS)
-			if (int status = gsl_multimin_fminimizer_iterate(solver_); status != GSL_SUCCESS)
-				return status;
-		return GSL_SUCCESS;
-	}
-
-	gsl_vector *MultiFunctionMinimizer::Root() {
-		return gsl_multimin_fminimizer_x(solver_);
-	}
-	long double MultiFunctionMinimizer::Value() {
-		return gsl_multimin_fminimizer_minimum(solver_);
-	}
-	long double MultiFunctionMinimizer::StepSize() {
-		return gsl_multimin_fminimizer_size(solver_);
-	}
-	// GslBlock
-	GslBlock::~GslBlock() {
-		for (auto vector : vectors_)
-			gsl_vector_free(vector);
-		for (auto matrix : matrices_)
-			gsl_matrix_free(matrix);
-		for (auto permutation : permutations_)
-			gsl_permutation_free(permutation);
-	}
-	gsl_vector *GslBlock::VectorAlloc(size_t n) {
-		vectors_.push_back(gsl_vector_alloc(n));
-		return vectors_.back();
-	}
-	gsl_vector *GslBlock::VectorCalloc(size_t n) {
-		vectors_.push_back(gsl_vector_calloc(n));
-		return vectors_.back();
-	}
-	gsl_vector *GslBlock::VectorAllocFromBlock(gsl_block *block, const size_t offset, const size_t n, const size_t stride) {
-		vectors_.push_back(gsl_vector_alloc_from_block(block, offset, n, stride));
-		return vectors_.back();
-	}
-	gsl_vector *GslBlock::VectorAllocRowFromMatrix(gsl_matrix *matrix, const size_t i) {
-		vectors_.push_back(gsl_vector_alloc_row_from_matrix(matrix, i));
-		return vectors_.back();
-	}
-	gsl_vector *GslBlock::VectorAllocColFromMatrix(gsl_matrix *matrix, const size_t j) {
-		vectors_.push_back(gsl_vector_alloc_col_from_matrix(matrix, j));
-		return vectors_.back();
-	}
-	gsl_matrix *GslBlock::MatrixAlloc(size_t n1, size_t n2) {
-		matrices_.push_back(gsl_matrix_alloc(n1, n2));
-		return matrices_.back();
-	}
-	gsl_matrix *GslBlock::MatrixCalloc(size_t n1, size_t n2) {
-		matrices_.push_back(gsl_matrix_calloc(n1, n2));
-		return matrices_.back();
-	}
-	gsl_permutation *GslBlock::PermutationAlloc(size_t n) {
-		permutations_.push_back(gsl_permutation_alloc(n));
-		return permutations_.back();
-	}
-	gsl_permutation *GslBlock::PermutationCalloc(size_t n) {
-		permutations_.push_back(gsl_permutation_calloc(n));
-		return permutations_.back();
-	}
-
 	int CoordinateOrthogonalization(const gsl_vector *x, gsl_matrix *coordinate) {
 		size_t n = x->size;
 		if (n != coordinate->size1 || n != coordinate->size2) {
-			PrintlnError("CoordinateOrthogonalization: Invalid size");
 			return GSL_EBADLEN;
 		}
 		gsl_matrix_set_zero(coordinate);
@@ -1967,15 +1856,15 @@ namespace SBody {
 				gsl_blas_ddot(&column_view[i].vector, &column_view[j].vector, &dot_product);
 				gsl_blas_daxpy(-dot_product, &column_view[j].vector, &column_view[i].vector);
 			}
-			long double base_norm = gsl_blas_dnrm2(&column_view[i].vector);
-			if (base_norm > GSL_SQRT_DBL_EPSILON)
+			double base_norm = gsl_blas_dnrm2(&column_view[i].vector);
+			if (base_norm > boost::math::tools::root_epsilon<double>())
 				gsl_vector_scale(&column_view[i].vector, 1. / gsl_blas_dnrm2(&column_view[i].vector));
 			else if (coordinate_idx == n)
 				return GSL_EFAILED;
 			else
 				--i;
 		}
-		return GSL_SUCCESS;
+		return Status::SUCCESS;
 	}
 
 	bool PointInTriangle(const gsl_vector *a, const gsl_vector *b, const gsl_vector *c, const gsl_vector *p) {

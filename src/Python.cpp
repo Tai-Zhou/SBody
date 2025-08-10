@@ -10,6 +10,7 @@
  */
 
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <csignal>
 #include <memory>
@@ -122,7 +123,7 @@ py::array_t<double> CalculateFullStarOrbit(double mass, int metric, double fSP, 
 		py::print("[!] IntegratorApply status =", status);
 	h = 1.;
 	auto result = py::array_t<double>(tStepNumber * 14);
-	double *result_ptr = const_cast<double *>(result.data());
+	double *result_ptr = result.mutable_data();
 	array<double, 8> position;
 	array<double, 4> record;
 	for (size_t i = 0; i < tStepNumber; ++i) {
@@ -197,7 +198,7 @@ py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, doub
 	h = 1.;
 	size_t idx = 0, size = obs_time.size();
 	auto result = py::array_t<double>(size * 14);
-	double *result_ptr = const_cast<double *>(result.data());
+	double *result_ptr = result.mutable_data();
 	for (int i = 0;; ++i) {
 		tStep += tRec;
 		if (status = star_0.IntegratorApply(t, tStep); status != 0)
@@ -361,7 +362,7 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 	double h = 1.;
 	int status = 0;
 	auto result = py::array_t<double>(tStepNumber * HOTSPOT_RETURN_WIDTH);
-	double *result_ptr = const_cast<double *>(result.data());
+	double *result_ptr = result.mutable_data();
 	for (size_t i = 0; i < tStepNumber; ++i) {
 		tStep += tRec;
 		if (status = hotspot.IntegratorApply(t, tStep); status != 0)
@@ -391,13 +392,14 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 #ifdef GSL_RANGE_CHECK_OFF
 	gsl_set_error_handler_off();
 #endif
+	assert(0 <= mode && mode < 4);
 	auto t_start = chrono::steady_clock::now();
 	const vector<double> estimate_step = {60., 30., 10., 3., 1., 0.5, 0.1, 0.};
 	size_t estimate_idx = 0;
 	double this_gr_obs_time, last_gr_obs_time, gr_offset = 0.;
 	Unit unit(x.at(0)); // double fSP, double R, double r, double theta, double phi, double v_r, double v_phi, double inclination,
 	double R = x.at(2) * unit.pc, r = x.at(7) * R * unit.mas, inclination = x.at(5) * M_PI / 180., rotation = x.at(6) * M_PI / 180.;
-	const int offset[] = {10, 13, 12};
+	const array<int, 4> offset = {10, 13, 12, 12};
 	shared_ptr<Metric<double>> main_metric;
 	unique_ptr<View<double>> view_ptr;
 	if (metric == 1 || (metric == 2 && abs(x.at(1)) < GSL_ROOT4_DBL_EPSILON))
@@ -424,6 +426,9 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 	} else if (mode == 2) { // helical
 		if (hotspot.InitializeHelical(r, x.at(8) * M_PI / 180., x.at(9) * M_PI / 180., x.at(10), x.at(11)) != Status::SUCCESS)
 			return HSExit(x);
+	} else if (mode == 3) { // cylindrical
+		if (hotspot.InitializeCylindrical(r, x.at(8) * M_PI / 180., x.at(9) * R * unit.mas, x.at(10), x.at(11)) != Status::SUCCESS)
+			return HSExit(x);
 	} else {
 		PrintlnWarning("Mode Error!");
 		return py::array_t<double>();
@@ -444,12 +449,14 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 	double vz0 = x0 * sin_inc + z0 * cos_inc;
 	double h = -1.;
 	int status = 0;
-	if (status = hotspot.IntegratorApply(t, 0.); status != 0)
+	if (status = hotspot.IntegratorApply(t, 0.); status != 0) {
 		py::print("[!] IntegratorApply status =", status);
+		return py::array_t<double>();
+	}
 	h = 1.;
 	size_t idx = 0, size = obs_time.size();
 	auto result = py::array_t<double>(size * HOTSPOT_RETURN_WIDTH);
-	double *result_ptr = const_cast<double *>(result.data());
+	double *result_ptr = result.mutable_data();
 	for (int i = 0;; ++i) {
 #ifdef GSL_RANGE_CHECK_OFF
 		if (auto now = chrono::steady_clock::now(); now - t_start > chrono::seconds(10)) {
@@ -458,8 +465,13 @@ py::array_t<double> CalculateHSOrbit(const py::array_t<double> &x, int metric, i
 		}
 #endif
 		tStep += tRec;
-		if (status = hotspot.IntegratorApply(t, tStep); status != 0)
+		if (status = hotspot.IntegratorApply(t, tStep); status != 0) {
 			py::print("[!] IntegratorApply status =", status);
+			return py::array_t<double>();
+		}
+#ifndef GSL_RANGE_CHECK_OFF
+		hotspot.Normalize();
+#endif
 		hotspot.Position(this_position.data());
 		if (this_position[1] < 3.) {
 			// py::print("[!] R < 3.0, stop!");
@@ -555,7 +567,7 @@ py::array_t<double> HSDistinctChi2(py::array_t<double> &x, int metric, int mode,
 		return py::array_t<double>();
 	const int size = obs_flux.size();
 	auto result = py::array_t<double>(size);
-	double *result_ptr = const_cast<double *>(result.data());
+	double *result_ptr = result.mutable_data();
 	memset(result_ptr, 0, size * sizeof(double));
 	if (gr_switch & 8)
 		for (int i = 0; i < size; ++i)
@@ -593,15 +605,16 @@ double HSChi2(py::array_t<double> &x, int metric, int mode, int gr_switch, py::a
 }
 
 py::array_t<double> FastTrace(const double r_observer, const double theta_observer, const double sin_theta_observer, const double cos_theta_observer, const double r_target, const double theta_target, const double phi_target) {
-	auto photon = py::array_t<double>(9);
-	double *photon_ptr = const_cast<double *>(photon.data());
+	array<double, 9> photon;
 	double alpha = 0., beta = 0.;
-	Schwarzschild<double>().FastTrace(r_observer, theta_observer, sin_theta_observer, cos_theta_observer, r_target, theta_target, phi_target, alpha, beta, photon_ptr);
-	return photon;
+	Schwarzschild<double>().FastTrace(r_observer, theta_observer, sin_theta_observer, cos_theta_observer, r_target, theta_target, phi_target, alpha, beta, photon);
+	auto res = py::array_t<double>(9);
+	copy(photon.begin(), photon.end(), res.mutable_data());
+	return res;
 }
 
 py::array_t<double> CppSort(py::array_t<double> data) {
-	double *data_ptr = const_cast<double *>(data.data());
+	double *data_ptr = data.mutable_data();
 	sort(data_ptr, data_ptr + data.size());
 	return data;
 }

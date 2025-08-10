@@ -57,8 +57,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SBODY_UTILITY_H
-#define SBODY_UTILITY_H
+#ifndef SBODY_UTILITY_HPP
+#define SBODY_UTILITY_HPP
 
 #include <string>
 #include <vector>
@@ -69,6 +69,7 @@
 #include <boost/math/special_functions/ellint_rj.hpp>
 #include <boost/math/tools/precision.hpp>
 #include <fmt/core.h>
+#include <gsl/gsl_linalg.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_mode.h>
@@ -124,22 +125,6 @@ namespace SBody {
 	enum Status {
 		SUCCESS = 0,
 		FAILURE = 1,
-	};
-
-	class Solver {
-	  public:
-		virtual int Iterate() = 0;
-		virtual long double Root() = 0;
-	};
-
-	class MultiSolver {
-	  public:
-		virtual int Iterate() = 0;
-		virtual int Solve(long double epsabs, int max_iteration) = 0;
-		virtual int Solve(long double epsabs, long double epsrel, int max_iteration) = 0;
-		virtual gsl_vector *Root() = 0;
-		virtual gsl_vector *Value() = 0;
-		virtual gsl_vector *StepSize() = 0;
 	};
 
 	struct HybridState {
@@ -251,7 +236,7 @@ namespace SBody {
 	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_triangle;
 	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_direction;
 
-	class MultiFunctionSolver : public MultiSolver {
+	class MultiFunctionSolver {
 	  private:
 		gsl_multiroot_fsolver *solver_;
 		static int ScaleX(gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f);
@@ -271,12 +256,12 @@ namespace SBody {
 		~MultiFunctionSolver();
 		int Set(gsl_multiroot_function *function, const gsl_vector *x);
 		int Set(gsl_multiroot_function *function, const gsl_vector *x, long double theta_obs, long double sin_theta_obs, long double cos_theta_obs, long double r_obj, long double sin_theta_obj, long double cos_theta_obj, long double phi_obj, long double sin_phi_obj, long double cos_phi_obj, bool trace_to_plane);
-		int Iterate() override;
-		int Solve(long double epsabs, int max_iteration = 256) override;
-		int Solve(long double epsabs, long double epsrel, int max_iteration = 256) override;
-		gsl_vector *Root() override;
-		gsl_vector *Value() override;
-		gsl_vector *StepSize() override;
+		int Iterate();
+		int Solve(long double epsabs, int max_iteration = 256);
+		int Solve(long double epsabs, long double epsrel, int max_iteration = 256);
+		gsl_vector *Root();
+		gsl_vector *Value();
+		gsl_vector *StepSize();
 		static int HybridAlloc(void *vstate, size_t n);
 		static int HybridSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
 		static int HybridIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
@@ -312,138 +297,6 @@ namespace SBody {
 		static int DirectionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
 		static int DirectionIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
 		static void DirectionFree(void *vstate);
-	};
-
-	class MultiDerivativeSolver : public MultiSolver {
-	  private:
-		gsl_multiroot_fdfsolver *solver_;
-
-	  public:
-		MultiDerivativeSolver(size_t n, const gsl_multiroot_fdfsolver_type *type = gsl_multiroot_fdfsolver_gnewton);
-		MultiDerivativeSolver(gsl_multiroot_function_fdf *function, const gsl_vector *x, size_t n, const gsl_multiroot_fdfsolver_type *type = gsl_multiroot_fdfsolver_gnewton);
-		~MultiDerivativeSolver();
-		int Set(gsl_multiroot_function_fdf *function, const gsl_vector *x);
-		int Iterate() override;
-		int Solve(long double epsabs, long double epsrel, int max_iteration = 128) override;
-		gsl_vector *Root() override;
-		gsl_vector *Value() override;
-		gsl_vector *StepSize() override;
-	};
-
-	class MultiMinimizer {
-	  public:
-		virtual int Iterate() = 0;
-		virtual int Solve(long double epsabs) = 0;
-		virtual gsl_vector *Root() = 0;
-		virtual long double Value() = 0;
-	};
-
-	class MultiFunctionMinimizer : public MultiMinimizer {
-	  private:
-		gsl_multimin_fminimizer *solver_;
-
-	  public:
-		MultiFunctionMinimizer(size_t n, const gsl_multimin_fminimizer_type *type = gsl_multimin_fminimizer_nmsimplex2rand);
-		~MultiFunctionMinimizer();
-		int Set(gsl_multimin_function *function, const gsl_vector *x, const gsl_vector *step_size);
-		int Iterate() override;
-		int Solve(long double epsabs) override;
-		gsl_vector *Root() override;
-		long double Value() override;
-		long double StepSize();
-	};
-	/**
-	 * @brief A wrapper of the `gsl_vector`, `gsl_matrix`, and `gsl_permutation`.
-	 *
-	 */
-	class GslBlock {
-	  private:
-		std::vector<gsl_vector *> vectors_;
-		std::vector<gsl_matrix *> matrices_;
-		std::vector<gsl_permutation *> permutations_;
-
-	  public:
-		/// Destructor
-		~GslBlock();
-
-		/**
-		 * @brief `gsl_vector_alloc`, creates a vector of length `n`
-		 *
-		 * @param n length of the vector
-		 * @return pointer
-		 */
-		gsl_vector *VectorAlloc(size_t n);
-
-		/**
-		 * @brief `gsl_vector_calloc`, creates a vector of length `n` and initializes all the elements of the vector to zero.
-		 *
-		 * @param n length of the vector
-		 * @return pointer
-		 */
-		gsl_vector *VectorCalloc(size_t n);
-
-		/**
-		 * @brief `gsl_vector_alloc_from_block`, creates a vector as a slice of an existing `block`.
-		 *
-		 * @param block target block
-		 * @param offset offset to the data block
-		 * @param n length of the vector
-		 * @param stride step-size of the vector
-		 * @return pointer
-		 */
-		gsl_vector *VectorAllocFromBlock(gsl_block *block, const size_t offset, const size_t n, const size_t stride = 1);
-
-		/**
-		 * @brief `gsl_vector_alloc_row_from_matrix`, allocates a new `gsl_vector` which points to the `i`-th row of the `matrix`.
-		 *
-		 * @param matrix target matrix
-		 * @param i row index
-		 * @return pointer
-		 */
-		gsl_vector *VectorAllocRowFromMatrix(gsl_matrix *matrix, const size_t i);
-
-		/**
-		 * @brief `gsl_vector_alloc_col_from_matrix`, allocates a new `gsl_vector` which points to the `j`-th column of the `matrix`.
-		 *
-		 * @param matrix target matrix
-		 * @param j column index
-		 * @return pointer
-		 */
-		gsl_vector *VectorAllocColFromMatrix(gsl_matrix *matrix, const size_t j);
-
-		/**
-		 * @brief `gsl_matrix_alloc`, creates a matrix of size `n1` rows by `n2` columns.
-		 *
-		 * @param n1 rows of the matrix
-		 * @param n2 columns of the matrix
-		 * @return pointer
-		 */
-		gsl_matrix *MatrixAlloc(size_t n1, size_t n2);
-
-		/**
-		 * @brief `gsl_matrix_alloc`, creates a matrix of size `n1` rows by `n2` columns and initializes all the elements of the matrix to zero
-		 *
-		 * @param n1 rows of the matrix
-		 * @param n2 columns of the matrix
-		 * @return pointer
-		 */
-		gsl_matrix *MatrixCalloc(size_t n1, size_t n2);
-
-		/**
-		 * @brief `gsl_permutation_alloc`, allocates memory for a new permutation of size `n`
-		 *
-		 * @param n size of the permutation
-		 * @return pointer
-		 */
-		gsl_permutation *PermutationAlloc(size_t n);
-
-		/**
-		 * @brief `gsl_permutation_alloc`, allocates memory for a new permutation of size `n` and initializes it to the identity
-		 *
-		 * @param n size of the permutation
-		 * @return pointer
-		 */
-		gsl_permutation *PermutationCalloc(size_t n);
 	};
 
 	int CoordinateOrthogonalization(const gsl_vector *x, gsl_matrix *coordinate);
@@ -701,6 +554,51 @@ namespace SBody {
 	/**
 	 * @brief
 	 *
+	 * @param cartesian 4 dimensional array
+	 * @param spherical 4 dimensional array
+	 * @return status
+	 */
+	template <typename Type>
+	int CartesianToSpherical(const std::array<Type, 4> &cartesian, std::array<Type, 4> &spherical) {
+		if (spherical[1] = Norm(cartesian.begin() + 1); spherical[1] == 0.)
+			return GSL_EZERODIV;
+		spherical[0] = cartesian[0];
+		spherical[2] = acos(cartesian[3] / spherical[1]);
+		spherical[3] = atan2(cartesian[2], cartesian[1]);
+		return Status::SUCCESS;
+	}
+
+	/**
+	 * @brief
+	 *
+	 * @param cartesian 8 dimensional array
+	 * @param spherical 8 dimensional array
+	 * @return status
+	 */
+	template <typename Type>
+	int CartesianToSpherical(const std::array<Type, 8> &cartesian, std::array<Type, 8> &spherical) {
+		if (spherical[1] = Norm(cartesian.begin() + 1); spherical[1] == 0.)
+			return GSL_EZERODIV;
+		const Type r_1 = 1. / spherical[1];
+		spherical[0] = cartesian[0];
+		spherical[2] = std::acos(cartesian[3] * r_1);
+		spherical[4] = cartesian[4];
+		spherical[5] = Dot(cartesian.begin() + 1, cartesian.begin() + 5) * r_1;
+		if (const Type r_xy = Norm(cartesian.begin() + 1, 2); r_xy == 0.) {
+			spherical[3] = atan2(cartesian[6], cartesian[5]);
+			spherical[6] = std::copysign(r_1, cartesian[3]) * Norm(cartesian.begin() + 5, 2);
+			spherical[7] = 0;
+		} else {
+			spherical[3] = atan2(cartesian[2], cartesian[1]);
+			spherical[6] = (-cartesian[7] + cartesian[3] * r_1 * spherical[5]) / r_xy;
+			spherical[7] = (cartesian[6] * cartesian[1] - cartesian[5] * cartesian[2]) / Power2(r_xy);
+		}
+		return Status::SUCCESS;
+	}
+
+	/**
+	 * @brief
+	 *
 	 * @param cartesian 4 or 8 dimensional vector
 	 * @param spherical 4 or 8 dimensional vector
 	 * @param dimension 4 or 8.
@@ -748,6 +646,19 @@ namespace SBody {
 		Type cartesian[dimension];
 		std::copy(x, x + dimension, cartesian);
 		return CartesianToSpherical(cartesian, x, dimension);
+	}
+
+	/**
+	 * @brief
+	 *
+	 * @param x 4 or 8 dimensional vector
+	 * @param dimension 4 or 8
+	 * @return status
+	 */
+	template <typename Type>
+	int CartesianToSpherical(std::array<Type, 8> &x) {
+		const std::array<Type, 8> cartesian(x);
+		return CartesianToSpherical(cartesian, x);
 	}
 
 	/**
@@ -968,8 +879,8 @@ namespace SBody {
 		for (int i = 0; i < root_num; ++i) {
 			for (int j = 32; j > 0; --j) {
 				Type f = roots[i] + a;
-				f = fma(f, roots[i], b);
-				Type df = fma(2.l, roots[i], a);
+				f = std::fma(f, roots[i], b);
+				Type df = std::fma(2.l, roots[i], a);
 				const Type diff = f * df / (df * df - f);
 				if (std::abs(roots[i]) * boost::math::tools::epsilon<Type>() < std::abs(diff))
 					roots[i] -= diff;
@@ -1006,13 +917,13 @@ namespace SBody {
 			roots[0] = roots[1] = -0.5 * b / a;
 			return 2;
 		}
-		const Type numerator = b > 0. ? -0.5 * (b + std::sqrt(delta)) : -0.5 * (b - std::sqrt(delta));
-		if (a > 0.) {
-			roots[0] = numerator / a;
-			roots[1] = c / numerator;
-		} else {
+		const Type numerator = -0.5 * (b + std::copysign(std::sqrt(delta), b));
+		if (OppositeSign(a, b)) {
 			roots[0] = c / numerator;
 			roots[1] = numerator / a;
+		} else {
+			roots[0] = numerator / a;
+			roots[1] = c / numerator;
 		}
 		return 2;
 	}
@@ -1023,18 +934,21 @@ namespace SBody {
 		for (int i = 0; i < root_num; ++i) {
 			for (int j = 32; j > 0; --j) {
 				Type f = roots[i] + a;
-				f = fma(f, roots[i], b);
-				f = fma(f, roots[i], c);
-				Type df = fma(3.l, roots[i], 2. * a);
-				df = fma(df, roots[i], b);
-				Type d2f = fma(6.l, roots[i], 2. * a);
-				const Type diff = f * df / (df * df - 0.5 * f * d2f);
-				if (std::abs(roots[i]) * boost::math::tools::epsilon<Type>() < std::abs(diff))
-					roots[i] -= diff;
-				else {
+				f = std::fma(f, roots[i], b);
+				f = std::fma(f, roots[i], c);
+				if ((1. + std::abs(a) + std::abs(b) + std::abs(c)) * boost::math::tools::epsilon<Type>() >= std::abs(f)) {
 					++convinced_root_num;
 					break;
 				}
+				Type df = std::fma(3.l, roots[i], 2. * a);
+				df = std::fma(df, roots[i], b);
+				Type d2f = std::fma(6.l, roots[i], 2. * a);
+				const Type diff = f * df / (df * df - 0.5 * f * d2f);
+				if (std::abs(roots[i]) * boost::math::tools::epsilon<Type>() >= std::abs(diff)) {
+					++convinced_root_num;
+					break;
+				}
+				roots[i] -= diff;
 			}
 		}
 		std::sort(roots, roots + convinced_root_num);
@@ -1077,21 +991,24 @@ namespace SBody {
 		for (int i = 0; i < root_num; ++i) {
 			for (int j = 32; j > 0; --j) {
 				Type f = roots[i] + a;
-				f = fma(f, roots[i], b);
-				f = fma(f, roots[i], c);
-				f = fma(f, roots[i], d);
-				Type df = fma(4., roots[i], 3. * a);
-				df = fma(df, roots[i], 2. * b);
-				df = fma(df, roots[i], c);
-				Type d2f = fma(12., roots[i], 6. * a);
-				d2f = fma(d2f, roots[i], 2. * b);
-				const Type diff = f * df / (df * df - 0.5 * f * d2f);
-				if (std::abs(roots[i]) * boost::math::tools::epsilon<Type>() < std::abs(diff))
-					roots[i] -= diff;
-				else {
+				f = std::fma(f, roots[i], b);
+				f = std::fma(f, roots[i], c);
+				f = std::fma(f, roots[i], d);
+				if ((1. + std::abs(a) + std::abs(b) + std::abs(c) + std::abs(d)) * boost::math::tools::epsilon<Type>() >= std::abs(f)) {
 					++convinced_root_num;
 					break;
 				}
+				Type df = std::fma(4., roots[i], 3. * a);
+				df = std::fma(df, roots[i], 2. * b);
+				df = std::fma(df, roots[i], c);
+				Type d2f = std::fma(12., roots[i], 6. * a);
+				d2f = std::fma(d2f, roots[i], 2. * b);
+				const Type diff = f * df / (df * df - 0.5 * f * d2f);
+				if (std::abs(roots[i]) * boost::math::tools::epsilon<Type>() >= std::abs(diff)) {
+					++convinced_root_num;
+					break;
+				}
+				roots[i] -= diff;
 			}
 		}
 		std::sort(roots, roots + convinced_root_num);

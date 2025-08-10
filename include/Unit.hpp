@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef SBODY_UNIT_H
-#define SBODY_UNIT_H
+#ifndef SBODY_UNIT_HPP
+#define SBODY_UNIT_HPP
 
 namespace SBody {
 	/**

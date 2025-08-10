@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef SBODY_OBJECT_H
-#define SBODY_OBJECT_H
+#ifndef SBODY_OBJECT_HPP
+#define SBODY_OBJECT_HPP
 
 #include <array>
 #include <functional>
@@ -133,7 +133,7 @@ namespace SBody {
 				position_[7] = xp7 * std::cos(observer_inclination) - (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			}
 			CartesianToSpherical(position_.data());
-			return this->metric_->NormalizeTimelikeGeodesic(position_.data());
+			return this->metric_->NormalizeTimelikeGeodesic(position_);
 		}
 		int InitializeGeodesic(Type orbital_radius, Type inclination, Type periapsis, Type ascending_node, Type v_r, Type v_phi, Type observer_inclination = 0., Type observer_rotation = 0.) {
 			integration_system_ = this->metric_->GetIntegrationSystem(time_, coordinate_, GEODESIC);
@@ -155,7 +155,7 @@ namespace SBody {
 				position_[7] = xp7 * std::cos(observer_inclination) - (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			}
 			CartesianToSpherical(position_.data());
-			return this->metric_->NormalizeTimelikeGeodesic(position_.data());
+			return this->metric_->NormalizeTimelikeGeodesic(position_);
 		}
 		int InitializeSchwarzschildKeplerianPericenter(Type a, Type e, Type inclination, Type periapsis, Type ascending_node, Type observer_inclination, Type observer_rotation) {
 			integration_system_ = this->metric_->GetIntegrationSystem(time_, coordinate_, GEODESIC);
@@ -205,12 +205,12 @@ namespace SBody {
 				position_[7] = xp7 * std::cos(observer_inclination) - (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			}
 			CartesianToSpherical(position_.data());
-			return this->metric_->NormalizeTimelikeGeodesic(position_.data());
+			return this->metric_->NormalizeTimelikeGeodesic(position_);
 		}
 		int InitializeKeplerianHarmonic(Type a, Type e, Type inclination, Type periapsis, Type ascending_node, Type true_anomaly, Type observer_inclination, Type observer_rotation) {
 			InitializeKeplerian(a, e, inclination, periapsis, ascending_node, true_anomaly, observer_inclination, observer_rotation);
 			position_[1] += 1.;
-			return this->metric_->NormalizeTimelikeGeodesic(position_.data());
+			return this->metric_->NormalizeTimelikeGeodesic(position_);
 		}
 		int InitializeCircular(Type r, Type phi, Type v_phi_ratio) {
 			integration_system_ = this->metric_->GetIntegrationSystem(time_, coordinate_, CIRCULAR);
@@ -227,7 +227,7 @@ namespace SBody {
 				position_[6] = 0.;
 				position_[7] = v_phi_ratio / (r * std::sqrt(r));
 			}
-			return this->metric_->NormalizeTimelikeGeodesic(position_.data());
+			return this->metric_->NormalizeTimelikeGeodesic(position_);
 		}
 		int InitializeHelical(Type r, Type theta, Type phi, Type v_r, Type v_phi) {
 			integration_system_ = this->metric_->GetIntegrationSystem(time_, coordinate_, HELICAL);
@@ -244,17 +244,38 @@ namespace SBody {
 				position_[6] = 0.;
 				position_[7] = v_phi;
 			}
-			return this->metric_->NormalizeTimelikeGeodesic(position_.data());
+			return this->metric_->NormalizeTimelikeGeodesic(position_);
+		}
+		int InitializeCylindrical(Type r, Type phi, Type z, Type v_z, Type v_phi) {
+			integration_system_ = this->metric_->GetIntegrationSystem(time_, coordinate_, CYLINDRICAL);
+			position_[0] = 0.;
+			position_[1] = std::hypot(r, z);
+			position_[2] = std::atan2(r, z);
+			position_[3] = phi;
+			if (fixed_) {
+				position_[5] = 0.;
+				position_[6] = 0.;
+				position_[7] = 0.;
+			} else {
+				position_[5] = v_z * std::cos(position_[2]);
+				position_[6] = -v_z * std::sin(position_[2]) / position_[1];
+				position_[7] = v_phi;
+			}
+			return this->metric_->NormalizeTimelikeGeodesic(position_);
 		}
 		int IntegratorApply(Type &t, Type t1) {
 			if (fixed_) {
 				t = t1;
 				return Status::SUCCESS;
 			}
-			boost::numeric::odeint::integrate_adaptive(integration_stepper_, integration_system_, position_, t, t1, std::copysign(std::max(std::abs(t1 - t), 1.), t1 - t), [&t_obs = t, &position = this->position_](const std::array<Type, 8> &x, double t) {
-				t_obs = t;
-				std::copy(x.begin(), x.end(), position.begin());
-			});
+			try {
+				boost::numeric::odeint::integrate_adaptive(integration_stepper_, integration_system_, position_, t, t1, std::copysign(std::max(std::abs(t1 - t), 1.), t1 - t), [&t_obs = t, &position = this->position_](const std::array<Type, 8> &x, double t) {
+					t_obs = t;
+					std::copy(x.begin(), x.end(), position.begin());
+				});
+			} catch (const std::exception &e) {
+				return Status::FAILURE;
+			}
 			return Status::SUCCESS;
 		}
 		int IntegratorApplyFixedStep(Type &t, const Type h) {
@@ -267,6 +288,9 @@ namespace SBody {
 				std::copy(x.begin(), x.end(), position.begin());
 			});
 			return Status::SUCCESS;
+		}
+		int Normalize() {
+			return this->metric_->NormalizeTimelikeGeodesic(position_);
 		}
 
 		/**
