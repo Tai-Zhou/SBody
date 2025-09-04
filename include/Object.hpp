@@ -48,7 +48,7 @@ namespace SBody {
 		 * @param last
 		 * @return int
 		 */
-		virtual int Hit(const Type current[], const Type last[]) = 0;
+		virtual int Hit(const boost::numeric::ublas::bounded_vector<Type, 8> &current, const boost::numeric::ublas::bounded_vector<Type, 8> &last) = 0;
 		/**
 		 * @brief
 		 * \f[z=\frac{E_\mathrm{obj}}{E_\mathrm{obs}}-1\f]
@@ -71,7 +71,7 @@ namespace SBody {
 		 * @param photon 8 dimensional information of photon
 		 * @return double
 		 */
-		virtual Type Redshift(const Type photon[], TimeSystem photon_time) = 0;
+		virtual Type Redshift(const boost::numeric::ublas::bounded_vector<Type, 8> &photon, TimeSystem photon_time) = 0;
 	};
 
 	/**
@@ -84,12 +84,12 @@ namespace SBody {
 		TimeSystem time_;
 		DynamicalSystem coordinate_;
 		/// 8 dimensional information
-		std::array<Type, 8> position_;
+		boost::numeric::ublas::bounded_vector<Type, 8> position_;
 		/// if the position fixed
 		const bool fixed_;
 		/// integration
-		std::function<void(const std::array<Type, 8> &, std::array<Type, 8> &, const Type)> integration_system_;
-		boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_dopri5<std::array<Type, 8>>> integration_stepper_;
+		std::function<void(const boost::numeric::ublas::bounded_vector<Type, 8> &, boost::numeric::ublas::bounded_vector<Type, 8> &, const Type)> integration_system_;
+		boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_dopri5<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper_;
 
 	  public:
 		/**
@@ -99,15 +99,13 @@ namespace SBody {
 		 * @param radius radius
 		 * @param fixed whether the position of the star is fixed
 		 */
-		Particle(std::shared_ptr<Metric<Type>> metric, TimeSystem time, DynamicalSystem coordinate, bool fixed = false) : Object<Type>(metric), time_(time), coordinate_(coordinate), fixed_(fixed) {
-			position_.fill(0.);
-		}
+		Particle(std::shared_ptr<Metric<Type>> metric, TimeSystem time, DynamicalSystem coordinate, bool fixed = false) : Object<Type>(metric), time_(time), coordinate_(coordinate), fixed_(fixed) {}
 		int Position(Type *position) {
 			std::copy(position_.begin(), position_.end(), position);
 			return Status::SUCCESS;
 		}
-		int Position(std::array<Type, 8> &position) {
-			std::copy(position_.begin(), position_.end(), position.begin());
+		int Position(boost::numeric::ublas::bounded_vector<Type, 8> &position) {
+			position = position_;
 			return Status::SUCCESS;
 		}
 		int InitializeKeplerian(Type a, Type e, Type inclination, Type periapsis, Type ascending_node, Type true_anomaly, Type observer_inclination = 0., Type observer_rotation = 0.) {
@@ -132,7 +130,7 @@ namespace SBody {
 				position_[6] = xp6 * std::cos(observer_rotation) - xp5 * std::sin(observer_rotation);
 				position_[7] = xp7 * std::cos(observer_inclination) - (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			}
-			CartesianToSpherical(position_.data());
+			CartesianToSpherical(position_);
 			return this->metric_->NormalizeTimelikeGeodesic(position_);
 		}
 		int InitializeGeodesic(Type orbital_radius, Type inclination, Type periapsis, Type ascending_node, Type v_r, Type v_phi, Type observer_inclination = 0., Type observer_rotation = 0.) {
@@ -154,7 +152,7 @@ namespace SBody {
 				position_[6] = xp6 * std::cos(observer_rotation) - xp5 * std::sin(observer_rotation);
 				position_[7] = xp7 * std::cos(observer_inclination) - (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			}
-			CartesianToSpherical(position_.data());
+			CartesianToSpherical(position_);
 			return this->metric_->NormalizeTimelikeGeodesic(position_);
 		}
 		int InitializeSchwarzschildKeplerianPericenter(Type a, Type e, Type inclination, Type periapsis, Type ascending_node, Type observer_inclination, Type observer_rotation) {
@@ -204,7 +202,7 @@ namespace SBody {
 				position_[6] = xp6 * std::cos(observer_rotation) - xp5 * std::sin(observer_rotation);
 				position_[7] = xp7 * std::cos(observer_inclination) - (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::sin(observer_inclination);
 			}
-			CartesianToSpherical(position_.data());
+			CartesianToSpherical(position_);
 			return this->metric_->NormalizeTimelikeGeodesic(position_);
 		}
 		int InitializeKeplerianHarmonic(Type a, Type e, Type inclination, Type periapsis, Type ascending_node, Type true_anomaly, Type observer_inclination, Type observer_rotation) {
@@ -263,30 +261,39 @@ namespace SBody {
 			}
 			return this->metric_->NormalizeTimelikeGeodesic(position_);
 		}
-		int IntegratorApply(Type &t, Type t1) {
+		int IntegratorApply(Type &t, Type t1, Type &h) {
 			if (fixed_) {
 				t = t1;
 				return Status::SUCCESS;
 			}
-			try {
-				boost::numeric::odeint::integrate_adaptive(integration_stepper_, integration_system_, position_, t, t1, std::copysign(std::max(std::abs(t1 - t), 1.), t1 - t), [&t_obs = t, &position = this->position_](const std::array<Type, 8> &x, double t) {
-					t_obs = t;
-					std::copy(x.begin(), x.end(), position.begin());
-				});
-			} catch (const std::exception &e) {
-				return Status::FAILURE;
+			if (h == 0.)
+				h = std::copysign(std::max(std::sqrt(std::abs(t1 - t)), 1.), t1 - t);
+			Type last_theta = position_[2];
+			while ((h > 0 ? t1 - t : t - t1) > 0.) {
+				if (std::abs(h) > std::abs(t1 - t))
+					h = t1 - t;
+				try {
+					integration_stepper_.try_step(integration_system_, position_, t, h);
+				} catch (const std::exception &e) {
+					return Status::FAILURE;
+				}
+				MapTheta(position_, last_theta);
 			}
 			return Status::SUCCESS;
 		}
-		int IntegratorApplyFixedStep(Type &t, const Type h) {
+		int IntegratorApplyStep(Type &t, const Type h) {
 			if (fixed_) {
 				t += h;
 				return Status::SUCCESS;
 			}
-			boost::numeric::odeint::integrate_adaptive(integration_stepper_, integration_system_, position_, t, t + h, std::copysign(std::max(std::abs(h), 1.), h), [&t_obs = t, &position = this->position_](const std::array<Type, 8> &x, double t) {
-				t_obs = t;
-				std::copy(x.begin(), x.end(), position.begin());
-			});
+			Type start_time = t;
+			try {
+				integration_stepper_.try_step(integration_system_, position_, t, h);
+			} catch (const std::exception &e) {
+				return Status::FAILURE;
+			}
+			if (t == start_time)
+				return Status::FAILURE;
 			return Status::SUCCESS;
 		}
 		int Normalize() {
@@ -300,7 +307,7 @@ namespace SBody {
 		 * @param last
 		 * @return int
 		 */
-		int Hit(const Type current[], const Type last[] = nullptr) override {
+		int Hit(const boost::numeric::ublas::bounded_vector<Type, 8> &current, const boost::numeric::ublas::bounded_vector<Type, 8> &last) override {
 			return false;
 		}
 
@@ -310,29 +317,28 @@ namespace SBody {
 		 * @param photon
 		 * @return double
 		 */
-		Type Redshift(const Type photon[], TimeSystem photon_time) override {
-			return this->metric_->Redshift(position_.data(), photon, time_, photon_time);
+		Type Redshift(const boost::numeric::ublas::bounded_vector<Type, 8> &photon, TimeSystem photon_time) override {
+			return this->metric_->Redshift(position_, photon, time_, photon_time);
 		}
 
-		int MetricTensor(boost::numeric::ublas::matrix<Type> &metric) {
-			return Status::FAILURE;
-			// return this->metric_->MetricTensor(position_, metric);
+		int MetricTensor(boost::numeric::ublas::bounded_matrix<Type, 4, 4> &metric) {
+			return this->metric_->MetricTensor(position_, metric);
 		}
-		Type DotProduct(const Type x[], const Type y[], const size_t dimension) {
+		Type DotProduct(const Type x[], const Type y[], const std::size_t dimension) {
 			return this->metric_->DotProduct(position_, x, y, dimension);
 		}
-		int LocalInertialFrame(boost::numeric::ublas::matrix<Type> &coordinate) {
+		int LocalInertialFrame(boost::numeric::ublas::bounded_matrix<Type, 4, 4> &coordinate) {
 			return Status::FAILURE;
 			// return this->metric_->LocalInertialFrame(position_, time_, coordinate);
 		}
 		Type Energy() {
-			return this->metric_->Energy(position_.data(), time_, coordinate_);
+			return this->metric_->Energy(position_, time_, coordinate_);
 		}
 		Type AngularMomentum() {
-			return this->metric_->AngularMomentum(position_.data(), time_, coordinate_);
+			return this->metric_->AngularMomentum(position_, time_, coordinate_);
 		}
 		Type CarterConstant() {
-			return this->metric_->CarterConstant(position_.data(), 1., time_, coordinate_);
+			return this->metric_->CarterConstant(position_, 1., time_, coordinate_);
 		}
 	};
 
@@ -346,11 +352,11 @@ namespace SBody {
 
 	  public:
 		Star(std::shared_ptr<Metric<Type>> metric, TimeSystem time, DynamicalSystem coordinate, Type radius = 0, bool fixed = false) : Particle<Type>(metric, time, coordinate, fixed), radius_(radius), radius_square_(radius * radius) {}
-		int Hit(const Type current[], const Type last[]) {
-			Type a2 = this->metric_->DistanceSquare(this->position_, current, 3);
+		int Hit(const boost::numeric::ublas::bounded_vector<Type, 8> &current, const boost::numeric::ublas::bounded_vector<Type, 8> &last) {
+			Type a2 = this->metric_->DistanceSquare(this->position_, current.data(), 3);
 			if (a2 <= radius_square_)
 				return 1;
-			Type b2 = this->metric_->DistanceSquare(this->position_, last, 3), c2 = this->metric_->DistanceSquare(current, last, 3);
+			Type b2 = this->metric_->DistanceSquare(this->position_, last, 3), c2 = this->metric_->DistanceSquare(current.data(), last.data(), 3);
 			if (a2 + c2 > b2 && b2 + c2 > a2 && 2 * a2 * c2 - Power2(a2 - b2 + c2) <= 4 * c2 * radius_square_)
 				return 1; // if min distance between current and last < radius, return 1;
 			return Status::SUCCESS;
@@ -386,7 +392,7 @@ namespace SBody {
 		const Type velocity_slope_index;
 
 	  public:
-		int Hit(const Type current[], const Type last[]) {
+		int Hit(const boost::numeric::ublas::bounded_vector<Type, 8> &current, const boost::numeric::ublas::bounded_vector<Type, 8> &last) {
 			if (!OppositeSign(current[2], last[2]))
 				return Status::SUCCESS;
 			if (std::abs(current[2]) < boost::math::constants::third_pi<Type>())

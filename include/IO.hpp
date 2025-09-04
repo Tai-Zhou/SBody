@@ -48,11 +48,12 @@ namespace SBody {
 	 */
 	class ProgressBar : public indicators::DynamicProgress<indicators::BlockProgressBar> {
 	  public:
-		ProgressBar() {
+		ProgressBar(int color, std::string prefix_text) {
 			indicators::show_console_cursor(false);
 			indicators::BlockProgressBar bar{
 				indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}},
-				indicators::option::ForegroundColor{indicators::Color(4)},
+				indicators::option::ForegroundColor{indicators::Color(color)},
+				indicators::option::PrefixText{prefix_text},
 				indicators::option::ShowElapsedTime{true},
 				indicators::option::ShowRemainingTime{true},
 			};
@@ -169,6 +170,12 @@ namespace SBody {
 		int Save(const std::array<double, N> &data) {
 			file_size_ += N;
 			file_buffer_.sputn(reinterpret_cast<const char *>(data.data()), 8 * N);
+			return Status::SUCCESS;
+		}
+		template <std::size_t N>
+		int Save(const boost::numeric::ublas::bounded_vector<double, N> &data) {
+			file_size_ += N;
+			file_buffer_.sputn(reinterpret_cast<const char *>(data.data().begin()), 8 * N);
 			return Status::SUCCESS;
 		}
 		int Save(const std::vector<double> &data) {

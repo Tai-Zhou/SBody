@@ -82,23 +82,22 @@ int Benchmark() {
 	double t = 0., t1 = 0., t_step = 3600. * unit.s / T_STEP_NUMBER;
 	shared_ptr<Metric<double>> main_metric = make_shared<Kerr<double>>(0.3);
 	// shared_ptr<Metric> main_metric = make_shared<Schwarzschild>();
-	unique_ptr<View<double>> view_ptr = make_unique<View<double>>(main_metric, 8180. * unit.pc, boost::math::double_constants::half_pi - 0.01, 0.);
+	auto view_ptr = make_unique<View<double>>(main_metric, 8180. * unit.pc, boost::math::double_constants::half_pi - 0.01, 0.);
 	Particle<double> star_0(main_metric, T, LAGRANGIAN, false);
 	star_0.InitializeKeplerian(4., 0.1, 0.2, 0., 0., 0., M_PI_4);
 	double temp[4];
-	array<double, 8> position;
-	array<double, 4> view_info;
+	boost::numeric::ublas::bounded_vector<double, 8> position;
+	boost::numeric::ublas::bounded_vector<double, 5> view_info;
 	int status = 0;
 	double h = 1., stepPercent = 100. / T_STEP_NUMBER;
 	indicators::show_console_cursor(false);
-	ProgressBar bars;
-	bars[0].set_option(indicators::option::PrefixText{string("Benchmarking...")});
+	ProgressBar bars(2, "Benchmarking...");
 	for (int i = 1; i <= T_STEP_NUMBER; ++i) {
 		t1 += t_step;
-		status = star_0.IntegratorApply(t, t1);
+		status = star_0.IntegratorApply(t, t1, h);
 		if (status > 0) {
 			PrintlnError("Benchmark error, main status = {}", status);
-			return GSL_FAILURE;
+			return Status::FAILURE;
 		}
 		star_0.Position(temp);
 		temp[0] = t / unit.s;
@@ -106,7 +105,7 @@ int Benchmark() {
 		temp[2] = star_0.AngularMomentum();
 		temp[3] = star_0.CarterConstant();
 		view_ptr->Trace(position, T, view_info, false, true);
-		SphericalToCartesian(position.data());
+		SphericalToCartesian(position);
 		bars[0].set_progress(i * stepPercent);
 		bars[0].set_option(indicators::option::PrefixText{fmt::format("Anticipated score is: {}? ", i * 200000000000ul / (T_STEP_NUMBER * chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()))});
 	}
@@ -253,8 +252,7 @@ int main(int argc, char *argv[]) {
 	string strFormat = fmt::format(" ({:f},{:f})[{:f},{:f}]", spin, NUT, inc, eps);
 	optional<ProgressBar> bars;
 	if (display_progress) {
-		(*bars)[0].set_option(indicators::option::ForegroundColor{indicators::Color(metric)});
-		(*bars)[0].set_option(indicators::option::PrefixText{string("?") + strFormat});
+		bars.emplace(metric, string("?") + strFormat);
 	}
 	if (ray & 5) {
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * unit.pc, inc, fmt::format("view ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps));
@@ -280,28 +278,28 @@ int main(int argc, char *argv[]) {
 	// NumPy rec(main_metric->Name() + strFormat, {12});
 	// NumPy rec(fmt::format("HotSpot a={:.1f} e={:.2f} i={:.6f} o={:.2f}", a, e, inclination, periapsis), {12});
 	NumPy rec(fmt::format("mcmc test", a, inclination, periapsis, e, ascending_node), {17});
-	array<double, 8> position;
-	array<double, 4> view_info;
+	boost::numeric::ublas::bounded_vector<double, 8> position;
+	boost::numeric::ublas::bounded_vector<double, 5> view_info;
 	int status = 0;
 	double h = 1., stepPercent = 100. / tStepNumber;
 	h = -1;
 	auto object_pointer_collector = vector<Object<double> *>{&star_0};
-	if (status = star_0.IntegratorApply(t, 0.); status != 0)
+	if (status = star_0.IntegratorApply(t, 0., h); status != 0)
 		PrintlnWarning("star_0.IntegratorApply() = {}", status);
 	h = 1;
 	for (int i = 1; i <= tStepNumber; ++i) {
 		tStep += tRec;
-		status = star_0.IntegratorApply(t, tStep);
+		status = star_0.IntegratorApply(t, tStep, h);
 		if (status > 0)
 			PrintlnError("main status = {}", status);
 		star_0.Position(position);
 		if (Hamiltonian)
-			main_metric->HamiltonianToLagrangian(position.data());
+			main_metric->HamiltonianToLagrangian(position);
 		if (ray & 1)
 			viewPtr->Trace(position, star_time, view_info, true);
 		if (ray & 2)
 			cameraPtr->Trace(object_pointer_collector);
-		SphericalToCartesian(position.data());
+		SphericalToCartesian(position);
 		rec.Save(position);
 		rec.Save(t / unit.s);
 		rec.Save(star_0.Energy());

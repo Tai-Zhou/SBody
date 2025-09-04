@@ -60,6 +60,8 @@
 #ifndef SBODY_UTILITY_HPP
 #define SBODY_UTILITY_HPP
 
+#include <cstddef>
+#include <numeric>
 #include <string>
 #include <vector>
 
@@ -68,18 +70,12 @@
 #include <boost/math/special_functions/ellint_rf.hpp>
 #include <boost/math/special_functions/ellint_rj.hpp>
 #include <boost/math/tools/precision.hpp>
+#include <boost/numeric/ublas/lu.hpp>
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/vector.hpp>
 #include <fmt/core.h>
 #include <gsl/gsl_linalg.h>
-#include <gsl/gsl_math.h>
 #include <gsl/gsl_matrix.h>
-#include <gsl/gsl_mode.h>
-#include <gsl/gsl_multimin.h>
-#include <gsl/gsl_multiroots.h>
-#include <gsl/gsl_odeiv2.h>
-#include <gsl/gsl_permutation.h>
-#include <gsl/gsl_poly.h>
-#include <gsl/gsl_roots.h>
-#include <gsl/gsl_sf_ellint.h>
 #include <gsl/gsl_vector.h>
 
 namespace SBody {
@@ -104,10 +100,8 @@ namespace SBody {
 	/// \f$\cos\varepsilon\f$.
 	constexpr long double COS_EPSILON = 0.999999999999999999995l;
 
-	/// Area of a circle with radius of GSL_SQRT_DBL_EPSILON. \f$\pi\varepsilon^2\f$
-	constexpr long double EPSILON_CIRCLE_AREA = boost::math::long_double_constants::pi * GSL_DBL_EPSILON;
-
-	constexpr long double GSL_ROOT3_2_DBL_EPSILON = 3.666852862501036033408990023698041e-11l;
+	/// Area of a circle with radius of SQRT_DBL_EPSILON. \f$\pi\varepsilon^2\f$
+	constexpr long double EPSILON_CIRCLE_AREA = boost::math::long_double_constants::pi * boost::math::tools::epsilon<double>();
 
 	/// Sample number.
 	constexpr int SAMPLE_NUMBER = 100;
@@ -123,183 +117,28 @@ namespace SBody {
 				Z };
 
 	enum Status {
+		// General status
 		SUCCESS = 0,
 		FAILURE = 1,
-	};
+		CONTINUE,
 
-	struct HybridState {
-		gsl_vector *x_trial;
-		gsl_vector *f_trial;
-		gsl_matrix *jacobian;
-		gsl_matrix *lu;
-		gsl_permutation *permutation;
-		gsl_vector *newton;
-		gsl_vector *gradient;
-		long double trust_radius;
-		long double epsilon_coefficient;
-		bool directional;
-	};
+		// Numerical
+		INVALID_ARGUMENT,
+		DOMAIN_ERROR,
+		DIVISION_BY_ZERO,
+		MAX_ITERATIONS_EXCEEDED,
+		SINGULAR_MATRIX,
+		NUMERIC_ERROR,
+		TRUST_REGION_TOO_SMALL,
 
-	struct HybridAdditionState {
-		gsl_vector *x_trial;
-		gsl_vector *x_trial2;
-		gsl_vector *f_trial;
-		gsl_vector *f_trial2;
-		gsl_matrix *jacobian;
-		gsl_matrix *lu;
-		gsl_permutation *permutation;
-		gsl_vector *newton;
-		gsl_vector *gradient;
-		long double trust_radius;
-		long double epsilon_coefficient;
-		long double gradient_coefficient;
-		bool directional;
-	};
+		// Physical
+		NO_INTERSECTION_WITH_TARGET_SURFACE,
+		FALLS_INTO_BLACK_HOLE,
 
-	struct DNewtonState {
-		gsl_vector *x_trial;
-		gsl_vector *f_trial;
-		gsl_matrix *jacobian;
-		gsl_matrix *lu;
-		gsl_permutation *permutation;
-		long double trust_radius;
-		long double epsilon_coefficient;
-		bool directional;
+		// Other
+		NOT_IMPLEMENTED,
+		COMPUTATION_TIMEOUT,
 	};
-	struct DNewtonRotationTranslationState {
-		gsl_vector *x_trial;
-		gsl_vector *dx_translation;
-		gsl_vector *f_trial;
-		gsl_matrix *jacobian;
-		gsl_matrix *lu;
-		gsl_permutation *permutation;
-		long double theta_obs;
-		long double sin_theta_obs;
-		long double cos_theta_obs;
-		long double r_obj;
-		long double sin_theta_obj;
-		long double cos_theta_obj;
-		long double phi_obj;
-		long double projected_x;
-		long double projected_y;
-		long double iota_obj;
-		long double trust_radius;
-		long double epsilon_coefficient;
-		bool directional;
-		bool trace_to_plane;
-	};
-	struct D2NewtonState {
-		gsl_vector *x_trial;
-		gsl_vector *f_trial;
-		gsl_vector *jacobian;
-		gsl_matrix *hessian;
-		gsl_matrix *lu;
-		gsl_permutation *permutation;
-		long double trust_radius;
-	};
-	struct ConjugateGradientState {
-		long double iteration_coefficient;
-		gsl_vector *x_trial;
-		gsl_vector *f_trial;
-		gsl_vector *last_dx;
-		long double gradient_norm;
-		gsl_matrix *jacobian;
-		gsl_matrix *lu;
-		gsl_permutation *permutation;
-		long double trust_radius;
-	};
-	struct TriangleState {
-		gsl_vector *x_trial;
-		gsl_vector *f_trial;
-		gsl_vector *x_a;
-		gsl_vector *x_b;
-		gsl_vector *f_a;
-		gsl_vector *f_b;
-	};
-	struct DirectionState {
-		int directional_num;
-		long double trust_radius;
-		long double delta_angle;
-		long double central_angle;
-		gsl_vector *x_trial, *x_rec;
-		gsl_vector *f_trial, *f_rec;
-	};
-
-	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_hybrid;
-	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_hybrid_addition;
-	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_dnewton;
-	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_dnewton_rotation;
-	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_dnewton_translation;
-	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_d2newton;
-	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_gradient;
-	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_conjugate;
-	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_triangle;
-	extern const gsl_multiroot_fsolver_type *gsl_multiroot_fsolver_sbody_direction;
-
-	class MultiFunctionSolver {
-	  private:
-		gsl_multiroot_fsolver *solver_;
-		static int ScaleX(gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f);
-		static int OneSidedJacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *f, long double epsrel, gsl_matrix *jacobian);
-		static int TwoSidedJacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *f, long double epsrel, gsl_matrix *jacobian);
-		static int OneSidedDirectionalJacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *direction, const gsl_vector *f, long double epsrel, gsl_matrix *jacobian);
-		static int TwoSidedDirectionalJacobian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *direction, const gsl_vector *f, long double epsrel, gsl_matrix *jacobian);
-		static int Hessian(gsl_multiroot_function *F, const gsl_vector *x, const gsl_vector *f, long double epsrel, gsl_vector *jacobian, gsl_matrix *hessian);
-		static void ComputeDiag(const gsl_matrix *J, gsl_vector *diag);
-		static void UpdateDiag(const gsl_matrix *J, gsl_vector *diag);
-		static long double ScaledEnorm(const gsl_vector *d, const gsl_vector *f);
-		static int Dogleg(const gsl_matrix *r, const gsl_vector *qtf, const gsl_vector *diag, long double delta, gsl_vector *newton, gsl_vector *gradient, gsl_vector *p);
-		static int Dogleg(long double trust_radius, long double newton_norm, long double newton_norm2, long double gradient_norm, long double gradient_norm2, long double newton_gradient_dot, const gsl_vector *newton, const gsl_vector *gradient, gsl_vector *dx);
-
-	  public:
-		MultiFunctionSolver(size_t n, const gsl_multiroot_fsolver_type *type = gsl_multiroot_fsolver_dnewton);
-		~MultiFunctionSolver();
-		int Set(gsl_multiroot_function *function, const gsl_vector *x);
-		int Set(gsl_multiroot_function *function, const gsl_vector *x, long double theta_obs, long double sin_theta_obs, long double cos_theta_obs, long double r_obj, long double sin_theta_obj, long double cos_theta_obj, long double phi_obj, long double sin_phi_obj, long double cos_phi_obj, bool trace_to_plane);
-		int Iterate();
-		int Solve(long double epsabs, int max_iteration = 256);
-		int Solve(long double epsabs, long double epsrel, int max_iteration = 256);
-		gsl_vector *Root();
-		gsl_vector *Value();
-		gsl_vector *StepSize();
-		static int HybridAlloc(void *vstate, size_t n);
-		static int HybridSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int HybridIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static void HybridFree(void *vstate);
-		static int HybridAdditionAlloc(void *vstate, size_t n);
-		static int HybridAdditionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int HybridAdditionIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static void HybridAdditionFree(void *vstate);
-		static int DNewtonAlloc(void *vstate, size_t n);
-		static int DNewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int DNewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static void DNewtonFree(void *vstate);
-		static int DNewtonRotationTranslationAlloc(void *vstate, size_t n);
-		static int DNewtonRotationTranslationSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int DNewtonRotationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int DNewtonTranslationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static void DNewtonRotationTranslationFree(void *vstate);
-		static int D2NewtonAlloc(void *vstate, size_t n);
-		static int D2NewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int D2NewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static void D2NewtonFree(void *vstate);
-		static int GradientIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int ConjugateGradientAlloc(void *vstate, size_t n);
-		static int ConjugateGradientSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int ConjugateGradientIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static void ConjugateGradientFree(void *vstate);
-		static int TriangleAlloc(void *vstate, size_t n);
-		static int TriangleSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int TriangleRotationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int TriangleLongestIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static void TriangleFree(void *vstate);
-		static int DirectionAlloc(void *vstate, size_t n);
-		static int DirectionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static int DirectionIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		static void DirectionFree(void *vstate);
-	};
-
-	int CoordinateOrthogonalization(const gsl_vector *x, gsl_matrix *coordinate);
 
 	template <typename Type>
 	Type Power2(Type x) {
@@ -357,6 +196,27 @@ namespace SBody {
 	}
 
 	/**
+	 * @brief
+	 *
+	 * @tparam Type
+	 * @param x
+	 * @return Type
+	 */
+	template <typename Type>
+	Type SinTheta(Type theta) {
+		return std::abs(std::sin(theta));
+	}
+
+	template <typename Type>
+	Type CosTheta(Type theta) {
+		if (theta > boost::math::constants::half_pi<Type>())
+			return std::cos(theta);
+		if (theta < 0.)
+			return -std::cos(theta);
+		return std::cos(theta);
+	}
+
+	/**
 	 * @brief Dot product of vector `x` and `y`. \f$\vec{x}\cdot\vec{y}\f$
 	 *
 	 * @param x vector
@@ -364,15 +224,15 @@ namespace SBody {
 	 * @param dimension dimension of the vector
 	 * @return result
 	 */
-	template <typename Type>
-	Type Dot(const Type x[], const Type y[], size_t dimension = 3) {
-		if (dimension == 3)
-			return x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
-		Type sum = 0.;
-		while (dimension-- > 0)
-			sum += x[dimension] * y[dimension];
-		return sum;
-	}
+	// template <typename Type>
+	// Type Dot(const Type x[], const Type y[], std::size_t dimension = 3) {
+	// 	if (dimension == 3)
+	// 		return x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
+	// 	Type sum = 0.;
+	// 	while (dimension-- > 0)
+	// 		sum += x[dimension] * y[dimension];
+	// 	return sum;
+	// }
 
 	/**
 	 * @brief Dot product of vector `x`. \f$\vec{x}\cdot\vec{x}\f$
@@ -381,14 +241,28 @@ namespace SBody {
 	 * @param dimension dimension of the vector
 	 * @return result
 	 */
-	template <typename Type>
-	Type Dot(const Type x[], size_t dimension = 3) {
-		if (dimension == 3)
-			return x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
-		Type sum = 0.l;
-		while (dimension-- > 0)
-			sum += x[dimension] * x[dimension];
-		return sum;
+	// template <typename Type>
+	// Type Dot(const Type x[], std::size_t dimension = 3) {
+	// 	if (dimension == 3)
+	// 		return x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
+	// 	Type sum = 0.;
+	// 	while (dimension-- > 0)
+	// 		sum += x[dimension] * x[dimension];
+	// 	return sum;
+	// }
+
+	/**
+	 * @brief Dot product of vector `x`. \f$\vec{x}\cdot\vec{x}\f$
+	 *
+	 * @param x vector
+	 * @param dimension dimension of the vector
+	 * @return result
+	 */
+	template <typename Type, typename Iter>
+	Type Dot(const Iter x_begin, const Iter x_end, const Iter y_begin = nullptr) {
+		if (y_begin == nullptr)
+			return std::inner_product(x_begin, x_end, x_begin, Type{0.});
+		return std::inner_product(x_begin, x_end, y_begin, Type{0.});
 	}
 
 	/**
@@ -399,7 +273,7 @@ namespace SBody {
 	 * @return result
 	 */
 	template <typename Type>
-	Type Norm(const Type x[], size_t dimension = 3) {
+	Type Norm(const Type x[], std::size_t dimension = 3) {
 		if (dimension == 3)
 			return std::sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
 		Type sum = 0.;
@@ -407,14 +281,12 @@ namespace SBody {
 			sum += x[dimension] * x[dimension];
 		return std::sqrt(sum);
 	}
+
 	template <typename Type, std::size_t N>
-	Type Norm(const std::array<Type, N> &x) {
+	Type Norm(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
 		if (N == 3)
 			return std::sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
-		Type sum = 0.;
-		for (int i = 0; i < N; ++i)
-			sum += x[i] * x[i];
-		return std::sqrt(sum);
+		return std::sqrt(std::inner_product(x.begin(), x.end(), x.begin(), Type{0.}));
 	}
 
 	/**
@@ -426,7 +298,7 @@ namespace SBody {
 	 * @return status
 	 */
 	template <typename Type>
-	int Cross(const Type x[], const Type y[], Type z[]) {
+	int Cross(const boost::numeric::ublas::bounded_vector<Type, 3> &x, const boost::numeric::ublas::bounded_vector<Type, 3> &y, boost::numeric::ublas::bounded_vector<Type, 3> &z) {
 		z[0] = x[1] * y[2] - x[2] * y[1];
 		z[1] = x[2] * y[0] - x[0] * y[2];
 		z[2] = x[0] * y[1] - x[1] * y[0];
@@ -446,6 +318,13 @@ namespace SBody {
 		return x[0] * (y[1] * z[2] - y[2] * z[1]) + x[1] * (y[2] * z[0] - y[0] * z[2]) + x[2] * (y[0] * z[1] - y[1] * z[0]);
 	}
 
+	template <typename Type, std::size_t N>
+	Type ElementAbsSum(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
+		return std::accumulate(x.begin(), x.end(), Type{0.}, [](Type sum, Type x_i) {
+			return sum + std::abs(x_i);
+		});
+	}
+
 	/**
 	 * @brief Calculate the area of a triangle
 	 *
@@ -455,7 +334,7 @@ namespace SBody {
 	 * @return result
 	 */
 	template <typename Type>
-	Type TriangleArea(const std::array<Type, 3> &x, const std::array<Type, 3> &y, const std::array<Type, 3> &z) {
+	Type TriangleArea(const boost::numeric::ublas::bounded_vector<Type, 3> &x, const boost::numeric::ublas::bounded_vector<Type, 3> &y, const boost::numeric::ublas::bounded_vector<Type, 3> &z) {
 		const Type a = std::sqrt(Power2(y[0] - x[0]) + Power2(y[1] - x[1]) + Power2(y[2] - x[2])),
 				   b = std::sqrt(Power2(z[0] - y[0]) + Power2(z[1] - y[1]) + Power2(z[2] - y[2])),
 				   c = std::sqrt(Power2(x[0] - z[0]) + Power2(x[1] - z[1]) + Power2(x[2] - z[2])),
@@ -499,7 +378,7 @@ namespace SBody {
 	}
 
 	template <typename Type>
-	bool PointInTriangle(const std::array<Type, 2> &a, const std::array<Type, 2> &b, const std::array<Type, 2> &c) {
+	bool PointInTriangle(const boost::numeric::ublas::bounded_vector<Type, 2> &a, const boost::numeric::ublas::bounded_vector<Type, 2> &b, const boost::numeric::ublas::bounded_vector<Type, 2> &c) {
 		return PointInTriangle(a[0], a[1], b[0], b[1], c[0], c[1]);
 	}
 
@@ -513,11 +392,25 @@ namespace SBody {
 	 * @return result
 	 */
 	template <typename Type>
-	bool PointInTriangle(const std::array<Type, 2> &a, const std::array<Type, 2> &b, const std::array<Type, 2> &c, const std::array<Type, 2> &p) {
+	bool PointInTriangle(const boost::numeric::ublas::bounded_vector<Type, 2> &a, const boost::numeric::ublas::bounded_vector<Type, 2> &b, const boost::numeric::ublas::bounded_vector<Type, 2> &c, const boost::numeric::ublas::bounded_vector<Type, 2> &p) {
 		return PointInTriangle(a[0], a[1], b[0], b[1], c[0], c[1], p[0], p[1]);
 	}
 
-	bool PointInTriangle(const gsl_vector *a, const gsl_vector *b, const gsl_vector *c, const gsl_vector *p = nullptr);
+	/**
+	 * @brief Calculate whether point \f$p\f$ locates inside the triangle \f$\Delta abc\f$.
+	 *
+	 * @param a vertex a
+	 * @param b vertex b
+	 * @param c vertex c
+	 * @param p point p
+	 * @return result
+	 */
+	template <typename Type>
+	bool PointInTriangle(const Type a[], const Type b[], const Type c[], const Type p[] = nullptr) {
+		if (p == nullptr)
+			return PointInTriangle(a[0], a[1], b[0], b[1], c[0], c[1]);
+		return PointInTriangle(a[0], a[1], b[0], b[1], c[0], c[1], p[0], p[1]);
+	}
 
 	/**
 	 * @brief Rotate vector `x` around the `axis` by `angle`.
@@ -547,7 +440,39 @@ namespace SBody {
 			x[0] = angle;
 			return Status::SUCCESS;
 		default:
-			return GSL_EINVAL;
+			return Status::INVALID_ARGUMENT;
+		}
+	}
+	/**
+	 * @brief Rotate vector `x` around the `axis` by `angle`.
+	 *
+	 * @param x 3 dimensional vector
+	 * @param axis the rotation axis.
+	 * @param angle in rad
+	 * @return status
+	 */
+	template <typename Type>
+	int RotateAroundAxis(boost::numeric::ublas::bounded_vector<Type, 8> x, bool rotate_velocity, Axis axis, Type angle) {
+		const Type sin_angle = std::sin(angle), cos_angle = std::cos(angle);
+		const std::size_t offset = rotate_velocity ? 5 : 1;
+		switch (axis) {
+		case X:
+			angle = x(offset + 1) * cos_angle - x(offset + 2) * sin_angle;
+			x(offset + 2) = x(offset + 1) * sin_angle + x(offset + 2) * cos_angle;
+			x(offset + 1) = angle;
+			return Status::SUCCESS;
+		case Y:
+			angle = x(offset + 2) * cos_angle - x(offset) * sin_angle;
+			x(offset) = x(offset + 2) * sin_angle + x(offset) * cos_angle;
+			x(offset + 2) = angle;
+			return Status::SUCCESS;
+		case Z:
+			angle = x(offset) * cos_angle - x(offset + 1) * sin_angle;
+			x(offset + 1) = x(offset) * sin_angle + x(offset + 1) * cos_angle;
+			x(offset) = angle;
+			return Status::SUCCESS;
+		default:
+			return Status::INVALID_ARGUMENT;
 		}
 	}
 
@@ -559,12 +484,12 @@ namespace SBody {
 	 * @return status
 	 */
 	template <typename Type>
-	int CartesianToSpherical(const std::array<Type, 4> &cartesian, std::array<Type, 4> &spherical) {
-		if (spherical[1] = Norm(cartesian.begin() + 1); spherical[1] == 0.)
-			return GSL_EZERODIV;
-		spherical[0] = cartesian[0];
-		spherical[2] = acos(cartesian[3] / spherical[1]);
-		spherical[3] = atan2(cartesian[2], cartesian[1]);
+	int CartesianToSpherical(const boost::numeric::ublas::bounded_vector<Type, 4> &cartesian, boost::numeric::ublas::bounded_vector<Type, 4> &spherical) {
+		if (spherical(1) = Norm(cartesian.begin() + 1); spherical(1) == 0.)
+			return Status::DIVISION_BY_ZERO;
+		spherical(0) = cartesian(0);
+		spherical(2) = std::acos(cartesian(3) / spherical(1));
+		spherical(3) = std::atan2(cartesian(2), cartesian(1));
 		return Status::SUCCESS;
 	}
 
@@ -576,17 +501,17 @@ namespace SBody {
 	 * @return status
 	 */
 	template <typename Type>
-	int CartesianToSpherical(const std::array<Type, 8> &cartesian, std::array<Type, 8> &spherical) {
-		if (spherical[1] = Norm(cartesian.begin() + 1); spherical[1] == 0.)
-			return GSL_EZERODIV;
+	int CartesianToSpherical(const boost::numeric::ublas::bounded_vector<Type, 8> &cartesian, boost::numeric::ublas::bounded_vector<Type, 8> &spherical) {
+		if (spherical[1] = Norm(cartesian.data().begin() + 1); spherical[1] == 0.)
+			return Status::DIVISION_BY_ZERO;
 		const Type r_1 = 1. / spherical[1];
 		spherical[0] = cartesian[0];
 		spherical[2] = std::acos(cartesian[3] * r_1);
 		spherical[4] = cartesian[4];
-		spherical[5] = Dot(cartesian.begin() + 1, cartesian.begin() + 5) * r_1;
-		if (const Type r_xy = Norm(cartesian.begin() + 1, 2); r_xy == 0.) {
+		spherical[5] = std::inner_product(cartesian.begin() + 1, cartesian.begin() + 4, cartesian.begin() + 5, Type{0.}) * r_1;
+		if (const Type r_xy = Norm(cartesian.data().begin() + 1, 2); r_xy == 0.) {
 			spherical[3] = atan2(cartesian[6], cartesian[5]);
-			spherical[6] = std::copysign(r_1, cartesian[3]) * Norm(cartesian.begin() + 5, 2);
+			spherical[6] = std::copysign(r_1, cartesian[3]) * Norm(cartesian.data().begin() + 5, 2);
 			spherical[7] = 0;
 		} else {
 			spherical[3] = atan2(cartesian[2], cartesian[1]);
@@ -605,14 +530,14 @@ namespace SBody {
 	 * @return status
 	 */
 	template <typename Type>
-	int CartesianToSpherical(const Type cartesian[], Type spherical[], size_t dimension = 8) {
-#ifndef GSL_RANGE_CHECK_OFF
+	int CartesianToSpherical(const Type cartesian[], Type spherical[], std::size_t dimension = 8) {
+#ifndef SBODY_RELEASE
 		if (dimension != 4 && dimension != 8) {
 			throw std::invalid_argument(fmt::format("Invalid CartesianToSpherical dimension = {}", dimension));
 		}
 #endif
 		if (spherical[1] = Norm(cartesian + 1); spherical[1] == 0.)
-			return GSL_EZERODIV;
+			return Status::DIVISION_BY_ZERO;
 		const Type r_1 = 1. / spherical[1];
 		spherical[0] = cartesian[0];
 		spherical[2] = acos(cartesian[3] * r_1);
@@ -621,7 +546,7 @@ namespace SBody {
 			return Status::SUCCESS;
 		}
 		spherical[4] = cartesian[4];
-		spherical[5] = Dot(cartesian + 1, cartesian + 5) * r_1;
+		spherical[5] = std::inner_product(cartesian + 1, cartesian + 4, cartesian + 5, Type{0.}) * r_1;
 		if (const Type r_xy = Norm(cartesian + 1, 2); r_xy == 0.) {
 			spherical[3] = atan2(cartesian[6], cartesian[5]);
 			spherical[6] = std::copysign(r_1, cartesian[3]) * Norm(cartesian + 5, 2);
@@ -638,26 +563,25 @@ namespace SBody {
 	 * @brief
 	 *
 	 * @param x 4 or 8 dimensional vector
-	 * @param dimension 4 or 8
 	 * @return status
 	 */
 	template <typename Type>
-	int CartesianToSpherical(Type x[], size_t dimension = 8) {
-		Type cartesian[dimension];
-		std::copy(x, x + dimension, cartesian);
-		return CartesianToSpherical(cartesian, x, dimension);
+	int CartesianToSpherical(Type x[]) {
+		Type cartesian[8];
+		std::copy(x, x + 8, cartesian);
+		return CartesianToSpherical(cartesian, x, 8);
 	}
 
 	/**
 	 * @brief
 	 *
 	 * @param x 4 or 8 dimensional vector
-	 * @param dimension 4 or 8
 	 * @return status
 	 */
-	template <typename Type>
-	int CartesianToSpherical(std::array<Type, 8> &x) {
-		const std::array<Type, 8> cartesian(x);
+	template <typename Type, std::size_t N>
+	int CartesianToSpherical(boost::numeric::ublas::bounded_vector<Type, N> &x) {
+		static_assert(N == 4 || N == 8, "Invalid dimension");
+		const boost::numeric::ublas::bounded_vector<Type, N> cartesian(x);
 		return CartesianToSpherical(cartesian, x);
 	}
 
@@ -670,13 +594,45 @@ namespace SBody {
 	 * @return status
 	 */
 	template <typename Type>
-	int SphericalToCartesian(const Type spherical[], Type cartesian[], size_t dimension = 8) {
-#ifndef GSL_RANGE_CHECK_OFF
+	int SphericalToCartesian(const boost::numeric::ublas::bounded_vector<Type, 4> &spherical, boost::numeric::ublas::bounded_vector<Type, 4> &cartesian) {
+		const Type sin_theta = SinTheta(spherical[2]), cos_theta = CosTheta(spherical[2]);
+		cartesian[0] = spherical[0];
+		cartesian[1] = spherical[1] * sin_theta * std::cos(spherical[3]);
+		cartesian[2] = spherical[1] * sin_theta * std::sin(spherical[3]);
+		cartesian[3] = spherical[1] * cos_theta;
+		return Status::SUCCESS;
+	}
+
+	template <typename Type>
+	int SphericalToCartesian(const boost::numeric::ublas::bounded_vector<Type, 8> &spherical, boost::numeric::ublas::bounded_vector<Type, 8> &cartesian) {
+		const Type sin_theta = SinTheta(spherical[2]), cos_theta = CosTheta(spherical[2]), sin_phi = std::sin(spherical[3]), cos_phi = std::cos(spherical[3]);
+		cartesian[0] = spherical[0];
+		cartesian[1] = spherical[1] * sin_theta * cos_phi;
+		cartesian[2] = spherical[1] * sin_theta * sin_phi;
+		cartesian[3] = spherical[1] * cos_theta;
+		cartesian[4] = spherical[4];
+		cartesian[5] = spherical[5] * sin_theta * cos_phi + spherical[1] * (cos_theta * cos_phi * spherical[6] - sin_theta * sin_phi * spherical[7]);
+		cartesian[6] = spherical[5] * sin_theta * sin_phi + spherical[1] * (cos_theta * sin_phi * spherical[6] + sin_theta * cos_phi * spherical[7]);
+		cartesian[7] = spherical[5] * cos_theta - spherical[1] * sin_theta * spherical[6];
+		return Status::SUCCESS;
+	}
+
+	/**
+	 * @brief
+	 *
+	 * @param spherical 4 or 8 dimensional vector
+	 * @param cartesian 4 or 8 dimensional vector
+	 * @param dimension 4 or 8.
+	 * @return status
+	 */
+	template <typename Type>
+	int SphericalToCartesian(const Type spherical[], Type cartesian[], std::size_t dimension = 8) {
+#ifndef SBODY_RELEASE
 		if (dimension != 4 && dimension != 8) {
 			throw std::invalid_argument(fmt::format("Invalid SphericalToCartesian dimension = {}", dimension));
 		}
 #endif
-		const Type sin_theta = std::abs(std::sin(spherical[2])), cos_theta = std::copysign(std::cos(spherical[2]), spherical[2]), sin_phi = std::sin(spherical[3]), cos_phi = std::cos(spherical[3]);
+		const Type sin_theta = SinTheta(spherical[2]), cos_theta = CosTheta(spherical[2]), sin_phi = std::sin(spherical[3]), cos_phi = std::cos(spherical[3]);
 		cartesian[0] = spherical[0];
 		cartesian[1] = spherical[1] * sin_theta * cos_phi;
 		cartesian[2] = spherical[1] * sin_theta * sin_phi;
@@ -694,14 +650,26 @@ namespace SBody {
 	 * @brief
 	 *
 	 * @param x 4 or 8 dimensional vector
-	 * @param dimension 4 or 8.
 	 * @return status
 	 */
 	template <typename Type>
-	int SphericalToCartesian(Type x[], size_t dimension = 8) {
-		Type spherical[dimension];
-		std::copy(x, x + dimension, spherical);
-		return SphericalToCartesian(spherical, x, dimension);
+	int SphericalToCartesian(Type x[]) {
+		Type spherical[8];
+		std::copy(x, x + 8, spherical);
+		return SphericalToCartesian(spherical, x, 8);
+	}
+
+	/**
+	 * @brief
+	 *
+	 * @param x 4 or 8 dimensional vector
+	 * @return status
+	 */
+	template <typename Type, std::size_t N>
+	int SphericalToCartesian(boost::numeric::ublas::bounded_vector<Type, N> &x) {
+		static_assert(N == 4 || N == 8, "Invalid dimension");
+		const boost::numeric::ublas::bounded_vector<Type, N> cartesian(x);
+		return SphericalToCartesian(cartesian, x);
 	}
 
 	template <typename Type>
@@ -732,8 +700,8 @@ namespace SBody {
 	 * @return status
 	 */
 	template <typename Type>
-	int MapTheta(const Type theta_0, Type y[]) {
-		if (OppositeSign(theta_0, y[2])) {
+	int MapTheta(boost::numeric::ublas::bounded_vector<Type, 8> &y, Type &last_theta) {
+		if (OppositeSign(last_theta, y[2])) {
 			y[2] = -y[2];
 			y[3] += boost::math::constants::pi<Type>();
 			y[6] = -y[6];
@@ -741,19 +709,32 @@ namespace SBody {
 			y[2] += boost::math::constants::pi<Type>();
 		else if (y[2] > boost::math::constants::half_pi<Type>())
 			y[2] -= boost::math::constants::pi<Type>();
+		last_theta = y[2];
 		return Status::SUCCESS;
 	}
 
-	template <typename Type>
-	int MapTheta(const Type theta_0, double y[]) {
-		if (OppositeSign(theta_0, static_cast<Type>(y[2]))) {
-			y[2] = -y[2];
-			y[3] += boost::math::constants::pi<Type>();
-			y[6] = -y[6];
-		} else if (y[2] <= -boost::math::constants::half_pi<Type>())
-			y[2] += boost::math::constants::pi<Type>();
-		else if (y[2] > boost::math::constants::half_pi<Type>())
-			y[2] -= boost::math::constants::pi<Type>();
+	template <typename Stepper, typename Type>
+	int DenseStepperMapTheta(Stepper &stepper, Type &last_theta) {
+		Type current_theta = stepper.current_state()[2];
+		if (OppositeSign(last_theta, current_theta)) {
+			boost::numeric::ublas::bounded_vector<Type, 8> refreshed_state = stepper.current_state();
+			refreshed_state[2] = -refreshed_state[2];
+			refreshed_state[3] += boost::math::constants::pi<Type>();
+			refreshed_state[6] = -refreshed_state[6];
+			stepper.initialize(refreshed_state, stepper.current_time(), stepper.current_time_step());
+			last_theta = refreshed_state[2];
+		} else if (current_theta <= -boost::math::constants::half_pi<Type>()) {
+			boost::numeric::ublas::bounded_vector<Type, 8> refreshed_state = stepper.current_state();
+			refreshed_state[2] += boost::math::constants::pi<Type>();
+			stepper.initialize(refreshed_state, stepper.current_time(), stepper.current_time_step());
+			last_theta = refreshed_state[2];
+		} else if (current_theta > boost::math::constants::half_pi<Type>()) {
+			boost::numeric::ublas::bounded_vector<Type, 8> refreshed_state = stepper.current_state();
+			refreshed_state[2] -= boost::math::constants::pi<Type>();
+			stepper.initialize(refreshed_state, stepper.current_time(), stepper.current_time_step());
+			last_theta = refreshed_state[2];
+		} else
+			last_theta = current_theta;
 		return Status::SUCCESS;
 	}
 
@@ -816,8 +797,7 @@ namespace SBody {
 	 * @return status
 	 */
 	template <typename Type>
-	int LinearInterpolation(Type x, Type x0, Type x1, const Type y0[], const Type y1[], Type y[], size_t size) { // FIXME
-		memset(y, 0, sizeof(Type) * size);
+	int LinearInterpolation(Type x, Type x0, Type x1, const Type y0[], const Type y1[], Type y[], std::size_t size) { // FIXME
 		if (x0 == x1) {
 			while (size-- > 0)
 				y[size] = 0.5 * (y0[size] + y1[size]);
@@ -826,6 +806,18 @@ namespace SBody {
 		const Type x01_1 = 1. / (x1 - x0);
 		while (size-- > 0)
 			y[size] = (x - x0) * x01_1 * y1[size] + (x1 - x) * x01_1 * y0[size];
+		return Status::SUCCESS;
+	}
+	template <typename Type, std::size_t N>
+	int LinearInterpolation(Type x, Type x0, Type x1, const boost::numeric::ublas::bounded_vector<Type, N> &y0, const boost::numeric::ublas::bounded_vector<Type, N> &y1, Type y[]) { // FIXME
+		if (x0 == x1) {
+			for (std::size_t i = 0; i < N; ++i)
+				y[i] = 0.5 * (y0(i) + y1(i));
+			return Status::SUCCESS;
+		}
+		const Type x01_1 = 1. / (x1 - x0);
+		for (std::size_t i = 0; i < N; ++i)
+			y[i] = (x - x0) * x01_1 * y1(i) + (x1 - x) * x01_1 * y0(i);
 		return Status::SUCCESS;
 	}
 
@@ -846,6 +838,25 @@ namespace SBody {
 		SphericalToCartesian(y0, c0);
 		SphericalToCartesian(y1, c1);
 		return LinearInterpolation(t, t0, t1, c0, c1, y, 8);
+	}
+
+	/**
+	 * @brief Linear interpolation of two spherical positions `y0` and `y1` at `t`, stored in `y`. \f[y=\frac{\text{SphericalToCartesian}(y_0)(t_1-t)+\text{SphericalToCartesian}(y_1)(t-t_0)}{t_1-t_0}\f]
+	 *
+	 * @param t time to evaluate \f$y\f$
+	 * @param t0 \f$t_0\f$
+	 * @param t1 \f$t_1\f$
+	 * @param y0 8 dimensional vector, spherical, \f$y_0\f$
+	 * @param y1 8 dimensional vector, spherical, \f$y_1\f$
+	 * @param y 8 dimensional vector, cartesian, \f$y\f$
+	 * @return status
+	 */
+	template <typename Type>
+	int InterpolateSphericalPositionToCartesian(Type t, Type t0, Type t1, const boost::numeric::ublas::bounded_vector<Type, 8> &y0, const boost::numeric::ublas::bounded_vector<Type, 8> &y1, Type y[]) {
+		boost::numeric::ublas::bounded_vector<Type, 8> c0, c1;
+		SphericalToCartesian(y0, c0);
+		SphericalToCartesian(y1, c1);
+		return LinearInterpolation(t, t0, t1, c0, c1, y);
 	}
 
 	/**
@@ -873,24 +884,24 @@ namespace SBody {
 		return spectral_density * magnification;
 	}
 
-	template <typename Type>
-	int PolishQuadraticRoot(Type a, Type b, Type roots[], int root_num) {
+	template <typename Type, typename Iterator>
+	int PolishQuadraticRoot(Type a, Type b, Iterator roots_begin, Iterator roots_end) {
 		int convinced_root_num = 0;
-		for (int i = 0; i < root_num; ++i) {
+		for (auto p = roots_begin; p != roots_end; ++p) {
 			for (int j = 32; j > 0; --j) {
-				Type f = roots[i] + a;
-				f = std::fma(f, roots[i], b);
-				Type df = std::fma(2.l, roots[i], a);
+				Type f = *p + a;
+				f = std::fma(f, *p, b);
+				Type df = std::fma(2.l, *p, a);
 				const Type diff = f * df / (df * df - f);
-				if (std::abs(roots[i]) * boost::math::tools::epsilon<Type>() < std::abs(diff))
-					roots[i] -= diff;
+				if (std::abs(*p) * boost::math::tools::epsilon<Type>() < std::abs(diff))
+					*p -= diff;
 				else {
 					++convinced_root_num;
 					break;
 				}
 			}
 		}
-		std::sort(roots, roots + convinced_root_num);
+		std::sort(roots_begin, roots_begin + convinced_root_num);
 		return convinced_root_num;
 	}
 
@@ -1152,46 +1163,12 @@ namespace SBody {
 		}
 		return boost::math::ellint_rj(x, y, z, p);
 	}
-
-	/**
-	 * @brief \f[\int_y^x(a_5+b_5t)^{p_5/2}\prod_{i=1}^4(a_i+b_it)^{-1/2}dt\f].
-	 *
-	 * @return result
-	 */
-	template <typename Type>
-	Type EllipticIntegral_GSL(int p5, Type y, Type x, Type a5, Type b5, Type a1, Type b1, Type a2, Type b2, Type a3, Type b3, Type a4 = 1., Type b4 = 0.) {
-		if (x == y)
-			return 0.;
-		if (p5 != 0 && p5 != -2 && p5 != -4)
-			return GSL_NAN;
-		const Type d12 = a1 * b2 - a2 * b1, d13 = a1 * b3 - a3 * b1, d14 = a1 * b4 - a4 * b1;
-		const Type d23 = a2 * b3 - a3 * b2, d24 = a2 * b4 - a4 * b2, d34 = a3 * b4 - a4 * b3;
-		const Type X1 = std::sqrt(a1 + b1 * x), X2 = std::sqrt(a2 + b2 * x), X3 = std::sqrt(a3 + b3 * x), X4 = std::sqrt(a4 + b4 * x), X52 = a5 + b5 * x;
-		const Type Y1 = std::sqrt(a1 + b1 * y), Y2 = std::sqrt(a2 + b2 * y), Y3 = std::sqrt(a3 + b3 * y), Y4 = std::sqrt(a4 + b4 * y), Y52 = a5 + b5 * y;
-		const Type U2_12 = Power2((X1 * X2 * Y3 * Y4 + Y1 * Y2 * X3 * X4) / (x - y));
-		const Type U2_13 = U2_12 - d14 * d23;
-		const Type U2_14 = U2_12 - d13 * d24;
-		const Type I1 = 2. * gsl_sf_ellint_RF(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE);
-		if (p5 == 0)
-			return I1;
-		const Type b52 = Power2(b5);
-		const Type d15 = a1 * b5 - a5 * b1, d15_1 = 1. / d15, d25 = a2 * b5 - a5 * b2, d35 = a3 * b5 - a5 * b3, d45 = a4 * b5 - a5 * b4;
-		const Type W2 = U2_12 - d13 * d14 * d25 * d15_1;
-		const Type Q2 = X52 * Y52 * W2 / Power2(X1 * Y1);
-		const Type P2 = Q2 + d25 * d35 * d45 * d15_1;
-		const Type RC_P2_Q2 = X1 * Y1 == 0. ? 0. : CarlsonRC(P2, Q2);
-		const Type I3 = 2. * (d12 * d13 * d14 * d15_1 / 3. * CarlsonRJ(U2_12, U2_13, U2_14, W2) + RC_P2_Q2);
-		if (p5 == -2)
-			return (b5 * I3 - b1 * I1) * d15_1;
-		const Type I2 = 2. * (d12 * d13 * gsl_sf_ellint_RD(U2_12, U2_13, U2_14, GSL_PREC_DOUBLE) / 3. + X1 * Y1 / (X4 * Y4 * std::sqrt(U2_14)));
-		return -0.5 * d15_1 * (b1 / d15 + b2 / d25 + b3 / d35 + b4 / d45) * b5 * I3 + b52 * d24 * d34 / (2. * d15 * d25 * d35 * d45) * I2 + Power2(b1 * d15_1) * (1. - d12 * d13 * b52 / (2. * b1 * b1 * d25 * d35)) * I1 - b52 / (d15 * d25 * d35) * (X1 * X2 * X3 / (X4 * X52) - Y1 * Y2 * Y3 / (Y4 * Y52));
-	}
 	template <typename Type>
 	Type EllipticIntegral(int p5, Type y, Type x, Type a5, Type b5, Type a1, Type b1, Type a2, Type b2, Type a3, Type b3, Type a4 = 1., Type b4 = 0.) {
 		if (x == y)
 			return 0.;
 		if (p5 != 0 && p5 != -2 && p5 != -4)
-			return GSL_NAN;
+			return std::numeric_limits<Type>::quiet_NaN();
 		const Type d12 = a1 * b2 - a2 * b1, d13 = a1 * b3 - a3 * b1, d14 = a1 * b4 - a4 * b1;
 		const Type d23 = a2 * b3 - a3 * b2, d24 = a2 * b4 - a4 * b2, d34 = a3 * b4 - a4 * b3;
 		const Type X1 = std::sqrt(a1 + b1 * x), X2 = std::sqrt(a2 + b2 * x), X3 = std::sqrt(a3 + b3 * x), X4 = std::sqrt(a4 + b4 * x), X52 = a5 + b5 * x;
@@ -1215,50 +1192,12 @@ namespace SBody {
 		return -0.5 * d15_1 * (b1 / d15 + b2 / d25 + b3 / d35 + b4 / d45) * b5 * I3 + b52 * d24 * d34 / (2. * d15 * d25 * d35 * d45) * I2 + Power2(b1 * d15_1) * (1. - d12 * d13 * b52 / (2. * b1 * b1 * d25 * d35)) * I1 - b52 / (d15 * d25 * d35) * (X1 * X2 * X3 / (X4 * X52) - Y1 * Y2 * Y3 / (Y4 * Y52));
 	}
 
-	/**
-	 * @brief \f[\int_y^x(a_5+b_5t)^{p_5/2}(f+gt+ht^2)^{-1/2}\prod_{i=1,4}(a_i+b_it)^{-1/2}dt\f].
-	 *
-	 * @return result
-	 */
-	template <typename Type>
-	Type EllipticIntegral2Complex_GSL(int p5, Type y, Type x, Type a5, Type b5, Type f, Type g, Type h, Type a1, Type b1, Type a4 = 1., Type b4 = 0.) {
-		if (x == y)
-			return 0.;
-		if (p5 != 0 && p5 != -2 && p5 != -4)
-			return GSL_NAN;
-		const Type b12 = Power2(b1), b52 = Power2(b5);
-		const Type X1 = std::sqrt(a1 + b1 * x), X4 = std::sqrt(a4 + b4 * x);
-		const Type Y1 = std::sqrt(a1 + b1 * y), Y4 = std::sqrt(a4 + b4 * y);
-		const Type xi = std::sqrt(f + (g + h * x) * x), eta = std::sqrt(f + (g + h * y) * y);
-		const Type M2 = Power2(X1 * Y4 + X4 * Y1) * (Power2((xi + eta) / (x - y)) - h);
-		const Type c2_11 = 2 * (f * b12 - g * a1 * b1 + h * a1 * a1), c2_44 = 2 * (f * b4 * b4 - g * a4 * b4 + h * a4 * a4);
-		const Type c2_14 = 2. * f * b1 * b4 - g * (a1 * b4 + a4 * b1) + 2. * h * a1 * a4, c2_15 = 2. * f * b1 * b5 - g * (a1 * b5 + a5 * b1) + 2. * h * a1 * a5;
-		const Type c11 = std::sqrt(c2_11), c44 = std::sqrt(c2_44), c11_c44 = c11 * c44;
-		const Type L2m = std::max(0., M2 + c2_14 - c11_c44), L2p = std::max(0., M2 + c2_14 + c11_c44);
-		const Type I1 = 4. * gsl_sf_ellint_RF(M2, L2m, L2p, GSL_PREC_DOUBLE);
-		if (p5 == 0)
-			return I1;
-		const Type X52 = a5 + b5 * x, Y52 = a5 + b5 * y;
-		const Type c2_55 = 2 * (f * b52 - g * a5 * b5 + h * a5 * a5), c55 = std::sqrt(c2_55);
-		const Type d14 = a1 * b4 - a4 * b1, d15 = a1 * b5 - a5 * b1, d15_1 = 1. / d15, d45 = a4 * b5 - a5 * b4;
-		const Type W2p = M2 + d14 * (c2_15 + c11 * c55) * d15_1;
-		const Type U = (X1 * X4 * eta + Y1 * Y4 * xi) / (x - y), U2 = Power2(U);
-		const Type W2 = U2 - 0.5 * c2_11 * d45 * d15_1;
-		const Type Q2 = X52 * Y52 * W2 / Power2(X1 * Y1);
-		const Type P2 = Q2 + 0.5 * c2_55 * d45 * d15_1;
-		const Type RC_P2_Q2 = X1 * Y1 == 0. ? 0. : CarlsonRC(P2, Q2);
-		const Type I3 = 2. * (c11 / (3. * c55) * (4. * (W2p - M2) * CarlsonRJ(M2, L2m, L2p, W2p) - 1.5 * I1 + 3. * CarlsonRC(U2, W2)) + RC_P2_Q2);
-		if (p5 == -2)
-			return (b5 * I3 - b1 * I1) * d15_1;
-		const Type I2 = 2. * (c11 / (3. * c44) * (4. * (c2_14 + c11_c44) * gsl_sf_ellint_RD(M2, L2m, L2p, GSL_PREC_DOUBLE) - 1.5 * I1 + 3. / U) + X1 * Y1 / (X4 * Y4 * U));
-		return -0.5 * d15_1 * ((b1 * b5) / d15 + 2. * b5 * (g * b5 - 2. * h * a5) / c2_55 + (b4 * b5) / d45) * I3 + b52 * 0.5 * c2_44 / (d15 * d45 * c2_55) * I2 + Power2(b1 * d15_1) * (1. - 0.5 * c2_11 * b52 / (b12 * c2_55)) * I1 - b52 / (0.5 * d15 * c2_55) * (X1 * xi / (X4 * X52) - Y1 * eta / (Y4 * Y52));
-	}
 	template <typename Type>
 	Type EllipticIntegral2Complex(int p5, Type y, Type x, Type a5, Type b5, Type f, Type g, Type h, Type a1, Type b1, Type a4 = 1., Type b4 = 0.) {
 		if (x == y)
 			return 0.;
 		if (p5 != 0 && p5 != -2 && p5 != -4)
-			return GSL_NAN;
+			return std::numeric_limits<Type>::quiet_NaN();
 		const Type b12 = b1 * b1, b52 = b5 * b5;
 		const Type X1 = std::sqrt(a1 + b1 * x), X4 = std::sqrt(a4 + b4 * x);
 		const Type Y1 = std::sqrt(a1 + b1 * y), Y4 = std::sqrt(a4 + b4 * y);
@@ -1286,66 +1225,12 @@ namespace SBody {
 		const Type I2 = 2. * (c11 / (3. * c44) * (4. * (c2_14 + c11_c44) * boost::math::ellint_rd(M2, L2m, L2p) - 1.5 * I1 + 3. / U) + X1 * Y1 / (X4 * Y4 * U));
 		return -0.5 * d15_1 * ((b1 * b5) / d15 + 2. * b5 * (g * b5 - 2. * h * a5) / c2_55 + (b4 * b5) / d45) * I3 + b52 * 0.5 * c2_44 / (d15 * d45 * c2_55) * I2 + Power2(b1 * d15_1) * (1. - 0.5 * c2_11 * b52 / (b12 * c2_55)) * I1 - b52 / (0.5 * d15 * c2_55) * (X1 * xi / (X4 * X52) - Y1 * eta / (Y4 * Y52));
 	}
-
-	/**
-	 * @brief \f[\int_y^x(a_5+b_5t)^{p_5/2}\prod_{i=1}^2(f_i+g_it+h_it^2)^{-1/2}dt\f].
-	 *
-	 * @return result
-	 */
-	template <typename Type>
-	Type EllipticIntegral4Complex_GSL(int p5, Type y, Type x, Type a5, Type b5, Type f1, Type g1, Type h1, Type f2, Type g2, Type h2) {
-		if (x == y)
-			return 0.;
-		if (p5 != 0 && p5 != -2 && p5 != -4)
-			return GSL_NAN;
-		const Type x_y_1 = 1. / (x - y);
-		const Type xi12 = f1 + (g1 + h1 * x) * x, eta12 = f1 + (g1 + h1 * y) * y;
-		const Type xi22 = f2 + (g2 + h2 * x) * x, eta22 = f2 + (g2 + h2 * y) * y;
-		const Type xi1 = std::sqrt(xi12), eta1 = std::sqrt(eta12);
-		const Type xi2 = std::sqrt(xi22), eta2 = std::sqrt(eta22);
-		const Type xi1p = (g1 + 2. * h1 * x) / (2. * xi1), eta_1p = (g1 + 2. * h1 * y) / (2. * eta1);
-		const Type B = xi1p * xi2 - eta_1p * eta2;
-		const Type theta1 = xi12 + eta12 - h1 * Power2(x - y);
-		const Type theta2 = xi22 + eta22 - h2 * Power2(x - y);
-		const Type zeta1 = std::sqrt(2. * xi1 * eta1 + theta1), zeta2 = std::sqrt(2. * xi2 * eta2 + theta2);
-		const Type U = (xi1 * eta2 + xi2 * eta1) * x_y_1, U2 = Power2(U);
-		const Type M = zeta1 * zeta2 * x_y_1;
-		const Type M2 = Power2(M);
-		const Type delta11_2 = 4. * f1 * h1 - Power2(g1), delta12_2 = 2. * (f1 * h2 + f2 * h1) - g1 * g2, delta22_2 = 4. * f2 * h2 - Power2(g2);
-		const Type Delta = std::sqrt(Power2(delta12_2) - delta11_2 * delta22_2);
-		const Type Delta_m = delta12_2 - Delta, Delta_p = delta12_2 + Delta;
-		const Type L2m = M2 + Delta_m, L2p = M2 + Delta_p;
-		const Type RF = gsl_sf_ellint_RF(M2, L2m, L2p, GSL_PREC_DOUBLE);
-		if (p5 == 0)
-			return 4. * RF;
-		const Type G = 2. * Delta * Delta_p * gsl_sf_ellint_RD(M2, L2m, L2p, GSL_PREC_DOUBLE) / 3. + Delta / (2. * U) + (delta12_2 * theta1 - delta11_2 * theta2) / (4. * xi1 * eta1 * U);
-		const Type Sigma = G - Delta_p * RF + B;
-		const Type alpha15 = 2. * f1 * b5 - g1 * a5, beta15 = g1 * b5 - 2. * h1 * a5;
-		const Type alpha25 = 2. * f2 * b5 - g2 * a5, beta25 = g2 * b5 - 2. * h2 * a5;
-		const Type gamma1 = 0.5 * (alpha15 * b5 - beta15 * a5), gamma2 = 0.5 * (alpha25 * b5 - beta25 * a5);
-		const Type gamma1_1 = 1. / gamma1, gamma2_1 = 1. / gamma2;
-		const Type Lambda = delta11_2 * gamma2 * gamma1_1;
-		const Type Omega2 = M2 + Lambda;
-		const Type psi = 0.5 * (alpha15 * beta25 - alpha25 * beta15);
-		const Type xi5 = a5 + b5 * x, eta5 = a5 + b5 * y;
-		const Type X = 0.5 * x_y_1 * (xi5 * (alpha15 + beta15 * y) * eta2 / eta1 + eta5 * (alpha15 + beta15 * x) * xi2 / xi1);
-		const Type S = 0.5 * (M2 + delta12_2) - U2, S2 = Power2(S);
-		const Type mu = gamma1 * xi5 * eta5 / (xi1 * eta1);
-		const Type T = mu * S + 2. * gamma1 * gamma2, T2 = Power2(T);
-		const Type V2 = Power2(mu) * (S2 + Lambda * U2);
-		const Type a = S * Omega2 / U + 2. * Lambda * U, a2 = Power2(a);
-		const Type b2 = (S2 / U2 + Lambda) * Power2(Omega2);
-		const Type H = delta11_2 * psi * Power2(gamma1_1) * (CarlsonRJ(M2, L2m, L2p, Omega2) / 3. + 0.5 * CarlsonRC(a2, b2)) - X * CarlsonRC(T2, V2);
-		if (p5 == -2)
-			return -2. * (b5 * H + beta15 * RF * gamma1_1);
-		return b5 * (beta15 * gamma1_1 + beta25 * gamma2_1) * H + Power2(beta15 * gamma1_1) * RF + Power2(b5) * (Sigma - b5 * (xi1 * xi2 / xi5 - eta1 * eta2 / eta5)) * gamma1_1 * gamma2_1;
-	}
 	template <typename Type>
 	Type EllipticIntegral4Complex(int p5, Type y, Type x, Type a5, Type b5, Type f1, Type g1, Type h1, Type f2, Type g2, Type h2) {
 		if (x == y)
 			return 0.;
 		if (p5 != 0 && p5 != -2 && p5 != -4)
-			return GSL_NAN;
+			return std::numeric_limits<Type>::quiet_NaN();
 		const Type x_y_1 = 1. / (x - y);
 		const Type xi12 = f1 + (g1 + h1 * x) * x, eta12 = f1 + (g1 + h1 * y) * y;
 		const Type xi22 = f2 + (g2 + h2 * x) * x, eta22 = f2 + (g2 + h2 * y) * y;
@@ -1389,117 +1274,1578 @@ namespace SBody {
 		return b5 * (beta15 * gamma1_1 + beta25 * gamma2_1) * H + Power2(beta15 * gamma1_1) * RF + b5 * b5 * (Sigma - b5 * (xi1 * xi2 / xi5 - eta1 * eta2 / eta5)) * gamma1_1 * gamma2_1;
 	}
 
-	/**
-	 * @brief A wrapper of the gsl_odeiv2_evolve
-	 *
-	 */
-	class Integrator {
-	  private:
-		///
-		gsl_odeiv2_control *control_;
-		///
-		gsl_odeiv2_evolve *evolve_;
-		///
-		gsl_odeiv2_step *step_;
-		///
-		gsl_odeiv2_system system_;
-
-	  public:
-		/**
-		 * @brief Construct a new Integrator object.
-		 *
-		 * @param function The function calculates \f[\frac{\mathrm dy_i(t)}{\mathrm dt}=f_i\left[t,y_1(t),\dots,y_n(t)\right].\f]
-		 * @param jacobian The jacobian of the function \f[J_{ij}=\frac{\partial f_i\left[t,y(t)\right]}{\partial y_j}.\f]
-		 * @param params The parameters passed to the function, like the PN parameter, or the spin of the black hole.
-		 * @param type Type of the algorithms. Explicit embedded Runge-Kutta Prince-Dormand (8, 9) method is set by default.
-		 */
-		Integrator(int (*function)(double, const double *, double *, void *), int (*jacobian)(double, const double *, double *, double *, void *), void *params = nullptr, const gsl_odeiv2_step_type *type = gsl_odeiv2_step_rk8pd) : control_(gsl_odeiv2_control_y_new(absolute_accuracy, relative_accuracy)), evolve_(gsl_odeiv2_evolve_alloc(8)), step_(gsl_odeiv2_step_alloc(type, 8)) {
-			system_ = gsl_odeiv2_system{function, jacobian, 8UL, params};
-		}
-
-		/// Destructor
-		~Integrator() {
-			gsl_odeiv2_control_free(control_);
-			gsl_odeiv2_evolve_free(evolve_);
-			gsl_odeiv2_step_free(step_);
-		}
-
-		/**
-		 * @brief `gsl_odeiv2_evolve_apply`.
-		 *
-		 * @param t time.
-		 * @param t1 maximum time not to be exceeded by the time step.
-		 * @param h step size.
-		 * @param y values of the integrated system.
-		 * @return status
-		 */
-		int Apply(double *t, long double t1, double *h, double *y) {
-			int status = 0;
-			long double theta_0 = y[2];
-			if (*h > 0)
-				while (status <= 0 && *t < t1)
-					status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
+	template <typename Type>
+	int CoordinateOrthogonalization(const boost::numeric::ublas::vector<Type> &x, boost::numeric::ublas::bounded_matrix<Type, 4, 4> &coordinate) {
+		namespace ublas = boost::numeric::ublas;
+		const std::size_t N = x.size();
+		coordinate.clear();
+		std::vector<ublas::matrix_column<ublas::bounded_matrix<Type, 4, 4>>> coordinate_columns(N);
+		for (int i = 0; i < N; ++i)
+			coordinate_columns[i] = ublas::matrix_column<ublas::bounded_matrix<Type, 4, 4>>(coordinate, i);
+		int coordinate_idx = 0;
+		coordinate_columns[0] = x / ublas::norm_2(x);
+		for (int i = 1; i < N; ++i) {
+			coordinate_columns[i] = ublas::zero_vector<Type>(N);
+			coordinate_columns[i][coordinate_idx] = 1.;
+			for (int j = 0; j < i; ++j) {
+				Type dot_product = ublas::inner_prod(coordinate_columns[i], coordinate_columns[j]);
+				coordinate_columns[i] -= coordinate_columns[j] * dot_product;
+			}
+			Type base_norm = ublas::norm_2(coordinate_columns[i]);
+			if (base_norm > boost::math::tools::root_epsilon<Type>())
+				coordinate_columns[i] /= base_norm;
+			else if (coordinate_idx == N)
+				return Status::FAILURE;
 			else
-				while (status <= 0 && *t > t1)
-					status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
-			MapTheta(theta_0, y);
-			y[3] = ModBy2Pi(y[3]);
+				--i;
+		}
+		return Status::SUCCESS;
+	}
+
+	template <typename Type, std::size_t N>
+	int CoordinateOrthogonalization(const boost::numeric::ublas::bounded_vector<Type, N> &x, boost::numeric::ublas::bounded_matrix<Type, N, N> &coordinate) {
+		namespace ublas = boost::numeric::ublas;
+		coordinate.clear();
+		std::vector<ublas::matrix_column<ublas::bounded_matrix<Type, N, N>>> coordinate_columns;
+		coordinate_columns.reserve(N);
+		for (int i = 0; i < N; ++i)
+			coordinate_columns.emplace_back(ublas::matrix_column<ublas::bounded_matrix<Type, N, N>>(coordinate, i));
+		int coordinate_idx = 0;
+		coordinate_columns[0] = x / ublas::norm_2(x);
+		for (int i = 1; i < N; ++i) {
+			coordinate_columns[i] = ublas::zero_vector<Type>(N);
+			coordinate_columns[i][coordinate_idx] = 1.;
+			for (int j = 0; j < i; ++j) {
+				Type dot_product = ublas::inner_prod(coordinate_columns[i], coordinate_columns[j]);
+				coordinate_columns[i] -= coordinate_columns[j] * dot_product;
+			}
+			Type base_norm = ublas::norm_2(coordinate_columns[i]);
+			if (base_norm > boost::math::tools::root_epsilon<Type>())
+				coordinate_columns[i] /= base_norm;
+			else if (coordinate_idx == N)
+				return Status::FAILURE;
+			else
+				--i;
+		}
+		return Status::SUCCESS;
+	}
+
+	template <typename Type, std::size_t N, typename Parameter>
+	class MultiFunctionSolver {
+	  protected:
+		std::size_t dimension_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_;
+		boost::numeric::ublas::bounded_vector<Type, N> dx_;
+		int (*function_)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &);
+		Parameter &function_parameters_;
+		int Eval() {
+			return function_(x_, f_, function_parameters_);
+		}
+		int Eval(const boost::numeric::ublas::bounded_vector<Type, N> &x, boost::numeric::ublas::bounded_vector<Type, N> &f) {
+			return function_(x, f, function_parameters_);
+		}
+		int ScaleX(boost::numeric::ublas::bounded_vector<Type, N> &x, boost::numeric::ublas::bounded_vector<Type, N> &f) {
+			for (int status = Eval(x, f); status != Status::SUCCESS; status = Eval(x, f)) {
+				if (status != GSL_EDOM)
+					return status;
+				x *= f(0);
+			}
+			return Status::SUCCESS;
+		}
+		// int OneSidedJacobian(const gsl_vector *x, const gsl_vector *f, Type epsrel, gsl_matrix *jacobian) {
+		// 	const std::size_t n = x->size;
+		// 	const std::size_t m = f->size;
+		// 	const std::size_t n1 = jacobian->size1;
+		// 	const std::size_t n2 = jacobian->size2;
+		// 	if (m != n1 || n != n2)
+		// 		GSL_ERROR("function and jacobian are not conformant", GSL_EBADLEN);
+		// 	gsl_vector *x1 = gsl_vector_alloc(n);
+		// 	if (x1 == nullptr)
+		// 		GSL_ERROR("failed to allocate space for x1 workspace", GSL_ENOMEM);
+		// 	gsl_vector_memcpy(x1, x); /* copy x into x1 */
+		// 	for (std::size_t j = 0; j < n; ++j) {
+		// 		Type x_j = gsl_vector_get(x, j);
+		// 		Type dx = abs(x_j) >= 1. ? -epsrel * x_j : -epsrel * boost::math::sign(x_j);
+		// 		gsl_vector_set(x1, j, x_j + dx);
+		// 		gsl_vector_view col_j = gsl_matrix_column(jacobian, j);
+		// 		if (int status = Eval(x1, &col_j.vector); status != Status::SUCCESS) {
+		// 			gsl_vector_free(x1);
+		// 			return Status::NUMERIC_ERROR;
+		// 		}
+		// 		gsl_blas_daxpy(-1., f, &col_j.vector);
+		// 		gsl_blas_dscal(1. / dx, &col_j.vector);
+		// 		gsl_vector_set(x1, j, x_j);
+		// 	}
+		// 	gsl_vector_free(x1);
+		// 	return Status::SUCCESS;
+		// }
+		int TwoSidedJacobian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type epsrel, boost::numeric::ublas::bounded_matrix<Type, N, N> &jacobian) {
+			namespace ublas = boost::numeric::ublas;
+			int status = Status::SUCCESS;
+			ublas::bounded_vector<Type, N> x1(x), f_trial_plus, f_trial_minus;
+			for (std::size_t j = 0; j < N; ++j) {
+				const Type x_j = x(j);
+				// auto jacobian_column_j = ublas::matrix_column(jacobian, j);
+				Type dx = std::abs(x_j) >= 1. ? -epsrel * x_j : -std::copysign(epsrel, x_j);
+				for (status = Status::CONTINUE; std::abs(dx) < std::abs(x_j) * boost::math::tools::epsilon<Type>(); dx *= 0.5) {
+					x1(j) = x_j + dx;
+					if (status = Eval(x1, f_trial_plus); status == Status::SUCCESS)
+						break;
+				}
+				if (status != Status::SUCCESS) {
+					dx = std::abs(x_j) >= 1. ? -epsrel * x_j : -std::copysign(epsrel, x_j);
+					for (status = Status::CONTINUE; std::abs(dx) < std::abs(x_j) * boost::math::tools::epsilon<Type>(); dx *= 0.5) {
+						x1(j) = x_j - dx;
+						if (status = Eval(x1, f_trial_minus); status == Status::SUCCESS) {
+							ublas::matrix_column(jacobian, j) = (f - f_trial_minus) / dx;
+							break;
+						}
+					}
+					return Status::FAILURE;
+				} else {
+					x1(j) = x_j - dx;
+					if (status = Eval(x1, f_trial_minus); status == Status::SUCCESS) {
+						ublas::matrix_column(jacobian, j) = (f - f_trial_minus) / dx;
+					} else {
+						ublas::matrix_column(jacobian, j) = 0.5 * (f_trial_plus - f_trial_minus) / dx;
+						status = Status::SUCCESS;
+					}
+				}
+				x1(j) = x_j;
+			}
 			return status;
 		}
-
-		/**
-		 * @brief `gsl_odeiv2_evolve_apply`.
-		 *
-		 * @param t time.
-		 * @param t1 maximum time not to be exceeded by the time step.
-		 * @param h step size.
-		 * @param y values of the integrated system.
-		 * @return status
-		 */
-		int ApplyStep(double *t, long double t1, double *h, double *y) {
-			long double theta_0 = y[2];
-			int status = gsl_odeiv2_evolve_apply(evolve_, control_, step_, &system_, t, t1, h, y);
-			MapTheta(theta_0, y);
-			y[3] = ModBy2Pi(y[3]);
-			return status;
-		}
-
-		/**
-		 * @brief `gsl_odeiv2_evolve_apply_fixed_step`.
-		 *
-		 * @param t time.
-		 * @param h step size.
-		 * @param y values of the integrated system.
-		 * @return status
-		 */
-		int ApplyFixedStep(double *t, const long double h, double *y) {
-			long double theta_0 = y[2];
-			int status = gsl_odeiv2_evolve_apply_fixed_step(evolve_, control_, step_, &system_, t, h, y);
-			MapTheta(theta_0, y);
-			y[3] = ModBy2Pi(y[3]);
-			return status;
-		}
-
-		/**
-		 * @brief Resets the evolution function and the stepping function.
-		 *
-		 * @return status
-		 */
-		int Reset() {
-			if (int status = gsl_odeiv2_evolve_reset(evolve_); status != Status::SUCCESS)
+		int OneSidedDirectionalJacobian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &direction, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type epsrel, boost::numeric::ublas::bounded_matrix<Type, N, N> &jacobian) {
+			namespace ublas = boost::numeric::ublas;
+			int status = Status::SUCCESS;
+			ublas::bounded_vector<Type, N> x1;
+			ublas::bounded_vector<Type, N> f_trial;
+			ublas::bounded_matrix<Type, N, N> coordinate;
+			if (status = CoordinateOrthogonalization(direction, coordinate); status != Status::SUCCESS)
 				return status;
-			if (int status = gsl_odeiv2_step_reset(step_); status != Status::SUCCESS)
+			jacobian.clear();
+			Type x_norm = ublas::norm_2(x), dx_limit = x_norm * boost::math::tools::epsilon<Type>();
+			for (std::size_t j = 0; j < N; ++j) {
+				auto coordinate_column_j = ublas::matrix_column(coordinate, j);
+				Type dot_product = ublas::inner_prod(x, coordinate_column_j);
+				Type dx = -epsrel * std::max(Type{1.}, x_norm) * boost::math::sign(dot_product);
+				x1 += dx * coordinate_column_j;
+				for (status = Status::CONTINUE; status != Status::SUCCESS; dx *= 0.5) {
+					if (std::abs(dx) < dx_limit) {
+						status = Status::NUMERIC_ERROR;
+						break;
+					}
+					x1 = x + dx * coordinate_column_j;
+					if (status = Eval(x1, f_trial); status != Status::SUCCESS)
+						if (status != GSL_EDOM) {
+							break;
+						}
+				}
+				f_trial -= f;
+				f_trial /= dx;
+				jacobian += ublas::outer_prod(f_trial * coordinate_column_j);
+			}
+			return status;
+		}
+		int TwoSidedDirectionalJacobian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &direction, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type epsrel, boost::numeric::ublas::bounded_matrix<Type, N, N> &jacobian) {
+			namespace ublas = boost::numeric::ublas;
+			int status = Status::SUCCESS;
+			ublas::bounded_vector<Type, N> x1, f_trial_plus, f_trial_minus;
+			auto coordinate = ublas::bounded_matrix<Type, N, N>();
+			if (status = CoordinateOrthogonalization(direction, coordinate); status != Status::SUCCESS)
 				return status;
+			jacobian.clear();
+			Type x_norm = ublas::norm_2(x), dx_limit = x_norm * boost::math::tools::epsilon<Type>();
+			for (std::size_t j = 0; j < N; ++j) {
+				auto coordinate_column_j = ublas::matrix_column(coordinate, j);
+				Type dot_product = ublas::inner_prod(x, coordinate_column_j);
+				Type dx = -epsrel * std::max(Type{1.}, x_norm) * boost::math::sign(dot_product);
+				for (status = Status::CONTINUE; status != Status::SUCCESS; dx *= 0.5) {
+					if (std::abs(dx) < dx_limit) {
+						status = Status::NUMERIC_ERROR;
+						break;
+					}
+					x1 = x + dx * coordinate_column_j;
+					if (status = Eval(x1, f_trial_plus); status != Status::SUCCESS)
+						if (status != GSL_EDOM) {
+							break;
+						}
+				}
+				f_trial_plus -= f;
+				f_trial_plus /= dx;
+				x1 = x - dx * coordinate_column_j;
+				if (status = Eval(x1, f_trial_minus); status != Status::SUCCESS) {
+					status = Status::SUCCESS;
+					jacobian += ublas::outer_prod(f_trial_plus, coordinate_column_j);
+				} else {
+					f_trial_minus -= f;
+					f_trial_plus -= f_trial_minus / dx;
+					jacobian += 0.5 * ublas::outer_prod(f_trial_plus, coordinate_column_j);
+				}
+			}
+			return status;
+		}
+		int Hessian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type epsrel, boost::numeric::ublas::bounded_vector<Type, N> &jacobian, boost::numeric::ublas::bounded_matrix<Type, N, N> &hessian) {
+			namespace ublas = boost::numeric::ublas;
+			ublas::bounded_vector<Type, N> x1;
+			ublas::bounded_vector<Type, N> f_trial;
+			const Type f_norm = ublas::norm_2(f);
+			ublas::bounded_vector<Type, N> dx;
+			// f_{0, 0} = f0
+			// f_{-1,0} = f0 - g0 * dx0 + 0.5 * G00 * dx0^2
+			// f_{1, 0} = f0 + g0 * dx0 + 0.5 * G00 * dx0^2
+			// f_{0,-1} = f0 - g1 * dx1 + 0.5 * G11 * dx1^2
+			// f_{0, 1} = f0 + g1 * dx1 + 0.5 * G11 * dx1^2
+			// f_{-1,-1}= f0 - g0 * dx0 - g1 * dx1 + 0.5 * G00 * dx0^2 + 0.5 * G11 * dx1^2 + G01 * dx0 * dx1
+			// f_{1, 1} = f0 + g0 * dx0 + g1 * dx1 + 0.5 * G00 * dx0^2 + 0.5 * G11 * dx1^2 + G01 * dx0 * dx1
+			// f_{-1,1} = f0 - g0 * dx0 + g1 * dx1 + 0.5 * G00 * dx0^2 + 0.5 * G11 * dx1^2 - G01 * dx0 * dx1
+			// f_{1,-1} = f0 + g0 * dx0 - g1 * dx1 + 0.5 * G00 * dx0^2 + 0.5 * G11 * dx1^2 - G01 * dx0 * dx1
+
+			x1 = x; // copy x into x1
+			for (std::size_t i = 0; i < N; ++i) {
+				Type x_i = x(i);
+				dx(i) = std::abs(x_i) >= 1. ? epsrel * x_i : epsrel * x_i;
+				x1(i) = x_i + dx(i);
+				if (int f_stat = Eval(x1, f_trial); f_stat != Status::SUCCESS)
+					return f_stat;
+				Type f_trial_norm = ublas::norm_2(f_trial);
+				x1(i) = x_i - dx(i);
+				if (int f_stat = Eval(x1, f_trial); f_stat != Status::SUCCESS)
+					return f_stat;
+				x1(i) = x_i;
+				jacobian(i) = (f_trial_norm - ublas::norm_2(f_trial)) / (2. * dx(i));
+				hessian(i, i) = (f_trial_norm + ublas::norm_2(f_trial) - 2. * f_norm) / Power2(dx(i));
+			}
+			for (std::size_t i = 1; i < N; ++i) {
+				x1 = x;
+				Type x_i = x(i);
+				for (std::size_t j = 0; j < i; ++j) {
+					Type df = 0., x_j = x(j);
+					x1(i) = x_i + dx(i);
+					x1(j) = x_j + dx(j);
+					if (int f_stat = Eval(x1, f_trial); f_stat != Status::SUCCESS) {
+						return f_stat;
+					}
+					df += ublas::norm_2(f_trial);
+					x1(j) = x_j - dx(j);
+					if (int f_stat = Eval(x1, f_trial); f_stat != Status::SUCCESS) {
+						return f_stat;
+					}
+					df -= ublas::norm_2(f_trial);
+					x1(i) = x_i - dx(i);
+					if (int f_stat = Eval(x1, f_trial); f_stat != Status::SUCCESS) {
+						return f_stat;
+					}
+					df += ublas::norm_2(f_trial);
+					x1(j) = x_j + dx(j);
+					if (int f_stat = Eval(x1, f_trial); f_stat != Status::SUCCESS)
+						return f_stat;
+					df -= ublas::norm_2(f_trial);
+					df /= 4. * dx[i] * dx[j];
+					hessian(i, j) = hessian(j, i) = df;
+				}
+			}
 			return Status::SUCCESS;
 		}
 
-		/**
-		 * @brief
-		 *
-		 * @param y
-		 * @return status
-		 */
-		int CheckCoordinate(long double *y);
+	  public:
+		MultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : dimension_(N), function_(function), function_parameters_(params) {}
+		virtual int Iterate() = 0;
+		int Solve(Type epsabs, int max_iteration = 256) {
+			for (; max_iteration > 0; --max_iteration) {
+				if (ElementAbsSum(f_) <= epsabs)
+					return Status::SUCCESS;
+				if (int status = Iterate(); status != Status::SUCCESS)
+					return status;
+				if (std::any_of(x_.begin(), x_.end(), [](Type x_i) { return !std::isfinite(x_i); }))
+					return Status::NUMERIC_ERROR;
+			}
+			return Status::MAX_ITERATIONS_EXCEEDED;
+		}
+		int Solve(Type epsabs, Type epsrel, int max_iteration = 256) {
+			for (; max_iteration > 0; --max_iteration) {
+				if (ElementAbsSum(f_) <= epsabs && gsl_multiroot_test_delta(dx_, x_, epsabs, epsrel) != Status::SUCCESS)
+					return Status::SUCCESS;
+				if (int status = Iterate(); status != Status::SUCCESS)
+					return status;
+				if (std::any_of(x_->data, x_->data + dimension_, [](Type x) { return !std::isfinite(x); }))
+					return Status::NUMERIC_ERROR;
+			}
+			return Status::MAX_ITERATIONS_EXCEEDED;
+		}
+		const boost::numeric::ublas::bounded_vector<Type, N> &Root() {
+			return x_;
+		}
+		const boost::numeric::ublas::bounded_vector<Type, N> &Value() {
+			return f_;
+		}
+		const boost::numeric::ublas::bounded_vector<Type, N> &StepSize() {
+			return dx_;
+		}
+		// static int HybridSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int HybridIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int HybridAdditionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int HybridAdditionIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int DNewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int DNewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int DNewtonRotationTranslationSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int DNewtonRotationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int DNewtonTranslationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int D2NewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int D2NewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int GradientIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int ConjugateGradientSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int ConjugateGradientIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int TriangleSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int TriangleRotationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int TriangleLongestIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int DirectionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+		// static int DirectionIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
+	};
+
+	template <typename Type, std::size_t N, typename Parameter>
+	class HybridMultiFunctionSolver : public MultiFunctionSolver<Type, N, Parameter> {
+	  protected:
+		Type trust_radius_;
+		Type epsilon_coefficient_;
+		bool directional_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> newton_;
+		boost::numeric::ublas::bounded_vector<Type, N> gradient_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
+		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
+		Type ScaledEnorm(const gsl_vector *d, const gsl_vector *f) {
+			Type e2 = 0.;
+			std::size_t i, n = f->size;
+			for (i = 0; i < n; i++)
+				e2 += Power2(gsl_vector_get(f, i) * gsl_vector_get(d, i));
+			return std::sqrt(e2);
+		}
+		int Dogleg(const boost::numeric::ublas::bounded_vector<Type, N> &r, const boost::numeric::ublas::bounded_vector<Type, N> &qtf, const boost::numeric::ublas::bounded_vector<Type, N> &diag, Type delta, boost::numeric::ublas::bounded_vector<Type, N> &newton, boost::numeric::ublas::bounded_vector<Type, N> &gradient, boost::numeric::ublas::bounded_vector<Type, N> &p) {
+			namespace ublas = boost::numeric::ublas;
+			Type qnorm, gnorm, sgnorm, bnorm, temp;
+			gsl_linalg_R_solve(r, qtf, newton);
+			gsl_vector_scale(newton, -1.);
+			if (qnorm = ScaledEnorm(diag, newton); qnorm <= delta) {
+				gsl_vector_memcpy(p, newton);
+				return Status::SUCCESS;
+			}
+			gsl_blas_dgemv(CblasTrans, -1., r, qtf, 0., gradient);
+			gsl_vector_div(gradient, diag);
+			if (gnorm = ublas::norm_2(gradient); gnorm == 0.) {
+				gsl_vector_set_zero(p);
+				gsl_blas_daxpy(delta / qnorm, newton, p);
+				return Status::SUCCESS;
+			}
+			// minimum_step(gnorm, diag, gradient);
+			gsl_vector_scale(gradient, 1. / gnorm);
+			gsl_vector_div(gradient, diag);
+			// Use p as temporary space to compute Rg
+			gsl_blas_dgemv(CblasNoTrans, 1., r, gradient, 0., p);
+
+			temp = ublas::norm_2(p);
+			sgnorm = (gnorm / temp) / temp;
+			if (sgnorm > delta) {
+				gsl_vector_set_zero(p);
+				gsl_blas_daxpy(delta, gradient, p);
+				return Status::SUCCESS;
+			}
+			bnorm = ublas::norm_2(qtf);
+			{
+				Type bg = bnorm / gnorm;
+				Type bq = bnorm / qnorm;
+				Type dq = delta / qnorm;
+				Type dq2 = dq * dq;
+				Type sd = sgnorm / delta;
+				Type sd2 = sd * sd;
+
+				Type t1 = bg * bq * sd;
+				Type u = t1 - dq;
+				Type t2 = t1 - dq * sd2 + sqrt(u * u + (1 - dq2) * (1 - sd2));
+
+				Type alpha = dq * (1 - sd2) / t2;
+				Type beta = (1 - alpha) * sgnorm;
+				gsl_vector_set_zero(p);
+				gsl_blas_daxpy(alpha, newton, p);
+				gsl_blas_daxpy(beta, gradient, p);
+			}
+			return Status::SUCCESS;
+		}
+		int Dogleg(Type trust_radius, Type newton_norm, Type newton_norm2, Type gradient_norm, Type gradient_norm2, Type newton_gradient_dot, const boost::numeric::ublas::bounded_vector<Type, N> &newton, const boost::numeric::ublas::bounded_vector<Type, N> &gradient, boost::numeric::ublas::bounded_vector<Type, N> &dx) {
+			if (newton_norm <= trust_radius) {
+				gsl_vector_memcpy(dx, newton);
+				return Status::SUCCESS;
+			}
+			gsl_vector_set_zero(dx);
+			if (gradient_norm >= trust_radius) {
+				gsl_blas_daxpy(trust_radius / gradient_norm, gradient, dx);
+				return Status::SUCCESS;
+			}
+			Type d_newton_gradient_dot;
+			gsl_blas_ddot(newton, gradient, &d_newton_gradient_dot);
+			newton_gradient_dot = d_newton_gradient_dot;
+			const Type a = gradient_norm2 + newton_norm2 - 2. * newton_gradient_dot; // a > 0
+			const Type b = 2. * (newton_gradient_dot - gradient_norm2);
+			const Type c = gradient_norm2 - trust_radius * trust_radius; // c < 0
+			Type s_minus_plus[2];
+			if (int root_num = PolySolveQuadratic(a, b, c, s_minus_plus); root_num != 2 || s_minus_plus[1] > 1.) {
+				gsl_vector_memcpy(dx, gradient); // fallback to gradient
+				return Status::SUCCESS;
+			}
+			gsl_blas_daxpy(s_minus_plus[1], newton, dx);
+			gsl_blas_daxpy(1. - s_minus_plus[1], gradient, dx);
+			return Status::SUCCESS;
+		}
+
+	  public:
+		HybridMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params), permutation_(N) {}
+		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
+			this->x_ = x;
+			for (int status = this->Eval(); status != Status::SUCCESS; status = this->Eval()) {
+				if (status != GSL_EDOM)
+					return status;
+				this->x_ *= std::min(0.99999999, this->f_(0));
+			}
+			if (int status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_); status != Status::SUCCESS)
+				return status;
+			trust_radius_ = boost::numeric::ublas::norm_2(this->x_);
+			epsilon_coefficient_ = 1.;
+			directional_ = false;
+			return Status::SUCCESS;
+		}
+		int Iterate() override {
+			namespace ublas = boost::numeric::ublas;
+			int signum, status;
+			const Type f_norm = ublas::norm_2(this->f_);
+			const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::epsilon<Type>();
+			Type dx_norm, newton_norm, newton_norm2, gradient_norm, gradient_norm2, newton_gradient_dot, jacobian_gradient_norm2, t;
+			lu_ = jacobian_;
+			if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+				return status;
+			if (status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, this->dx_); status != Status::SUCCESS)
+				return status;
+			dx_norm = ublas::norm_2(this->dx_);
+			for (int iteration_count = 0; true;) {
+				gsl_vector_memcpy(x_trial_, this->x_);
+				if (dx_norm > trust_radius_)
+					gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial_);
+				else
+					gsl_blas_daxpy(-1., this->dx_, x_trial_);
+				if (status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
+					if (status != GSL_EDOM)
+						return status;
+					gsl_vector_scale(x_trial_, std::min(0.99999999, gsl_vector_get(f_trial_, 0)));
+					gsl_vector_sub(x_trial_, this->x_);
+					// here x_trial_ is the difference between x and x_trial_
+					trust_radius_ = std::min(0.5 * trust_radius_, ublas::norm_2(x_trial_));
+					continue;
+				}
+				if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
+					gsl_vector_memcpy(this->x_, x_trial_);
+					gsl_vector_memcpy(this->f_, f_trial_);
+					if (dx_norm > trust_radius_)
+						trust_radius_ *= 2.;
+					else
+						trust_radius_ = 2. * dx_norm;
+					break;
+				}
+				if (epsilon_coefficient_ > boost::math::tools::forth_root_epsilon<Type>())
+					epsilon_coefficient_ *= 0.5;
+				if (++iteration_count == 2) {
+					if (status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_); status != Status::SUCCESS)
+						return status;
+					gsl_matrix_memcpy(lu_, jacobian_);
+					if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+						return status;
+					if (status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, newton_); status != Status::SUCCESS)
+						return status;
+					gsl_blas_dgemv(CblasTrans, 1., jacobian_, this->f_, 0., gradient_);
+					Type d_newton_norm2, d_gradient_norm2, d_jacobian_gradient_norm2;
+					gsl_blas_ddot(newton_, newton_, &d_newton_norm2);
+					newton_norm2 = d_newton_norm2;
+					gsl_blas_ddot(gradient_, gradient_, &d_gradient_norm2);
+					gradient_norm2 = d_gradient_norm2;
+					gsl_blas_dgemv(CblasTrans, 1., jacobian_, gradient_, 0., x_trial_);
+					gsl_blas_ddot(x_trial_, x_trial_, &d_jacobian_gradient_norm2);
+					jacobian_gradient_norm2 = d_jacobian_gradient_norm2;
+					t = gradient_norm2 / jacobian_gradient_norm2;
+					gsl_vector_scale(gradient_, t);
+					gradient_norm2 *= t * t;
+					newton_norm = sqrt(newton_norm2);
+					gradient_norm = sqrt(gradient_norm2);
+					Type d_newton_gradient_dot;
+					gsl_blas_ddot(newton_, gradient_, &d_newton_gradient_dot);
+					newton_gradient_dot = d_newton_gradient_dot;
+					Dogleg(trust_radius_, newton_norm, newton_norm2, gradient_norm, gradient_norm2, newton_gradient_dot, newton_, gradient_, this->dx_);
+					dx_norm = ublas::norm_2(this->dx_);
+					directional_ = true;
+				} else {
+					trust_radius_ *= 0.5;
+					if (trust_radius_ < trust_radius_limit)
+						return Status::TRUST_REGION_TOO_SMALL;
+					if (iteration_count > 2) {
+						Dogleg(trust_radius_, newton_norm, newton_norm2, gradient_norm, gradient_norm2, newton_gradient_dot, newton_, gradient_, this->dx_);
+						dx_norm = ublas::norm_2(this->dx_);
+					}
+				}
+			}
+			if (directional_)
+				status = this->TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			else
+				status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			if (status != Status::SUCCESS)
+				return status;
+			return Status::SUCCESS;
+		}
+	};
+
+	template <typename Type, std::size_t N, typename Parameter>
+	class HybridAdditionMultiFunctionSolver : public MultiFunctionSolver<Type, N, Parameter> {
+	  protected:
+		Type trust_radius_;
+		Type epsilon_coefficient_;
+		Type gradient_coefficient_;
+		bool directional_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_trial2_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_trial2_;
+		boost::numeric::ublas::bounded_vector<Type, N> newton_;
+		boost::numeric::ublas::bounded_vector<Type, N> gradient_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
+		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
+
+	  public:
+		HybridAdditionMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params), permutation_(N) {}
+		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
+			this->x_ = x;
+			for (int status = this->Eval(); status != Status::SUCCESS; status = this->Eval()) {
+				if (status != GSL_EDOM)
+					return status;
+				gsl_vector_scale(this->x_, std::min(0.99999999, gsl_vector_get(this->f_, 0)));
+			}
+			if (int status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_); status != Status::SUCCESS)
+				return status;
+			trust_radius_ = boost::numeric::ublas::norm_2(this->x_);
+			epsilon_coefficient_ = 1.;
+			gradient_coefficient_ = 0.;
+			directional_ = false;
+			return Status::SUCCESS;
+		}
+		int Iterate() override {
+			namespace ublas = boost::numeric::ublas;
+			int signum, status;
+			gsl_matrix_memcpy(lu_, jacobian_);
+			if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+				return status;
+			if (status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, this->dx_); status != Status::SUCCESS)
+				return status;
+			const Type f_norm = ublas::norm_2(this->f_);
+			const Type recalc_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::forth_root_epsilon<Type>();
+			const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::epsilon<Type>();
+			Type newton_norm, gradient_norm = -1., dx_norm = ublas::norm_2(this->dx_), f_trial_norm, f_trial2_norm, newton_gradient_dot, gradient_coefficient = 0., negative_direction_coefficient, positive_direction_coefficient;
+			for (; true; trust_radius_ *= 0.5) {
+				gsl_vector_memcpy(x_trial_, this->x_);
+				if (dx_norm > trust_radius_)
+					gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial_);
+				else
+					gsl_blas_daxpy(-1., this->dx_, x_trial_);
+				if (status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
+					if (status != GSL_EDOM)
+						return status;
+					gsl_vector_scale(x_trial_, std::min(0.99999999, gsl_vector_get(f_trial_, 0)));
+					gsl_vector_sub(x_trial_, this->x_);
+					// here x_trial_ is the difference between x and x_trial_
+					if (Type trust_radius_limit = 2. * ublas::norm_2(x_trial_); trust_radius_limit < trust_radius_)
+						trust_radius_ = trust_radius_limit; // there is a *= 0.5
+					continue;
+				}
+				if (f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
+					gsl_vector_memcpy(this->x_, x_trial_);
+					gsl_vector_memcpy(this->f_, f_trial_);
+					if (dx_norm > trust_radius_)
+						trust_radius_ *= 2.;
+					else
+						trust_radius_ = 2. * dx_norm;
+					break;
+				}
+				if (epsilon_coefficient_ > boost::math::tools::forth_root_epsilon<Type>())
+					epsilon_coefficient_ *= 0.5;
+				if (trust_radius_ < trust_radius_limit)
+					return Status::TRUST_REGION_TOO_SMALL;
+				if (trust_radius_ < recalc_radius_limit) {
+					if (!directional_) {
+						if (status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_); status != Status::SUCCESS)
+							return status;
+						gsl_matrix_memcpy(lu_, jacobian_);
+						if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+							return status;
+						if (status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, this->dx_); status != Status::SUCCESS)
+							return status;
+						dx_norm = ublas::norm_2(this->dx_);
+						directional_ = true;
+					}
+					if (gradient_norm == -1.) {
+						gsl_vector_memcpy(newton_, this->dx_);
+						newton_norm = dx_norm;
+						gsl_blas_dgemv(CblasTrans, 1., jacobian_, this->f_, 0., gradient_);
+						Type d_newton_gradient_dot;
+						gsl_blas_ddot(newton_, gradient_, &d_newton_gradient_dot);
+						gsl_blas_daxpy(-d_newton_gradient_dot / newton_norm, newton_, gradient_); // gradient_ now is prep to newton_.
+						gradient_norm = ublas::norm_2(gradient_);
+					}
+					if (gradient_coefficient == 0.) {
+						if (newton_norm < trust_radius_)
+							positive_direction_coefficient = boost::math::tools::root_epsilon<Type>() * newton_norm / gradient_norm;
+						else
+							positive_direction_coefficient = max(100. * trust_radius_limit, 2. * trust_radius_limit * dx_norm / trust_radius_) / gradient_norm;
+						negative_direction_coefficient = -positive_direction_coefficient;
+					} else if (Type lower_limit = 10. * trust_radius_limit * dx_norm / trust_radius_ / gradient_norm; positive_direction_coefficient < lower_limit) {
+						positive_direction_coefficient = lower_limit;
+						negative_direction_coefficient = -positive_direction_coefficient;
+					}
+					gsl_vector_memcpy(this->dx_, newton_);
+					gsl_blas_daxpy(gradient_coefficient + negative_direction_coefficient, gradient_, this->dx_);
+					for (int iteration_limit = 64; iteration_limit > 0 && newton_norm >= gradient_norm * negative_direction_coefficient; --iteration_limit) {
+						gsl_vector_memcpy(x_trial2_, this->x_);
+						if (dx_norm = ublas::norm_2(this->dx_); dx_norm > trust_radius_)
+							gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial2_);
+						else
+							gsl_blas_daxpy(-1., this->dx_, x_trial2_);
+						if (status = this->Eval(x_trial2_, f_trial2_); status != Status::SUCCESS)
+							break;
+						if (f_trial2_norm = ublas::norm_2(f_trial2_); f_trial2_norm >= f_trial_norm)
+							break;
+						f_trial_norm = f_trial2_norm;
+						gsl_vector_memcpy(x_trial_, x_trial2_);
+						gsl_vector_memcpy(f_trial_, f_trial2_);
+						gsl_blas_daxpy(negative_direction_coefficient, gradient_, this->dx_);
+						if (f_norm < f_trial_norm)
+							negative_direction_coefficient *= 2.;
+						else if (gradient_coefficient == 0.)
+							negative_direction_coefficient *= 1.5;
+						else
+							negative_direction_coefficient *= 0.9;
+					}
+					if (positive_direction_coefficient != -negative_direction_coefficient) {
+						if (f_trial_norm < f_norm) {
+							gsl_vector_memcpy(this->x_, x_trial_);
+							gsl_vector_memcpy(this->f_, f_trial_);
+							break;
+						}
+						negative_direction_coefficient *= 0.1;
+						positive_direction_coefficient = -negative_direction_coefficient;
+						gradient_coefficient += negative_direction_coefficient;
+						gsl_blas_daxpy(-negative_direction_coefficient, gradient_, this->dx_);
+						continue;
+					}
+					gsl_vector_memcpy(this->dx_, newton_);
+					gsl_blas_daxpy(gradient_coefficient + positive_direction_coefficient, gradient_, this->dx_);
+					for (int iteration_limit = 64; iteration_limit > 0 && newton_norm >= gradient_norm * positive_direction_coefficient; --iteration_limit) {
+						gsl_vector_memcpy(x_trial2_, this->x_);
+						if (dx_norm = ublas::norm_2(this->dx_); dx_norm > trust_radius_)
+							gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial2_);
+						else
+							gsl_blas_daxpy(-1., this->dx_, x_trial2_);
+						if (status = this->Eval(x_trial2_, f_trial2_); status != Status::SUCCESS)
+							break;
+						if (f_trial2_norm = ublas::norm_2(f_trial2_); f_trial2_norm >= f_trial_norm)
+							break;
+						f_trial_norm = f_trial2_norm;
+						gsl_vector_memcpy(x_trial_, x_trial2_);
+						gsl_vector_memcpy(f_trial_, f_trial2_);
+						gsl_blas_daxpy(positive_direction_coefficient, gradient_, this->dx_);
+						if (f_norm < f_trial_norm)
+							positive_direction_coefficient *= 2.;
+						else if (gradient_coefficient == 0.)
+							positive_direction_coefficient *= 1.5;
+						else
+							positive_direction_coefficient *= 0.9;
+					}
+					if (positive_direction_coefficient != -negative_direction_coefficient) {
+						if (f_trial_norm < f_norm) {
+							gsl_vector_memcpy(this->x_, x_trial_);
+							gsl_vector_memcpy(this->f_, f_trial_);
+							break;
+						}
+						positive_direction_coefficient *= 0.1;
+						negative_direction_coefficient = -positive_direction_coefficient;
+						gradient_coefficient += positive_direction_coefficient;
+						gsl_blas_daxpy(-positive_direction_coefficient, gradient_, this->dx_);
+						continue;
+					}
+					gsl_vector_memcpy(this->dx_, newton_);
+					gsl_blas_daxpy(gradient_coefficient, gradient_, this->dx_);
+					dx_norm = ublas::norm_2(this->dx_);
+				}
+			}
+			if (directional_)
+				status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			else
+				status = TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			if (status != Status::SUCCESS)
+				return status;
+			return Status::SUCCESS;
+		}
+	};
+
+	template <typename Type, std::size_t N, typename Parameter>
+	class DNewtonMultiFunctionSolver : public MultiFunctionSolver<Type, N, Parameter> {
+	  protected:
+		Type trust_radius_;
+		Type epsilon_coefficient_;
+		bool directional_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
+		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
+
+	  public:
+		DNewtonMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params), permutation_(N) {}
+		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
+			this->x_ = x;
+			for (int status = this->Eval(); status != Status::SUCCESS; status = this->Eval()) {
+				if (status != GSL_EDOM)
+					return status;
+				gsl_vector_scale(this->x_, std::min(0.99999999, gsl_vector_get(this->f_, 0)));
+			}
+			trust_radius_ = boost::numeric::ublas::norm_2(this->x_);
+			epsilon_coefficient_ = 1.;
+			directional_ = false;
+			return Status::SUCCESS;
+		}
+		int Iterate() override {
+			namespace ublas = boost::numeric::ublas;
+			int signum, status;
+			if (directional_)
+				status = this->TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			else
+				status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			if (status != Status::SUCCESS)
+				return status;
+			lu_ = jacobian_;
+			if (status = ublas::lu_factorize(lu_, permutation_); status != Status::SUCCESS)
+				return status;
+			this->dx_ = this->f_;
+			ublas::lu_substitute(lu_, permutation_, this->dx_);
+			const Type x_norm = ublas::norm_2(this->x_), f_norm = ublas::norm_2(this->f_);
+			const Type trust_radius_limit = std::max(Type{1.}, x_norm) * boost::math::tools::epsilon<Type>();
+			Type dx_norm = ublas::norm_2(this->dx_);
+			while (true) {
+				x_trial_ = this->x_;
+				if (dx_norm > trust_radius_)
+					x_trial_ -= trust_radius_ / dx_norm * this->dx_;
+				else
+					x_trial_ -= this->dx_;
+				if (status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
+					if (status != GSL_EDOM)
+						return status;
+					x_trial_ *= std::min(0.99999999, f_trial_(0));
+					x_trial_ -= this->x_;
+					// here x_trial_ is the difference between x and x_trial_
+					trust_radius_ = std::min(0.5 * trust_radius_, ublas::norm_2(x_trial_));
+					continue;
+				}
+				if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
+					this->x_ = x_trial_;
+					this->f_ = f_trial_;
+					if (dx_norm > trust_radius_)
+						trust_radius_ *= 2.;
+					else
+						trust_radius_ = 2. * dx_norm;
+					return Status::SUCCESS;
+				}
+				if (!directional_) {
+					directional_ = true;
+					return Status::SUCCESS;
+				}
+				if (epsilon_coefficient_ > boost::math::tools::forth_root_epsilon<Type>())
+					epsilon_coefficient_ *= 0.5;
+				if (trust_radius_ *= 0.5; trust_radius_ < trust_radius_limit)
+					return Status::TRUST_REGION_TOO_SMALL;
+			}
+		}
+	};
+
+	template <typename Type, std::size_t N, typename Parameter>
+	class DNewtonRotationMultiFunctionSolver : public MultiFunctionSolver<Type, N, Parameter> {
+	  protected:
+		Type theta_obs_;
+		Type sin_theta_obs_;
+		Type cos_theta_obs_;
+		Type r_obj_;
+		Type sin_theta_obj_;
+		Type cos_theta_obj_;
+		Type phi_obj_;
+		Type projected_x_;
+		Type projected_y_;
+		Type iota_obj_;
+		Type trust_radius_;
+		Type epsilon_coefficient_;
+		bool directional_;
+		bool trace_to_plane_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> dx_translation_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
+		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
+
+	  public:
+		DNewtonRotationMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params), permutation_(N) {}
+		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x, Type theta_obs, Type sin_theta_obs, Type cos_theta_obs, Type r_obj, Type sin_theta_obj, Type cos_theta_obj, Type phi_obj, Type sin_phi_obj, Type cos_phi_obj, bool trace_to_plane) {
+			namespace ublas = boost::numeric::ublas;
+			this->x_ = x;
+			if (int status = this->Eval(); status != Status::SUCCESS)
+				return status;
+			trust_radius_ = std::max(1., ublas::norm_2(this->x_));
+			epsilon_coefficient_ = 1.;
+			directional_ = false;
+			theta_obs_ = theta_obs;
+			sin_theta_obs_ = sin_theta_obs;
+			cos_theta_obs_ = cos_theta_obs;
+			r_obj_ = r_obj;
+			sin_theta_obj_ = sin_theta_obj;
+			cos_theta_obj_ = cos_theta_obj;
+			phi_obj_ = phi_obj;
+			projected_x_ = sin_theta_obj * sin_phi_obj;
+			projected_y_ = cos_theta_obj * sin_theta_obs - sin_theta_obj * cos_phi_obj * cos_theta_obs;
+			iota_obj_ = std::atan2(projected_y_, projected_x_);
+			trace_to_plane_ = trace_to_plane;
+			return Status::SUCCESS;
+		}
+		int Iterate() override {
+			namespace ublas = boost::numeric::ublas;
+			int signum, status;
+			if (directional_)
+				status = this->TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			else
+				status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			if (status != Status::SUCCESS)
+				return status;
+			lu_ = jacobian_;
+			if (status = ublas::lu_factorize(lu_, permutation_); status != Status::SUCCESS)
+				return status;
+			this->x_ = this->f_;
+			ublas::lu_substitute(lu_, permutation_, this->dx_);
+			const Type x_norm = ublas::norm_2(this->x_), f_norm = ublas::norm_2(this->f_);
+			const Type rotation_radius_limit = std::max(Type{1.}, x_norm) * boost::math::tools::cbrt_epsilon<Type>();
+			const Type trust_radius_limit = std::max(Type{1.}, x_norm) * boost::math::tools::epsilon<Type>();
+			Type dx_norm = ublas::norm_2(this->dx_);
+			while (true) {
+				x_trial_ = this->x_;
+				if (dx_norm > trust_radius_)
+					x_trial_ -= trust_radius_ / dx_norm * this->dx_;
+				else
+					x_trial_ -= this->dx_;
+				if (status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
+					if (status != GSL_EDOM)
+						return status;
+					x_trial_ *= f_trial_(0);
+					x_trial_ -= this->x_;
+					// here x_trial_ is the difference between x and x_trial_
+					trust_radius_ = std::min(Type{0.5} * trust_radius_, ublas::norm_2(x_trial_));
+					continue;
+				}
+				if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
+					this->x_ = x_trial_;
+					this->f_ = f_trial_;
+					if (dx_norm > trust_radius_)
+						trust_radius_ *= 2.;
+					else
+						trust_radius_ = 2. * dx_norm;
+					return Status::SUCCESS;
+				}
+				if (!directional_) {
+					directional_ = true;
+					return Status::SUCCESS;
+				}
+				if (epsilon_coefficient_ > boost::math::tools::forth_root_epsilon<Type>())
+					epsilon_coefficient_ *= 0.5;
+				if (trust_radius_ < rotation_radius_limit) {
+					Type projected_x, projected_y;
+					if (trace_to_plane_) {
+						projected_x = projected_x_ + this->f_(0);
+						projected_y = projected_y_ + this->f_(1);
+					} else {
+						Type cos_theta_photon = cos_theta_obj_ + this->f_(0);
+						Type theta_photon = std::acos(cos_theta_photon);
+						Type phi_photon = phi_obj_ - this->f_(1);
+						Type sin_theta_photon = std::sin(theta_photon);
+						projected_x = sin_theta_photon * std::sin(phi_photon);
+						projected_y = cos_theta_photon * sin_theta_obs_ - sin_theta_photon * std::cos(phi_photon) * cos_theta_obs_;
+					}
+					Type iota_photon = std::atan2(projected_y, projected_x);
+					Type cos_delta_iota = std::cos(iota_obj_ - iota_photon);
+					Type sin_delta_iota = std::sin(iota_obj_ - iota_photon);
+					this->dx_(0) = this->x_(0) * (1. - cos_delta_iota) + this->x_(1) * sin_delta_iota;
+					this->dx_(1) = -this->x_(0) * sin_delta_iota + this->x_(1) * (1. - cos_delta_iota);
+					dx_norm = ublas::norm_2(this->dx_);
+					x_trial_ = this->x_;
+					if (dx_norm * boost::math::tools::forth_root_epsilon<Type>() > trust_radius_)
+						x_trial_ -= boost::math::tools::forth_root_epsilon<Type>() * this->dx_;
+					else if (dx_norm > trust_radius_)
+						x_trial_ -= trust_radius_ / dx_norm * this->dx_;
+					else
+						x_trial_ -= this->dx_;
+					if (status = this->ScaleX(x_trial_, f_trial_); status != Status::SUCCESS)
+						return status;
+					this->x_ = x_trial_;
+					this->f_ = f_trial_;
+					if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm)
+						trust_radius_ *= 2.;
+					else if (trust_radius_ *= 0.5; trust_radius_ < trust_radius_limit)
+						return Status::TRUST_REGION_TOO_SMALL;
+					return Status::SUCCESS;
+				}
+				trust_radius_ *= 0.5;
+			}
+		}
+	};
+
+	template <typename Type, std::size_t N, typename Parameter>
+	class DNewtonTranslationMultiFunctionSolver : public MultiFunctionSolver<Type, N, Parameter> {
+	  protected:
+		Type theta_obs_;
+		Type sin_theta_obs_;
+		Type cos_theta_obs_;
+		Type r_obj_;
+		Type sin_theta_obj_;
+		Type cos_theta_obj_;
+		Type phi_obj_;
+		Type projected_x_;
+		Type projected_y_;
+		Type iota_obj_;
+		Type trust_radius_;
+		Type epsilon_coefficient_;
+		bool directional_;
+		bool trace_to_plane_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> dx_translation_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
+		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
+
+	  public:
+		DNewtonTranslationMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params), permutation_(N) {}
+		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x, Type theta_obs, Type sin_theta_obs, Type cos_theta_obs, Type r_obj, Type sin_theta_obj, Type cos_theta_obj, Type phi_obj, Type sin_phi_obj, Type cos_phi_obj, bool trace_to_plane) {
+			this->x_ = x;
+			if (int status = this->ScaleX(this->x_, this->f_); status != Status::SUCCESS)
+				return status;
+			trust_radius_ = std::max(1., boost::numeric::ublas::norm_2(this->x_));
+			epsilon_coefficient_ = 1.;
+			directional_ = false;
+			theta_obs_ = theta_obs;
+			sin_theta_obs_ = sin_theta_obs;
+			cos_theta_obs_ = cos_theta_obs;
+			r_obj_ = r_obj;
+			sin_theta_obj_ = sin_theta_obj;
+			cos_theta_obj_ = cos_theta_obj;
+			phi_obj_ = phi_obj;
+			projected_x_ = sin_theta_obj * sin_phi_obj;
+			projected_y_ = cos_theta_obj * sin_theta_obs - sin_theta_obj * cos_phi_obj * cos_theta_obs;
+			iota_obj_ = std::atan2(projected_y_, projected_x_);
+			trace_to_plane_ = trace_to_plane;
+			return Status::SUCCESS;
+		}
+		int Iterate() override {
+			namespace ublas = boost::numeric::ublas;
+			int signum, status;
+			if (directional_)
+				status = this->TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			else
+				status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			if (status != Status::SUCCESS)
+				return status;
+			lu_ = jacobian_;
+			if (status = ublas::lu_factorize(lu_, permutation_); status != Status::SUCCESS)
+				return status;
+			this->dx_ = this->f_;
+			ublas::lu_substitute(lu_, permutation_, this->dx_);
+			const Type f_norm = ublas::norm_2(this->f_);
+			const Type translation_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::cbrt_epsilon<Type>();
+			const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::epsilon<Type>();
+			Type dx_norm = ublas::norm_2(this->dx_), dx_translation_norm;
+			while (true) {
+				x_trial_ = this->x_;
+				if (dx_norm > trust_radius_)
+					x_trial_ -= trust_radius_ / dx_norm * this->dx_;
+				else
+					x_trial_ -= this->dx_;
+				if (status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
+					if (status != GSL_EDOM)
+						return status;
+					x_trial_ *= f_trial_(0);
+					x_trial_ -= this->x_;
+					// here x_trial_ is the difference between x and x_trial_
+					trust_radius_ = std::min(Type{0.5} * trust_radius_, ublas::norm_2(x_trial_));
+					continue;
+				}
+				if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
+					this->x_ = x_trial_;
+					this->f_ = f_trial_;
+					if (dx_norm > trust_radius_)
+						trust_radius_ *= 2.;
+					else
+						trust_radius_ = 2. * dx_norm;
+					return Status::SUCCESS;
+				}
+				if (!directional_) {
+					directional_ = true;
+					return Status::SUCCESS;
+				}
+				if (epsilon_coefficient_ > boost::math::tools::forth_root_epsilon<Type>())
+					epsilon_coefficient_ *= 0.5;
+				if (trust_radius_ < translation_radius_limit) {
+					if (trace_to_plane_) {
+						dx_translation_ = this->f_;
+					} else {
+						Type cos_theta_photon = cos_theta_obj_ + this->f_(0);
+						Type theta_photon = std::acos(cos_theta_photon);
+						Type phi_photon = phi_obj_ - this->f_(1);
+						Type sin_theta_photon = std::sin(theta_photon);
+						Type projected_x = sin_theta_photon * std::sin(phi_photon);
+						Type projected_y = cos_theta_photon * sin_theta_obs_ - sin_theta_photon * std::cos(phi_photon) * cos_theta_obs_;
+						dx_translation_(0) = r_obj_ * (projected_x - projected_x_);
+						dx_translation_(1) = r_obj_ * (projected_y - projected_y_);
+					}
+					dx_translation_norm = ublas::norm_2(dx_translation_);
+					x_trial_ = this->x_;
+					if (dx_translation_norm * boost::math::tools::forth_root_epsilon<Type>() > trust_radius_)
+						x_trial_ -= boost::math::tools::forth_root_epsilon<Type>() * dx_translation_;
+					else if (dx_translation_norm > trust_radius_)
+						x_trial_ -= trust_radius_ / dx_translation_norm * dx_translation_;
+					else
+						x_trial_ -= dx_translation_;
+					if (status = this->ScaleX(x_trial_, f_trial_); status != Status::SUCCESS)
+						return status;
+					this->x_ = x_trial_;
+					this->f_ = f_trial_;
+					if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm)
+						trust_radius_ *= 2.;
+					else if (trust_radius_ *= 0.5; trust_radius_ < trust_radius_limit)
+						return Status::TRUST_REGION_TOO_SMALL;
+					return Status::SUCCESS;
+				}
+				trust_radius_ *= 0.5;
+			}
+			return Status::SUCCESS;
+		}
+	};
+
+	template <typename Type, std::size_t N, typename Parameter>
+	class D2NewtonMultiFunctionSolver : public MultiFunctionSolver<Type, N, Parameter> {
+	  protected:
+		Type trust_radius_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> hessian_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
+		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
+
+	  public:
+		D2NewtonMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params), permutation_(N) {}
+		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
+			this->x_ = x;
+			for (int status = this->Eval(); status != Status::SUCCESS; status = this->Eval()) {
+				if (status != GSL_EDOM)
+					return status;
+				gsl_vector_scale(this->x_, gsl_vector_get(this->f_, 0));
+			}
+			if (int status = this->OneSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), hessian_); status != Status::SUCCESS) // FIXME: CHECK hessian_
+				return status;
+			trust_radius_ = boost::numeric::ublas::norm_2(this->x_);
+			gsl_vector_set_zero(this->dx_);
+			return Status::SUCCESS;
+		}
+		int Iterate() override {
+			namespace ublas = boost::numeric::ublas;
+			int signum;
+			gsl_matrix_memcpy(lu_, hessian_);
+			if (int status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+				return status;
+			// gsl_vector_memcpy(dx, dx);
+			if (int status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, this->dx_); status != Status::SUCCESS)
+				return status;
+			const Type f_norm = ublas::norm_2(this->f_);
+			const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::root_epsilon<Type>();
+			Type dx_norm = ublas::norm_2(this->dx_);
+			int limit_iteration = 0;
+			while (true) {
+				gsl_vector_memcpy(x_trial_, this->x_);
+				if (dx_norm > trust_radius_)
+					gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial_);
+				else
+					gsl_blas_daxpy(-1., this->dx_, x_trial_);
+				if (int status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
+					if (status != GSL_EDOM)
+						return status;
+					gsl_vector_scale(x_trial_, std::min(Type{0.99999999}, gsl_vector_get(f_trial_, 0)));
+					gsl_vector_sub(x_trial_, this->x_);
+					// here x_trial_ is the difference between x and x_trial_
+					if (trust_radius_ = std::min(0.5 * trust_radius_, ublas::norm_2(x_trial_)); trust_radius_ < trust_radius_limit) {
+						if (limit_iteration == 20)
+							return Status::MAX_ITERATIONS_EXCEEDED;
+						else if (limit_iteration == 0) {
+							if (status = Hessian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_, hessian_); status != Status::SUCCESS)
+								return status;
+							gsl_matrix_memcpy(lu_, hessian_);
+							if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+								return status;
+							// gsl_vector_memcpy(dx, dx);
+							if (status = gsl_linalg_LU_solve(lu_, permutation_, jacobian_, this->dx_); status != Status::SUCCESS)
+								return status;
+							dx_norm = ublas::norm_2(this->dx_);
+							trust_radius_ *= 2.;
+						}
+						++limit_iteration;
+					}
+					continue;
+				}
+				if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
+					gsl_vector_memcpy(this->x_, x_trial_);
+					gsl_vector_memcpy(this->f_, f_trial_);
+					if (dx_norm > trust_radius_)
+						trust_radius_ *= 2.;
+					else
+						trust_radius_ = 2. * dx_norm;
+					break;
+				} else {
+					if (trust_radius_ *= 0.5; trust_radius_ < trust_radius_limit) {
+						if (limit_iteration == 20)
+							return Status::MAX_ITERATIONS_EXCEEDED;
+						else if (limit_iteration == 0) {
+							if (int status = Hessian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), f_trial_, hessian_); status != Status::SUCCESS)
+								return status;
+							gsl_matrix_memcpy(lu_, hessian_);
+							if (int status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+								return status;
+							// gsl_vector_memcpy(dx, dx);
+							if (int status = gsl_linalg_LU_solve(lu_, permutation_, f_trial_, x_trial_); status != Status::SUCCESS)
+								return status;
+							gsl_vector_add(this->dx_, x_trial_);
+							dx_norm = ublas::norm_2(this->dx_);
+							trust_radius_ *= 2.;
+						}
+						++limit_iteration;
+					}
+				}
+			}
+			if (int status = OneSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), hessian_); status != Status::SUCCESS)
+				return status;
+			return Status::SUCCESS;
+		}
+	};
+
+	template <typename Type, std::size_t N, typename Parameter>
+	class GradientMultiFunctionSolver : public DNewtonMultiFunctionSolver<Type, N, Parameter> {
+	  public:
+		GradientMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : DNewtonMultiFunctionSolver<Type, N, Parameter>(function, params) {}
+		int Iterate() override {
+			namespace ublas = boost::numeric::ublas;
+			int signum, status;
+			gsl_matrix_memcpy(this->lu_, this->jacobian_);
+			if (status = gsl_linalg_LU_decomp(this->lu_, this->permutation_, &signum); status != Status::SUCCESS)
+				return status;
+			if (status = gsl_linalg_LU_solve(this->lu_, this->permutation_, this->f, this->dx); status != Status::SUCCESS)
+				return status;
+			const Type f_norm = ublas::norm_2(this->f_);
+			const Type trust_radius_limit = ublas::norm_2(this->x) * boost::math::tools::epsilon<Type>();
+			Type dx_norm = ublas::norm_2(this->dx_);
+			int iteration_count = 0;
+			while (true) {
+				gsl_vector_memcpy(this->x_trial_, this->x_);
+				if (dx_norm > this->trust_radius_)
+					gsl_blas_daxpy(-this->trust_radius_ / dx_norm, this->dx_, this->x_trial_);
+				else
+					gsl_blas_daxpy(-1., this->dx_, this->x_trial_);
+				if (int status = this->Eval(this->x_trial_, this->f_trial_); status != Status::SUCCESS) {
+					if (status != GSL_EDOM)
+						return Status::NUMERIC_ERROR;
+					gsl_vector_scale(this->x_trial_, std::min(Type{0.99999999}, gsl_vector_get(this->f_trial_, 0)));
+					gsl_vector_sub(this->x_trial_, this->x_);
+					// here x_trial_ is the difference between x and x_trial_
+					this->trust_radius_ = std::min(0.5 * this->trust_radius_, ublas::norm_2(this->x_trial_));
+					continue;
+				}
+				if (Type f_trial_norm = ublas::norm_2(this->f_trial_); f_trial_norm < f_norm) {
+					gsl_vector_memcpy(this->x_, this->x_trial_);
+					gsl_vector_memcpy(this->f_, this->f_trial_);
+					if (dx_norm > this->trust_radius_)
+						this->trust_radius_ *= 2.;
+					else
+						this->trust_radius_ = 2. * dx_norm;
+					break;
+				}
+				++iteration_count;
+				if (this->epsilon_coefficient_ > boost::math::tools::forth_root_epsilon<Type>())
+					this->epsilon_coefficient_ *= 0.5;
+				if (!this->directional_ && iteration_count == 2) {
+					this->trust_radius_ *= 2.;
+					if (status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * this->epsilon_coefficient_, this->jacobian_); status != Status::SUCCESS)
+						return Status::NUMERIC_ERROR;
+					gsl_blas_dgemv(CblasTrans, 1., this->jacobian_, this->f_, 0., this->dx_);
+					dx_norm = ublas::norm_2(this->dx_);
+					this->directional_ = true;
+				} else {
+					this->trust_radius_ *= 0.5;
+					if (this->trust_radius_ < trust_radius_limit)
+						return Status::TRUST_REGION_TOO_SMALL;
+				}
+			}
+			if (this->directional_)
+				status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * this->epsilon_coefficient_, this->jacobian_);
+			else
+				status = TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * this->epsilon_coefficient_, this->jacobian_);
+			if (status != Status::SUCCESS)
+				return Status::NUMERIC_ERROR;
+			return Status::SUCCESS;
+		}
+	};
+
+	template <typename Type, std::size_t N, typename Parameter>
+	class ConjugateGradientMultiFunctionSolver : public MultiFunctionSolver<Type, N, Parameter> {
+	  protected:
+		Type iteration_coefficient_;
+		Type gradient_norm_;
+		Type trust_radius_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> last_dx_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
+		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
+		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
+
+	  public:
+		ConjugateGradientMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params), permutation_(N) {}
+		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
+			this->x_ = x;
+			iteration_coefficient_ = 1.0;
+			for (int status = this->Eval(); status != Status::SUCCESS; status = this->Eval()) {
+				if (status != GSL_EDOM)
+					return status;
+				gsl_vector_scale(this->x_, gsl_vector_get(this->f_, 0));
+			}
+			if (int status = this->OneSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_); status != Status::SUCCESS)
+				return status;
+			gradient_norm_ = 1.;
+			trust_radius_ = iteration_coefficient_ * boost::numeric::ublas::norm_2(this->x_);
+			gsl_vector_set_zero(this->dx_);
+			gsl_vector_set_zero(last_dx_);
+			return Status::SUCCESS;
+		}
+		int Iterate() override {
+			namespace ublas = boost::numeric::ublas;
+			const Type f_norm = ublas::norm_2(this->f_);
+			const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::root_epsilon<Type>();
+			if (int status = gsl_blas_dgemv(CblasTrans, 1., jacobian_, this->f_, 0., x_trial_); status != Status::SUCCESS)
+				return status;
+			Type gradient_norm = ublas::norm_2(x_trial_);
+			Type step_beta = gradient_norm / gradient_norm_;
+			gradient_norm_ = gradient_norm;
+			gsl_vector_memcpy(this->dx_, x_trial_);
+			gsl_blas_daxpy(step_beta, last_dx_, this->dx_);
+			Type dx_norm = ublas::norm_2(this->dx_);
+			int limit_iteration = 0;
+			while (true) {
+				gsl_vector_memcpy(x_trial_, this->x_);
+				if (dx_norm > trust_radius_)
+					gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial_);
+				else
+					gsl_blas_daxpy(-1., this->dx_, x_trial_);
+				if (int status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
+					if (status != GSL_EDOM)
+						return status;
+					gsl_vector_scale(x_trial_, std::min(Type{0.99999999}, gsl_vector_get(f_trial_, 0)));
+					gsl_vector_sub(x_trial_, this->x_);
+					// here x_trial_ is the difference between x and x_trial_
+					if (trust_radius_ = std::min(0.5 * trust_radius_, ublas::norm_2(x_trial_)); trust_radius_ < trust_radius_limit) {
+						if (int status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_); status != Status::SUCCESS)
+							return status;
+						trust_radius_ *= 2.;
+					}
+					continue;
+				}
+				if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
+					gsl_vector_memcpy(this->x_, x_trial_);
+					gsl_vector_memcpy(this->f_, f_trial_);
+					gsl_vector_memcpy(last_dx_, this->dx_);
+					if (dx_norm > trust_radius_)
+						trust_radius_ *= 2.;
+					else
+						trust_radius_ = 2. * dx_norm;
+					break;
+				} else {
+					if (trust_radius_ *= 0.5; trust_radius_ < trust_radius_limit) {
+						if (limit_iteration == 20)
+							return Status::MAX_ITERATIONS_EXCEEDED;
+						else if (limit_iteration == 0) {
+							if (int status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_); status != Status::SUCCESS)
+								return status;
+							if (int status = gsl_blas_dgemv(CblasTrans, 1., jacobian_, this->f_, 0., x_trial_); status != Status::SUCCESS)
+								return status;
+							gsl_vector_memcpy(this->dx_, x_trial_);
+							gsl_blas_daxpy(step_beta, last_dx_, this->dx_);
+							dx_norm = ublas::norm_2(this->dx_);
+							trust_radius_ *= 2.;
+						}
+						++limit_iteration;
+					}
+				}
+			}
+			return this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_);
+		}
+	};
+
+	template <typename Type, std::size_t N, typename Parameter>
+	class TriangleMultiFunctionSolver : public MultiFunctionSolver<Type, N, Parameter> {
+	  protected:
+		boost::numeric::ublas::bounded_vector<Type, N> x_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_a_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_b_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_a_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_b_;
+
+	  public:
+		TriangleMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params) {}
+		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
+			this->x_ = x;
+			int status;
+			for (status = this->Eval(); status != Status::SUCCESS; status = this->Eval()) {
+				if (status != GSL_EDOM)
+					return status;
+				this->x_ *= std::min(Type{0.99999999}, this->f_(0));
+			}
+			// Type dx = -gsl_vector_get(x, 0) * boost::math::tools::root_epsilon<Type>(), dy = gsl_vector_get(x, 1) * boost::math::tools::root_epsilon<Type>();
+			x_a_ = this->x_;
+			x_b_ = this->x_;
+			x_a_(0) = this->x_(0) * (1. - 0.01);
+			x_b_(1) = this->x_(1) * (1. - 0.01);
+			for (int iteration = 0; iteration < 10; ++iteration) {
+				for (status = this->Eval(x_a_, f_a_); status != Status::SUCCESS; status = this->Eval(x_a_, f_a_)) {
+					if (status != GSL_EDOM)
+						return status;
+					x_a_ *= std::min(Type{0.99999999}, f_a_(0));
+				}
+				for (status = this->Eval(x_b_, f_b_); status != Status::SUCCESS; status = this->Eval(x_b_, f_b_)) {
+					if (status != GSL_EDOM)
+						return status;
+					x_b_ *= std::min(Type{0.99999999}, f_b_(0));
+				}
+				if (PointInTriangle(this->f_->data, f_a_->data, f_b_->data))
+					return Status::SUCCESS;
+				f_a_ -= this->f_;
+				f_b_ -= this->f_;
+				Type x_a_coeff = -3. * (this->f_(0) * f_b_(1) - this->f_(1) * f_b_(0)) / (f_a_(0) * f_b_(1) - f_a_(1) * f_b_(0));
+				Type x_b_coeff = -3. * (this->f_(0) * f_a_(1) - this->f_(1) * f_a_(0)) / (f_b_(0) * f_a_(1) - f_b_(1) * f_a_(0));
+				x_a_ -= this->x_;
+				x_a_ *= x_a_coeff;
+				x_a_ += this->x_;
+				x_b_ -= this->x_;
+				x_b_ *= x_b_coeff;
+				x_b_ += this->x_;
+			}
+			return Status::FAILURE;
+		}
+		int Iterate() override {
+			// find the middle point in edge a-b
+			x_trial_ = x_a_;
+			x_trial_ += x_b_;
+			x_trial_ *= 0.5;
+			for (int status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS; status = this->Eval(x_trial_, f_trial_)) {
+				if (status != GSL_EDOM)
+					return status;
+				x_trial_ *= std::min(0.99999999, f_trial_(0));
+			}
+			this->dx_ = x_trial_;
+			this->dx_ -= this->x_;
+			if (PointInTriangle(f_trial_->data, this->f_->data, f_a_->data)) {
+				x_b_ = x_a_;
+				f_b_ = f_a_;
+				x_a_ = this->x_;
+				f_a_ = this->f_;
+				this->x_ = x_trial_;
+				this->f_ = f_trial_;
+				return Status::SUCCESS;
+			}
+			if (PointInTriangle(f_trial_->data, f_b_->data, this->f_->data)) {
+				x_a_ = this->x_;
+				f_a_ = this->f_;
+				this->x_ = x_b_;
+				this->f_ = f_b_;
+				x_b_ = x_trial_;
+				f_b_ = f_trial_;
+				return Status::SUCCESS;
+			}
+			return Status::FAILURE;
+		}
+		int IterateLongest() {
+			namespace ublas = boost::numeric::ublas;
+			// find the longest edge
+			x_trial_ = this->x_;
+			x_trial_ -= x_a_;
+			const Type x_a_norm = ublas::norm_2(x_trial_);
+			x_trial_ = this->x_;
+			x_trial_ -= x_b_;
+			const Type x_b_norm = ublas::norm_2(x_trial_);
+			x_trial_ = x_a_;
+			x_trial_ -= x_b_;
+			const Type a_b_norm = ublas::norm_2(x_trial_);
+			if (x_a_norm >= x_b_norm && x_a_norm >= a_b_norm) {
+				boost::swap(this->x_, x_b_);
+				boost::swap(this->f_, f_b_);
+			} else if (x_b_norm >= x_a_norm && x_b_norm >= a_b_norm) {
+				boost::swap(this->x_, x_a_);
+				boost::swap(this->f_, f_a_);
+			}
+			x_trial_ = x_a_;
+			x_trial_ += x_b_;
+			x_trial_ *= 0.5;
+			for (int status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS; status = this->Eval(x_trial_, f_trial_)) {
+				if (status != GSL_EDOM)
+					return status;
+				x_trial_ *= std::min(Type{0.99999999}, f_trial_(0));
+			}
+			this->dx_ = x_trial_;
+			this->dx_ -= this->x_;
+			if (PointInTriangle(f_trial_->data, this->f_->data, f_a_->data)) {
+				x_b_ = x_a_;
+				f_b_ = f_a_;
+				x_a_ = this->x_;
+				f_a_ = this->f_;
+				this->x_ = x_trial_;
+				this->f_ = f_trial_;
+				return Status::SUCCESS;
+			}
+			if (PointInTriangle(f_trial_->data, f_b_->data, this->f_->data)) {
+				x_a_ = this->x_;
+				f_a_ = this->f_;
+				this->x_ = x_b_;
+				this->f_ = f_b_;
+				x_b_ = x_trial_;
+				f_b_ = f_trial_;
+				return Status::SUCCESS;
+			}
+			return Status::FAILURE;
+		}
+	};
+
+	template <typename Type, std::size_t N, typename Parameter>
+	class DirectionMultiFunctionSolver : public MultiFunctionSolver<Type, N, Parameter> {
+	  protected:
+		int directional_num_;
+		Type trust_radius_;
+		Type delta_angle_;
+		Type central_angle_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> x_rec_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
+		boost::numeric::ublas::bounded_vector<Type, N> f_rec_;
+
+	  public:
+		DirectionMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params) {}
+		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
+			namespace ublas = boost::numeric::ublas;
+			this->x_ = x;
+			directional_num_ = 1;
+			delta_angle_ = boost::math::constants::two_thirds_pi<Type>();
+			central_angle_ = 0.;
+			if (int status = this->ScaleX(this->x_, this->f_); status != Status::SUCCESS)
+				return status;
+			trust_radius_ = std::max(1., ublas::norm_2(this->x_) / ublas::norm_2(this->f_)) * boost::math::tools::root_epsilon<Type>();
+			return Status::SUCCESS;
+		}
+		int Iterate() override {
+			namespace ublas = boost::numeric::ublas;
+			int status;
+			const Type f_norm = ublas::norm_2(this->f_), trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::epsilon<Type>() * 100;
+			for (Type effective_radius = std::max(trust_radius_limit, trust_radius_ * f_norm); directional_num_ < 64; effective_radius = std::max(trust_radius_limit, trust_radius_ * f_norm)) {
+				Type min_norm, delta_angle = delta_angle_, next_angle = central_angle_;
+				Type delta_x = effective_radius * std::cos(central_angle_), delta_y = effective_radius * std::sin(central_angle_);
+				x_trial_(0) = this->x_(0) + delta_x;
+				x_trial_(1) = this->x_(1) + delta_y;
+				if (status = this->ScaleX(x_trial_, f_trial_); status != Status::SUCCESS)
+					return status;
+				if (min_norm = ublas::norm_2(f_trial_); min_norm < f_norm) {
+					next_angle = central_angle_;
+					x_rec_ = x_trial_;
+					f_rec_ = f_trial_;
+				}
+				for (int i = directional_num_; i > 0; --i) {
+					for (int sign = 1; sign > -2; sign -= 2) {
+						Type angle = central_angle_ + sign * delta_angle;
+						delta_x = trust_radius_ * std::cos(angle);
+						delta_y = trust_radius_ * std::sin(angle);
+						x_trial_(0) = this->x_(0) + delta_x;
+						x_trial_(1) = this->x_(1) + delta_y;
+						if (status = this->ScaleX(x_trial_, f_trial_); status != Status::SUCCESS)
+							return status;
+						if (Type f_dir_norm = ublas::norm_2(f_trial_); f_dir_norm < min_norm) {
+							min_norm = f_dir_norm;
+							next_angle = angle;
+							x_rec_ = x_trial_;
+							f_rec_ = f_trial_;
+						}
+					}
+					if (delta_angle *= 2.; delta_angle > M_PI) {
+						delta_angle *= 0.5;
+						break;
+					}
+				}
+				if (min_norm >= f_norm) {
+					trust_radius_ *= 0.7;
+					if (next_angle != central_angle_ + M_PI)
+						delta_angle_ = std::max(delta_angle_, std::abs(next_angle - central_angle_)) * 0.5;
+					else
+						delta_angle_ = M_PI_4 * std::pow(0.5, directional_num_);
+					directional_num_ += 2;
+					central_angle_ = ModBy2Pi(next_angle);
+					continue;
+				}
+				delta_x = 0.5 * effective_radius * std::cos(next_angle);
+				delta_y = 0.5 * effective_radius * std::sin(next_angle);
+				while (effective_radius > trust_radius_limit) {
+					x_trial_(0) = this->x_(0) + delta_x;
+					x_trial_(1) = this->x_(1) + delta_y;
+					if (status = this->ScaleX(x_trial_, f_trial_); status != Status::SUCCESS)
+						return status;
+					if (Type f_mid_norm = ublas::norm_2(f_trial_); f_mid_norm < min_norm) {
+						min_norm = f_mid_norm;
+						x_rec_ = x_trial_;
+						f_rec_ = f_trial_;
+						delta_x *= 0.5;
+						delta_y *= 0.5;
+						trust_radius_ *= 0.5;
+					} else
+						break;
+				}
+				this->dx_ = x_rec_ - this->x_;
+				this->x_ = x_rec_;
+				this->f_ = f_rec_;
+				if (directional_num_ > 1) {
+					if (next_angle != central_angle_ + M_PI)
+						delta_angle_ = std::max(delta_angle_, std::abs(next_angle - central_angle_));
+					else
+						delta_angle_ = boost::math::constants::half_pi<Type>();
+					directional_num_ = 1;
+				} else {
+					if (next_angle == central_angle_)
+						delta_angle_ *= 0.5;
+					trust_radius_ *= 1.5;
+				}
+				central_angle_ = ModBy2Pi(next_angle);
+				return Status::SUCCESS;
+			}
+			return Status::FAILURE;
+		}
 	};
 } // namespace SBody
 

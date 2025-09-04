@@ -1,19 +1,9 @@
-add_library(SBodyLibStatic STATIC Utility.cpp)
-set_target_properties(SBodyLibStatic PROPERTIES OUTPUT_NAME "SBody")
-target_link_libraries(SBodyLibStatic GSL::gsl Boost::boost fmt::fmt ${OPTIONAL_LIBS})
-
-if(SBODY_LIB_SHARED)
-    add_library(SBodyLibShared SHARED $<TARGET_OBJECTS:SBodyLibStatic>)
-    set_target_properties(SBodyLibShared PROPERTIES OUTPUT_NAME "SBody")
-    target_link_libraries(SBodyLibShared GSL::gsl Boost::boost fmt::fmt ${OPTIONAL_LIBS})
-endif()
-
 if(WITH_PYTHON)
     find_package(Python3 COMPONENTS Interpreter Development)
     find_package(pybind11 CONFIG)
 
     if(pybind11_FOUND)
-        pybind11_add_module(SBoPy MODULE Python.cpp $<TARGET_OBJECTS:SBodyLibStatic>)
+        pybind11_add_module(SBoPy MODULE Python.cpp)
         target_link_libraries(SBoPy PUBLIC GSL::gsl Boost::boost fmt::fmt ${OPTIONAL_LIBS})
     else()
         set(WITH_PYTHON OFF)
