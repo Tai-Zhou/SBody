@@ -147,7 +147,7 @@ namespace SBody {
 				coordinate_row /= std::sqrt(std::abs(DotProduct(position, coordinate_row, coordinate_row, true)));
 				ublas::matrix_row<ublas::bounded_matrix<Type, 4, 4>>(product, i) = ublas::prod(metric, coordinate_row);
 			}
-			return isnan(coordinate(3, 0)) ? Status::NUMERIC_ERROR : Status::SUCCESS;
+			return std::isnan(coordinate(3, 0)) ? Status::NUMERIC_ERROR : Status::SUCCESS;
 		}
 
 		/**
@@ -589,7 +589,7 @@ namespace SBody {
 			Type impact_root_value = 0.5 * (impact_root.first + impact_root.second), impact_root_value2 = impact_root_value * impact_root_value;
 			alpha = impact_root_value / sin_observer_object * sin_theta_object * sin_phi_object;
 			beta = impact_root_value / sin_observer_object * (cos_theta_object * sin_theta_observer - sin_theta_object * cos_phi_object * cos_theta_observer);
-			if (!isnan(cubic_roots[1])) {
+			if (!std::isnan(cubic_roots[1])) {
 				if (cubic_roots[1] < u1) { // cubic_roots[1] < u1 < cubic_roots[1] + EPSILON
 					const Type ellip_int_4 = EllipticIntegral(-4, u0, u1, 0., 1., u1, -1., -cubic_roots[0], 1., cubic_roots[2], -1.);
 					photon(0) = -boost::math::constants::half_root_two<Type>() * ellip_int_4 / (impact_root_value * (1. - 2. * u0));
@@ -665,14 +665,14 @@ namespace SBody {
 			if (g11_1 <= 0)
 				return 1;
 			y[4] = std::sqrt(g11_1 - (Power2(y[5]) / g11_1 + Power2(y[1] * y[6]) + Power2(y[1] * std::sin(y[2]) * y[7])));
-			return isnan(y[4]) ? Status::DOMAIN_ERROR : Status::SUCCESS;
+			return std::isnan(y[4]) ? Status::DOMAIN_ERROR : Status::SUCCESS;
 		}
 		int NormalizeNullGeodesic(boost::numeric::ublas::bounded_vector<Type, 8> &y, Type frequency = 1.) override {
 			const Type g11_1 = 1. - 2. / y[1];
 			if (g11_1 <= 0)
 				return 1;
 			const Type coefficient = std::copysign(g11_1, frequency) / std::sqrt(y[5] * y[5] + g11_1 * (Power2(y[1] * y[6]) + Power2(y[1] * std::sin(y[2]) * y[7])));
-			if (isnan(coefficient))
+			if (std::isnan(coefficient))
 				return Status::DOMAIN_ERROR;
 			y[4] = frequency;
 			y[5] *= coefficient;
@@ -878,14 +878,14 @@ namespace SBody {
 			if (g11_1 <= 0)
 				return 1;
 			y[4] = std::sqrt(g11_1 - (Power2(y[5]) / g11_1 + Power2(y[1] * y[6]) + Power2(y[1] * std::sin(y[2]) * y[7])));
-			return isnan(y[4]) ? Status::DOMAIN_ERROR : Status::SUCCESS;
+			return std::isnan(y[4]) ? Status::DOMAIN_ERROR : Status::SUCCESS;
 		}
 		int NormalizeNullGeodesic(boost::numeric::ublas::bounded_vector<Type, 8> &y, Type frequency = 1.) override {
 			const Type r_1 = 1. / y[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
 			if (g11_1 <= 0)
 				return 1;
 			const Type coefficient = std::copysign(g11_1, frequency) / std::sqrt(Power2(y[5]) + g11_1 * (Power2(y[1] * y[6]) + Power2(y[1] * std::sin(y[2]) * y[7])));
-			if (isnan(coefficient))
+			if (std::isnan(coefficient))
 				return Status::DOMAIN_ERROR;
 			y[4] = frequency;
 			y[5] *= coefficient;
@@ -935,7 +935,7 @@ namespace SBody {
 		static int DeltaUMuPhi(const boost::numeric::ublas::bounded_vector<Type, 2> &alpha_beta, boost::numeric::ublas::bounded_vector<Type, 2> &delta_u_mu_phi, KerrFastTraceParameters<Type> &params) {
 			// The photon in the observer's frame has the tetrad velocity: [1, r / R, beta / R, -alpha / R], where R = std::sqrt(r^2 + alpha^2 + beta^2).
 			Type alpha = alpha_beta(0), beta = alpha_beta(1);
-			if (!isfinite(alpha) || !isfinite(beta))
+			if (!std::isfinite(alpha) || !std::isfinite(beta))
 				return Status::NUMERIC_ERROR;
 			boost::numeric::ublas::bounded_vector<Type, 8> photon;
 			Type photon_time;
@@ -1071,7 +1071,7 @@ namespace SBody {
 				I_u_minus_0 = sqrt_e_1 * -EllipticIntegral4Complex(-2, u_obs, u_obj, 1., -u_minus_1, sqrt_e_1, g1, h1, sqrt_e_1, -g1, h2);
 				I_u_2_0 = sqrt_e_1 * EllipticIntegral4Complex(-2, u_obs, u_obj, 0., 1., sqrt_e_1, g1, h1, sqrt_e_1, -g1, h2);
 				I_u_4_0 = sqrt_e_1 * EllipticIntegral4Complex(-4, u_obs, u_obj, 0., 1., sqrt_e_1, g1, h1, sqrt_e_1, -g1, h2);
-				if (isnan(I_u_0) || isnan(I_u_plus_0) || isnan(I_u_minus_0) || isnan(I_u_2_0) || isnan(I_u_4_0))
+				if (std::isnan(I_u_0) || std::isnan(I_u_plus_0) || std::isnan(I_u_minus_0) || std::isnan(I_u_2_0) || std::isnan(I_u_4_0))
 					return Status::NUMERIC_ERROR;
 				return Status::SUCCESS;
 			} else if (root_num_U == 2) {
@@ -1083,7 +1083,7 @@ namespace SBody {
 					I_u_minus_0 = sqrt_e_1 * -EllipticIntegral2Complex(-2, u_obs, u_obj, 1., -u_minus_1, f, g, 1., -u_roots[0], 1., -u_roots[1], 1.);
 					I_u_2_0 = sqrt_e_1 * EllipticIntegral2Complex(-2, u_obs, u_obj, 0., 1., f, g, 1., -u_roots[0], 1., -u_roots[1], 1.);
 					I_u_4_0 = sqrt_e_1 * EllipticIntegral2Complex(-4, u_obs, u_obj, 0., 1., f, g, 1., -u_roots[0], 1., -u_roots[1], 1.);
-					if (isnan(I_u_0) || isnan(I_u_plus_0) || isnan(I_u_minus_0) || isnan(I_u_2_0) || isnan(I_u_4_0))
+					if (std::isnan(I_u_0) || std::isnan(I_u_plus_0) || std::isnan(I_u_minus_0) || std::isnan(I_u_2_0) || std::isnan(I_u_4_0))
 						return Status::NUMERIC_ERROR;
 					return Status::SUCCESS;
 				}
@@ -1097,7 +1097,7 @@ namespace SBody {
 					I_u_minus_0 = sqrt_e_1 * -EllipticIntegral2Complex(-2, u_obs, u_obj, 1., -u_minus_1, f, g, 1., u_roots[1], -1., -u_roots[0], 1.);
 					I_u_2_0 = sqrt_e_1 * EllipticIntegral2Complex(-2, u_obs, u_obj, 0., 1., f, g, 1., u_roots[1], -1., -u_roots[0], 1.);
 					I_u_4_0 = sqrt_e_1 * EllipticIntegral2Complex(-4, u_obs, u_obj, 0., 1., f, g, 1., u_roots[1], -1., -u_roots[0], 1.);
-					if (isnan(I_u_0) || isnan(I_u_plus_0) || isnan(I_u_minus_0) || isnan(I_u_2_0) || isnan(I_u_4_0))
+					if (std::isnan(I_u_0) || std::isnan(I_u_plus_0) || std::isnan(I_u_minus_0) || std::isnan(I_u_2_0) || std::isnan(I_u_4_0))
 						return Status::NUMERIC_ERROR;
 					return Status::SUCCESS;
 				}
@@ -1483,7 +1483,7 @@ namespace SBody {
 				theta_0[i] = acos(mu_f_0);
 				const Type phi_u_0 = u_r * ((l * u_plus_1 + 2. * (a_ - l)) * int_u_plus_0[i] - (l * u_minus_1 + 2. * (a_ - l)) * int_u_minus_0[i]);
 				phi_0[i] = phi_u_0 + phi_mu_0;
-				if (isnan(phi_0[i]))
+				if (std::isnan(phi_0[i]))
 					return Status::FAILURE;
 			}
 			for (int i = 0; i < I_u_1.size(); ++i) {
@@ -1492,7 +1492,7 @@ namespace SBody {
 				theta_1[i] = acos(mu_f_1);
 				const Type phi_u_1 = u_r * ((l * u_plus_1 + 2. * (a_ - l)) * int_u_plus_1[i] - (l * u_minus_1 + 2. * (a_ - l)) * int_u_minus_1[i]);
 				phi_1[i] = phi_u_1 + phi_mu_1;
-				if (isnan(phi_1[i]))
+				if (std::isnan(phi_1[i]))
 					return Status::FAILURE;
 			}
 			return Status::SUCCESS;
@@ -1581,7 +1581,7 @@ namespace SBody {
 			const Type r_rho_2 = 2. * r / rho2;
 			// y[7] += 2. * a_ * r / (Power2(a2_r2) - a2_ * Delta * sin2_theta);
 			y[4] = std::sqrt(1. - r_rho_2 + 2. * r_rho_2 * a_ * sin2_theta * y[7] - (rho2 / (r2 - 2. * r + a2_) * Power2(y[5]) + rho2 * Power2(y[6]) + (a2_r2 * sin2_theta + r_rho_2 * a2_ * sin4_theta) * Power2(y[7])));
-			return isnan(y[4]) ? Status::DOMAIN_ERROR : Status::SUCCESS;
+			return std::isnan(y[4]) ? Status::DOMAIN_ERROR : Status::SUCCESS;
 		}
 		int NormalizeNullGeodesic(boost::numeric::ublas::bounded_vector<Type, 8> &y, Type frequency = 1.) override {
 			const Type r = y[1], r2 = r * r;
@@ -1592,7 +1592,7 @@ namespace SBody {
 			const Type b = -2. * r_rho_2 * a_ * sin2_theta * y[7];
 			const Type c = r_rho_2 - 1.;
 			const Type coefficient = std::copysign(0.5 / a, frequency) * (-b + std::sqrt(b * b - 4. * a * c));
-			if (isnan(coefficient))
+			if (std::isnan(coefficient))
 				return Status::DOMAIN_ERROR;
 			y[4] = frequency;
 			y[5] *= coefficient;
@@ -1840,7 +1840,7 @@ namespace SBody {
 			const Type rho2 = r2 + a2_ * Power2(std::cos(y[2]));
 			const Type r_rho_2 = (2. * r - r_Q2_) / rho2;
 			y[4] = std::sqrt(1. - r_rho_2 + 2. * r_rho_2 * a_ * sin2_theta * y[7] - (rho2 / (r2 - 2. * r + a2_ + r_Q2_) * Power2(y[5]) + rho2 * Power2(y[6]) + ((a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * sin2_theta) * Power2(y[7])));
-			return isnan(y[4]) ? Status::DOMAIN_ERROR : Status::SUCCESS;
+			return std::isnan(y[4]) ? Status::DOMAIN_ERROR : Status::SUCCESS;
 		}
 		int NormalizeNullGeodesic(boost::numeric::ublas::bounded_vector<Type, 8> &y, Type frequency = 1.) override {
 			const Type r = y[1], r2 = Power2(r);
@@ -1851,7 +1851,7 @@ namespace SBody {
 			const Type b = -2. * r_rho_2 * a_ * sin2_theta * y[7];
 			const Type c = r_rho_2 - 1.;
 			const Type coefficient = std::copysign(0.5 / a, frequency) * (-b + std::sqrt(b * b - 4. * a * c));
-			if (isnan(coefficient))
+			if (std::isnan(coefficient))
 				return Status::DOMAIN_ERROR;
 			y[4] = frequency;
 			y[5] *= coefficient;
@@ -1966,7 +1966,7 @@ namespace SBody {
 			const Type rho2 = r2 + Power2(l_ + a_ * cos_theta);
 			// y[7] += 2. * a_ * r / (Power2(a2_ + r2) - a2_ * Delta * sin2_theta);
 			y[4] = std::sqrt(((Delta - a2_ * sin2_theta) + 4. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * y[7] - (Power2(r2 + l2_ + a2_) * sin2_theta - Power2(a_ * sin2_theta - 2. * l_ * cos_theta) * Delta) * Power2(y[7])) / rho2 - rho2 * (Power2(y[5]) / Delta + Power2(y[6])));
-			return isnan(y[4]) ? Status::DOMAIN_ERROR : Status::SUCCESS;
+			return std::isnan(y[4]) ? Status::DOMAIN_ERROR : Status::SUCCESS;
 		}
 		int NormalizeNullGeodesic(boost::numeric::ublas::bounded_vector<Type, 8> &y, Type frequency = 1.) override {
 			const Type r = y[1], r2 = Power2(r);
@@ -1979,7 +1979,7 @@ namespace SBody {
 			const Type b = -4. * rho_2 * ((r + l2_) * chi + l_ * cos_theta * rho2_a_chi) * y[7];
 			const Type c = -rho_2 * (Delta - a2_ * sin2_theta);
 			const Type coefficient = std::copysign(0.5 / a, frequency) * (-b + std::sqrt(b * b - 4. * a * c));
-			if (isnan(coefficient))
+			if (std::isnan(coefficient))
 				return Status::DOMAIN_ERROR;
 			y[4] = frequency;
 			y[5] *= coefficient;

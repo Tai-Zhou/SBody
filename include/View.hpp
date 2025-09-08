@@ -198,7 +198,7 @@ namespace SBody {
 
 		static int TraceToPlane(const boost::numeric::ublas::bounded_vector<Type, 2> &alpha_beta, boost::numeric::ublas::bounded_vector<Type, 2> &delta_apparent_alpha_beta, TraceParameters<Type> &params) {
 			Type alpha = alpha_beta(0), beta = alpha_beta(1);
-			if (!isfinite(alpha) || !isfinite(beta))
+			if (!std::isfinite(alpha) || !std::isfinite(beta))
 				return Status::NUMERIC_ERROR;
 			Type photon_time;
 			if (int status = params.metric->InitializePhoton(params.photon, photon_time, alpha, beta, params.r, params.r2, params.theta_obs, params.sin_theta_obs); status != Status::SUCCESS)
