@@ -4,7 +4,7 @@ if(WITH_PYTHON)
 
     if(pybind11_FOUND)
         pybind11_add_module(SBoPy MODULE Python.cpp)
-        target_link_libraries(SBoPy PUBLIC GSL::gsl Boost::boost fmt::fmt ${OPTIONAL_LIBS})
+        target_link_libraries(SBoPy PUBLIC Boost::boost fmt::fmt ${OPTIONAL_LIBS})
     else()
         set(WITH_PYTHON OFF)
     endif()

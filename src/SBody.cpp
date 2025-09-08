@@ -114,7 +114,6 @@ int Benchmark() {
 }
 
 int main(int argc, char *argv[]) {
-	gsl_set_error_handler_off();
 	// Application Entry
 	auto TStart = chrono::steady_clock::now();
 	signal(SIGINT, InterruptHandler);

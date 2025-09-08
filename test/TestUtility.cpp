@@ -23,6 +23,7 @@
 #include <boost/math/special_functions/ellint_1.hpp>
 #include <boost/math/special_functions/ellint_2.hpp>
 #include <boost/math/special_functions/ellint_3.hpp>
+#include <boost/math/special_functions/jacobi_elliptic.hpp>
 #include <boost/test/included/unit_test.hpp>
 #include <fmt/core.h>
 
@@ -81,6 +82,17 @@ BOOST_AUTO_TEST_CASE(TestEllint_2) {
 // 	BOOST_CHECK_CLOSE_FRACTION(gsl_sf_ellint_Pcomp(k, n, GSL_PREC_DOUBLE), boost::math::ellint_3(k, -n), 1e-15);
 // }
 
+BOOST_AUTO_TEST_CASE(TestJacobiElliptic) {
+	const double k = 0.2l;
+	const double u = 0.5l;
+	double cn, dn;
+	double sn_gsl, cn_gsl, dn_gsl;
+	// gsl_sf_elljac_e(u, Power2(k), &sn_gsl, &cn_gsl, &dn_gsl);
+	// BOOST_CHECK_CLOSE_FRACTION(sn_gsl, boost::math::jacobi_elliptic(k, u, &cn, &dn), 1e-15);
+	// BOOST_CHECK_CLOSE_FRACTION(cn_gsl, cn, 1e-15);
+	// BOOST_CHECK_CLOSE_FRACTION(dn_gsl, dn, 1e-15);
+}
+
 BOOST_AUTO_TEST_CASE(TestLUDecomposition) {
 	namespace ublas = boost::numeric::ublas;
 	ublas::bounded_matrix<double, 3, 3> A, LU;
@@ -108,12 +120,51 @@ BOOST_AUTO_TEST_CASE(TestLUDecomposition) {
 		BOOST_CHECK_CLOSE_FRACTION(x(i), b(i), 1e-15);
 }
 
-BOOST_AUTO_TEST_CASE(TestMultiFunctionSolver) {
-	int (*func)(const boost::numeric::ublas::bounded_vector<double, 2> &, boost::numeric::ublas::bounded_vector<double, 2> &, double &) = [](const boost::numeric::ublas::bounded_vector<double, 2> &x, boost::numeric::ublas::bounded_vector<double, 2> &f, double &param) -> int {
-		return 0;
+BOOST_AUTO_TEST_CASE(TestTwoSidedJacobian) {
+	namespace ublas = boost::numeric::ublas;
+	int status = Status::SUCCESS;
+	auto func = [](boost::numeric::ublas::bounded_vector<double, 2> &x, boost::numeric::ublas::bounded_vector<double, 2> &f) -> int {
+		f(0) = x(0) * x(0) * x(1) + std::sin(x(1));
+		f(1) = x(0) * x(1) * x(1) + std::cos(x(0));
+		return Status::SUCCESS;
 	};
-	double no_use = 0.;
-	auto solver = DNewtonMultiFunctionSolver<double, 2, double>(func, no_use);
+	boost::numeric::ublas::bounded_vector<double, 2> x, f;
+	x(0) = 0.5;
+	x(1) = 1.;
+	f(0) = 0.25 + std::sin(1);
+	f(1) = 0.5 + std::cos(0.5);
+	boost::numeric::ublas::bounded_matrix<double, 2, 2> jacobian;
+	double relative_epsilon = 1e-7;
+	ublas::bounded_vector<double, 2>
+		x1(x), f_trial_plus, f_trial_minus;
+	for (std::size_t j = 0; j < 2; ++j) {
+		const double x_j = x(j);
+		double dx = std::abs(x_j) >= 1. ? relative_epsilon * x_j : std::copysign(relative_epsilon, x_j);
+		while (std::abs(dx) > std::abs(x_j) * boost::math::tools::epsilon<double>()) {
+			x1(j) = x_j + dx;
+			if (status = func(x1, f_trial_plus); status == Status::SUCCESS)
+				break;
+			dx *= 0.5;
+		}
+		if (status != Status::SUCCESS) {
+			dx = std::abs(x_j) >= 1. ? relative_epsilon * x_j : std::copysign(relative_epsilon, x_j);
+			while (std::abs(dx) > std::abs(x_j) * boost::math::tools::epsilon<double>()) {
+				x1(j) = x_j - dx;
+				if (status = func(x1, f_trial_minus); status == Status::SUCCESS)
+					break;
+				dx *= 0.5;
+			}
+			if (status != Status::SUCCESS)
+				ublas::matrix_column(jacobian, j) = (f - f_trial_minus) / dx;
+		} else {
+			x1(j) = x_j - dx;
+			if (status = func(x1, f_trial_minus); status == Status::SUCCESS)
+				ublas::matrix_column(jacobian, j) = (f - f_trial_minus) / dx;
+			else
+				ublas::matrix_column(jacobian, j) = 0.5 * (f_trial_plus - f_trial_minus) / dx;
+		}
+		x1(j) = x_j;
+	}
 }
 
 BOOST_AUTO_TEST_CASE(TestCoordinateOrthogonalization) {

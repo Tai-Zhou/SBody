@@ -49,6 +49,7 @@ namespace SBody {
 		 * @return int
 		 */
 		virtual int Hit(const boost::numeric::ublas::bounded_vector<Type, 8> &current, const boost::numeric::ublas::bounded_vector<Type, 8> &last) = 0;
+
 		/**
 		 * @brief
 		 * \f[z=\frac{E_\mathrm{obj}}{E_\mathrm{obs}}-1\f]
@@ -68,8 +69,10 @@ namespace SBody {
 		 * \f[
 		 * 	E_\mathrm{obs}=u_\mathrm{ph}^0.
 		 * \f]
+		 *
 		 * @param photon 8 dimensional information of photon
-		 * @return double
+		 * @param photon_time
+		 * @return Type
 		 */
 		virtual Type Redshift(const boost::numeric::ublas::bounded_vector<Type, 8> &photon, TimeSystem photon_time) = 0;
 	};
@@ -315,7 +318,8 @@ namespace SBody {
 		 * @brief return frequency
 		 *
 		 * @param photon
-		 * @return double
+		 * @param photon_time
+		 * @return Type
 		 */
 		Type Redshift(const boost::numeric::ublas::bounded_vector<Type, 8> &photon, TimeSystem photon_time) override {
 			return this->metric_->Redshift(position_, photon, time_, photon_time);
@@ -324,12 +328,12 @@ namespace SBody {
 		int MetricTensor(boost::numeric::ublas::bounded_matrix<Type, 4, 4> &metric) {
 			return this->metric_->MetricTensor(position_, metric);
 		}
-		Type DotProduct(const Type x[], const Type y[], const std::size_t dimension) {
-			return this->metric_->DotProduct(position_, x, y, dimension);
+		template <typename VecExp1, typename VecExp2>
+		Type DotProduct(const VecExp1 &x, const VecExp2 &y, bool include_time) {
+			return this->metric_->DotProduct(position_, x, y, include_time);
 		}
 		int LocalInertialFrame(boost::numeric::ublas::bounded_matrix<Type, 4, 4> &coordinate) {
-			return Status::FAILURE;
-			// return this->metric_->LocalInertialFrame(position_, time_, coordinate);
+			return this->metric_->LocalInertialFrame(position_, time_, coordinate);
 		}
 		Type Energy() {
 			return this->metric_->Energy(position_, time_, coordinate_);
@@ -353,10 +357,10 @@ namespace SBody {
 	  public:
 		Star(std::shared_ptr<Metric<Type>> metric, TimeSystem time, DynamicalSystem coordinate, Type radius = 0, bool fixed = false) : Particle<Type>(metric, time, coordinate, fixed), radius_(radius), radius_square_(radius * radius) {}
 		int Hit(const boost::numeric::ublas::bounded_vector<Type, 8> &current, const boost::numeric::ublas::bounded_vector<Type, 8> &last) {
-			Type a2 = this->metric_->DistanceSquare(this->position_, current.data(), 3);
+			Type a2 = this->metric_->DistanceSquare(this->position_, current, 3);
 			if (a2 <= radius_square_)
 				return 1;
-			Type b2 = this->metric_->DistanceSquare(this->position_, last, 3), c2 = this->metric_->DistanceSquare(current.data(), last.data(), 3);
+			Type b2 = this->metric_->DistanceSquare(this->position_, last, 3), c2 = this->metric_->DistanceSquare(current, last, 3);
 			if (a2 + c2 > b2 && b2 + c2 > a2 && 2 * a2 * c2 - Power2(a2 - b2 + c2) <= 4 * c2 * radius_square_)
 				return 1; // if min distance between current and last < radius, return 1;
 			return Status::SUCCESS;

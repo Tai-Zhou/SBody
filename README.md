@@ -4,14 +4,10 @@
 
 The "S" in the name of SBody stands for "Small", "Some", and "Speed".
 
-> [!IMPORTANT]
-> SBody is currently migrating from GSL to Boost.
-
 - [Library \& Tool](#library--tool)
   - [Required](#required)
     - [CMake](#cmake)
     - [Boost](#boost)
-    - [GSL](#gsl)
   - [Submodule](#submodule)
   - [Optional](#optional)
 - [Changelog](#changelog)
@@ -30,12 +26,6 @@ The "S" in the name of SBody stands for "Small", "Some", and "Speed".
 The [Boost](https://www.boost.org) C++ Libraries are open source, peer-reviewed, portable and free.
 * Linux: run `apt install libboost-all-dev` or refer to the instructions on the [homepage](https://www.boost.org/doc/user-guide/getting-started.html).
 * macOS: Install Boost via [Homebrew](https://brew.sh), with command `brew install boost`.
-
-#### GSL
-
-The GNU Scientific Library ([GSL](https://www.gnu.org/software/gsl/)) is a numerical library for C and C++ programmers.
-* Linux: run `apt install libgsl-dev` or download and install from [homepage](https://www.gnu.org/software/gsl/).
-* macOS: Install GSL via [Homebrew](https://brew.sh), with command `brew install gsl`.
 
 ### Submodule
 
@@ -57,4 +47,4 @@ The GNU Scientific Library ([GSL](https://www.gnu.org/software/gsl/)) is a numer
 Changelog can be found [here](https://github.com/Tai-Zhou/SBody/blob/main/CHANGELOG.md).
 
 ## License
-This program uses [GSL](https://www.gnu.org/software/gsl/), so the program can only be distributed under the terms of the [GNU General Public License](LICENSE) (GPL).
+The program is currently distributed under the terms of the [GNU General Public License](LICENSE) (GPL).

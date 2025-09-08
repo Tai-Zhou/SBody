@@ -23,10 +23,6 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include <fmt/core.h>
-#include <gsl/gsl_blas.h>
-#include <gsl/gsl_linalg.h>
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_vector.h>
 
 #ifdef WITH_OPENMP
 #include <omp.h>
@@ -243,7 +239,7 @@ namespace SBody {
 				// photon fall into the BH
 				if (std::abs(photon_state[5]) * boost::math::tools::root_epsilon<Type>() > 1.) {
 					delta_apparent_alpha_beta(0) = 1.1;
-					return Status::FALLS_INTO_BLACK_HOLE;
+					return Status::SCALING_REQUIRED;
 				}
 #ifdef SBODY_RELEASE
 				if (std::chrono::steady_clock::now() - wall_clock_start_time > std::chrono::milliseconds(100)) {
@@ -259,15 +255,15 @@ namespace SBody {
 				}
 				// photon failed to hit the plane, the impact params need to be larger
 				delta_apparent_alpha_beta(0) = 1.01;
-				return Status::NO_INTERSECTION_WITH_TARGET_SURFACE;
+				return Status::SCALING_REQUIRED;
 			}
 		}
 
 		int PhotonInformation(const boost::numeric::ublas::bounded_vector<Type, 8> &position, TimeSystem object_time, boost::numeric::ublas::bounded_vector<Type, 5> &record, const boost::numeric::ublas::bounded_vector<Type, 8> &photon, Type photon_time, Type alpha, Type beta) {
-			record[0] = alpha * cos_iota_ - beta * sin_iota_;				 // alpha
-			record[1] = beta * cos_iota_ + alpha * sin_iota_;				 // beta
-			record[2] = metric_->Redshift(position, photon, object_time, T); // redshift
-			record[3] = photon_time;										 // look back time
+			record(0) = alpha * cos_iota_ - beta * sin_iota_;				 // alpha
+			record(1) = beta * cos_iota_ + alpha * sin_iota_;				 // beta
+			record(2) = metric_->Redshift(position, photon, object_time, T); // redshift
+			record(3) = photon_time;										 // look back time
 			return Status::SUCCESS;
 		}
 
@@ -286,7 +282,7 @@ namespace SBody {
 			boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_dopri5<ublas::bounded_vector<Type, 8>>> integration_stepper;
 			ublas::bounded_vector<Type, 8> forward_photon;
 			ublas::bounded_vector<Type, 3> cone_record[SAMPLE_NUMBER], local_cone_record[SAMPLE_NUMBER], center_photon_velocity;
-			auto forward_photon_velocity_view = gsl_vector_view_array(forward_photon.data().begin() + 4, 4);
+			auto forward_photon_velocity = ublas::vector_range(forward_photon, ublas::range(4, 8));
 			forward_photon = photon;
 			metric_->NormalizeNullGeodesic(forward_photon);
 			metric_->LagrangianToHamiltonian(forward_photon);
@@ -298,43 +294,40 @@ namespace SBody {
 			metric_->HamiltonianToLagrangian(forward_photon);
 			SphericalToCartesian(forward_photon);
 			std::copy(forward_photon.begin() + 5, forward_photon.end(), center_photon_velocity.begin());
-			center_photon_velocity /= Norm(center_photon_velocity);
-			auto gmunu_gsl = gsl_matrix_alloc(4, 4);		// object local metric tensor
-			auto coordinate = gsl_matrix_alloc(4, 4);		// object local inertial coordinate frame
-			auto coordinate_gmunu = gsl_matrix_alloc(4, 4); // object local inertial frame measured by observer
-			auto permutation = gsl_permutation_alloc(4);	// permutation used in the LU decomposition
-			auto photon_transform = gsl_vector_alloc(4);	// photon in TimeSystem TAU
-			auto photon_in_object_frame_cartesian = gsl_vector_alloc(4);
-			Type photon_in_object_frame_spherical[4];
-			ublas::bounded_matrix<Type, 4, 4> gmunu;
+			center_photon_velocity /= ublas::norm_2(center_photon_velocity);
+			ublas::bounded_matrix<Type, 4, 4> gmunu;			   // object local metric tensor
+			ublas::bounded_matrix<Type, 4, 4> coordinate;		   // object local inertial coordinate frame
+			ublas::bounded_matrix<Type, 4, 4> coordinate_gmunu;	   // object local inertial coordinate frame
+			ublas::permutation_matrix<std::size_t> permutation(4); // permutation used in the LU decomposition
+			ublas::bounded_vector<Type, 4> photon_transform;	   // photon in TimeSystem TAU
+			ublas::bounded_vector<Type, 4> photon_in_object_frame_cartesian, photon_in_object_frame_spherical;
 			metric_->MetricTensor(position, gmunu);
-			for (int i = 0; i < 4; ++i)
-				for (int j = 0; j < 4; ++j)
-					gsl_matrix_set(gmunu_gsl, i, j, gmunu(i, j));
 			metric_->LocalInertialFrame(position, object_time, coordinate);
-			gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu_gsl, coordinate, 0., coordinate_gmunu);
-			gsl_vector_set(photon_transform, 0, 1.);
-			std::copy(photon.begin() + 5, photon.end(), gsl_vector_ptr(photon_transform, 1));
-			gsl_blas_dgemv(CblasNoTrans, 1., coordinate_gmunu, photon_transform, 0., photon_in_object_frame_cartesian);
-			// gsl_vector_scale(photon_in_object_frame_cartesian, 1. / gsl_vector_get(photon_in_object_frame_cartesian, 0));
-			CartesianToSpherical(photon_in_object_frame_cartesian->data, photon_in_object_frame_spherical, 4);
+			coordinate_gmunu = ublas::prod(gmunu, coordinate);									// gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu_gsl, coordinate_gsl, 0., coordinate_gmunu_gsl);
+			std::copy(photon.begin() + 5, photon.end(), photon_transform.begin() + 1);			// std::copy(photon.begin() + 5, photon.end(), gsl_vector_ptr(photon_transform_gsl, 1));
+			photon_transform(0) = 1.;															// gsl_vector_set(photon_transform_gsl, 0, 1.);
+			photon_in_object_frame_cartesian = ublas::prod(coordinate_gmunu, photon_transform); // gsl_blas_dgemv(CblasNoTrans, 1., coordinate_gmunu_gsl, photon_transform_gsl, 0., photon_in_object_frame_cartesian_gsl);
+			photon_in_object_frame_cartesian /= photon_in_object_frame_cartesian(0);			// gsl_vector_scale(photon_in_object_frame_cartesian, 1. / gsl_vector_get(photon_in_object_frame_cartesian, 0));
+			CartesianToSpherical(photon_in_object_frame_cartesian, photon_in_object_frame_spherical);
 #ifndef SBODY_RELEASE
-			auto coordinate_static = gsl_matrix_calloc(4, 4);	   // object local static frame (only dt/d\tau != 0)
-			auto coordinate_static_gmunu = gsl_matrix_alloc(4, 4); // object local static frame measured by observer
-			auto photon_in_static_frame_cartesian = gsl_vector_alloc(4);
-			gsl_matrix_set(coordinate_static, 0, 0, std::sqrt(-1. / gmunu_gsl->data[0]));
-			gsl_matrix_set(coordinate_static, 1, 1, std::sqrt(1. / gmunu_gsl->data[5]));
-			gsl_matrix_set(coordinate_static, 2, 2, std::sqrt(1. / gmunu_gsl->data[10]));
-			gsl_matrix_set(coordinate_static, 3, 3, std::sqrt(1. / gmunu_gsl->data[15]));
-			gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu_gsl, coordinate_static, 0., coordinate_static_gmunu);
-			gsl_blas_dgemv(CblasNoTrans, 1., coordinate_static_gmunu, photon_transform, 0., photon_in_static_frame_cartesian);
+			ublas::bounded_matrix<Type, 4, 4> coordinate_static;	   // object local static frame (only dt/d\tau != 0)
+			ublas::bounded_matrix<Type, 4, 4> coordinate_static_gmunu; // object local static frame measured by observer
+			ublas::bounded_vector<Type, 4> photon_in_static_frame_cartesian;
+			coordinate_static(0, 0) = std::sqrt(-1. / gmunu(0, 0));
+			coordinate_static(1, 1) = std::sqrt(1. / gmunu(1, 1));
+			coordinate_static(2, 2) = std::sqrt(1. / gmunu(2, 2));
+			coordinate_static(3, 3) = std::sqrt(1. / gmunu(3, 3));
+			coordinate_static_gmunu = ublas::prod(gmunu, coordinate_static);
+			photon_in_static_frame_cartesian = ublas::prod(coordinate_static_gmunu, photon_transform);
+			// gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu_gsl, coordinate_static, 0., coordinate_static_gmunu);
+			// gsl_blas_dgemv(CblasNoTrans, 1., coordinate_static_gmunu, photon_transform, 0., photon_in_static_frame_cartesian);
 			// local_redshift should equal to sqrt(EPSILON_POLYGON_AREA / cone_local_solid_angle),
 			// the main error comes from the calculation of the cone_local_solid_angle, due to the limited SAMPLE_NUMBER.
-			const Type local_redshift = photon_in_object_frame_cartesian->data[0] / photon_in_static_frame_cartesian->data[0];
-			gsl_vector_scale(photon_in_static_frame_cartesian, 1. / gsl_vector_get(photon_in_static_frame_cartesian, 0));
+			const Type local_redshift = photon_in_object_frame_cartesian(0) / photon_in_static_frame_cartesian(0);
+			photon_in_static_frame_cartesian /= photon_in_static_frame_cartesian(0);
 #endif
 			int signum;
-			gsl_linalg_LU_decomp(coordinate_gmunu, permutation, &signum);
+			ublas::lu_factorize(coordinate_gmunu, permutation);
 			for (int i = 0; i < SAMPLE_NUMBER; ++i) {
 				const Type angle = i * ANGLE_INTERVAL;
 				std::copy(photon.begin(), photon.begin() + 4, forward_photon.begin());
@@ -344,38 +337,32 @@ namespace SBody {
 				forward_photon[7] = COS_EPSILON;
 				RotateAroundAxis(forward_photon, true, Y, photon_in_object_frame_spherical[2]);
 				RotateAroundAxis(forward_photon, true, Z, photon_in_object_frame_spherical[3]);
-				gsl_linalg_LU_svx(coordinate_gmunu, permutation, &forward_photon_velocity_view.vector);
+				ublas::lu_substitute(coordinate_gmunu, permutation, forward_photon_velocity);
 				metric_->NormalizeNullGeodesic(forward_photon);
 #ifndef SBODY_RELEASE
 				// local_cone_record[i][0] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 4, 4);
-				local_cone_record[i][0] = cblas_ddot(4, forward_photon.data().begin() + 4, 1, coordinate_static_gmunu->data + 4, 1);
+				local_cone_record[i][0] = ublas::inner_prod(forward_photon_velocity, ublas::matrix_row(coordinate_static_gmunu, 1));
 				// local_cone_record[i][1] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 8, 4);
-				local_cone_record[i][1] = cblas_ddot(4, forward_photon.data().begin() + 4, 1, coordinate_static_gmunu->data + 8, 1);
-				// ocal_cone_record[i][2] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 12, 4);
-				local_cone_record[i][2] = cblas_ddot(4, forward_photon.data().begin() + 4, 1, coordinate_static_gmunu->data + 12, 1);
-				cblas_dscal(3, 1. / cblas_ddot(4, forward_photon.data().begin() + 4, 1, coordinate_static_gmunu->data, 1), local_cone_record[i].data().begin(), 1);
+				local_cone_record[i][1] = ublas::inner_prod(forward_photon_velocity, ublas::matrix_row(coordinate_static_gmunu, 2));
+				// local_cone_record[i][2] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 12, 4);
+				local_cone_record[i][2] = ublas::inner_prod(forward_photon_velocity, ublas::matrix_row(coordinate_static_gmunu, 3));
+				local_cone_record[i] /= ublas::inner_prod(forward_photon_velocity, ublas::matrix_row(coordinate_static_gmunu, 0));
 #endif
 				metric_->LagrangianToHamiltonian(forward_photon);
 				try {
 					boost::numeric::odeint::integrate_adaptive(integration_stepper, integration_system_, forward_photon, 0.0, 1000., 1.0);
 				} catch (const std::exception &e) {
-					gsl_matrix_free(gmunu_gsl);
-					gsl_matrix_free(coordinate);
-					gsl_matrix_free(coordinate_gmunu);
-					gsl_permutation_free(permutation);
-					gsl_vector_free(photon_transform);
-					gsl_vector_free(photon_in_object_frame_cartesian);
 					return Status::FAILURE;
 				}
 				metric_->HamiltonianToLagrangian(forward_photon);
 				SphericalToCartesian(forward_photon);
 				std::copy(forward_photon.begin() + 5, forward_photon.end(), cone_record[i].begin());
-				cone_record[i] /= Norm(cone_record[i]);
+				cone_record[i] /= ublas::norm_2(cone_record[i]);
 			}
 			Type cone_solid_angle = TriangleArea(center_photon_velocity, cone_record[0], cone_record[SAMPLE_NUMBER - 1]);
-			boost::numeric::ublas::bounded_vector<Type, 3> photon_in_static_frame_cartesian_position;
 #ifndef SBODY_RELEASE
-			std::copy(photon_in_static_frame_cartesian->data + 1, photon_in_static_frame_cartesian->data + 4, photon_in_static_frame_cartesian_position.begin());
+			boost::numeric::ublas::bounded_vector<Type, 3> photon_in_static_frame_cartesian_position;
+			photon_in_static_frame_cartesian_position = ublas::vector_range(photon_in_static_frame_cartesian, ublas::range(1, 4));
 			Type cone_local_solid_angle = TriangleArea(photon_in_static_frame_cartesian_position, local_cone_record[0], local_cone_record[SAMPLE_NUMBER - 1]);
 #endif
 			for (int i = 1; i < SAMPLE_NUMBER; ++i) {
@@ -385,12 +372,6 @@ namespace SBody {
 #endif
 			}
 			magnification = EPSILON_POLYGON_AREA / (cone_solid_angle * redshift);
-			gsl_matrix_free(gmunu_gsl);
-			gsl_matrix_free(coordinate);
-			gsl_matrix_free(coordinate_gmunu);
-			gsl_permutation_free(permutation);
-			gsl_vector_free(photon_transform);
-			gsl_vector_free(photon_in_object_frame_cartesian);
 			return Status::SUCCESS;
 		}
 
@@ -442,97 +423,97 @@ namespace SBody {
 			return Status::SUCCESS;
 		}
 
-		int OmegaTest(std::optional<ProgressBar> &bars = std::nullopt) {
-			boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_dopri5<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper;
-			Type position_[8] = {0., 3., M_PI_4, 0., 0., 0., 0., 0.};
-			metric_->NormalizeTimelikeGeodesic(position_);
-			gsl_matrix *coordinate = gsl_matrix_alloc(4, 4), *gmunu_gsl = gsl_matrix_alloc(4, 4), *coordinate_gmunu = gsl_matrix_alloc(4, 4);
-			gsl_permutation *perm = gsl_permutation_alloc(4);
-			metric_->MetricTensor(position_, gmunu_gsl);
-			gsl_matrix_set_zero(coordinate);
-			gsl_matrix_set(coordinate, 0, 0, std::sqrt(-1. / gmunu_gsl->data[0]));
-			gsl_matrix_set(coordinate, 1, 1, std::sqrt(1. / gmunu_gsl->data[5]));
-			gsl_matrix_set(coordinate, 2, 2, std::sqrt(1. / gmunu_gsl->data[10]));
-			gsl_matrix_set(coordinate, 3, 3, std::sqrt(1. / gmunu_gsl->data[15]));
-			gsl_matrix_set_zero(coordinate_gmunu);
-			gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu_gsl, coordinate, 0., coordinate_gmunu);
-			int signum;
-			gsl_linalg_LU_decomp(coordinate_gmunu, perm, &signum);
-			Type rec[100][3], center_photon[3];
-			Type photon_obs_time, area, h, time_limit = 0.;
-			boost::numeric::ublas::bounded_vector<Type, 8> photon;
-			gsl_vector_view ph_view = gsl_vector_view_array(photon.data() + 4, 4);
-			NumPy cone_record("Omega_record", {1});
-			bars.value()[0].set_option(indicators::option::MaxProgress(90));
-			for (Type angle = 90; angle > 0; angle -= 1) {
-				const Type sina = std::sin(angle / 180. * boost::math::constants::pi<Type>()), cosa = std::cos(angle / 180. * boost::math::constants::pi<Type>());
-				copy(position_, position_ + 4, photon.data());
-				photon(4) = 1.;
-				photon(5) = sina;
-				photon(6) = cosa;
-				photon(7) = 0.;
-				gsl_linalg_LU_svx(coordinate_gmunu, perm, &ph_view.vector);
-				metric_->NormalizeNullGeodesic(photon);
-				if (photon(5) < 0) {
-					photon(5) = -photon(5);
-					photon(6) = -photon(6);
-					photon(7) = -photon(7);
-				}
-				metric_->LagrangianToHamiltonian(photon);
-				photon_obs_time = 0;
-				h = 1.;
-				int status = 0;
-				boost::numeric::odeint::integrate_adaptive(integration_stepper, integration_system_, photon, time_limit, -t_final_, 1.0);
-				metric_->HamiltonianToLagrangian(photon);
-				const Type sin_theta = SinTheta(photon[2]), cos_theta = CosTheta(photon[2]), sin_phi = std::sin(photon[3]), cos_phi = std::cos(photon[3]);
-				center_photon[0] = photon[5] * sin_theta * cos_phi + photon[1] * (cos_theta * cos_phi * photon[6] - sin_theta * sin_phi * photon[7]);
-				center_photon[1] = photon[5] * sin_theta * sin_phi + photon[1] * (cos_theta * sin_phi * photon[6] + sin_theta * cos_phi * photon[7]);
-				center_photon[2] = photon[5] * cos_theta - photon[1] * sin_theta * photon[6];
-				const Type vph_norm = Norm(center_photon);
-				for (int j = 0; j < 3; ++j)
-					center_photon[j] /= vph_norm;
-				for (int i = 0; i < 100; ++i) {
-					const Type angle_i = i * ANGLE_INTERVAL, sinai = std::sin(angle_i), cosai = std::cos(angle_i);
-					copy(position_, position_ + 4, photon.begin());
-					photon[4] = 1.;
-					photon[5] = sina - SIN_EPSILON * cosai * cosa;
-					photon[6] = cosa + SIN_EPSILON * cosai * sina;
-					photon[7] = SIN_EPSILON * sinai;
-					gsl_linalg_LU_svx(coordinate_gmunu, perm, &ph_view.vector);
-					metric_->NormalizeNullGeodesic(photon);
-					if (photon[5] < 0) {
-						photon[5] = -photon[5];
-						photon[6] = -photon[6];
-						photon[7] = -photon[7];
-					}
-					metric_->LagrangianToHamiltonian(photon);
-					photon_obs_time = 0;
-					h = 1.;
-					status = 0;
-					boost::numeric::odeint::integrate_adaptive(integration_stepper, integration_system_, photon, photon_obs_time, time_limit, 1.0);
-					metric_->HamiltonianToLagrangian(photon);
-					const Type sin_theta = SinTheta(photon[2]), cos_theta = CosTheta(photon[2]), sin_phi = std::sin(photon[3]), cos_phi = std::cos(photon[3]);
-					rec[i][0] = photon[5] * sin_theta * cos_phi + photon[1] * (cos_theta * cos_phi * photon[6] - sin_theta * sin_phi * photon[7]);
-					rec[i][1] = photon[5] * sin_theta * sin_phi + photon[1] * (cos_theta * sin_phi * photon[6] + sin_theta * cos_phi * photon[7]);
-					rec[i][2] = photon[5] * cos_theta - photon[1] * sin_theta * photon[6];
-					const Type vph_norm = Norm(rec[i]);
-					for (int j = 0; j < 3; ++j)
-						rec[i][j] /= vph_norm;
-				}
-				area = DotCross(center_photon, rec[0], rec[99]);
-				for (int i = 1; i < SAMPLE_NUMBER; ++i)
-					area += DotCross(center_photon, rec[i], rec[i - 1]);
-				if (angle == 13) {
-					NumPy cone_record("cone_record13", {3});
-					cone_record.Save(center_photon, 3);
-					for (int i = 0; i < SAMPLE_NUMBER; ++i)
-						cone_record.Save(rec[i], 3);
-				}
-				cone_record.Save({std::abs(area) / (boost::math::constants::two_pi<Type>() * boost::math::tools::epsilon<Type>())});
-				bars.value()[0].tick();
-			}
-			return Status::SUCCESS;
-		}
+		// int OmegaTest(std::optional<ProgressBar> &bars = std::nullopt) {
+		// 	boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_dopri5<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper;
+		// 	Type position_[8] = {0., 3., M_PI_4, 0., 0., 0., 0., 0.};
+		// 	metric_->NormalizeTimelikeGeodesic(position_);
+		// 	gsl_matrix *coordinate = gsl_matrix_alloc(4, 4), *gmunu_gsl = gsl_matrix_alloc(4, 4), *coordinate_gmunu = gsl_matrix_alloc(4, 4);
+		// 	gsl_permutation *perm = gsl_permutation_alloc(4);
+		// 	metric_->MetricTensor(position_, gmunu_gsl);
+		// 	gsl_matrix_set_zero(coordinate);
+		// 	gsl_matrix_set(coordinate, 0, 0, std::sqrt(-1. / gmunu_gsl->data[0]));
+		// 	gsl_matrix_set(coordinate, 1, 1, std::sqrt(1. / gmunu_gsl->data[5]));
+		// 	gsl_matrix_set(coordinate, 2, 2, std::sqrt(1. / gmunu_gsl->data[10]));
+		// 	gsl_matrix_set(coordinate, 3, 3, std::sqrt(1. / gmunu_gsl->data[15]));
+		// 	gsl_matrix_set_zero(coordinate_gmunu);
+		// 	gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu_gsl, coordinate, 0., coordinate_gmunu);
+		// 	int signum;
+		// 	gsl_linalg_LU_decomp(coordinate_gmunu, perm, &signum);
+		// 	Type rec[100][3], center_photon[3];
+		// 	Type photon_obs_time, area, h, time_limit = 0.;
+		// 	boost::numeric::ublas::bounded_vector<Type, 8> photon;
+		// 	gsl_vector_view ph_view = gsl_vector_view_array(photon.data() + 4, 4);
+		// 	NumPy cone_record("Omega_record", {1});
+		// 	bars.value()[0].set_option(indicators::option::MaxProgress(90));
+		// 	for (Type angle = 90; angle > 0; angle -= 1) {
+		// 		const Type sina = std::sin(angle / 180. * boost::math::constants::pi<Type>()), cosa = std::cos(angle / 180. * boost::math::constants::pi<Type>());
+		// 		copy(position_, position_ + 4, photon.data());
+		// 		photon(4) = 1.;
+		// 		photon(5) = sina;
+		// 		photon(6) = cosa;
+		// 		photon(7) = 0.;
+		// 		gsl_linalg_LU_svx(coordinate_gmunu, perm, &ph_view.vector);
+		// 		metric_->NormalizeNullGeodesic(photon);
+		// 		if (photon(5) < 0) {
+		// 			photon(5) = -photon(5);
+		// 			photon(6) = -photon(6);
+		// 			photon(7) = -photon(7);
+		// 		}
+		// 		metric_->LagrangianToHamiltonian(photon);
+		// 		photon_obs_time = 0;
+		// 		h = 1.;
+		// 		int status = 0;
+		// 		boost::numeric::odeint::integrate_adaptive(integration_stepper, integration_system_, photon, time_limit, -t_final_, 1.0);
+		// 		metric_->HamiltonianToLagrangian(photon);
+		// 		const Type sin_theta = SinTheta(photon[2]), cos_theta = CosTheta(photon[2]), sin_phi = std::sin(photon[3]), cos_phi = std::cos(photon[3]);
+		// 		center_photon[0] = photon[5] * sin_theta * cos_phi + photon[1] * (cos_theta * cos_phi * photon[6] - sin_theta * sin_phi * photon[7]);
+		// 		center_photon[1] = photon[5] * sin_theta * sin_phi + photon[1] * (cos_theta * sin_phi * photon[6] + sin_theta * cos_phi * photon[7]);
+		// 		center_photon[2] = photon[5] * cos_theta - photon[1] * sin_theta * photon[6];
+		// 		const Type vph_norm = Norm(center_photon);
+		// 		for (int j = 0; j < 3; ++j)
+		// 			center_photon[j] /= vph_norm;
+		// 		for (int i = 0; i < 100; ++i) {
+		// 			const Type angle_i = i * ANGLE_INTERVAL, sinai = std::sin(angle_i), cosai = std::cos(angle_i);
+		// 			copy(position_, position_ + 4, photon.begin());
+		// 			photon[4] = 1.;
+		// 			photon[5] = sina - SIN_EPSILON * cosai * cosa;
+		// 			photon[6] = cosa + SIN_EPSILON * cosai * sina;
+		// 			photon[7] = SIN_EPSILON * sinai;
+		// 			gsl_linalg_LU_svx(coordinate_gmunu, perm, &ph_view.vector);
+		// 			metric_->NormalizeNullGeodesic(photon);
+		// 			if (photon[5] < 0) {
+		// 				photon[5] = -photon[5];
+		// 				photon[6] = -photon[6];
+		// 				photon[7] = -photon[7];
+		// 			}
+		// 			metric_->LagrangianToHamiltonian(photon);
+		// 			photon_obs_time = 0;
+		// 			h = 1.;
+		// 			status = 0;
+		// 			boost::numeric::odeint::integrate_adaptive(integration_stepper, integration_system_, photon, photon_obs_time, time_limit, 1.0);
+		// 			metric_->HamiltonianToLagrangian(photon);
+		// 			const Type sin_theta = SinTheta(photon[2]), cos_theta = CosTheta(photon[2]), sin_phi = std::sin(photon[3]), cos_phi = std::cos(photon[3]);
+		// 			rec[i][0] = photon[5] * sin_theta * cos_phi + photon[1] * (cos_theta * cos_phi * photon[6] - sin_theta * sin_phi * photon[7]);
+		// 			rec[i][1] = photon[5] * sin_theta * sin_phi + photon[1] * (cos_theta * sin_phi * photon[6] + sin_theta * cos_phi * photon[7]);
+		// 			rec[i][2] = photon[5] * cos_theta - photon[1] * sin_theta * photon[6];
+		// 			const Type vph_norm = Norm(rec[i]);
+		// 			for (int j = 0; j < 3; ++j)
+		// 				rec[i][j] /= vph_norm;
+		// 		}
+		// 		area = DotCross(center_photon, rec[0], rec[99]);
+		// 		for (int i = 1; i < SAMPLE_NUMBER; ++i)
+		// 			area += DotCross(center_photon, rec[i], rec[i - 1]);
+		// 		if (angle == 13) {
+		// 			NumPy cone_record("cone_record13", {3});
+		// 			cone_record.Save(center_photon, 3);
+		// 			for (int i = 0; i < SAMPLE_NUMBER; ++i)
+		// 				cone_record.Save(rec[i], 3);
+		// 		}
+		// 		cone_record.Save({std::abs(area) / (boost::math::constants::two_pi<Type>() * boost::math::tools::epsilon<Type>())});
+		// 		bars.value()[0].tick();
+		// 	}
+		// 	return Status::SUCCESS;
+		// }
 	};
 
 	template <typename Type>

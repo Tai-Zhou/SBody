@@ -23,18 +23,10 @@
 #include <boost/math/special_functions/ellint_1.hpp>
 #include <boost/math/special_functions/ellint_2.hpp>
 #include <boost/math/special_functions/ellint_3.hpp>
+#include <boost/math/special_functions/jacobi_elliptic.hpp>
 #include <boost/math/tools/roots.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
-#include <gsl/gsl_blas.h>
-#include <gsl/gsl_errno.h>
-#include <gsl/gsl_linalg.h>
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_permutation.h>
-#include <gsl/gsl_poly.h>
-#include <gsl/gsl_sf_elljac.h>
-#include <gsl/gsl_vector.h>
 
 #include "IO.hpp"
 #include "Utility.hpp"
@@ -72,16 +64,17 @@ namespace SBody {
 					  CIRCULAR,
 					  HELICAL,
 					  CYLINDRICAL };
-	template <typename Type>
-	int Jacobian(Type t, const Type y[], Type *dfdy, Type dfdt[], void *params) {
-		return Status::SUCCESS;
-	}
+
 	/**
 	 * @brief The base class of all kinds of metrics.
 	 *
 	 */
 	template <typename Type>
 	class Metric {
+	  protected:
+		virtual Type DotProduct3D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x1, Type x2, Type x3, Type y1, Type y2, Type y3) = 0;
+		virtual Type DotProduct4D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x0, Type x1, Type x2, Type x3, Type y0, Type y1, Type y2, Type y3) = 0;
+
 	  public:
 		/**
 		 * @brief Return the name of the metric.
@@ -105,20 +98,24 @@ namespace SBody {
 		 * @param position 4 dimensional vector, position to calcuate the dot product of `x` and `y`.
 		 * @param x 4 dimensional vector
 		 * @param y 4 dimensional vector
-		 * @param dimension dimension of the vector, should be 3 or 4.
+		 * @param include_time include time related terms if true.
 		 * @return result
 		 */
-		virtual Type DotProduct(const boost::numeric::ublas::bounded_vector<Type, 8> &position, const Type x[], const Type y[], const std::size_t dimension) = 0;
+		template <typename VecExp1, typename VecExp2>
+		Type DotProduct(const boost::numeric::ublas::bounded_vector<Type, 8> &position, const VecExp1 &x, const VecExp2 &y, bool include_time) {
+			if (include_time)
+				return DotProduct4D(position, x(0), x(1), x(2), x(3), y(0), y(1), y(2), y(3));
+			return DotProduct3D(position, x(1), x(2), x(3), y(1), y(2), y(3));
+		}
 
 		/**
 		 * @brief Calculate the square of the distance between `x` and `y` at `x`. \f$g_{\mu\nu}(x^\mu-y^\mu)(x^\nu-y^\nu)\f$
 		 *
-		 * @param x 4 dimensional vector
-		 * @param y 4 dimensional vector
-		 * @param dimension dimension of the vector
+		 * @param x 8 dimensional vector
+		 * @param y 8 dimensional vector
 		 * @return result
 		 */
-		virtual Type DistanceSquare(const Type x[], const Type y[], const std::size_t dimension) = 0;
+		virtual Type DistanceSquare(const boost::numeric::ublas::bounded_vector<Type, 8> &x, const boost::numeric::ublas::bounded_vector<Type, 8> &y, bool include_time) = 0;
 
 		/**
 		 * @brief Calculate the local inertial frame coordinate of the object at `position`, stored in `coordinate`.
@@ -128,42 +125,29 @@ namespace SBody {
 		 * @param coordinate matrix with size 4×4
 		 * @return status
 		 */
-		int LocalInertialFrame(const boost::numeric::ublas::bounded_vector<Type, 8> &position, TimeSystem time, gsl_matrix *coordinate) {
+		int LocalInertialFrame(const boost::numeric::ublas::bounded_vector<Type, 8> &position, TimeSystem time, boost::numeric::ublas::bounded_matrix<Type, 4, 4> &coordinate) {
 			namespace ublas = boost::numeric::ublas;
-			gsl_matrix *metric_gsl = gsl_matrix_alloc(4, 4), *product = gsl_matrix_alloc(4, 4), *product_LU = gsl_matrix_alloc(4, 4);
-			gsl_matrix_set_identity(product);
-			ublas::bounded_matrix<Type, 4, 4> metric;
+			coordinate = ublas::identity_matrix<Type>(4);
+			ublas::bounded_matrix<Type, 4, 4> metric, product = ublas::identity_matrix<Type>(4), product_LU;
 			MetricTensor(position, metric);
-			for (int i = 0; i < 4; ++i)
-				for (int j = 0; j < 4; ++j)
-					gsl_matrix_set(metric_gsl, i, j, metric(i, j));
-			gsl_vector *coordinate_row, *product_row;
-			gsl_permutation *permutation = gsl_permutation_alloc(4);
-			int signum;
+			ublas::permutation_matrix<std::size_t> permutation(4);
 			for (int i = 0; i < 4; ++i) {
-				coordinate_row = gsl_vector_alloc_row_from_matrix(coordinate, i);
-				product_row = gsl_vector_alloc_row_from_matrix(product, i);
-				gsl_vector_set_basis(coordinate_row, i);
+				auto coordinate_row = ublas::matrix_row<ublas::bounded_matrix<Type, 4, 4>>(coordinate, i);
 				if (i == 0) {
 					if (time == T)
-						std::copy(position.begin() + 5, position.end(), coordinate_row->data + 1);
+						std::copy(position.begin() + 5, position.end(), coordinate_row.begin() + 1);
 					else
-						std::copy(position.begin() + 4, position.end(), coordinate_row->data);
+						std::copy(position.begin() + 4, position.end(), coordinate_row.begin());
 				} else {
-					gsl_matrix_memcpy(product_LU, product);
-					gsl_linalg_LU_decomp(product_LU, permutation, &signum);
-					gsl_linalg_LU_svx(product_LU, permutation, coordinate_row);
+					product_LU = product;
+					if (int status = ublas::lu_factorize(product_LU, permutation); status != Status::SUCCESS)
+						return status;
+					ublas::lu_substitute(product_LU, permutation, coordinate_row);
 				}
-				gsl_vector_scale(coordinate_row, 1. / std::sqrt(std::abs(DotProduct(position, coordinate_row->data, coordinate_row->data, 4))));
-				gsl_blas_dsymv(CblasUpper, 1., metric_gsl, coordinate_row, 0., product_row);
-				gsl_vector_free(coordinate_row);
-				gsl_vector_free(product_row);
+				coordinate_row /= std::sqrt(std::abs(DotProduct(position, coordinate_row, coordinate_row, true)));
+				ublas::matrix_row<ublas::bounded_matrix<Type, 4, 4>>(product, i) = ublas::prod(metric, coordinate_row);
 			}
-			gsl_permutation_free(permutation);
-			gsl_matrix_free(metric_gsl);
-			gsl_matrix_free(product);
-			gsl_matrix_free(product_LU);
-			return isnan(gsl_matrix_get(coordinate, 3, 0)) ? Status::NUMERIC_ERROR : Status::SUCCESS;
+			return isnan(coordinate(3, 0)) ? Status::NUMERIC_ERROR : Status::SUCCESS;
 		}
 
 		/**
@@ -281,15 +265,20 @@ namespace SBody {
 		 * @return result
 		 */
 		virtual Type Redshift(const boost::numeric::ublas::bounded_vector<Type, 8> &y, const boost::numeric::ublas::bounded_vector<Type, 8> &photon_position, TimeSystem object_time, TimeSystem photon_time) {
-			const std::array<Type, 4> u = {1., y(5), y(6), y(7)}, v = {1., photon_position(5), photon_position(6), photon_position(7)};
+			namespace ublas = boost::numeric::ublas;
+			ublas::bounded_vector<Type, 4> u, v;
+			u(0) = 1.;
+			std::copy(y.begin() + 5, y.end(), u.begin() + 1);
+			v(0) = 1.;
+			std::copy(photon_position.begin() + 5, photon_position.end(), v.begin() + 1);
 			if (object_time == T) {
 				if (photon_time == T)
-					return -DotProduct(y, u.data(), v.data(), 4) / (y[4] * photon_position[4]);
-				return -DotProduct(y, u.data(), photon_position.data().begin() + 4, 4) / y[4];
+					return -DotProduct(y, u, v, true) / (y[4] * photon_position[4]);
+				return -DotProduct(y, u, ublas::vector_range<const ublas::bounded_vector<Type, 8>>(photon_position, ublas::range(4, 8)), true) / y[4];
 			}
 			if (photon_time == T)
-				return -DotProduct(y, y.data().begin() + 4, v.data(), 4) / photon_position[4];
-			return -DotProduct(y, y.data().begin() + 4, photon_position.data().begin() + 4, 4);
+				return -DotProduct(y, ublas::vector_range<const ublas::bounded_vector<Type, 8>>(y, ublas::range(4, 8)), v, true) / photon_position[4];
+			return -DotProduct(y, ublas::vector_range<const ublas::bounded_vector<Type, 8>>(y, ublas::range(4, 8)), ublas::vector_range<const ublas::bounded_vector<Type, 8>>(photon_position, ublas::range(4, 8)), true);
 		}
 
 		/**
@@ -324,6 +313,12 @@ namespace SBody {
 	class Newton : public Metric<Type> {
 	  protected:
 		const int PN_;
+		Type DotProduct3D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x1, Type x2, Type x3, Type y1, Type y2, Type y3) override {
+			return x1 * y1 + Power2(position[1]) * x2 * y2 + Power2(position[1] * std::sin(position[2])) * x3 * y3;
+		}
+		Type DotProduct4D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x0, Type x1, Type x2, Type x3, Type y0, Type y1, Type y2, Type y3) override {
+			return -x0 * y0 + x1 * y1 + Power2(position[1]) * x2 * y2 + Power2(position[1] * std::sin(position[2])) * x3 * y3;
+		}
 
 	  public:
 		Newton(int PN) : PN_(PN) {};
@@ -338,15 +333,10 @@ namespace SBody {
 			metric(3, 3) = Power2(position[1] * std::sin(position[2]));
 			return Status::SUCCESS;
 		}
-		Type DotProduct(const boost::numeric::ublas::bounded_vector<Type, 8> &position, const Type x[], const Type y[], const std::size_t dimension) override {
-			if (dimension == 3)
-				return x[1] * y[1] + Power2(position[1]) * x[2] * y[2] + Power2(position[1] * std::sin(position[2])) * x[3] * y[3];
-			return -x[0] * y[0] + x[1] * y[1] + Power2(position[1]) * x[2] * y[2] + Power2(position[1] * std::sin(position[2])) * x[3] * y[3];
-		}
-		Type DistanceSquare(const Type x[], const Type y[], const std::size_t dimension) override {
-			if (dimension == 3)
-				return Power2(x[1] - y[1]) + Power2(x[1] * (x[2] - y[2])) + Power2(x[1] * std::sin(x[2]) * (x[3] - y[3]));
-			return -Power2(x[0] - y[0]) + Power2(x[1] - y[1]) + Power2(x[1] * (x[2] - y[2])) + Power2(x[1] * std::sin(x[2]) * (x[3] - y[3]));
+		Type DistanceSquare(const boost::numeric::ublas::bounded_vector<Type, 8> &x, const boost::numeric::ublas::bounded_vector<Type, 8> &y, bool include_time) override {
+			if (include_time)
+				return -Power2(x[0] - y[0]) + Power2(x[1] - y[1]) + Power2(x[1] * (x[2] - y[2])) + Power2(x[1] * std::sin(x[2]) * (x[3] - y[3]));
+			return Power2(x[1] - y[1]) + Power2(x[1] * (x[2] - y[2])) + Power2(x[1] * std::sin(x[2]) * (x[3] - y[3]));
 		}
 		int LagrangianToHamiltonian(boost::numeric::ublas::bounded_vector<Type, 8> &y) override {
 			return Status::FAILURE;
@@ -360,7 +350,7 @@ namespace SBody {
 			photon[2] = r_object * sin_theta_object * std::sin(phi_object);
 			photon[3] = r_object * CosTheta(theta_object);
 			const Type dx = r_observer * sin_theta_observer - photon[1], dz = r_observer * cos_theta_observer - photon[3];
-			photon[0] = photon_time = std::sqrt(Power2(dx) + Power2(photon[2]) + Power2(dz));
+			photon[0] = photon_time = std::hypot(dx, photon[2], dz);
 			if (photon[0] == 0.)
 				return Status::DIVISION_BY_ZERO;
 			alpha = photon[2];
@@ -403,8 +393,10 @@ namespace SBody {
 			return Power2(AngularMomentum(y, time, dynamics));
 		}
 		Type Redshift(const boost::numeric::ublas::bounded_vector<Type, 8> &y, const boost::numeric::ublas::bounded_vector<Type, 8> &photon_position, TimeSystem object_time, TimeSystem photon_time) override {
+			namespace ublas = boost::numeric::ublas;
 			const Type delta_epsilon = 1. - 2. / y[1];
-			return (1. - DotProduct(y, y.data().begin() + 4, photon_position.data().begin() + 4, 3) / std::sqrt(delta_epsilon)) / std::sqrt(delta_epsilon - DotProduct(y, y.data().begin() + 4, y.data().begin() + 4, 3));
+			const ublas::vector_range<const ublas::bounded_vector<Type, 8>> velocity(y, ublas::range(4, 8));
+			return (1. - this->DotProduct(y, velocity, ublas::vector_range<const ublas::bounded_vector<Type, 8>>(photon_position, ublas::range(4, 8)), false) / std::sqrt(delta_epsilon)) / std::sqrt(delta_epsilon - this->DotProduct(y, velocity, velocity, false));
 		}
 		int NormalizeTimelikeGeodesic(boost::numeric::ublas::bounded_vector<Type, 8> &y) override {
 			y[4] = 1;
@@ -485,6 +477,14 @@ namespace SBody {
 	};
 	template <typename Type>
 	class Schwarzschild : public Metric<Type> {
+	  protected:
+		Type DotProduct3D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x1, Type x2, Type x3, Type y1, Type y2, Type y3) override {
+			return position[1] * x1 * y1 / (position[1] - 2.) + position[1] * position[1] * x2 * y2 + Power2(position[1] * std::sin(position[2])) * x3 * y3;
+		}
+		Type DotProduct4D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x0, Type x1, Type x2, Type x3, Type y0, Type y1, Type y2, Type y3) override {
+			return -(1. - 2. / position[1]) * x0 * y0 + position[1] * x1 * y1 / (position[1] - 2.) + position[1] * position[1] * x2 * y2 + Power2(position[1] * std::sin(position[2])) * x3 * y3;
+		}
+
 	  public:
 		Schwarzschild() {}
 		std::string Name() const override {
@@ -498,15 +498,10 @@ namespace SBody {
 			metric(3, 3) = Power2(position[1] * std::sin(position[2]));
 			return position[1] == 2. ? Status::DIVISION_BY_ZERO : Status::SUCCESS;
 		}
-		Type DotProduct(const boost::numeric::ublas::bounded_vector<Type, 8> &position, const Type x[], const Type y[], const std::size_t dimension) override {
-			if (dimension == 3)
-				return position[1] * x[1] * y[1] / (position[1] - 2.) + position[1] * position[1] * x[2] * y[2] + Power2(position[1] * std::sin(position[2])) * x[3] * y[3];
-			return -(1. - 2. / position[1]) * x[0] * y[0] + position[1] * x[1] * y[1] / (position[1] - 2.) + Power2(position[1]) * x[2] * y[2] + Power2(position[1] * std::sin(position[2])) * x[3] * y[3];
-		}
-		Type DistanceSquare(const Type x[], const Type y[], const std::size_t dimension) override {
-			if (dimension == 3)
-				return x[1] * Power2(x[1] - y[1]) / (x[1] - 2.) + Power2(x[1] * (x[2] - y[2])) + Power2(x[1] * std::sin(x[2]) * PhiDifference(x[3] - y[3]));
-			return -(1. - 2. / x[1]) * Power2(x[0] - y[0]) + x[1] * Power2(x[1] - y[1]) / (x[1] - 2.) + Power2(x[1] * (x[2] - y[2])) + Power2(x[1] * std::sin(x[2]) * PhiDifference(x[3] - y[3]));
+		Type DistanceSquare(const boost::numeric::ublas::bounded_vector<Type, 8> &x, const boost::numeric::ublas::bounded_vector<Type, 8> &y, bool include_time) override {
+			if (include_time)
+				return -(1. - 2. / x[1]) * Power2(x[0] - y[0]) + x[1] * Power2(x[1] - y[1]) / (x[1] - 2.) + Power2(x[1] * (x[2] - y[2])) + Power2(x[1] * std::sin(x[2]) * PhiDifference(x[3] - y[3]));
+			return x[1] * Power2(x[1] - y[1]) / (x[1] - 2.) + Power2(x[1] * (x[2] - y[2])) + Power2(x[1] * std::sin(x[2]) * PhiDifference(x[3] - y[3]));
 		}
 		int LagrangianToHamiltonian(boost::numeric::ublas::bounded_vector<Type, 8> &y) override {
 			const Type dt_dtau = 1. / y[4], r2 = Power2(y[1]);
@@ -688,7 +683,7 @@ namespace SBody {
 		std::function<void(const boost::numeric::ublas::bounded_vector<Type, 8> &, boost::numeric::ublas::bounded_vector<Type, 8> &, const Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
 			if (time == T) {
 				if (dynamics == LAGRANGIAN) {
-					if (motion == GEODESIC) // return std::make_unique<Integrator>(SchwarzschildTLagrangianGeodesic<double>, Jacobian<double>);
+					if (motion == GEODESIC)
 						return [](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = y[5]; // dr/dt
@@ -711,7 +706,7 @@ namespace SBody {
 							else
 								dydt[7] = -2. * (rm3 * rm2r_1 * y[5] + cos_theta / sin_theta * y[6]) * y[7];
 						};
-					else if (motion == CIRCULAR) // return std::make_unique<Integrator>(SchwarzschildTLagrangianCircular<double>, Jacobian<double>);
+					else if (motion == CIRCULAR)
 						return [](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = 0.;	// dr/dt
@@ -722,7 +717,7 @@ namespace SBody {
 							dydt[6] = 0.;
 							dydt[7] = 0.;
 						};
-					else if (motion == HELICAL) // return std::make_unique<Integrator>(SchwarzschildTLagrangianHelical<double>, Jacobian<double>);
+					else if (motion == HELICAL)
 						return [](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 							const Type r = y[1];
 							if (r <= 2.)
@@ -762,7 +757,7 @@ namespace SBody {
 							// d^2\tau/dt^2 = d^2\tau/dtdr * dr/dt
 							dydt[4] = (r_1 * (1. + Power2(g11 * y[5])) - 2. * g11 * dydt[5]) * r_1 * y[5] / y[4];
 						};
-				} else if (dynamics == HAMILTONIAN && motion == GEODESIC) // return std::make_unique<Integrator>(SchwarzschildTHamiltonianGeodesic<double>, Jacobian<double>);
+				} else if (dynamics == HAMILTONIAN && motion == GEODESIC)
 					return [](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 						const Type r_1 = 1. / y[1], r_2 = Power2(r_1), g11_1 = 1. - 2. * r_1, E = 1. - y[4], L2 = Power2(y[7]);
 						const Type sin_1_theta = 1. / SinTheta(y[2]), sin_2_theta = Power2(sin_1_theta);
@@ -776,7 +771,7 @@ namespace SBody {
 						dydt[6] = sin_2_theta * L2 * CosTheta(y[2]) * sin_1_theta * r_2 * dydt[0];
 						dydt[7] = 0.;
 					};
-			} else if (time == TAU && dynamics == LAGRANGIAN && motion == GEODESIC) // return std::make_unique<Integrator>(SchwarzschildTauLagrangianGeodesic<double>, Jacobian<double>);
+			} else if (time == TAU && dynamics == LAGRANGIAN && motion == GEODESIC)
 				return [](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 					dydt[0] = y[4]; // dt/d\tau
 					dydt[1] = y[5]; // dr/d\tau
@@ -799,6 +794,16 @@ namespace SBody {
 	};
 	template <typename Type>
 	class ReissnerNordstrom : public Metric<Type> {
+	  protected:
+		Type DotProduct3D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x1, Type x2, Type x3, Type y1, Type y2, Type y3) override {
+			const Type r_1 = 1. / position[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
+			return x1 * y1 / g11_1 + position[1] * position[1] * x2 * y2 + Power2(position[1] * std::sin(position[2])) * x3 * y3;
+		}
+		Type DotProduct4D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x0, Type x1, Type x2, Type x3, Type y0, Type y1, Type y2, Type y3) override {
+			const Type r_1 = 1. / position[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
+			return -g11_1 * x0 * y0 + x1 * y1 / g11_1 + position[1] * position[1] * x2 * y2 + Power2(position[1] * std::sin(position[2])) * x3 * y3;
+		}
+
 	  public:
 		const Type r_Q_, r_Q2_, r_Q4_;
 		ReissnerNordstrom(Type charge) : r_Q_(0.5 * std::sqrt(M_1_PI) * charge), r_Q2_(r_Q_ * r_Q_), r_Q4_(r_Q2_ * r_Q2_) {}
@@ -807,24 +812,18 @@ namespace SBody {
 		}
 		int MetricTensor(const boost::numeric::ublas::bounded_vector<Type, 8> &position, boost::numeric::ublas::bounded_matrix<Type, 4, 4> &metric) override {
 			const Type r_1 = 1. / position[1];
-			gsl_matrix_set_zero(metric);
-			gsl_matrix_set(metric, 0, 0, -1. + (2. - r_Q2_ * r_1) * r_1);
-			gsl_matrix_set(metric, 1, 1, -1. / gsl_matrix_get(metric, 0, 0));
-			gsl_matrix_set(metric, 2, 2, Power2(position[1]));
-			gsl_matrix_set(metric, 3, 3, Power2(position[1] * std::sin(position[2])));
+			metric.clear();
+			metric(0, 0) = -1. + (2. - r_Q2_ * r_1) * r_1;
+			metric(1, 1) = -1. / metric(0, 0);
+			metric(2, 2) = position[1] * position[1];
+			metric(3, 3) = Power2(position[1] * std::sin(position[2]));
 			return position[1] == 2. ? Status::DIVISION_BY_ZERO : Status::SUCCESS;
 		}
-		Type DotProduct(const boost::numeric::ublas::bounded_vector<Type, 8> &position, const Type x[], const Type y[], const std::size_t dimension) override {
-			const Type r_1 = 1. / position[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
-			if (dimension == 3)
-				return x[1] * y[1] / (g11_1) + Power2(position[1]) * x[2] * y[2] + Power2(position[1] * std::sin(position[2])) * x[3] * y[3];
-			return -g11_1 * x[0] * y[0] + x[1] * y[1] / g11_1 + Power2(position[1]) * x[2] * y[2] + Power2(position[1] * std::sin(position[2])) * x[3] * y[3];
-		}
-		Type DistanceSquare(const Type x[], const Type y[], const std::size_t dimension) override {
+		Type DistanceSquare(const boost::numeric::ublas::bounded_vector<Type, 8> &x, const boost::numeric::ublas::bounded_vector<Type, 8> &y, bool include_time) override {
 			const Type r_1 = 1. / x[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
-			if (dimension == 3)
-				return Power2(x[1] - y[1]) / g11_1 + Power2(x[1]) * (Power2(x[2] - y[2]) + Power2(std::sin(x[2]) * PhiDifference(x[3] - y[3])));
-			return -g11_1 * Power2(x[0] - y[0]) + Power2(x[1] - y[1]) / g11_1 + Power2(x[1]) * (Power2(x[2] - y[2]) + Power2(std::sin(x[2]) * PhiDifference(x[3] - y[3])));
+			if (include_time)
+				return -g11_1 * Power2(x[0] - y[0]) + Power2(x[1] - y[1]) / g11_1 + Power2(x[1]) * (Power2(x[2] - y[2]) + Power2(std::sin(x[2]) * PhiDifference(x[3] - y[3])));
+			return Power2(x[1] - y[1]) / g11_1 + Power2(x[1]) * (Power2(x[2] - y[2]) + Power2(std::sin(x[2]) * PhiDifference(x[3] - y[3])));
 		}
 		int LagrangianToHamiltonian(boost::numeric::ublas::bounded_vector<Type, 8> &y) override {
 			const Type dt_dtau = 1. / y[4], r_1 = 1. / y[1], r2 = Power2(y[1]);
@@ -925,6 +924,14 @@ namespace SBody {
 	template <typename Type>
 	class Kerr : public Metric<Type> {
 	  protected:
+		Type DotProduct3D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x1, Type x2, Type x3, Type y1, Type y2, Type y3) override {
+			const Type r = position[1], r2 = Power2(r), Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * Power2(std::cos(position[2])), r_rho_2 = 2. * r / rho2, sin2_theta = Power2(std::sin(position[2]));
+			return (rho2 / Delta) * x1 * y1 + rho2 * x2 * y2 + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * sin2_theta * sin2_theta) * x3 * y3;
+		}
+		Type DotProduct4D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x0, Type x1, Type x2, Type x3, Type y0, Type y1, Type y2, Type y3) override {
+			const Type r = position[1], r2 = Power2(r), Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * Power2(std::cos(position[2])), r_rho_2 = 2. * r / rho2, sin2_theta = Power2(std::sin(position[2]));
+			return (r_rho_2 - 1.) * x0 * y0 - r_rho_2 * a_ * sin2_theta * (x0 * y3 + x3 * y0) + (rho2 / Delta) * x1 * y1 + rho2 * x2 * y2 + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * sin2_theta * sin2_theta) * x3 * y3;
+		}
 		static int DeltaUMuPhi(const boost::numeric::ublas::bounded_vector<Type, 2> &alpha_beta, boost::numeric::ublas::bounded_vector<Type, 2> &delta_u_mu_phi, KerrFastTraceParameters<Type> &params) {
 			// The photon in the observer's frame has the tetrad velocity: [1, r / R, beta / R, -alpha / R], where R = std::sqrt(r^2 + alpha^2 + beta^2).
 			Type alpha = alpha_beta(0), beta = alpha_beta(1);
@@ -942,9 +949,10 @@ namespace SBody {
 			params.Q = params.kerr->CarterConstant(photon, 0., T, LAGRANGIAN);
 			const Type q2 = params.Q * Power2(E_1);
 			Type I_u_0, I_u_1 = 0., I_u_plus_0, I_u_plus_1, I_u_minus_0, I_u_minus_1, I_u_2_0, I_u_2_1, I_u_4_0, I_u_4_1;
-			if (UIntegral(a, a2, params.kerr->u_plus_1, params.kerr->u_minus_1, params.kerr->u_plus, params.kerr->u_minus, l, l2, q2, params.r, params.u_obs, params.u_obj, I_u_0, I_u_1, I_u_plus_0, I_u_plus_1, I_u_minus_0, I_u_minus_1, I_u_2_0, I_u_2_1, I_u_4_0, I_u_4_1) == Status::DOMAIN_ERROR) {
-				delta_u_mu_phi(0) = I_u_0 - boost::math::tools::root_epsilon<Type>();
-				return Status::DOMAIN_ERROR;
+			if (UIntegral(a, a2, params.kerr->u_plus_1, params.kerr->u_minus_1, params.kerr->u_plus, params.kerr->u_minus, l, l2, q2, params.r, params.u_obs, params.u_obj, I_u_0, I_u_1, I_u_plus_0, I_u_plus_1, I_u_minus_0, I_u_minus_1, I_u_2_0, I_u_2_1, I_u_4_0, I_u_4_1) == Status::NO_INTERSECTION_WITH_TARGET_SURFACE) {
+				// photon failed to hit the r_obj surface, the impact params need to be smaller
+				delta_u_mu_phi(0) = std::min(Type{0.99999999}, I_u_0 - boost::math::tools::root_epsilon<Type>());
+				return Status::SCALING_REQUIRED;
 			}
 			// M = q^2 + (a^2-q^2-l^2)*mu^2-a^2*mu^4
 			Type M_minus_plus[2];
@@ -967,7 +975,8 @@ namespace SBody {
 			Type I_phi_mu_0, I_phi_mu_full_turn;
 			// Here the first turning point is determined by `beta` of the observer.
 			int alpha_1, alpha_2;
-			Mu0Integral(a, q2, M_minus_plus[1], M_minus_plus[0], delta_M, delta_M_plus, boost::math::sign(beta), params.mu_obs, mu_plus, mu_minus, A, k, n, alpha_1, I_mu_0, I_mu_full_turn, I_t_mu_0, I_t_mu_full_turn, I_phi_mu_0, I_phi_mu_full_turn);
+			if (int status = Mu0Integral(a, q2, M_minus_plus[1], M_minus_plus[0], delta_M, delta_M_plus, boost::math::sign(beta), params.mu_obs, mu_plus, mu_minus, A, k, n, alpha_1, I_mu_0, I_mu_full_turn, I_t_mu_0, I_t_mu_full_turn, I_phi_mu_0, I_phi_mu_full_turn); status != Status::SUCCESS)
+				return status;
 			Type mu_f_0, mu_f_1, t_mu, phi_mu_0, phi_mu_1;
 			if (int status = MuFIntegral(a, a2, l, q2, M_minus_plus[1], M_minus_plus[0], delta_M, delta_M_plus, mu_plus, mu_minus, I_u_0, I_mu_0, I_mu_full_turn, I_t_mu_0, I_t_mu_full_turn, I_phi_mu_0, I_phi_mu_full_turn, A, k, n, alpha_1, alpha_2, mu_f_0, t_mu, phi_mu_0); status != Status::SUCCESS)
 				return status;
@@ -1026,7 +1035,7 @@ namespace SBody {
 				}
 				if (u_roots[1] < u_obj) {
 					I_u_0 = u_roots[1] / u_obj;
-					return Status::DOMAIN_ERROR;
+					return Status::NO_INTERSECTION_WITH_TARGET_SURFACE;
 				}
 				if (u_roots[1] >= u_plus) { // photon falls into the BH
 					I_u_0 = sqrt_d_1 * EllipticIntegral(0, u_obs, u_obj, 1., 0., u_roots[1], -1., -u_roots[0], 1., u_roots[2], -1.);
@@ -1080,7 +1089,7 @@ namespace SBody {
 				}
 				if (u_roots[1] < u_obj) {
 					I_u_0 = u_roots[1] / u_obj;
-					return Status::DOMAIN_ERROR;
+					return Status::NO_INTERSECTION_WITH_TARGET_SURFACE;
 				}
 				if (u_roots[1] >= u_plus) { // photon falls into the BH
 					I_u_0 = sqrt_e_1 * EllipticIntegral2Complex(0, u_obs, u_obj, 1., 0., f, g, 1., u_roots[1], -1., -u_roots[0], 1.);
@@ -1102,7 +1111,7 @@ namespace SBody {
 			// root_num_U == 4
 			if (u_roots[1] < u_obj) {
 				I_u_0 = u_roots[1] / u_obj;
-				return Status::DOMAIN_ERROR;
+				return Status::NO_INTERSECTION_WITH_TARGET_SURFACE;
 			}
 			if (u_roots[1] >= 1.) { // photon falls into the BH
 				I_u_0 = sqrt_e_1 * EllipticIntegral(0, u_obs, u_obj, 1., 0., u_roots[1], -1., -u_roots[0], 1., u_roots[2], -1., u_roots[3], -1.);
@@ -1225,13 +1234,8 @@ namespace SBody {
 				return Status::SUCCESS;
 			}
 			const Type I = (I_u - alpha_1 * I_mu_0 - alpha_3 * I_mu_full_turn) / alpha_2;
-			Type J;
-			Type sn, cn, dn;
 			if (M_minus > 0.) {
-				J = mu_plus * std::abs(a) * I;
-				if (int status = gsl_sf_elljac_e(J, Power2(k), &sn, &cn, &dn); status != Status::SUCCESS)
-					return status;
-				mu_f = mu_plus * dn;
+				mu_f = mu_plus * boost::math::jacobi_dn(k, mu_plus * std::abs(a) * I);
 				if (Type sin2_phi = (M_plus - Power2(mu_f)) / delta_M; sin2_phi < 0.5)
 					phi = asin(SquareRoot(sin2_phi));
 				else
@@ -1246,16 +1250,16 @@ namespace SBody {
 					phi_mu = l * (-I_u + (alpha_1 * I_phi_mu_0 + alpha_2 * boost::math::ellint_3(k, -n, phi) + alpha_3 * I_phi_mu_full_turn) / (A * delta_M_plus));
 				return Status::SUCCESS;
 			}
+			Type J;
+			Type sn, cn, dn;
 			// M_minus < 0.
 			if (I <= 0.5 * I_mu_full_turn) {
-				J = SquareRoot(delta_M) * std::abs(a) * I;
-				if (int status = gsl_sf_elljac_e(J, Power2(k), &sn, &cn, &dn); status != Status::SUCCESS)
-					return status;
+				sn = boost::math::jacobi_elliptic(k, SquareRoot(delta_M) * std::abs(a) * I, &cn, &dn);
 				mu_f = mu_plus * cn;
 				if (cn < sn)
-					phi = acos(cn);
+					phi = std::acos(cn);
 				else
-					phi = asin(sn);
+					phi = std::asin(sn);
 				t_mu = a2 * M_minus * I_u + A * (alpha_1 * I_t_mu_0 + alpha_2 * boost::math::ellint_2(k, phi) + alpha_3 * I_t_mu_full_turn);
 				if (M_plus == 1.) {
 					if (alpha_1 != alpha_2)
@@ -1267,14 +1271,12 @@ namespace SBody {
 				return Status::SUCCESS;
 			}
 			// I > 0.5 * I_mu_full_turn, the photon has to cross the equatorial plane.
-			J = SquareRoot(delta_M) * std::abs(a) * (I_mu_full_turn - I);
-			if (int status = gsl_sf_elljac_e(J, Power2(k), &sn, &cn, &dn); status != Status::SUCCESS)
-				return status;
+			sn = boost::math::jacobi_elliptic(k, SquareRoot(delta_M) * std::abs(a) * (I_mu_full_turn - I), &cn, &dn);
 			mu_f = mu_minus * cn;
 			if (cn < sn)
-				phi = acos(cn);
+				phi = std::acos(cn);
 			else
-				phi = asin(sn);
+				phi = std::asin(sn);
 			t_mu = a2 * M_minus * I_u + A * (alpha_1 * I_t_mu_0 - alpha_2 * boost::math::ellint_2(k, phi) + (alpha_2 + alpha_3) * I_t_mu_full_turn);
 			if (M_plus == 1.) {
 				if (alpha_1 != alpha_2)
@@ -1308,18 +1310,12 @@ namespace SBody {
 			metric(3, 3) = (r2 + a2_ * (1. + r_rho_2 * sin2_theta)) * sin2_theta;
 			return Status::SUCCESS;
 		}
-		Type DotProduct(const boost::numeric::ublas::bounded_vector<Type, 8> &position, const Type x[], const Type y[], const std::size_t dimension) override {
-			const Type r = position[1], r2 = Power2(r), Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * Power2(std::cos(position[2])), r_rho_2 = 2. * r / rho2, sin2_theta = Power2(std::sin(position[2]));
-			if (dimension == 3)
-				return (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * Power2(sin2_theta)) * x[3] * y[3];
-			return (r_rho_2 - 1.) * x[0] * y[0] - r_rho_2 * a_ * sin2_theta * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * Power2(sin2_theta)) * x[3] * y[3];
-		}
-		Type DistanceSquare(const Type x[], const Type y[], const std::size_t dimension) override {
-			const Type r = x[1], r2 = Power2(r), d0 = x[0] - y[0], d3 = PhiDifference(x[3] - y[3]);
+		Type DistanceSquare(const boost::numeric::ublas::bounded_vector<Type, 8> &x, const boost::numeric::ublas::bounded_vector<Type, 8> &y, bool include_time) override {
+			const Type r = x[1], r2 = r * r, d0 = x[0] - y[0], d3 = PhiDifference(x[3] - y[3]);
 			const Type Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * Power2(std::cos(x[2])), r_rho_2 = 2. * r / rho2, sin2_theta = Power2(std::sin(x[2]));
-			if (dimension == 3)
-				return (rho2 / Delta) * Power2(x[1] - y[1]) + rho2 * Power2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + 2. * r * a2_ * Power2(sin2_theta) / rho2) * Power2(d3);
-			return (r_rho_2 - 1.) * Power2(d0) - 2. * r_rho_2 * a_ * sin2_theta * d0 * d3 + (rho2 / Delta) * Power2(x[1] - y[1]) + rho2 * Power2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * Power2(sin2_theta)) * Power2(d3);
+			if (include_time)
+				return (r_rho_2 - 1.) * Power2(d0) - 2. * r_rho_2 * a_ * sin2_theta * d0 * d3 + (rho2 / Delta) * Power2(x[1] - y[1]) + rho2 * Power2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * Power2(sin2_theta)) * Power2(d3);
+			return (rho2 / Delta) * Power2(x[1] - y[1]) + rho2 * Power2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + 2. * r * a2_ * Power2(sin2_theta) / rho2) * Power2(d3);
 		}
 		int LagrangianToHamiltonian(boost::numeric::ublas::bounded_vector<Type, 8> &y) override {
 			const Type dt_dtau = 1. / y[4], r2 = Power2(y[1]), sin2_theta = Power2(std::sin(y[2]));
@@ -1368,7 +1364,7 @@ namespace SBody {
 			const Type alpha_coefficient = sin_theta_object * sin_phi_object, beta_coefficient = cos_theta_object * sin_theta_observer - sin_theta_object * cos_phi_object * cos_theta_observer;
 			alpha_beta_initial_value(0) = effective_radius * alpha_coefficient;
 			alpha_beta_initial_value(1) = effective_radius * beta_coefficient;
-			DNewtonRotationMultiFunctionSolver<double, 2, KerrFastTraceParameters<Type>> alpha_beta_rotation_solver(DeltaUMuPhi, fast_trace_parameters);
+			DNewtonRotationMultiFunctionSolver<Type, 2, KerrFastTraceParameters<Type>> alpha_beta_rotation_solver(DeltaUMuPhi, fast_trace_parameters);
 			int status;
 			if (status = alpha_beta_rotation_solver.Set(alpha_beta_initial_value, theta_observer, sin_theta_observer, cos_theta_observer, r_object, sin_theta_object, cos_theta_object, phi_object, sin_phi_object, cos_phi_object, false); status == Status::SUCCESS)
 				if (status = alpha_beta_rotation_solver.Solve(boost::math::tools::root_epsilon<Type>()); status == Status::SUCCESS) {
@@ -1386,7 +1382,7 @@ namespace SBody {
 					return Status::SUCCESS;
 				}
 			// PrintlnWarning("Kerr FastTrace() ROTATION failed with status = {}", status);
-			DNewtonTranslationMultiFunctionSolver<double, 2, KerrFastTraceParameters<Type>> alpha_beta_translation_solver(DeltaUMuPhi, fast_trace_parameters);
+			DNewtonTranslationMultiFunctionSolver<Type, 2, KerrFastTraceParameters<Type>> alpha_beta_translation_solver(DeltaUMuPhi, fast_trace_parameters);
 			if (status = alpha_beta_translation_solver.Set(alpha_beta_rotation_solver.Root(), theta_observer, sin_theta_observer, cos_theta_observer, r_object, sin_theta_object, cos_theta_object, phi_object, sin_phi_object, cos_phi_object, false); status == Status::SUCCESS)
 				if (status = alpha_beta_translation_solver.Solve(boost::math::tools::root_epsilon<Type>()); status == Status::SUCCESS) {
 					alpha = alpha_beta_translation_solver.Root()(0);
@@ -1402,7 +1398,7 @@ namespace SBody {
 					photon_time = fast_trace_parameters.t;
 					return Status::SUCCESS;
 				}
-			DirectionMultiFunctionSolver<double, 2, KerrFastTraceParameters<Type>> alpha_beta_direction_solver(DeltaUMuPhi, fast_trace_parameters);
+			DirectionMultiFunctionSolver<Type, 2, KerrFastTraceParameters<Type>> alpha_beta_direction_solver(DeltaUMuPhi, fast_trace_parameters);
 			if (status = alpha_beta_direction_solver.Set(alpha_beta_translation_solver.Root()); status != Status::SUCCESS)
 				// PrintlnWarning("Kerr FastTrace() set DIRECTION failed with status = {}", status);
 				if (status = alpha_beta_direction_solver.Solve(boost::math::tools::root_epsilon<Type>(), 2048); status == Status::SUCCESS) {
@@ -1607,7 +1603,7 @@ namespace SBody {
 		std::function<void(const boost::numeric::ublas::bounded_vector<Type, 8> &, boost::numeric::ublas::bounded_vector<Type, 8> &, const Type)> GetIntegrationSystem(TimeSystem time, DynamicalSystem dynamics, MotionMode motion = GEODESIC) override {
 			if (time == T) {
 				if (dynamics == LAGRANGIAN) {
-					if (motion == GEODESIC) // return std::make_unique<Integrator>(Kerr<double>::TLagrangianGeodesic, Jacobian<double>, this);
+					if (motion == GEODESIC)
 						return [a = this->a_, a2 = this->a2_, a4 = this->a4_](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = y[5]; // dr/dt
@@ -1627,7 +1623,7 @@ namespace SBody {
 							// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 							dydt[7] = (-2. * a * r2_a2_cos2_theta * Delta_1 * y[5] + 4. * a * r * cot_theta * y[6] - 2. * Delta_1 * (r * rho4 - 2. * r2 * rho2 - r2_a2_cos2_theta * a2 * sin2_theta) * y[5] * y[7] - 2. * cot_theta * (rho4 + 2. * a2 * r * sin2_theta) * y[6] * y[7]) * rho_4 + dydt4 * y[7];
 						};
-					else if (motion == CIRCULAR) // return std::make_unique<Integrator>(Kerr<double>::TLagrangianCircular, Jacobian<double>, this);
+					else if (motion == CIRCULAR)
 						return [](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = 0.;	// dr/dt
@@ -1638,7 +1634,7 @@ namespace SBody {
 							dydt[6] = 0.;
 							dydt[7] = 0.;
 						};
-					else if (motion == HELICAL) // return std::make_unique<Integrator>(Kerr<double>::TLagrangianHelical, Jacobian<double>, this);
+					else if (motion == HELICAL)
 						return [a = this->a_, a2 = this->a2_](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = y[5]; // dr/dt
@@ -1663,7 +1659,7 @@ namespace SBody {
 							// d^2\tau/dt^2 = d^2\tau/dtdr * dr/dt = d((g03 + g33 * d\phi/dt) / L)/dr * dr/dt
 							dydt[4] = (y[5] * (dg03_dr + dg33_dr * y[7]) + g33 * dydt[7]) * L_1;
 						};
-				} else if (dynamics == HAMILTONIAN && motion == GEODESIC) // return std::make_unique<Integrator>(Kerr<double>::THamiltonianGeodesic, Jacobian<double>, this);
+				} else if (dynamics == HAMILTONIAN && motion == GEODESIC)
 					return [a = this->a_, a2 = this->a2_](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 						const Type r = y[1], r2 = y[1] * y[1], a2_r2 = a2 + r2, pr2 = y[5] * y[5], ptheta2 = y[6] * y[6];
 						const Type E = 1. - y[4], E2 = E * E, delta_E2 = (2. - y[4]) * y[4], L2 = y[7] * y[7];
@@ -1683,7 +1679,7 @@ namespace SBody {
 						dydt[7] = 0.;
 					};
 			} else if (time == TAU) {
-				if (dynamics == LAGRANGIAN) // return std::make_unique<Integrator>(Kerr<double>::TauLagrangianGeodesic, Jacobian<double>, this);
+				if (dynamics == LAGRANGIAN)
 					return [a = this->a_, a2 = this->a2_, a4 = this->a4_](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 						dydt[0] = y[4]; // dt/d\tau
 						dydt[1] = y[5]; // dr/d\tau
@@ -1701,7 +1697,7 @@ namespace SBody {
 						// d^2\phi/dt^2=(d^2\phi/d\tau^2)*(d\tau/dt)^2+(d\phi/dt)*(d^2\tau/dt^2)*(dt/d\tau)
 						dydt[7] = (-2. * a * r2_a2_cos2_theta * Delta_1 * y[4] * y[5] + 4. * a * r * cot_theta * y[4] * y[6] - 2. * Delta_1 * (r * rho4 - 2. * r2 * rho2 - r2_a2_cos2_theta * a2 * sin2_theta) * y[5] * y[7] - 2. * cot_theta * (rho4 + 2. * a2 * r * sin2_theta) * y[6] * y[7]) * rho_4;
 					};
-				else if (dynamics == HAMILTONIAN) // return std::make_unique<Integrator>(Kerr<double>::TauHamiltonianGeodesic, Jacobian<double>, this);
+				else if (dynamics == HAMILTONIAN)
 					return [a = this->a_, a2 = this->a2_](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 						const Type r = y[1], r2 = Power2(y[1]), a2_r2 = a2 + r2, pr2 = Power2(y[5]), ptheta2 = Power2(y[6]);
 						const Type E = 1. - y[4], E2 = Power2(E), delta_E2 = (2. - y[4]) * y[4], L2 = Power2(y[7]);
@@ -1743,6 +1739,16 @@ namespace SBody {
 
 	template <typename Type>
 	class KerrNewman : public Metric<Type> {
+	  protected:
+		Type DotProduct3D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x1, Type x2, Type x3, Type y1, Type y2, Type y3) override {
+			const Type r = position[1], r2 = Power2(r), Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * Power2(std::cos(position[2])), r_rho_2 = (2. * r - r_Q2_) / rho2, sin2_theta = Power2(std::sin(position[2]));
+			return (rho2 / Delta) * x1 * y1 + rho2 * x2 * y2 + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * sin2_theta * sin2_theta) * x3 * y3;
+		}
+		Type DotProduct4D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x0, Type x1, Type x2, Type x3, Type y0, Type y1, Type y2, Type y3) override {
+			const Type r = position[1], r2 = Power2(r), Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * Power2(std::cos(position[2])), r_rho_2 = (2. * r - r_Q2_) / rho2, sin2_theta = Power2(std::sin(position[2]));
+			return (r_rho_2 - 1.) * x0 * y0 - r_rho_2 * a_ * sin2_theta * (x0 * y3 + x3 * y0) + (rho2 / Delta) * x1 * y1 + rho2 * x2 * y2 + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * sin2_theta * sin2_theta) * x3 * y3;
+		}
+
 	  public:
 		const Type a_, a2_, a4_;
 		const Type sqrt_delta_a2_;
@@ -1753,31 +1759,25 @@ namespace SBody {
 			return "Kerr-Newman";
 		}
 		int MetricTensor(const boost::numeric::ublas::bounded_vector<Type, 8> &position, boost::numeric::ublas::bounded_matrix<Type, 4, 4> &metric) override {
-			const Type r = position[1], r2 = Power2(r), Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * Power2(std::cos(position[2])), sin2_theta = Power2(std::sin(position[2]));
+			const Type r = position[1], r2 = r * r, Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * Power2(std::cos(position[2])), sin2_theta = Power2(std::sin(position[2]));
 			if (rho2 == 0. || Delta == 0.)
 				return Status::DIVISION_BY_ZERO;
 			const Type r_rho_2 = (2. * r - r_Q2_) / rho2;
-			gsl_matrix_set_zero(metric);
-			gsl_matrix_set(metric, 0, 0, -(1. - r_rho_2));
-			gsl_matrix_set(metric, 0, 3, -r_rho_2 * a_ * sin2_theta);
-			gsl_matrix_set(metric, 1, 1, rho2 / Delta);
-			gsl_matrix_set(metric, 2, 2, rho2);
-			gsl_matrix_set(metric, 3, 0, -r_rho_2 * a_ * sin2_theta);
-			gsl_matrix_set(metric, 3, 3, (r2 + a2_ * (1. + r_rho_2 * sin2_theta)) * sin2_theta);
+			metric.clear();
+			metric(0, 0) = -(1. - r_rho_2);
+			metric(0, 3) = -r_rho_2 * a_ * sin2_theta;
+			metric(1, 1) = rho2 / Delta;
+			metric(2, 2) = rho2;
+			metric(3, 0) = -r_rho_2 * a_ * sin2_theta;
+			metric(3, 3) = (r2 + a2_ * (1. + r_rho_2 * sin2_theta)) * sin2_theta;
 			return Status::SUCCESS;
 		}
-		Type DotProduct(const boost::numeric::ublas::bounded_vector<Type, 8> &position, const Type x[], const Type y[], const std::size_t dimension) override {
-			const Type r = position[1], r2 = Power2(r), Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * Power2(std::cos(position[2])), r_rho_2 = (2. * r - r_Q2_) / rho2, sin2_theta = Power2(std::sin(position[2]));
-			if (dimension == 3)
-				return (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * Power2(sin2_theta)) * x[3] * y[3];
-			return (r_rho_2 - 1.) * x[0] * y[0] - r_rho_2 * a_ * sin2_theta * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * Power2(sin2_theta)) * x[3] * y[3];
-		}
-		Type DistanceSquare(const Type x[], const Type y[], const std::size_t dimension) override {
+		Type DistanceSquare(const boost::numeric::ublas::bounded_vector<Type, 8> &x, const boost::numeric::ublas::bounded_vector<Type, 8> &y, bool include_time) override {
 			const Type r = x[1], r2 = Power2(r), d0 = x[0] - y[0], d3 = PhiDifference(x[3] - y[3]);
 			const Type Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * Power2(std::cos(x[2])), r_rho_2 = (2. * r - r_Q2_) / rho2, sin2_theta = Power2(std::sin(x[2]));
-			if (dimension == 3)
-				return (rho2 / Delta) * Power2(x[1] - y[1]) + rho2 * Power2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + 2. * r * a2_ * Power2(sin2_theta) / rho2) * Power2(d3);
-			return (r_rho_2 - 1.) * Power2(d0) - 2. * r_rho_2 * a_ * sin2_theta * d0 * d3 + (rho2 / Delta) * Power2(x[1] - y[1]) + rho2 * Power2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * Power2(sin2_theta)) * Power2(d3);
+			if (include_time)
+				return (r_rho_2 - 1.) * Power2(d0) - 2. * r_rho_2 * a_ * sin2_theta * d0 * d3 + (rho2 / Delta) * Power2(x[1] - y[1]) + rho2 * Power2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * Power2(sin2_theta)) * Power2(d3);
+			return (rho2 / Delta) * Power2(x[1] - y[1]) + rho2 * Power2(x[2] - y[2]) + ((r2 + a2_) * sin2_theta + 2. * r * a2_ * Power2(sin2_theta) / rho2) * Power2(d3);
 		}
 		int LagrangianToHamiltonian(boost::numeric::ublas::bounded_vector<Type, 8> &y) override {
 			const Type dt_dtau = 1. / y[4], r2 = Power2(y[1]), sin2_theta = Power2(std::sin(y[2]));
@@ -1866,6 +1866,22 @@ namespace SBody {
 
 	template <typename Type>
 	class KerrTaubNUT : public Metric<Type> {
+	  protected:
+		Type DotProduct3D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x1, Type x2, Type x3, Type y1, Type y2, Type y3) override {
+			const Type r = position[1], sin_theta = std::sin(position[2]), cos_theta = std::cos(position[2]);
+			const Type r2 = Power2(r), sin2_theta = Power2(sin_theta);
+			const Type Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + Power2(l_ + a_ * cos_theta), chi = a_ * sin2_theta - 2. * l_ * cos_theta;
+			const Type rho_2 = 1. / rho2;
+			return (rho2 / Delta) * x1 * y1 + rho2 * x2 * y2 + (Power2(rho2 + a_ * chi) * sin2_theta - chi * chi * Delta) * rho_2 * x3 * y3;
+		}
+		Type DotProduct4D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x0, Type x1, Type x2, Type x3, Type y0, Type y1, Type y2, Type y3) override {
+			const Type r = position[1], sin_theta = std::sin(position[2]), cos_theta = std::cos(position[2]);
+			const Type r2 = Power2(r), sin2_theta = Power2(sin_theta);
+			const Type Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + Power2(l_ + a_ * cos_theta), chi = a_ * sin2_theta - 2. * l_ * cos_theta;
+			const Type rho_2 = 1. / rho2;
+			return (a2_ * sin2_theta - Delta) * rho_2 * x0 * y0 - 2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * rho_2 * (x0 * y3 + x3 * y0) + (rho2 / Delta) * x1 * y1 + rho2 * x2 * y2 + (Power2(rho2 + a_ * chi) * sin2_theta - chi * chi * Delta) * rho_2 * x3 * y3;
+		}
+
 	  public:
 		const Type a_, a2_, a4_;
 		const Type sqrt_delta_a2_;
@@ -1878,23 +1894,14 @@ namespace SBody {
 		int MetricTensor(const boost::numeric::ublas::bounded_vector<Type, 8> &position, boost::numeric::ublas::bounded_matrix<Type, 4, 4> &metric) override {
 			return Status::NOT_IMPLEMENTED;
 		}
-		Type DotProduct(const boost::numeric::ublas::bounded_vector<Type, 8> &position, const Type x[], const Type y[], const std::size_t dimension) override {
-			const Type r = position[1], sin_theta = std::sin(position[2]), cos_theta = std::cos(position[2]);
-			const Type r2 = Power2(r), sin2_theta = Power2(sin_theta);
-			const Type Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + Power2(l_ + a_ * cos_theta), chi = a_ * sin2_theta - 2. * l_ * cos_theta;
-			const Type rho_2 = 1. / rho2;
-			if (dimension == 3)
-				return (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + (Power2(rho2 + a_ * chi) * sin2_theta - chi * chi * Delta) * rho_2 * x[3] * y[3];
-			return (a2_ * sin2_theta - Delta) * rho_2 * x[0] * y[0] - 2. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * rho_2 * (x[0] * y[3] + x[3] * y[0]) + (rho2 / Delta) * x[1] * y[1] + rho2 * x[2] * y[2] + (Power2(rho2 + a_ * chi) * sin2_theta - chi * chi * Delta) * rho_2 * x[3] * y[3];
-		}
-		Type DistanceSquare(const Type x[], const Type y[], const std::size_t dimension) override {
+		Type DistanceSquare(const boost::numeric::ublas::bounded_vector<Type, 8> &x, const boost::numeric::ublas::bounded_vector<Type, 8> &y, bool include_time) override {
 			const Type r = x[1], sin_theta = std::sin(x[2]), cos_theta = std::cos(x[2]), d0 = x[0] - y[0], d3 = PhiDifference(x[3] - y[3]);
 			const Type r2 = Power2(r), sin2_theta = Power2(sin_theta);
 			const Type Delta = r2 - 2. * r - l2_ + a2_, rho2 = r2 + Power2(l_ + a_ * cos_theta), chi = a_ * sin2_theta - 2. * l_ * cos_theta;
 			const Type rho_2 = 1. / rho2;
-			if (dimension == 3)
-				return (rho2 / Delta) * Power2(x[1] - y[1]) + rho2 * Power2(x[2] - y[2]) + (Power2(rho2 + a_ * chi) * sin2_theta - Power2(chi) * Delta) * rho_2 * Power2(d3);
-			return (a2_ * sin2_theta - Delta) * rho_2 * Power2(d0) - 4. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * rho_2 * d0 * d3 + (rho2 / Delta) * Power2(x[1] - y[1]) + rho2 * Power2(x[2] - y[2]) + (Power2(rho2 + a_ * chi) * sin2_theta - Power2(chi) * Delta) * rho_2 * Power2(d3);
+			if (include_time)
+				return (a2_ * sin2_theta - Delta) * rho_2 * Power2(d0) - 4. * ((r + l2_) * a_ * sin2_theta + Delta * l_ * cos_theta) * rho_2 * d0 * d3 + (rho2 / Delta) * Power2(x[1] - y[1]) + rho2 * Power2(x[2] - y[2]) + (Power2(rho2 + a_ * chi) * sin2_theta - Power2(chi) * Delta) * rho_2 * Power2(d3);
+			return (rho2 / Delta) * Power2(x[1] - y[1]) + rho2 * Power2(x[2] - y[2]) + (Power2(rho2 + a_ * chi) * sin2_theta - Power2(chi) * Delta) * rho_2 * Power2(d3);
 		}
 		int LagrangianToHamiltonian(boost::numeric::ublas::bounded_vector<Type, 8> &y) override {
 			const Type dt_dtau = 1. / y[4], r = y[1], r2 = Power2(r);
@@ -1985,7 +1992,7 @@ namespace SBody {
 				throw std::invalid_argument(fmt::format("KerrNewman::GetIntegrationSystem({}, {}, {}) invaild", time, dynamics, motion));
 			if (time == T) {
 				if (dynamics == LAGRANGIAN)
-					if (motion == GEODESIC) // return std::make_unique<Integrator>(KerrTaubNUT<double>::TLagrangianGeodesic, Jacobian<double>, this);
+					if (motion == GEODESIC)
 						return [a = this->a_, a2 = this->a2_, l = this->l_, l2 = this->l2_](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 							dydt[0] = y[4]; // d\tau/dt
 							dydt[1] = y[5]; // dr/dt
@@ -2035,7 +2042,7 @@ namespace SBody {
 							dydt[4] = (y[5] * (dg03_dr + dg33_dr * y[7]) + g33 * dydt[7]) * L_1;
 						};
 			} else if (time == TAU) {
-				if (dynamics == LAGRANGIAN && motion == GEODESIC) // return std::make_unique<Integrator>(KerrTaubNUT<double>::TauLagrangianGeodesic, Jacobian<double>, this);
+				if (dynamics == LAGRANGIAN && motion == GEODESIC)
 					return [a = this->a_, a2 = this->a2_, l = this->l_, l2 = this->l2_](const boost::numeric::ublas::bounded_vector<Type, 8> &y, boost::numeric::ublas::bounded_vector<Type, 8> &dydt, const Type t) {
 						dydt[0] = y[4]; // dt/d\tau
 						dydt[1] = y[5]; // dr/d\tau
@@ -2064,6 +2071,10 @@ namespace SBody {
 
 	template <typename Type>
 	class Hayward : public Metric<Type> {
+	  protected:
+		Type DotProduct3D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x1, Type x2, Type x3, Type y1, Type y2, Type y3) override;
+		Type DotProduct4D(const boost::numeric::ublas::bounded_vector<Type, 8> &position, Type x0, Type x1, Type x2, Type x3, Type y0, Type y1, Type y2, Type y3) override;
+
 	  public:
 		const Type a_, a2_, a4_;
 		const Type sqrt_delta_a2_;
@@ -2072,8 +2083,7 @@ namespace SBody {
 		Hayward(Type alpha, Type beta, Type charge);
 		std::string Name() override;
 		int MetricTensor(const boost::numeric::ublas::bounded_vector<Type, 8> &position, boost::numeric::ublas::bounded_matrix<Type, 4, 4> &metric) override;
-		Type DotProduct(const boost::numeric::ublas::bounded_vector<Type, 8> &position, const Type x[], const Type y[], const std::size_t dimension) override;
-		Type DistanceSquare(const Type x[], const Type y[], const std::size_t dimension) override;
+		Type DistanceSquare(const boost::numeric::ublas::bounded_vector<Type, 8> &x, const boost::numeric::ublas::bounded_vector<Type, 8> &y, bool include_time) override;
 		int LagrangianToHamiltonian(boost::numeric::ublas::bounded_vector<Type, 8> &y) override;
 		int HamiltonianToLagrangian(boost::numeric::ublas::bounded_vector<Type, 8> &y) override;
 		int FastTrace(const Type r_observer, const Type theta_observer, const Type sin_theta_observer, const Type cos_theta_observer, const Type r_object, const Type theta_object, const Type phi_object, Type &alpha, Type &beta, boost::numeric::ublas::bounded_vector<Type, 8> &photon, Type &photon_time) override;

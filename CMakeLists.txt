@@ -10,9 +10,9 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL Linux)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_definitions(GSL_RANGE_CHECK_ON BOOST_UBLAS_CHECK_RANGE)
+    add_compile_definitions(BOOST_UBLAS_CHECK_RANGE)
 else()
-    add_compile_definitions(GSL_RANGE_CHECK_OFF SBODY_RELEASE)
+    add_compile_definitions(SBODY_RELEASE)
 endif()
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
@@ -41,12 +41,7 @@ if(DOXYGEN_FOUND)
     endif()
 endif()
 
-find_package(GSL REQUIRED)
 find_package(Boost 1.71 REQUIRED COMPONENTS unit_test_framework)
-
-if(NOT GSL_FOUND)
-    message(FATAL_ERROR "Please install GSL")
-endif()
 
 if(NOT BOOST_FOUND)
     message(FATAL_ERROR "Please install Boost")
@@ -69,7 +64,7 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/fmt)
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)
 add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 add_executable(sbody src/SBody.cpp)
-target_link_libraries(sbody PUBLIC GSL::gsl Boost::boost fmt::fmt ${OPTIONAL_LIBS})
+target_link_libraries(sbody PUBLIC Boost::boost fmt::fmt ${OPTIONAL_LIBS})
 
 enable_testing()
 

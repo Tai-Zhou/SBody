@@ -74,9 +74,6 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include <fmt/core.h>
-#include <gsl/gsl_linalg.h>
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_vector.h>
 
 namespace SBody {
 	/// Global absolute accuracy.
@@ -84,9 +81,6 @@ namespace SBody {
 
 	/// Global relative accuracy.
 	inline double relative_accuracy = 1e-15;
-
-	/// \f$2\pi\f$.
-	constexpr long double M_2PI = 6.28318530717958647692528676655900576l;
 
 	/// \f$\sqrt{27}\f$
 	constexpr long double M_SQRT27 = 5.19615242270663188058233902451761710l;
@@ -130,6 +124,7 @@ namespace SBody {
 		SINGULAR_MATRIX,
 		NUMERIC_ERROR,
 		TRUST_REGION_TOO_SMALL,
+		SCALING_REQUIRED,
 
 		// Physical
 		NO_INTERSECTION_WITH_TARGET_SURFACE,
@@ -170,36 +165,10 @@ namespace SBody {
 	}
 
 	/**
-	 * @brief Square of `x` with the sign of `x`.
-	 *
-	 * @param x number
-	 * @return result
-	 */
-	template <typename Type>
-	Type SignSquare(Type x) {
-		if (x < 0.)
-			return -x * x;
-		return x * x;
-	}
-
-	/**
-	 * @brief Square root of `abs(x)` with the sign of `x`.
-	 *
-	 * @param x number
-	 * @return result
-	 */
-	template <typename Type>
-	Type SignSquareRoot(Type x) {
-		if (x < 0.)
-			return -std::sqrt(-x);
-		return std::sqrt(x);
-	}
-
-	/**
 	 * @brief
 	 *
 	 * @tparam Type
-	 * @param x
+	 * @param theta
 	 * @return Type
 	 */
 	template <typename Type>
@@ -207,6 +176,13 @@ namespace SBody {
 		return std::abs(std::sin(theta));
 	}
 
+	/**
+	 * @brief
+	 *
+	 * @tparam Type
+	 * @param theta
+	 * @return Type
+	 */
 	template <typename Type>
 	Type CosTheta(Type theta) {
 		if (theta > boost::math::constants::half_pi<Type>())
@@ -216,93 +192,13 @@ namespace SBody {
 		return std::cos(theta);
 	}
 
-	/**
-	 * @brief Dot product of vector `x` and `y`. \f$\vec{x}\cdot\vec{y}\f$
-	 *
-	 * @param x vector
-	 * @param y vector
-	 * @param dimension dimension of the vector
-	 * @return result
-	 */
-	// template <typename Type>
-	// Type Dot(const Type x[], const Type y[], std::size_t dimension = 3) {
-	// 	if (dimension == 3)
-	// 		return x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
-	// 	Type sum = 0.;
-	// 	while (dimension-- > 0)
-	// 		sum += x[dimension] * y[dimension];
-	// 	return sum;
-	// }
-
-	/**
-	 * @brief Dot product of vector `x`. \f$\vec{x}\cdot\vec{x}\f$
-	 *
-	 * @param x vector
-	 * @param dimension dimension of the vector
-	 * @return result
-	 */
-	// template <typename Type>
-	// Type Dot(const Type x[], std::size_t dimension = 3) {
-	// 	if (dimension == 3)
-	// 		return x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
-	// 	Type sum = 0.;
-	// 	while (dimension-- > 0)
-	// 		sum += x[dimension] * x[dimension];
-	// 	return sum;
-	// }
-
-	/**
-	 * @brief Dot product of vector `x`. \f$\vec{x}\cdot\vec{x}\f$
-	 *
-	 * @param x vector
-	 * @param dimension dimension of the vector
-	 * @return result
-	 */
-	template <typename Type, typename Iter>
-	Type Dot(const Iter x_begin, const Iter x_end, const Iter y_begin = nullptr) {
-		if (y_begin == nullptr)
-			return std::inner_product(x_begin, x_end, x_begin, Type{0.});
-		return std::inner_product(x_begin, x_end, y_begin, Type{0.});
-	}
-
-	/**
-	 * @brief Euclidean norm of `x`. \f$\|\vec{x}\|_2\f$.
-	 *
-	 * @param x vector
-	 * @param dimension dimension of the vector
-	 * @return result
-	 */
 	template <typename Type>
-	Type Norm(const Type x[], std::size_t dimension = 3) {
-		if (dimension == 3)
-			return std::sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
-		Type sum = 0.;
-		while (dimension-- > 0)
-			sum += x[dimension] * x[dimension];
-		return std::sqrt(sum);
+	Type HypotSquare(Type x, Type y) {
+		return x * x + y * y;
 	}
-
-	template <typename Type, std::size_t N>
-	Type Norm(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
-		if (N == 3)
-			return std::sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
-		return std::sqrt(std::inner_product(x.begin(), x.end(), x.begin(), Type{0.}));
-	}
-
-	/**
-	 * @brief Cross product of vector `x` and `y`, stored in `z`. \f$\vec{z}=\vec{x}\times\vec{y}\f$.
-	 *
-	 * @param x 3 dimensional vector
-	 * @param y 3 dimensional vector
-	 * @param z 3 dimensional vector
-	 * @return status
-	 */
 	template <typename Type>
-	int Cross(const boost::numeric::ublas::bounded_vector<Type, 3> &x, const boost::numeric::ublas::bounded_vector<Type, 3> &y, boost::numeric::ublas::bounded_vector<Type, 3> &z) {
-		z[0] = x[1] * y[2] - x[2] * y[1];
-		z[1] = x[2] * y[0] - x[0] * y[2];
-		z[2] = x[0] * y[1] - x[1] * y[0];
-		return Status::SUCCESS;
+	Type HypotSquare(Type x, Type y, Type z) {
+		return x * x + y * y + z * z;
 	}
 
 	/**
@@ -314,15 +210,8 @@ namespace SBody {
 	 * @return result
 	 */
 	template <typename Type>
-	Type DotCross(const Type x[], const Type y[], const Type z[]) {
+	Type DotCross(const boost::numeric::ublas::bounded_vector<Type, 3> &x, const boost::numeric::ublas::bounded_vector<Type, 3> &y, const boost::numeric::ublas::bounded_vector<Type, 3> &z) {
 		return x[0] * (y[1] * z[2] - y[2] * z[1]) + x[1] * (y[2] * z[0] - y[0] * z[2]) + x[2] * (y[0] * z[1] - y[1] * z[0]);
-	}
-
-	template <typename Type, std::size_t N>
-	Type ElementAbsSum(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
-		return std::accumulate(x.begin(), x.end(), Type{0.}, [](Type sum, Type x_i) {
-			return sum + std::abs(x_i);
-		});
 	}
 
 	/**
@@ -397,57 +286,11 @@ namespace SBody {
 	}
 
 	/**
-	 * @brief Calculate whether point \f$p\f$ locates inside the triangle \f$\Delta abc\f$.
-	 *
-	 * @param a vertex a
-	 * @param b vertex b
-	 * @param c vertex c
-	 * @param p point p
-	 * @return result
-	 */
-	template <typename Type>
-	bool PointInTriangle(const Type a[], const Type b[], const Type c[], const Type p[] = nullptr) {
-		if (p == nullptr)
-			return PointInTriangle(a[0], a[1], b[0], b[1], c[0], c[1]);
-		return PointInTriangle(a[0], a[1], b[0], b[1], c[0], c[1], p[0], p[1]);
-	}
-
-	/**
 	 * @brief Rotate vector `x` around the `axis` by `angle`.
 	 *
-	 * @param x 3 dimensional vector
-	 * @param axis the rotation axis.
-	 * @param angle in rad
-	 * @return status
-	 */
-	template <typename Type>
-	int RotateAroundAxis(Type x[], Axis axis, Type angle) {
-		const Type sin_angle = std::sin(angle), cos_angle = std::cos(angle);
-		switch (axis) {
-		case X:
-			angle = x[1] * cos_angle - x[2] * sin_angle;
-			x[2] = x[1] * sin_angle + x[2] * cos_angle;
-			x[1] = angle;
-			return Status::SUCCESS;
-		case Y:
-			angle = x[2] * cos_angle - x[0] * sin_angle;
-			x[0] = x[2] * sin_angle + x[0] * cos_angle;
-			x[2] = angle;
-			return Status::SUCCESS;
-		case Z:
-			angle = x[0] * cos_angle - x[1] * sin_angle;
-			x[1] = x[0] * sin_angle + x[1] * cos_angle;
-			x[0] = angle;
-			return Status::SUCCESS;
-		default:
-			return Status::INVALID_ARGUMENT;
-		}
-	}
-	/**
-	 * @brief Rotate vector `x` around the `axis` by `angle`.
-	 *
-	 * @param x 3 dimensional vector
-	 * @param axis the rotation axis.
+	 * @param x 8 dimensional vector
+	 * @param rotate_velocity if true, rotate velocity part, else rotate position part
+	 * @param axis the rotation axis
 	 * @param angle in rad
 	 * @return status
 	 */
@@ -485,7 +328,7 @@ namespace SBody {
 	 */
 	template <typename Type>
 	int CartesianToSpherical(const boost::numeric::ublas::bounded_vector<Type, 4> &cartesian, boost::numeric::ublas::bounded_vector<Type, 4> &spherical) {
-		if (spherical(1) = Norm(cartesian.begin() + 1); spherical(1) == 0.)
+		if (spherical(1) = std::hypot(cartesian(1), cartesian(2), cartesian(3)); spherical(1) == 0.)
 			return Status::DIVISION_BY_ZERO;
 		spherical(0) = cartesian(0);
 		spherical(2) = std::acos(cartesian(3) / spherical(1));
@@ -502,74 +345,23 @@ namespace SBody {
 	 */
 	template <typename Type>
 	int CartesianToSpherical(const boost::numeric::ublas::bounded_vector<Type, 8> &cartesian, boost::numeric::ublas::bounded_vector<Type, 8> &spherical) {
-		if (spherical[1] = Norm(cartesian.data().begin() + 1); spherical[1] == 0.)
+		if (spherical[1] = std::hypot(cartesian(1), cartesian(2), cartesian(3)); spherical[1] == 0.)
 			return Status::DIVISION_BY_ZERO;
 		const Type r_1 = 1. / spherical[1];
 		spherical[0] = cartesian[0];
 		spherical[2] = std::acos(cartesian[3] * r_1);
 		spherical[4] = cartesian[4];
 		spherical[5] = std::inner_product(cartesian.begin() + 1, cartesian.begin() + 4, cartesian.begin() + 5, Type{0.}) * r_1;
-		if (const Type r_xy = Norm(cartesian.data().begin() + 1, 2); r_xy == 0.) {
-			spherical[3] = atan2(cartesian[6], cartesian[5]);
-			spherical[6] = std::copysign(r_1, cartesian[3]) * Norm(cartesian.data().begin() + 5, 2);
+		if (const Type r_xy = std::hypot(cartesian(1), cartesian(2)); r_xy == 0.) {
+			spherical[3] = std::atan2(cartesian[6], cartesian[5]);
+			spherical[6] = std::copysign(r_1, cartesian[3]) * std::hypot(cartesian(5), cartesian(6));
 			spherical[7] = 0;
 		} else {
-			spherical[3] = atan2(cartesian[2], cartesian[1]);
+			spherical[3] = std::atan2(cartesian[2], cartesian[1]);
 			spherical[6] = (-cartesian[7] + cartesian[3] * r_1 * spherical[5]) / r_xy;
 			spherical[7] = (cartesian[6] * cartesian[1] - cartesian[5] * cartesian[2]) / Power2(r_xy);
 		}
 		return Status::SUCCESS;
-	}
-
-	/**
-	 * @brief
-	 *
-	 * @param cartesian 4 or 8 dimensional vector
-	 * @param spherical 4 or 8 dimensional vector
-	 * @param dimension 4 or 8.
-	 * @return status
-	 */
-	template <typename Type>
-	int CartesianToSpherical(const Type cartesian[], Type spherical[], std::size_t dimension = 8) {
-#ifndef SBODY_RELEASE
-		if (dimension != 4 && dimension != 8) {
-			throw std::invalid_argument(fmt::format("Invalid CartesianToSpherical dimension = {}", dimension));
-		}
-#endif
-		if (spherical[1] = Norm(cartesian + 1); spherical[1] == 0.)
-			return Status::DIVISION_BY_ZERO;
-		const Type r_1 = 1. / spherical[1];
-		spherical[0] = cartesian[0];
-		spherical[2] = acos(cartesian[3] * r_1);
-		if (dimension == 4) {
-			spherical[3] = atan2(cartesian[2], cartesian[1]);
-			return Status::SUCCESS;
-		}
-		spherical[4] = cartesian[4];
-		spherical[5] = std::inner_product(cartesian + 1, cartesian + 4, cartesian + 5, Type{0.}) * r_1;
-		if (const Type r_xy = Norm(cartesian + 1, 2); r_xy == 0.) {
-			spherical[3] = atan2(cartesian[6], cartesian[5]);
-			spherical[6] = std::copysign(r_1, cartesian[3]) * Norm(cartesian + 5, 2);
-			spherical[7] = 0;
-		} else {
-			spherical[3] = atan2(cartesian[2], cartesian[1]);
-			spherical[6] = (-cartesian[7] + cartesian[3] * r_1 * spherical[5]) / r_xy;
-			spherical[7] = (cartesian[6] * cartesian[1] - cartesian[5] * cartesian[2]) / Power2(r_xy);
-		}
-		return Status::SUCCESS;
-	}
-
-	/**
-	 * @brief
-	 *
-	 * @param x 4 or 8 dimensional vector
-	 * @return status
-	 */
-	template <typename Type>
-	int CartesianToSpherical(Type x[]) {
-		Type cartesian[8];
-		std::copy(x, x + 8, cartesian);
-		return CartesianToSpherical(cartesian, x, 8);
 	}
 
 	/**
@@ -620,48 +412,6 @@ namespace SBody {
 	/**
 	 * @brief
 	 *
-	 * @param spherical 4 or 8 dimensional vector
-	 * @param cartesian 4 or 8 dimensional vector
-	 * @param dimension 4 or 8.
-	 * @return status
-	 */
-	template <typename Type>
-	int SphericalToCartesian(const Type spherical[], Type cartesian[], std::size_t dimension = 8) {
-#ifndef SBODY_RELEASE
-		if (dimension != 4 && dimension != 8) {
-			throw std::invalid_argument(fmt::format("Invalid SphericalToCartesian dimension = {}", dimension));
-		}
-#endif
-		const Type sin_theta = SinTheta(spherical[2]), cos_theta = CosTheta(spherical[2]), sin_phi = std::sin(spherical[3]), cos_phi = std::cos(spherical[3]);
-		cartesian[0] = spherical[0];
-		cartesian[1] = spherical[1] * sin_theta * cos_phi;
-		cartesian[2] = spherical[1] * sin_theta * sin_phi;
-		cartesian[3] = spherical[1] * cos_theta;
-		if (dimension == 8) {
-			cartesian[4] = spherical[4];
-			cartesian[5] = spherical[5] * sin_theta * cos_phi + spherical[1] * (cos_theta * cos_phi * spherical[6] - sin_theta * sin_phi * spherical[7]);
-			cartesian[6] = spherical[5] * sin_theta * sin_phi + spherical[1] * (cos_theta * sin_phi * spherical[6] + sin_theta * cos_phi * spherical[7]);
-			cartesian[7] = spherical[5] * cos_theta - spherical[1] * sin_theta * spherical[6];
-		}
-		return Status::SUCCESS;
-	}
-
-	/**
-	 * @brief
-	 *
-	 * @param x 4 or 8 dimensional vector
-	 * @return status
-	 */
-	template <typename Type>
-	int SphericalToCartesian(Type x[]) {
-		Type spherical[8];
-		std::copy(x, x + 8, spherical);
-		return SphericalToCartesian(spherical, x, 8);
-	}
-
-	/**
-	 * @brief
-	 *
 	 * @param x 4 or 8 dimensional vector
 	 * @return status
 	 */
@@ -675,7 +425,7 @@ namespace SBody {
 	template <typename Type>
 	Type SphericalAngle(Type cos_theta_x, Type cos_theta_y, Type delta_theta_xy, Type delta_phi_xy) {
 		const Type a = Power2(std::sin(0.5 * delta_theta_xy)) + cos_theta_x * cos_theta_y * Power2(std::sin(0.5 * PhiDifference(delta_phi_xy)));
-		return 2. * atan2(SquareRoot(a), SquareRoot(1. - a));
+		return 2. * std::atan2(SquareRoot(a), SquareRoot(1. - a));
 	}
 
 	/**
@@ -796,20 +546,16 @@ namespace SBody {
 	 * @param size size of the vectors
 	 * @return status
 	 */
-	template <typename Type>
-	int LinearInterpolation(Type x, Type x0, Type x1, const Type y0[], const Type y1[], Type y[], std::size_t size) { // FIXME
-		if (x0 == x1) {
-			while (size-- > 0)
-				y[size] = 0.5 * (y0[size] + y1[size]);
-			return Status::SUCCESS;
-		}
-		const Type x01_1 = 1. / (x1 - x0);
-		while (size-- > 0)
-			y[size] = (x - x0) * x01_1 * y1[size] + (x1 - x) * x01_1 * y0[size];
+	template <typename Type, std::size_t N>
+	int LinearInterpolation(Type x, Type x0, Type x1, const boost::numeric::ublas::bounded_vector<Type, N> &y0, const boost::numeric::ublas::bounded_vector<Type, N> &y1, boost::numeric::ublas::bounded_vector<Type, N> &y) { // FIXME
+		if (x0 == x1)
+			y = 0.5 * (y0 + y1);
+		else
+			y = ((x - x0) * y1 + (x1 - x) * y0) / (x1 - x0);
 		return Status::SUCCESS;
 	}
 	template <typename Type, std::size_t N>
-	int LinearInterpolation(Type x, Type x0, Type x1, const boost::numeric::ublas::bounded_vector<Type, N> &y0, const boost::numeric::ublas::bounded_vector<Type, N> &y1, Type y[]) { // FIXME
+	int LinearInterpolation(Type x, Type x0, Type x1, const boost::numeric::ublas::bounded_vector<Type, N> &y0, const boost::numeric::ublas::bounded_vector<Type, N> &y1, Type y[]) {
 		if (x0 == x1) {
 			for (std::size_t i = 0; i < N; ++i)
 				y[i] = 0.5 * (y0(i) + y1(i));
@@ -833,26 +579,7 @@ namespace SBody {
 	 * @return status
 	 */
 	template <typename Type>
-	int InterpolateSphericalPositionToCartesian(Type t, Type t0, Type t1, const Type y0[], const Type y1[], Type y[]) {
-		Type c0[8], c1[8];
-		SphericalToCartesian(y0, c0);
-		SphericalToCartesian(y1, c1);
-		return LinearInterpolation(t, t0, t1, c0, c1, y, 8);
-	}
-
-	/**
-	 * @brief Linear interpolation of two spherical positions `y0` and `y1` at `t`, stored in `y`. \f[y=\frac{\text{SphericalToCartesian}(y_0)(t_1-t)+\text{SphericalToCartesian}(y_1)(t-t_0)}{t_1-t_0}\f]
-	 *
-	 * @param t time to evaluate \f$y\f$
-	 * @param t0 \f$t_0\f$
-	 * @param t1 \f$t_1\f$
-	 * @param y0 8 dimensional vector, spherical, \f$y_0\f$
-	 * @param y1 8 dimensional vector, spherical, \f$y_1\f$
-	 * @param y 8 dimensional vector, cartesian, \f$y\f$
-	 * @return status
-	 */
-	template <typename Type>
-	int InterpolateSphericalPositionToCartesian(Type t, Type t0, Type t1, const boost::numeric::ublas::bounded_vector<Type, 8> &y0, const boost::numeric::ublas::bounded_vector<Type, 8> &y1, Type y[]) {
+	int InterpolateSphericalPositionToCartesian(Type t, Type t0, Type t1, const boost::numeric::ublas::bounded_vector<Type, 8> &y0, const boost::numeric::ublas::bounded_vector<Type, 8> &y1, boost::numeric::ublas::bounded_vector<Type, 8> &y) {
 		boost::numeric::ublas::bounded_vector<Type, 8> c0, c1;
 		SphericalToCartesian(y0, c0);
 		SphericalToCartesian(y1, c1);
@@ -1274,60 +1001,27 @@ namespace SBody {
 		return b5 * (beta15 * gamma1_1 + beta25 * gamma2_1) * H + Power2(beta15 * gamma1_1) * RF + b5 * b5 * (Sigma - b5 * (xi1 * xi2 / xi5 - eta1 * eta2 / eta5)) * gamma1_1 * gamma2_1;
 	}
 
-	template <typename Type>
-	int CoordinateOrthogonalization(const boost::numeric::ublas::vector<Type> &x, boost::numeric::ublas::bounded_matrix<Type, 4, 4> &coordinate) {
-		namespace ublas = boost::numeric::ublas;
-		const std::size_t N = x.size();
-		coordinate.clear();
-		std::vector<ublas::matrix_column<ublas::bounded_matrix<Type, 4, 4>>> coordinate_columns(N);
-		for (int i = 0; i < N; ++i)
-			coordinate_columns[i] = ublas::matrix_column<ublas::bounded_matrix<Type, 4, 4>>(coordinate, i);
-		int coordinate_idx = 0;
-		coordinate_columns[0] = x / ublas::norm_2(x);
-		for (int i = 1; i < N; ++i) {
-			coordinate_columns[i] = ublas::zero_vector<Type>(N);
-			coordinate_columns[i][coordinate_idx] = 1.;
-			for (int j = 0; j < i; ++j) {
-				Type dot_product = ublas::inner_prod(coordinate_columns[i], coordinate_columns[j]);
-				coordinate_columns[i] -= coordinate_columns[j] * dot_product;
-			}
-			Type base_norm = ublas::norm_2(coordinate_columns[i]);
-			if (base_norm > boost::math::tools::root_epsilon<Type>())
-				coordinate_columns[i] /= base_norm;
-			else if (coordinate_idx == N)
-				return Status::FAILURE;
-			else
-				--i;
-		}
-		return Status::SUCCESS;
-	}
-
 	template <typename Type, std::size_t N>
 	int CoordinateOrthogonalization(const boost::numeric::ublas::bounded_vector<Type, N> &x, boost::numeric::ublas::bounded_matrix<Type, N, N> &coordinate) {
 		namespace ublas = boost::numeric::ublas;
-		coordinate.clear();
 		std::vector<ublas::matrix_column<ublas::bounded_matrix<Type, N, N>>> coordinate_columns;
 		coordinate_columns.reserve(N);
 		for (int i = 0; i < N; ++i)
 			coordinate_columns.emplace_back(ublas::matrix_column<ublas::bounded_matrix<Type, N, N>>(coordinate, i));
-		int coordinate_idx = 0;
+		int column_idx = 1;
 		coordinate_columns[0] = x / ublas::norm_2(x);
-		for (int i = 1; i < N; ++i) {
-			coordinate_columns[i] = ublas::zero_vector<Type>(N);
-			coordinate_columns[i][coordinate_idx] = 1.;
-			for (int j = 0; j < i; ++j) {
-				Type dot_product = ublas::inner_prod(coordinate_columns[i], coordinate_columns[j]);
-				coordinate_columns[i] -= coordinate_columns[j] * dot_product;
+		for (int coordinate_idx = 0; coordinate_idx < N; ++coordinate_idx) {
+			coordinate_columns[column_idx] = ublas::zero_vector<Type>(N);
+			coordinate_columns[column_idx][coordinate_idx] = 1.;
+			for (int i = 0; i < column_idx; ++i) {
+				Type dot_product = ublas::inner_prod(coordinate_columns[i], coordinate_columns[column_idx]);
+				coordinate_columns[column_idx] -= coordinate_columns[i] * dot_product;
 			}
-			Type base_norm = ublas::norm_2(coordinate_columns[i]);
+			Type base_norm = ublas::norm_2(coordinate_columns[column_idx]);
 			if (base_norm > boost::math::tools::root_epsilon<Type>())
-				coordinate_columns[i] /= base_norm;
-			else if (coordinate_idx == N)
-				return Status::FAILURE;
-			else
-				--i;
+				coordinate_columns[column_idx++] /= base_norm;
 		}
-		return Status::SUCCESS;
+		return column_idx == N ? Status::SUCCESS : Status::FAILURE;
 	}
 
 	template <typename Type, std::size_t N, typename Parameter>
@@ -1345,78 +1039,81 @@ namespace SBody {
 		int Eval(const boost::numeric::ublas::bounded_vector<Type, N> &x, boost::numeric::ublas::bounded_vector<Type, N> &f) {
 			return function_(x, f, function_parameters_);
 		}
+		int ScaleX() {
+			int status;
+			for (status = Eval(x_, f_); status == Status::SCALING_REQUIRED; status = Eval(x_, f_))
+				x_ *= f_(0);
+			return status;
+		}
 		int ScaleX(boost::numeric::ublas::bounded_vector<Type, N> &x, boost::numeric::ublas::bounded_vector<Type, N> &f) {
-			for (int status = Eval(x, f); status != Status::SUCCESS; status = Eval(x, f)) {
-				if (status != GSL_EDOM)
-					return status;
+			int status;
+			for (status = Eval(x, f); status == Status::SCALING_REQUIRED; status = Eval(x, f))
 				x *= f(0);
+			return status;
+		}
+		int OneSidedJacobian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type relative_epsilon, boost::numeric::ublas::bounded_matrix<Type, N, N> &jacobian) {
+			namespace ublas = boost::numeric::ublas;
+			int status = Status::SUCCESS;
+			ublas::bounded_vector<Type, N> x1(x), f_trial;
+			for (std::size_t j = 0; j < N; ++j) {
+				const Type x_j = x(j);
+				// auto jacobian_column_j = ublas::matrix_column(jacobian, j);
+				Type dx, dx0 = std::abs(x_j) >= 1. ? relative_epsilon * x_j : std::copysign(relative_epsilon, x_j), dx_limit = std::abs(x_j) * boost::math::tools::epsilon<Type>();
+				for (dx = dx0; std::abs(dx) > dx_limit; dx *= 0.5) {
+					x1(j) = x_j + dx;
+					if (status = Eval(x1, f_trial); status == Status::SUCCESS)
+						break;
+				}
+				if (status != Status::SUCCESS) {
+					for (dx = dx0; std::abs(dx) > dx_limit; dx *= 0.5) {
+						x1(j) = x_j - dx;
+						if (status = Eval(x1, f_trial); status == Status::SUCCESS)
+							break;
+					}
+					if (status != Status::SUCCESS)
+						return Status::FAILURE;
+					ublas::matrix_column(jacobian, j) = (f - f_trial) / dx;
+				} else {
+					ublas::matrix_column(jacobian, j) = (f_trial - f) / dx;
+				}
+				x1(j) = x_j;
 			}
 			return Status::SUCCESS;
 		}
-		// int OneSidedJacobian(const gsl_vector *x, const gsl_vector *f, Type epsrel, gsl_matrix *jacobian) {
-		// 	const std::size_t n = x->size;
-		// 	const std::size_t m = f->size;
-		// 	const std::size_t n1 = jacobian->size1;
-		// 	const std::size_t n2 = jacobian->size2;
-		// 	if (m != n1 || n != n2)
-		// 		GSL_ERROR("function and jacobian are not conformant", GSL_EBADLEN);
-		// 	gsl_vector *x1 = gsl_vector_alloc(n);
-		// 	if (x1 == nullptr)
-		// 		GSL_ERROR("failed to allocate space for x1 workspace", GSL_ENOMEM);
-		// 	gsl_vector_memcpy(x1, x); /* copy x into x1 */
-		// 	for (std::size_t j = 0; j < n; ++j) {
-		// 		Type x_j = gsl_vector_get(x, j);
-		// 		Type dx = abs(x_j) >= 1. ? -epsrel * x_j : -epsrel * boost::math::sign(x_j);
-		// 		gsl_vector_set(x1, j, x_j + dx);
-		// 		gsl_vector_view col_j = gsl_matrix_column(jacobian, j);
-		// 		if (int status = Eval(x1, &col_j.vector); status != Status::SUCCESS) {
-		// 			gsl_vector_free(x1);
-		// 			return Status::NUMERIC_ERROR;
-		// 		}
-		// 		gsl_blas_daxpy(-1., f, &col_j.vector);
-		// 		gsl_blas_dscal(1. / dx, &col_j.vector);
-		// 		gsl_vector_set(x1, j, x_j);
-		// 	}
-		// 	gsl_vector_free(x1);
-		// 	return Status::SUCCESS;
-		// }
-		int TwoSidedJacobian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type epsrel, boost::numeric::ublas::bounded_matrix<Type, N, N> &jacobian) {
+		int TwoSidedJacobian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type relative_epsilon, boost::numeric::ublas::bounded_matrix<Type, N, N> &jacobian) {
 			namespace ublas = boost::numeric::ublas;
 			int status = Status::SUCCESS;
 			ublas::bounded_vector<Type, N> x1(x), f_trial_plus, f_trial_minus;
 			for (std::size_t j = 0; j < N; ++j) {
 				const Type x_j = x(j);
 				// auto jacobian_column_j = ublas::matrix_column(jacobian, j);
-				Type dx = std::abs(x_j) >= 1. ? -epsrel * x_j : -std::copysign(epsrel, x_j);
-				for (status = Status::CONTINUE; std::abs(dx) < std::abs(x_j) * boost::math::tools::epsilon<Type>(); dx *= 0.5) {
+				Type dx, dx0 = std::abs(x_j) >= 1. ? relative_epsilon * x_j : std::copysign(relative_epsilon, x_j), dx_limit = std::abs(x_j) * boost::math::tools::epsilon<Type>();
+				for (dx = dx0; std::abs(dx) > dx_limit; dx *= 0.5) {
 					x1(j) = x_j + dx;
 					if (status = Eval(x1, f_trial_plus); status == Status::SUCCESS)
 						break;
 				}
 				if (status != Status::SUCCESS) {
-					dx = std::abs(x_j) >= 1. ? -epsrel * x_j : -std::copysign(epsrel, x_j);
-					for (status = Status::CONTINUE; std::abs(dx) < std::abs(x_j) * boost::math::tools::epsilon<Type>(); dx *= 0.5) {
+					for (dx = dx0; std::abs(dx) > dx_limit; dx *= 0.5) {
 						x1(j) = x_j - dx;
-						if (status = Eval(x1, f_trial_minus); status == Status::SUCCESS) {
-							ublas::matrix_column(jacobian, j) = (f - f_trial_minus) / dx;
+						if (status = Eval(x1, f_trial_minus); status == Status::SUCCESS)
 							break;
-						}
 					}
-					return Status::FAILURE;
+					if (status != Status::SUCCESS)
+						return Status::FAILURE;
+					ublas::matrix_column(jacobian, j) = (f - f_trial_minus) / dx;
 				} else {
 					x1(j) = x_j - dx;
-					if (status = Eval(x1, f_trial_minus); status == Status::SUCCESS) {
-						ublas::matrix_column(jacobian, j) = (f - f_trial_minus) / dx;
-					} else {
+					if (status = Eval(x1, f_trial_minus); status != Status::SUCCESS)
+						ublas::matrix_column(jacobian, j) = (f_trial_plus - f) / dx;
+					else
 						ublas::matrix_column(jacobian, j) = 0.5 * (f_trial_plus - f_trial_minus) / dx;
-						status = Status::SUCCESS;
-					}
 				}
 				x1(j) = x_j;
 			}
-			return status;
+			return Status::SUCCESS;
 		}
-		int OneSidedDirectionalJacobian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &direction, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type epsrel, boost::numeric::ublas::bounded_matrix<Type, N, N> &jacobian) {
+		int OneSidedDirectionalJacobian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &direction, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type relative_epsilon, boost::numeric::ublas::bounded_matrix<Type, N, N> &jacobian) {
 			namespace ublas = boost::numeric::ublas;
 			int status = Status::SUCCESS;
 			ublas::bounded_vector<Type, N> x1;
@@ -1428,27 +1125,29 @@ namespace SBody {
 			Type x_norm = ublas::norm_2(x), dx_limit = x_norm * boost::math::tools::epsilon<Type>();
 			for (std::size_t j = 0; j < N; ++j) {
 				auto coordinate_column_j = ublas::matrix_column(coordinate, j);
-				Type dot_product = ublas::inner_prod(x, coordinate_column_j);
-				Type dx = -epsrel * std::max(Type{1.}, x_norm) * boost::math::sign(dot_product);
-				x1 += dx * coordinate_column_j;
-				for (status = Status::CONTINUE; status != Status::SUCCESS; dx *= 0.5) {
-					if (std::abs(dx) < dx_limit) {
-						status = Status::NUMERIC_ERROR;
-						break;
-					}
+				const Type dot_product = ublas::inner_prod(x, coordinate_column_j);
+				const Type dx0 = relative_epsilon * std::copysign(std::max(Type{1.}, x_norm), dot_product), dx;
+				for (dx = dx0; std::abs(dx) > dx_limit; dx *= 0.5) {
 					x1 = x + dx * coordinate_column_j;
-					if (status = Eval(x1, f_trial); status != Status::SUCCESS)
-						if (status != GSL_EDOM) {
-							break;
-						}
+					if (status = Eval(x1, f_trial); status == Status::SUCCESS)
+						break;
 				}
-				f_trial -= f;
-				f_trial /= dx;
-				jacobian += ublas::outer_prod(f_trial * coordinate_column_j);
+				if (status != Status::SUCCESS) {
+					for (dx = dx0; std::abs(dx) > dx_limit; dx *= 0.5) {
+						x1 = x - dx * coordinate_column_j;
+						if (status = Eval(x1, f_trial); status == Status::SUCCESS)
+							break;
+					}
+					if (status != Status::SUCCESS)
+						return Status::FAILURE;
+					jacobian += ublas::outer_prod((f_trial - f) / dx, coordinate_column_j);
+				} else {
+					jacobian += ublas::outer_prod((f_trial - f) / dx, coordinate_column_j);
+				}
 			}
 			return status;
 		}
-		int TwoSidedDirectionalJacobian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &direction, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type epsrel, boost::numeric::ublas::bounded_matrix<Type, N, N> &jacobian) {
+		int TwoSidedDirectionalJacobian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &direction, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type relative_epsilon, boost::numeric::ublas::bounded_matrix<Type, N, N> &jacobian) {
 			namespace ublas = boost::numeric::ublas;
 			int status = Status::SUCCESS;
 			ublas::bounded_vector<Type, N> x1, f_trial_plus, f_trial_minus;
@@ -1460,33 +1159,32 @@ namespace SBody {
 			for (std::size_t j = 0; j < N; ++j) {
 				auto coordinate_column_j = ublas::matrix_column(coordinate, j);
 				Type dot_product = ublas::inner_prod(x, coordinate_column_j);
-				Type dx = -epsrel * std::max(Type{1.}, x_norm) * boost::math::sign(dot_product);
-				for (status = Status::CONTINUE; status != Status::SUCCESS; dx *= 0.5) {
-					if (std::abs(dx) < dx_limit) {
-						status = Status::NUMERIC_ERROR;
-						break;
-					}
+				Type dx, dx0 = relative_epsilon * std::copysign(std::max(Type{1.}, x_norm), dot_product);
+				for (dx = dx0; std::abs(dx) > dx_limit; dx *= 0.5) {
 					x1 = x + dx * coordinate_column_j;
-					if (status = Eval(x1, f_trial_plus); status != Status::SUCCESS)
-						if (status != GSL_EDOM) {
-							break;
-						}
+					if (status = Eval(x1, f_trial_plus); status == Status::SUCCESS)
+						break;
 				}
-				f_trial_plus -= f;
-				f_trial_plus /= dx;
-				x1 = x - dx * coordinate_column_j;
-				if (status = Eval(x1, f_trial_minus); status != Status::SUCCESS) {
-					status = Status::SUCCESS;
-					jacobian += ublas::outer_prod(f_trial_plus, coordinate_column_j);
+				if (status != Status::SUCCESS) {
+					for (dx = dx0; std::abs(dx) > dx_limit; dx *= 0.5) {
+						x1 = x - dx * coordinate_column_j;
+						if (status = Eval(x1, f_trial_minus); status == Status::SUCCESS)
+							break;
+					}
+					if (status != Status::SUCCESS)
+						return Status::FAILURE;
+					jacobian += ublas::outer_prod((f - f_trial_minus) / dx, coordinate_column_j);
 				} else {
-					f_trial_minus -= f;
-					f_trial_plus -= f_trial_minus / dx;
-					jacobian += 0.5 * ublas::outer_prod(f_trial_plus, coordinate_column_j);
+					x1 = x - dx * coordinate_column_j;
+					if (status = Eval(x1, f_trial_minus); status != Status::SUCCESS) {
+						jacobian += ublas::outer_prod((f_trial_plus - f) / dx, coordinate_column_j);
+					} else
+						jacobian += ublas::outer_prod((f_trial_plus - f_trial_minus) / (2. * dx), coordinate_column_j);
 				}
 			}
-			return status;
+			return Status::SUCCESS;
 		}
-		int Hessian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type epsrel, boost::numeric::ublas::bounded_vector<Type, N> &jacobian, boost::numeric::ublas::bounded_matrix<Type, N, N> &hessian) {
+		int Hessian(const boost::numeric::ublas::bounded_vector<Type, N> &x, const boost::numeric::ublas::bounded_vector<Type, N> &f, Type relative_epsilon, boost::numeric::ublas::bounded_vector<Type, N> &jacobian, boost::numeric::ublas::bounded_matrix<Type, N, N> &hessian) { // TODO: Check!
 			namespace ublas = boost::numeric::ublas;
 			ublas::bounded_vector<Type, N> x1;
 			ublas::bounded_vector<Type, N> f_trial;
@@ -1505,7 +1203,7 @@ namespace SBody {
 			x1 = x; // copy x into x1
 			for (std::size_t i = 0; i < N; ++i) {
 				Type x_i = x(i);
-				dx(i) = std::abs(x_i) >= 1. ? epsrel * x_i : epsrel * x_i;
+				dx(i) = std::abs(x_i) >= 1. ? relative_epsilon * x_i : relative_epsilon * x_i;
 				x1(i) = x_i + dx(i);
 				if (int f_stat = Eval(x1, f_trial); f_stat != Status::SUCCESS)
 					return f_stat;
@@ -1552,9 +1250,10 @@ namespace SBody {
 	  public:
 		MultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : dimension_(N), function_(function), function_parameters_(params) {}
 		virtual int Iterate() = 0;
-		int Solve(Type epsabs, int max_iteration = 256) {
+		int Solve(Type absolute_accuracy, int max_iteration = 256) {
+			namespace ublas = boost::numeric::ublas;
 			for (; max_iteration > 0; --max_iteration) {
-				if (ElementAbsSum(f_) <= epsabs)
+				if (ublas::norm_1(f_) <= absolute_accuracy)
 					return Status::SUCCESS;
 				if (int status = Iterate(); status != Status::SUCCESS)
 					return status;
@@ -1563,10 +1262,19 @@ namespace SBody {
 			}
 			return Status::MAX_ITERATIONS_EXCEEDED;
 		}
-		int Solve(Type epsabs, Type epsrel, int max_iteration = 256) {
+		int Solve(Type absolute_accuracy, Type relative_accuracy, int max_iteration = 256) {
+			namespace ublas = boost::numeric::ublas;
 			for (; max_iteration > 0; --max_iteration) {
-				if (ElementAbsSum(f_) <= epsabs && gsl_multiroot_test_delta(dx_, x_, epsabs, epsrel) != Status::SUCCESS)
-					return Status::SUCCESS;
+				if (ublas::norm_1(f_) <= absolute_accuracy) {
+					int status = Status::SUCCESS;
+					for (int i = 0; i < N; ++i)
+						if (dx_(i) > std::abs(x_(i)) * relative_accuracy + absolute_accuracy) {
+							status = Status::CONTINUE;
+							break;
+						}
+					if (status == Status::SUCCESS)
+						return Status::SUCCESS;
+				}
 				if (int status = Iterate(); status != Status::SUCCESS)
 					return status;
 				if (std::any_of(x_->data, x_->data + dimension_, [](Type x) { return !std::isfinite(x); }))
@@ -1583,29 +1291,10 @@ namespace SBody {
 		const boost::numeric::ublas::bounded_vector<Type, N> &StepSize() {
 			return dx_;
 		}
-		// static int HybridSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int HybridIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int HybridAdditionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int HybridAdditionIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int DNewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int DNewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int DNewtonRotationTranslationSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int DNewtonRotationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int DNewtonTranslationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int D2NewtonSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int D2NewtonIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int GradientIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int ConjugateGradientSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int ConjugateGradientIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int TriangleSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int TriangleRotationIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int TriangleLongestIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int DirectionSet(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
-		// static int DirectionIterate(void *vstate, gsl_multiroot_function *function, gsl_vector *x, gsl_vector *f, gsl_vector *dx);
 	};
 
 	template <typename Type, std::size_t N, typename Parameter>
-	class HybridMultiFunctionSolver : public MultiFunctionSolver<Type, N, Parameter> {
+	class HybridMultiFunctionSolver : public MultiFunctionSolver<Type, N, Parameter> { // Not Implemented
 	  protected:
 		Type trust_radius_;
 		Type epsilon_coefficient_;
@@ -1617,98 +1306,88 @@ namespace SBody {
 		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
 		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
 		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
-		Type ScaledEnorm(const gsl_vector *d, const gsl_vector *f) {
-			Type e2 = 0.;
-			std::size_t i, n = f->size;
-			for (i = 0; i < n; i++)
-				e2 += Power2(gsl_vector_get(f, i) * gsl_vector_get(d, i));
-			return std::sqrt(e2);
-		}
-		int Dogleg(const boost::numeric::ublas::bounded_vector<Type, N> &r, const boost::numeric::ublas::bounded_vector<Type, N> &qtf, const boost::numeric::ublas::bounded_vector<Type, N> &diag, Type delta, boost::numeric::ublas::bounded_vector<Type, N> &newton, boost::numeric::ublas::bounded_vector<Type, N> &gradient, boost::numeric::ublas::bounded_vector<Type, N> &p) {
-			namespace ublas = boost::numeric::ublas;
-			Type qnorm, gnorm, sgnorm, bnorm, temp;
-			gsl_linalg_R_solve(r, qtf, newton);
-			gsl_vector_scale(newton, -1.);
-			if (qnorm = ScaledEnorm(diag, newton); qnorm <= delta) {
-				gsl_vector_memcpy(p, newton);
-				return Status::SUCCESS;
-			}
-			gsl_blas_dgemv(CblasTrans, -1., r, qtf, 0., gradient);
-			gsl_vector_div(gradient, diag);
-			if (gnorm = ublas::norm_2(gradient); gnorm == 0.) {
-				gsl_vector_set_zero(p);
-				gsl_blas_daxpy(delta / qnorm, newton, p);
-				return Status::SUCCESS;
-			}
-			// minimum_step(gnorm, diag, gradient);
-			gsl_vector_scale(gradient, 1. / gnorm);
-			gsl_vector_div(gradient, diag);
-			// Use p as temporary space to compute Rg
-			gsl_blas_dgemv(CblasNoTrans, 1., r, gradient, 0., p);
+		// int Dogleg(const boost::numeric::ublas::bounded_vector<Type, N> &r, const boost::numeric::ublas::bounded_vector<Type, N> &qtf, const boost::numeric::ublas::bounded_vector<Type, N> &diag, Type delta, boost::numeric::ublas::bounded_vector<Type, N> &newton, boost::numeric::ublas::bounded_vector<Type, N> &gradient, boost::numeric::ublas::bounded_vector<Type, N> &p) {
+		// 	namespace ublas = boost::numeric::ublas;
+		// 	Type qnorm, gnorm, sgnorm, bnorm, temp;
+		// 	gsl_linalg_R_solve(r, qtf, newton);
+		// 	newton = -newton;
+		// 	if (qnorm = ublas::norm_2(diag * newton); qnorm <= delta) {
+		// 		p = newton;
+		// 		return Status::SUCCESS;
+		// 	}
+		// 	gsl_blas_dgemv(CblasTrans, -1., r, qtf, 0., gradient);
+		// 	gsl_vector_div(gradient, diag);
+		// 	if (gnorm = ublas::norm_2(gradient); gnorm == 0.) {
+		// 		gsl_vector_set_zero(p);
+		// 		gsl_blas_daxpy(delta / qnorm, newton, p);
+		// 		return Status::SUCCESS;
+		// 	}
+		// 	// minimum_step(gnorm, diag, gradient);
+		// 	gsl_vector_scale(gradient, 1. / gnorm);
+		// 	gsl_vector_div(gradient, diag);
+		// 	// Use p as temporary space to compute Rg
+		// 	gsl_blas_dgemv(CblasNoTrans, 1., r, gradient, 0., p);
 
-			temp = ublas::norm_2(p);
-			sgnorm = (gnorm / temp) / temp;
-			if (sgnorm > delta) {
-				gsl_vector_set_zero(p);
-				gsl_blas_daxpy(delta, gradient, p);
-				return Status::SUCCESS;
-			}
-			bnorm = ublas::norm_2(qtf);
-			{
-				Type bg = bnorm / gnorm;
-				Type bq = bnorm / qnorm;
-				Type dq = delta / qnorm;
-				Type dq2 = dq * dq;
-				Type sd = sgnorm / delta;
-				Type sd2 = sd * sd;
+		// 	temp = ublas::norm_2(p);
+		// 	sgnorm = (gnorm / temp) / temp;
+		// 	if (sgnorm > delta) {
+		// 		p.clear();
+		// 		gsl_blas_daxpy(delta, gradient, p);
+		// 		return Status::SUCCESS;
+		// 	}
+		// 	bnorm = ublas::norm_2(qtf);
+		// 	{
+		// 		Type bg = bnorm / gnorm;
+		// 		Type bq = bnorm / qnorm;
+		// 		Type dq = delta / qnorm;
+		// 		Type dq2 = dq * dq;
+		// 		Type sd = sgnorm / delta;
+		// 		Type sd2 = sd * sd;
 
-				Type t1 = bg * bq * sd;
-				Type u = t1 - dq;
-				Type t2 = t1 - dq * sd2 + sqrt(u * u + (1 - dq2) * (1 - sd2));
+		// 		Type t1 = bg * bq * sd;
+		// 		Type u = t1 - dq;
+		// 		Type t2 = t1 - dq * sd2 + sqrt(u * u + (1 - dq2) * (1 - sd2));
 
-				Type alpha = dq * (1 - sd2) / t2;
-				Type beta = (1 - alpha) * sgnorm;
-				gsl_vector_set_zero(p);
-				gsl_blas_daxpy(alpha, newton, p);
-				gsl_blas_daxpy(beta, gradient, p);
-			}
-			return Status::SUCCESS;
-		}
-		int Dogleg(Type trust_radius, Type newton_norm, Type newton_norm2, Type gradient_norm, Type gradient_norm2, Type newton_gradient_dot, const boost::numeric::ublas::bounded_vector<Type, N> &newton, const boost::numeric::ublas::bounded_vector<Type, N> &gradient, boost::numeric::ublas::bounded_vector<Type, N> &dx) {
-			if (newton_norm <= trust_radius) {
-				gsl_vector_memcpy(dx, newton);
-				return Status::SUCCESS;
-			}
-			gsl_vector_set_zero(dx);
-			if (gradient_norm >= trust_radius) {
-				gsl_blas_daxpy(trust_radius / gradient_norm, gradient, dx);
-				return Status::SUCCESS;
-			}
-			Type d_newton_gradient_dot;
-			gsl_blas_ddot(newton, gradient, &d_newton_gradient_dot);
-			newton_gradient_dot = d_newton_gradient_dot;
-			const Type a = gradient_norm2 + newton_norm2 - 2. * newton_gradient_dot; // a > 0
-			const Type b = 2. * (newton_gradient_dot - gradient_norm2);
-			const Type c = gradient_norm2 - trust_radius * trust_radius; // c < 0
-			Type s_minus_plus[2];
-			if (int root_num = PolySolveQuadratic(a, b, c, s_minus_plus); root_num != 2 || s_minus_plus[1] > 1.) {
-				gsl_vector_memcpy(dx, gradient); // fallback to gradient
-				return Status::SUCCESS;
-			}
-			gsl_blas_daxpy(s_minus_plus[1], newton, dx);
-			gsl_blas_daxpy(1. - s_minus_plus[1], gradient, dx);
-			return Status::SUCCESS;
-		}
+		// 		Type alpha = dq * (1 - sd2) / t2;
+		// 		Type beta = (1 - alpha) * sgnorm;
+		// 		gsl_vector_set_zero(p);
+		// 		gsl_blas_daxpy(alpha, newton, p);
+		// 		gsl_blas_daxpy(beta, gradient, p);
+		// 	}
+		// 	return Status::SUCCESS;
+		// }
+		// int Dogleg(Type trust_radius, Type newton_norm, Type newton_norm2, Type gradient_norm, Type gradient_norm2, Type newton_gradient_dot, const boost::numeric::ublas::bounded_vector<Type, N> &newton, const boost::numeric::ublas::bounded_vector<Type, N> &gradient, boost::numeric::ublas::bounded_vector<Type, N> &dx) {
+		// 	if (newton_norm <= trust_radius) {
+		// 		gsl_vector_memcpy(dx, newton);
+		// 		return Status::SUCCESS;
+		// 	}
+		// 	gsl_vector_set_zero(dx);
+		// 	if (gradient_norm >= trust_radius) {
+		// 		gsl_blas_daxpy(trust_radius / gradient_norm, gradient, dx);
+		// 		return Status::SUCCESS;
+		// 	}
+		// 	Type d_newton_gradient_dot;
+		// 	gsl_blas_ddot(newton, gradient, &d_newton_gradient_dot);
+		// 	newton_gradient_dot = d_newton_gradient_dot;
+		// 	const Type a = gradient_norm2 + newton_norm2 - 2. * newton_gradient_dot; // a > 0
+		// 	const Type b = 2. * (newton_gradient_dot - gradient_norm2);
+		// 	const Type c = gradient_norm2 - trust_radius * trust_radius; // c < 0
+		// 	Type s_minus_plus[2];
+		// 	if (int root_num = PolySolveQuadratic(a, b, c, s_minus_plus); root_num != 2 || s_minus_plus[1] > 1.) {
+		// 		gsl_vector_memcpy(dx, gradient); // fallback to gradient
+		// 		return Status::SUCCESS;
+		// 	}
+		// 	gsl_blas_daxpy(s_minus_plus[1], newton, dx);
+		// 	gsl_blas_daxpy(1. - s_minus_plus[1], gradient, dx);
+		// 	return Status::SUCCESS;
+		// }
 
 	  public:
 		HybridMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params), permutation_(N) {}
 		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
 			this->x_ = x;
-			for (int status = this->Eval(); status != Status::SUCCESS; status = this->Eval()) {
-				if (status != GSL_EDOM)
-					return status;
-				this->x_ *= std::min(0.99999999, this->f_(0));
-			}
+			if (int status = this->ScaleX(); status != Status::SUCCESS)
+				return status;
 			if (int status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_); status != Status::SUCCESS)
 				return status;
 			trust_radius_ = boost::numeric::ublas::norm_2(this->x_);
@@ -1717,88 +1396,89 @@ namespace SBody {
 			return Status::SUCCESS;
 		}
 		int Iterate() override {
-			namespace ublas = boost::numeric::ublas;
-			int signum, status;
-			const Type f_norm = ublas::norm_2(this->f_);
-			const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::epsilon<Type>();
-			Type dx_norm, newton_norm, newton_norm2, gradient_norm, gradient_norm2, newton_gradient_dot, jacobian_gradient_norm2, t;
-			lu_ = jacobian_;
-			if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
-				return status;
-			if (status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, this->dx_); status != Status::SUCCESS)
-				return status;
-			dx_norm = ublas::norm_2(this->dx_);
-			for (int iteration_count = 0; true;) {
-				gsl_vector_memcpy(x_trial_, this->x_);
-				if (dx_norm > trust_radius_)
-					gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial_);
-				else
-					gsl_blas_daxpy(-1., this->dx_, x_trial_);
-				if (status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
-					if (status != GSL_EDOM)
-						return status;
-					gsl_vector_scale(x_trial_, std::min(0.99999999, gsl_vector_get(f_trial_, 0)));
-					gsl_vector_sub(x_trial_, this->x_);
-					// here x_trial_ is the difference between x and x_trial_
-					trust_radius_ = std::min(0.5 * trust_radius_, ublas::norm_2(x_trial_));
-					continue;
-				}
-				if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
-					gsl_vector_memcpy(this->x_, x_trial_);
-					gsl_vector_memcpy(this->f_, f_trial_);
-					if (dx_norm > trust_radius_)
-						trust_radius_ *= 2.;
-					else
-						trust_radius_ = 2. * dx_norm;
-					break;
-				}
-				if (epsilon_coefficient_ > boost::math::tools::forth_root_epsilon<Type>())
-					epsilon_coefficient_ *= 0.5;
-				if (++iteration_count == 2) {
-					if (status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_); status != Status::SUCCESS)
-						return status;
-					gsl_matrix_memcpy(lu_, jacobian_);
-					if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
-						return status;
-					if (status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, newton_); status != Status::SUCCESS)
-						return status;
-					gsl_blas_dgemv(CblasTrans, 1., jacobian_, this->f_, 0., gradient_);
-					Type d_newton_norm2, d_gradient_norm2, d_jacobian_gradient_norm2;
-					gsl_blas_ddot(newton_, newton_, &d_newton_norm2);
-					newton_norm2 = d_newton_norm2;
-					gsl_blas_ddot(gradient_, gradient_, &d_gradient_norm2);
-					gradient_norm2 = d_gradient_norm2;
-					gsl_blas_dgemv(CblasTrans, 1., jacobian_, gradient_, 0., x_trial_);
-					gsl_blas_ddot(x_trial_, x_trial_, &d_jacobian_gradient_norm2);
-					jacobian_gradient_norm2 = d_jacobian_gradient_norm2;
-					t = gradient_norm2 / jacobian_gradient_norm2;
-					gsl_vector_scale(gradient_, t);
-					gradient_norm2 *= t * t;
-					newton_norm = sqrt(newton_norm2);
-					gradient_norm = sqrt(gradient_norm2);
-					Type d_newton_gradient_dot;
-					gsl_blas_ddot(newton_, gradient_, &d_newton_gradient_dot);
-					newton_gradient_dot = d_newton_gradient_dot;
-					Dogleg(trust_radius_, newton_norm, newton_norm2, gradient_norm, gradient_norm2, newton_gradient_dot, newton_, gradient_, this->dx_);
-					dx_norm = ublas::norm_2(this->dx_);
-					directional_ = true;
-				} else {
-					trust_radius_ *= 0.5;
-					if (trust_radius_ < trust_radius_limit)
-						return Status::TRUST_REGION_TOO_SMALL;
-					if (iteration_count > 2) {
-						Dogleg(trust_radius_, newton_norm, newton_norm2, gradient_norm, gradient_norm2, newton_gradient_dot, newton_, gradient_, this->dx_);
-						dx_norm = ublas::norm_2(this->dx_);
-					}
-				}
-			}
-			if (directional_)
-				status = this->TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
-			else
-				status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
-			if (status != Status::SUCCESS)
-				return status;
-			return Status::SUCCESS;
+			return Status::NOT_IMPLEMENTED;
+			// namespace ublas = boost::numeric::ublas;
+			// int signum, status;
+			// const Type f_norm = ublas::norm_2(this->f_);
+			// const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::epsilon<Type>();
+			// Type dx_norm, newton_norm, newton_norm2, gradient_norm, gradient_norm2, newton_gradient_dot, jacobian_gradient_norm2, t;
+			// lu_ = jacobian_;
+			// if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+			// 	return status;
+			// if (status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, this->dx_); status != Status::SUCCESS)
+			// 	return status;
+			// dx_norm = ublas::norm_2(this->dx_);
+			// for (int iteration_count = 0; true;) {
+			// 	gsl_vector_memcpy(x_trial_, this->x_);
+			// 	if (dx_norm > trust_radius_)
+			// 		gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial_);
+			// 	else
+			// 		gsl_blas_daxpy(-1., this->dx_, x_trial_);
+			// 	if (status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
+			// 		if (status != Status::SCALING_REQUIRED)
+			// 			return status;
+			// 		gsl_vector_scale(x_trial_, gsl_vector_get(f_trial_, 0));
+			// 		gsl_vector_sub(x_trial_, this->x_);
+			// 		// here x_trial_ is the difference between x and x_trial_
+			// 		trust_radius_ = std::min(0.5 * trust_radius_, ublas::norm_2(x_trial_));
+			// 		continue;
+			// 	}
+			// 	if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
+			// 		gsl_vector_memcpy(this->x_, x_trial_);
+			// 		gsl_vector_memcpy(this->f_, f_trial_);
+			// 		if (dx_norm > trust_radius_)
+			// 			trust_radius_ *= 2.;
+			// 		else
+			// 			trust_radius_ = 2. * dx_norm;
+			// 		break;
+			// 	}
+			// 	if (epsilon_coefficient_ > boost::math::tools::forth_root_epsilon<Type>())
+			// 		epsilon_coefficient_ *= 0.5;
+			// 	if (++iteration_count == 2) {
+			// 		if (status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_); status != Status::SUCCESS)
+			// 			return status;
+			// 		gsl_matrix_memcpy(lu_, jacobian_);
+			// 		if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+			// 			return status;
+			// 		if (status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, newton_); status != Status::SUCCESS)
+			// 			return status;
+			// 		gsl_blas_dgemv(CblasTrans, 1., jacobian_, this->f_, 0., gradient_);
+			// 		Type d_newton_norm2, d_gradient_norm2, d_jacobian_gradient_norm2;
+			// 		gsl_blas_ddot(newton_, newton_, &d_newton_norm2);
+			// 		newton_norm2 = d_newton_norm2;
+			// 		gsl_blas_ddot(gradient_, gradient_, &d_gradient_norm2);
+			// 		gradient_norm2 = d_gradient_norm2;
+			// 		gsl_blas_dgemv(CblasTrans, 1., jacobian_, gradient_, 0., x_trial_);
+			// 		gsl_blas_ddot(x_trial_, x_trial_, &d_jacobian_gradient_norm2);
+			// 		jacobian_gradient_norm2 = d_jacobian_gradient_norm2;
+			// 		t = gradient_norm2 / jacobian_gradient_norm2;
+			// 		gsl_vector_scale(gradient_, t);
+			// 		gradient_norm2 *= t * t;
+			// 		newton_norm = sqrt(newton_norm2);
+			// 		gradient_norm = sqrt(gradient_norm2);
+			// 		Type d_newton_gradient_dot;
+			// 		gsl_blas_ddot(newton_, gradient_, &d_newton_gradient_dot);
+			// 		newton_gradient_dot = d_newton_gradient_dot;
+			// 		Dogleg(trust_radius_, newton_norm, newton_norm2, gradient_norm, gradient_norm2, newton_gradient_dot, newton_, gradient_, this->dx_);
+			// 		dx_norm = ublas::norm_2(this->dx_);
+			// 		directional_ = true;
+			// 	} else {
+			// 		trust_radius_ *= 0.5;
+			// 		if (trust_radius_ < trust_radius_limit)
+			// 			return Status::TRUST_REGION_TOO_SMALL;
+			// 		if (iteration_count > 2) {
+			// 			Dogleg(trust_radius_, newton_norm, newton_norm2, gradient_norm, gradient_norm2, newton_gradient_dot, newton_, gradient_, this->dx_);
+			// 			dx_norm = ublas::norm_2(this->dx_);
+			// 		}
+			// 	}
+			// }
+			// if (directional_)
+			// 	status = this->TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			// else
+			// 	status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			// if (status != Status::SUCCESS)
+			// 	return status;
+			// return Status::SUCCESS;
 		}
 	};
 
@@ -1823,11 +1503,8 @@ namespace SBody {
 		HybridAdditionMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params), permutation_(N) {}
 		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
 			this->x_ = x;
-			for (int status = this->Eval(); status != Status::SUCCESS; status = this->Eval()) {
-				if (status != GSL_EDOM)
-					return status;
-				gsl_vector_scale(this->x_, std::min(0.99999999, gsl_vector_get(this->f_, 0)));
-			}
+			if (int status = this->ScaleX(); status != Status::SUCCESS)
+				return status;
 			if (int status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_); status != Status::SUCCESS)
 				return status;
 			trust_radius_ = boost::numeric::ublas::norm_2(this->x_);
@@ -1837,159 +1514,160 @@ namespace SBody {
 			return Status::SUCCESS;
 		}
 		int Iterate() override {
-			namespace ublas = boost::numeric::ublas;
-			int signum, status;
-			gsl_matrix_memcpy(lu_, jacobian_);
-			if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
-				return status;
-			if (status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, this->dx_); status != Status::SUCCESS)
-				return status;
-			const Type f_norm = ublas::norm_2(this->f_);
-			const Type recalc_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::forth_root_epsilon<Type>();
-			const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::epsilon<Type>();
-			Type newton_norm, gradient_norm = -1., dx_norm = ublas::norm_2(this->dx_), f_trial_norm, f_trial2_norm, newton_gradient_dot, gradient_coefficient = 0., negative_direction_coefficient, positive_direction_coefficient;
-			for (; true; trust_radius_ *= 0.5) {
-				gsl_vector_memcpy(x_trial_, this->x_);
-				if (dx_norm > trust_radius_)
-					gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial_);
-				else
-					gsl_blas_daxpy(-1., this->dx_, x_trial_);
-				if (status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
-					if (status != GSL_EDOM)
-						return status;
-					gsl_vector_scale(x_trial_, std::min(0.99999999, gsl_vector_get(f_trial_, 0)));
-					gsl_vector_sub(x_trial_, this->x_);
-					// here x_trial_ is the difference between x and x_trial_
-					if (Type trust_radius_limit = 2. * ublas::norm_2(x_trial_); trust_radius_limit < trust_radius_)
-						trust_radius_ = trust_radius_limit; // there is a *= 0.5
-					continue;
-				}
-				if (f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
-					gsl_vector_memcpy(this->x_, x_trial_);
-					gsl_vector_memcpy(this->f_, f_trial_);
-					if (dx_norm > trust_radius_)
-						trust_radius_ *= 2.;
-					else
-						trust_radius_ = 2. * dx_norm;
-					break;
-				}
-				if (epsilon_coefficient_ > boost::math::tools::forth_root_epsilon<Type>())
-					epsilon_coefficient_ *= 0.5;
-				if (trust_radius_ < trust_radius_limit)
-					return Status::TRUST_REGION_TOO_SMALL;
-				if (trust_radius_ < recalc_radius_limit) {
-					if (!directional_) {
-						if (status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_); status != Status::SUCCESS)
-							return status;
-						gsl_matrix_memcpy(lu_, jacobian_);
-						if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
-							return status;
-						if (status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, this->dx_); status != Status::SUCCESS)
-							return status;
-						dx_norm = ublas::norm_2(this->dx_);
-						directional_ = true;
-					}
-					if (gradient_norm == -1.) {
-						gsl_vector_memcpy(newton_, this->dx_);
-						newton_norm = dx_norm;
-						gsl_blas_dgemv(CblasTrans, 1., jacobian_, this->f_, 0., gradient_);
-						Type d_newton_gradient_dot;
-						gsl_blas_ddot(newton_, gradient_, &d_newton_gradient_dot);
-						gsl_blas_daxpy(-d_newton_gradient_dot / newton_norm, newton_, gradient_); // gradient_ now is prep to newton_.
-						gradient_norm = ublas::norm_2(gradient_);
-					}
-					if (gradient_coefficient == 0.) {
-						if (newton_norm < trust_radius_)
-							positive_direction_coefficient = boost::math::tools::root_epsilon<Type>() * newton_norm / gradient_norm;
-						else
-							positive_direction_coefficient = max(100. * trust_radius_limit, 2. * trust_radius_limit * dx_norm / trust_radius_) / gradient_norm;
-						negative_direction_coefficient = -positive_direction_coefficient;
-					} else if (Type lower_limit = 10. * trust_radius_limit * dx_norm / trust_radius_ / gradient_norm; positive_direction_coefficient < lower_limit) {
-						positive_direction_coefficient = lower_limit;
-						negative_direction_coefficient = -positive_direction_coefficient;
-					}
-					gsl_vector_memcpy(this->dx_, newton_);
-					gsl_blas_daxpy(gradient_coefficient + negative_direction_coefficient, gradient_, this->dx_);
-					for (int iteration_limit = 64; iteration_limit > 0 && newton_norm >= gradient_norm * negative_direction_coefficient; --iteration_limit) {
-						gsl_vector_memcpy(x_trial2_, this->x_);
-						if (dx_norm = ublas::norm_2(this->dx_); dx_norm > trust_radius_)
-							gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial2_);
-						else
-							gsl_blas_daxpy(-1., this->dx_, x_trial2_);
-						if (status = this->Eval(x_trial2_, f_trial2_); status != Status::SUCCESS)
-							break;
-						if (f_trial2_norm = ublas::norm_2(f_trial2_); f_trial2_norm >= f_trial_norm)
-							break;
-						f_trial_norm = f_trial2_norm;
-						gsl_vector_memcpy(x_trial_, x_trial2_);
-						gsl_vector_memcpy(f_trial_, f_trial2_);
-						gsl_blas_daxpy(negative_direction_coefficient, gradient_, this->dx_);
-						if (f_norm < f_trial_norm)
-							negative_direction_coefficient *= 2.;
-						else if (gradient_coefficient == 0.)
-							negative_direction_coefficient *= 1.5;
-						else
-							negative_direction_coefficient *= 0.9;
-					}
-					if (positive_direction_coefficient != -negative_direction_coefficient) {
-						if (f_trial_norm < f_norm) {
-							gsl_vector_memcpy(this->x_, x_trial_);
-							gsl_vector_memcpy(this->f_, f_trial_);
-							break;
-						}
-						negative_direction_coefficient *= 0.1;
-						positive_direction_coefficient = -negative_direction_coefficient;
-						gradient_coefficient += negative_direction_coefficient;
-						gsl_blas_daxpy(-negative_direction_coefficient, gradient_, this->dx_);
-						continue;
-					}
-					gsl_vector_memcpy(this->dx_, newton_);
-					gsl_blas_daxpy(gradient_coefficient + positive_direction_coefficient, gradient_, this->dx_);
-					for (int iteration_limit = 64; iteration_limit > 0 && newton_norm >= gradient_norm * positive_direction_coefficient; --iteration_limit) {
-						gsl_vector_memcpy(x_trial2_, this->x_);
-						if (dx_norm = ublas::norm_2(this->dx_); dx_norm > trust_radius_)
-							gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial2_);
-						else
-							gsl_blas_daxpy(-1., this->dx_, x_trial2_);
-						if (status = this->Eval(x_trial2_, f_trial2_); status != Status::SUCCESS)
-							break;
-						if (f_trial2_norm = ublas::norm_2(f_trial2_); f_trial2_norm >= f_trial_norm)
-							break;
-						f_trial_norm = f_trial2_norm;
-						gsl_vector_memcpy(x_trial_, x_trial2_);
-						gsl_vector_memcpy(f_trial_, f_trial2_);
-						gsl_blas_daxpy(positive_direction_coefficient, gradient_, this->dx_);
-						if (f_norm < f_trial_norm)
-							positive_direction_coefficient *= 2.;
-						else if (gradient_coefficient == 0.)
-							positive_direction_coefficient *= 1.5;
-						else
-							positive_direction_coefficient *= 0.9;
-					}
-					if (positive_direction_coefficient != -negative_direction_coefficient) {
-						if (f_trial_norm < f_norm) {
-							gsl_vector_memcpy(this->x_, x_trial_);
-							gsl_vector_memcpy(this->f_, f_trial_);
-							break;
-						}
-						positive_direction_coefficient *= 0.1;
-						negative_direction_coefficient = -positive_direction_coefficient;
-						gradient_coefficient += positive_direction_coefficient;
-						gsl_blas_daxpy(-positive_direction_coefficient, gradient_, this->dx_);
-						continue;
-					}
-					gsl_vector_memcpy(this->dx_, newton_);
-					gsl_blas_daxpy(gradient_coefficient, gradient_, this->dx_);
-					dx_norm = ublas::norm_2(this->dx_);
-				}
-			}
-			if (directional_)
-				status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
-			else
-				status = TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
-			if (status != Status::SUCCESS)
-				return status;
-			return Status::SUCCESS;
+			return Status::NOT_IMPLEMENTED;
+			// namespace ublas = boost::numeric::ublas;
+			// int signum, status;
+			// gsl_matrix_memcpy(lu_, jacobian_);
+			// if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+			// 	return status;
+			// if (status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, this->dx_); status != Status::SUCCESS)
+			// 	return status;
+			// const Type f_norm = ublas::norm_2(this->f_);
+			// const Type recalc_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::forth_root_epsilon<Type>();
+			// const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::epsilon<Type>();
+			// Type newton_norm, gradient_norm = -1., dx_norm = ublas::norm_2(this->dx_), f_trial_norm, f_trial2_norm, newton_gradient_dot, gradient_coefficient = 0., negative_direction_coefficient, positive_direction_coefficient;
+			// for (; true; trust_radius_ *= 0.5) {
+			// 	gsl_vector_memcpy(x_trial_, this->x_);
+			// 	if (dx_norm > trust_radius_)
+			// 		gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial_);
+			// 	else
+			// 		gsl_blas_daxpy(-1., this->dx_, x_trial_);
+			// 	if (status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
+			// 		if (status != Status::SCALING_REQUIRED)
+			// 			return status;
+			// 		gsl_vector_scale(x_trial_, gsl_vector_get(f_trial_, 0));
+			// 		gsl_vector_sub(x_trial_, this->x_);
+			// 		// here x_trial_ is the difference between x and x_trial_
+			// 		if (Type trust_radius_limit = 2. * ublas::norm_2(x_trial_); trust_radius_limit < trust_radius_)
+			// 			trust_radius_ = trust_radius_limit; // there is a *= 0.5
+			// 		continue;
+			// 	}
+			// 	if (f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
+			// 		gsl_vector_memcpy(this->x_, x_trial_);
+			// 		gsl_vector_memcpy(this->f_, f_trial_);
+			// 		if (dx_norm > trust_radius_)
+			// 			trust_radius_ *= 2.;
+			// 		else
+			// 			trust_radius_ = 2. * dx_norm;
+			// 		break;
+			// 	}
+			// 	if (epsilon_coefficient_ > boost::math::tools::forth_root_epsilon<Type>())
+			// 		epsilon_coefficient_ *= 0.5;
+			// 	if (trust_radius_ < trust_radius_limit)
+			// 		return Status::TRUST_REGION_TOO_SMALL;
+			// 	if (trust_radius_ < recalc_radius_limit) {
+			// 		if (!directional_) {
+			// 			if (status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_); status != Status::SUCCESS)
+			// 				return status;
+			// 			gsl_matrix_memcpy(lu_, jacobian_);
+			// 			if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+			// 				return status;
+			// 			if (status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, this->dx_); status != Status::SUCCESS)
+			// 				return status;
+			// 			dx_norm = ublas::norm_2(this->dx_);
+			// 			directional_ = true;
+			// 		}
+			// 		if (gradient_norm == -1.) {
+			// 			gsl_vector_memcpy(newton_, this->dx_);
+			// 			newton_norm = dx_norm;
+			// 			gsl_blas_dgemv(CblasTrans, 1., jacobian_, this->f_, 0., gradient_);
+			// 			Type d_newton_gradient_dot;
+			// 			gsl_blas_ddot(newton_, gradient_, &d_newton_gradient_dot);
+			// 			gsl_blas_daxpy(-d_newton_gradient_dot / newton_norm, newton_, gradient_); // gradient_ now is prep to newton_.
+			// 			gradient_norm = ublas::norm_2(gradient_);
+			// 		}
+			// 		if (gradient_coefficient == 0.) {
+			// 			if (newton_norm < trust_radius_)
+			// 				positive_direction_coefficient = boost::math::tools::root_epsilon<Type>() * newton_norm / gradient_norm;
+			// 			else
+			// 				positive_direction_coefficient = max(100. * trust_radius_limit, 2. * trust_radius_limit * dx_norm / trust_radius_) / gradient_norm;
+			// 			negative_direction_coefficient = -positive_direction_coefficient;
+			// 		} else if (Type lower_limit = 10. * trust_radius_limit * dx_norm / trust_radius_ / gradient_norm; positive_direction_coefficient < lower_limit) {
+			// 			positive_direction_coefficient = lower_limit;
+			// 			negative_direction_coefficient = -positive_direction_coefficient;
+			// 		}
+			// 		gsl_vector_memcpy(this->dx_, newton_);
+			// 		gsl_blas_daxpy(gradient_coefficient + negative_direction_coefficient, gradient_, this->dx_);
+			// 		for (int iteration_limit = 64; iteration_limit > 0 && newton_norm >= gradient_norm * negative_direction_coefficient; --iteration_limit) {
+			// 			gsl_vector_memcpy(x_trial2_, this->x_);
+			// 			if (dx_norm = ublas::norm_2(this->dx_); dx_norm > trust_radius_)
+			// 				gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial2_);
+			// 			else
+			// 				gsl_blas_daxpy(-1., this->dx_, x_trial2_);
+			// 			if (status = this->Eval(x_trial2_, f_trial2_); status != Status::SUCCESS)
+			// 				break;
+			// 			if (f_trial2_norm = ublas::norm_2(f_trial2_); f_trial2_norm >= f_trial_norm)
+			// 				break;
+			// 			f_trial_norm = f_trial2_norm;
+			// 			gsl_vector_memcpy(x_trial_, x_trial2_);
+			// 			gsl_vector_memcpy(f_trial_, f_trial2_);
+			// 			gsl_blas_daxpy(negative_direction_coefficient, gradient_, this->dx_);
+			// 			if (f_norm < f_trial_norm)
+			// 				negative_direction_coefficient *= 2.;
+			// 			else if (gradient_coefficient == 0.)
+			// 				negative_direction_coefficient *= 1.5;
+			// 			else
+			// 				negative_direction_coefficient *= 0.9;
+			// 		}
+			// 		if (positive_direction_coefficient != -negative_direction_coefficient) {
+			// 			if (f_trial_norm < f_norm) {
+			// 				gsl_vector_memcpy(this->x_, x_trial_);
+			// 				gsl_vector_memcpy(this->f_, f_trial_);
+			// 				break;
+			// 			}
+			// 			negative_direction_coefficient *= 0.1;
+			// 			positive_direction_coefficient = -negative_direction_coefficient;
+			// 			gradient_coefficient += negative_direction_coefficient;
+			// 			gsl_blas_daxpy(-negative_direction_coefficient, gradient_, this->dx_);
+			// 			continue;
+			// 		}
+			// 		gsl_vector_memcpy(this->dx_, newton_);
+			// 		gsl_blas_daxpy(gradient_coefficient + positive_direction_coefficient, gradient_, this->dx_);
+			// 		for (int iteration_limit = 64; iteration_limit > 0 && newton_norm >= gradient_norm * positive_direction_coefficient; --iteration_limit) {
+			// 			gsl_vector_memcpy(x_trial2_, this->x_);
+			// 			if (dx_norm = ublas::norm_2(this->dx_); dx_norm > trust_radius_)
+			// 				gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial2_);
+			// 			else
+			// 				gsl_blas_daxpy(-1., this->dx_, x_trial2_);
+			// 			if (status = this->Eval(x_trial2_, f_trial2_); status != Status::SUCCESS)
+			// 				break;
+			// 			if (f_trial2_norm = ublas::norm_2(f_trial2_); f_trial2_norm >= f_trial_norm)
+			// 				break;
+			// 			f_trial_norm = f_trial2_norm;
+			// 			gsl_vector_memcpy(x_trial_, x_trial2_);
+			// 			gsl_vector_memcpy(f_trial_, f_trial2_);
+			// 			gsl_blas_daxpy(positive_direction_coefficient, gradient_, this->dx_);
+			// 			if (f_norm < f_trial_norm)
+			// 				positive_direction_coefficient *= 2.;
+			// 			else if (gradient_coefficient == 0.)
+			// 				positive_direction_coefficient *= 1.5;
+			// 			else
+			// 				positive_direction_coefficient *= 0.9;
+			// 		}
+			// 		if (positive_direction_coefficient != -negative_direction_coefficient) {
+			// 			if (f_trial_norm < f_norm) {
+			// 				gsl_vector_memcpy(this->x_, x_trial_);
+			// 				gsl_vector_memcpy(this->f_, f_trial_);
+			// 				break;
+			// 			}
+			// 			positive_direction_coefficient *= 0.1;
+			// 			negative_direction_coefficient = -positive_direction_coefficient;
+			// 			gradient_coefficient += positive_direction_coefficient;
+			// 			gsl_blas_daxpy(-positive_direction_coefficient, gradient_, this->dx_);
+			// 			continue;
+			// 		}
+			// 		gsl_vector_memcpy(this->dx_, newton_);
+			// 		gsl_blas_daxpy(gradient_coefficient, gradient_, this->dx_);
+			// 		dx_norm = ublas::norm_2(this->dx_);
+			// 	}
+			// }
+			// if (directional_)
+			// 	status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			// else
+			// 	status = TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
+			// if (status != Status::SUCCESS)
+			// 	return status;
+			// return Status::SUCCESS;
 		}
 	};
 
@@ -2009,11 +1687,8 @@ namespace SBody {
 		DNewtonMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params), permutation_(N) {}
 		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
 			this->x_ = x;
-			for (int status = this->Eval(); status != Status::SUCCESS; status = this->Eval()) {
-				if (status != GSL_EDOM)
-					return status;
-				gsl_vector_scale(this->x_, std::min(0.99999999, gsl_vector_get(this->f_, 0)));
-			}
+			if (int status = this->ScaleX(); status != Status::SUCCESS)
+				return status;
 			trust_radius_ = boost::numeric::ublas::norm_2(this->x_);
 			epsilon_coefficient_ = 1.;
 			directional_ = false;
@@ -2043,9 +1718,9 @@ namespace SBody {
 				else
 					x_trial_ -= this->dx_;
 				if (status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
-					if (status != GSL_EDOM)
+					if (status != Status::SCALING_REQUIRED)
 						return status;
-					x_trial_ *= std::min(0.99999999, f_trial_(0));
+					x_trial_ *= f_trial_(0);
 					x_trial_ -= this->x_;
 					// here x_trial_ is the difference between x and x_trial_
 					trust_radius_ = std::min(0.5 * trust_radius_, ublas::norm_2(x_trial_));
@@ -2144,7 +1819,7 @@ namespace SBody {
 				else
 					x_trial_ -= this->dx_;
 				if (status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
-					if (status != GSL_EDOM)
+					if (status != Status::SCALING_REQUIRED)
 						return status;
 					x_trial_ *= f_trial_(0);
 					x_trial_ -= this->x_;
@@ -2279,7 +1954,7 @@ namespace SBody {
 				else
 					x_trial_ -= this->dx_;
 				if (status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
-					if (status != GSL_EDOM)
+					if (status != Status::SCALING_REQUIRED)
 						return status;
 					x_trial_ *= f_trial_(0);
 					x_trial_ -= this->x_;
@@ -2354,93 +2029,91 @@ namespace SBody {
 		D2NewtonMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : MultiFunctionSolver<Type, N, Parameter>(function, params), permutation_(N) {}
 		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
 			this->x_ = x;
-			for (int status = this->Eval(); status != Status::SUCCESS; status = this->Eval()) {
-				if (status != GSL_EDOM)
-					return status;
-				gsl_vector_scale(this->x_, gsl_vector_get(this->f_, 0));
-			}
-			if (int status = this->OneSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), hessian_); status != Status::SUCCESS) // FIXME: CHECK hessian_
+			if (int status = this->ScaleX(); status != Status::SUCCESS)
+				return status;
+			if (int status = this->OneSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), hessian_); status != Status::SUCCESS)
 				return status;
 			trust_radius_ = boost::numeric::ublas::norm_2(this->x_);
 			gsl_vector_set_zero(this->dx_);
 			return Status::SUCCESS;
 		}
 		int Iterate() override {
-			namespace ublas = boost::numeric::ublas;
-			int signum;
-			gsl_matrix_memcpy(lu_, hessian_);
-			if (int status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
-				return status;
-			// gsl_vector_memcpy(dx, dx);
-			if (int status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, this->dx_); status != Status::SUCCESS)
-				return status;
-			const Type f_norm = ublas::norm_2(this->f_);
-			const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::root_epsilon<Type>();
-			Type dx_norm = ublas::norm_2(this->dx_);
-			int limit_iteration = 0;
-			while (true) {
-				gsl_vector_memcpy(x_trial_, this->x_);
-				if (dx_norm > trust_radius_)
-					gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial_);
-				else
-					gsl_blas_daxpy(-1., this->dx_, x_trial_);
-				if (int status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
-					if (status != GSL_EDOM)
-						return status;
-					gsl_vector_scale(x_trial_, std::min(Type{0.99999999}, gsl_vector_get(f_trial_, 0)));
-					gsl_vector_sub(x_trial_, this->x_);
-					// here x_trial_ is the difference between x and x_trial_
-					if (trust_radius_ = std::min(0.5 * trust_radius_, ublas::norm_2(x_trial_)); trust_radius_ < trust_radius_limit) {
-						if (limit_iteration == 20)
-							return Status::MAX_ITERATIONS_EXCEEDED;
-						else if (limit_iteration == 0) {
-							if (status = Hessian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_, hessian_); status != Status::SUCCESS)
-								return status;
-							gsl_matrix_memcpy(lu_, hessian_);
-							if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
-								return status;
-							// gsl_vector_memcpy(dx, dx);
-							if (status = gsl_linalg_LU_solve(lu_, permutation_, jacobian_, this->dx_); status != Status::SUCCESS)
-								return status;
-							dx_norm = ublas::norm_2(this->dx_);
-							trust_radius_ *= 2.;
-						}
-						++limit_iteration;
-					}
-					continue;
-				}
-				if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
-					gsl_vector_memcpy(this->x_, x_trial_);
-					gsl_vector_memcpy(this->f_, f_trial_);
-					if (dx_norm > trust_radius_)
-						trust_radius_ *= 2.;
-					else
-						trust_radius_ = 2. * dx_norm;
-					break;
-				} else {
-					if (trust_radius_ *= 0.5; trust_radius_ < trust_radius_limit) {
-						if (limit_iteration == 20)
-							return Status::MAX_ITERATIONS_EXCEEDED;
-						else if (limit_iteration == 0) {
-							if (int status = Hessian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), f_trial_, hessian_); status != Status::SUCCESS)
-								return status;
-							gsl_matrix_memcpy(lu_, hessian_);
-							if (int status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
-								return status;
-							// gsl_vector_memcpy(dx, dx);
-							if (int status = gsl_linalg_LU_solve(lu_, permutation_, f_trial_, x_trial_); status != Status::SUCCESS)
-								return status;
-							gsl_vector_add(this->dx_, x_trial_);
-							dx_norm = ublas::norm_2(this->dx_);
-							trust_radius_ *= 2.;
-						}
-						++limit_iteration;
-					}
-				}
-			}
-			if (int status = OneSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), hessian_); status != Status::SUCCESS)
-				return status;
-			return Status::SUCCESS;
+			return Status::NOT_IMPLEMENTED;
+			// namespace ublas = boost::numeric::ublas;
+			// int signum;
+			// gsl_matrix_memcpy(lu_, hessian_);
+			// if (int status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+			// 	return status;
+			// // gsl_vector_memcpy(dx, dx);
+			// if (int status = gsl_linalg_LU_solve(lu_, permutation_, this->f_, this->dx_); status != Status::SUCCESS)
+			// 	return status;
+			// const Type f_norm = ublas::norm_2(this->f_);
+			// const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::root_epsilon<Type>();
+			// Type dx_norm = ublas::norm_2(this->dx_);
+			// int limit_iteration = 0;
+			// while (true) {
+			// 	gsl_vector_memcpy(x_trial_, this->x_);
+			// 	if (dx_norm > trust_radius_)
+			// 		gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial_);
+			// 	else
+			// 		gsl_blas_daxpy(-1., this->dx_, x_trial_);
+			// 	if (int status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
+			// 		if (status != Status::SCALING_REQUIRED)
+			// 			return status;
+			// 		gsl_vector_scale(x_trial_, gsl_vector_get(f_trial_, 0));
+			// 		gsl_vector_sub(x_trial_, this->x_);
+			// 		// here x_trial_ is the difference between x and x_trial_
+			// 		if (trust_radius_ = std::min(0.5 * trust_radius_, ublas::norm_2(x_trial_)); trust_radius_ < trust_radius_limit) {
+			// 			if (limit_iteration == 20)
+			// 				return Status::MAX_ITERATIONS_EXCEEDED;
+			// 			else if (limit_iteration == 0) {
+			// 				if (status = Hessian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_, hessian_); status != Status::SUCCESS)
+			// 					return status;
+			// 				gsl_matrix_memcpy(lu_, hessian_);
+			// 				if (status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+			// 					return status;
+			// 				// gsl_vector_memcpy(dx, dx);
+			// 				if (status = gsl_linalg_LU_solve(lu_, permutation_, jacobian_, this->dx_); status != Status::SUCCESS)
+			// 					return status;
+			// 				dx_norm = ublas::norm_2(this->dx_);
+			// 				trust_radius_ *= 2.;
+			// 			}
+			// 			++limit_iteration;
+			// 		}
+			// 		continue;
+			// 	}
+			// 	if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
+			// 		gsl_vector_memcpy(this->x_, x_trial_);
+			// 		gsl_vector_memcpy(this->f_, f_trial_);
+			// 		if (dx_norm > trust_radius_)
+			// 			trust_radius_ *= 2.;
+			// 		else
+			// 			trust_radius_ = 2. * dx_norm;
+			// 		break;
+			// 	} else {
+			// 		if (trust_radius_ *= 0.5; trust_radius_ < trust_radius_limit) {
+			// 			if (limit_iteration == 20)
+			// 				return Status::MAX_ITERATIONS_EXCEEDED;
+			// 			else if (limit_iteration == 0) {
+			// 				if (int status = Hessian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), f_trial_, hessian_); status != Status::SUCCESS)
+			// 					return status;
+			// 				gsl_matrix_memcpy(lu_, hessian_);
+			// 				if (int status = gsl_linalg_LU_decomp(lu_, permutation_, &signum); status != Status::SUCCESS)
+			// 					return status;
+			// 				// gsl_vector_memcpy(dx, dx);
+			// 				if (int status = gsl_linalg_LU_solve(lu_, permutation_, f_trial_, x_trial_); status != Status::SUCCESS)
+			// 					return status;
+			// 				gsl_vector_add(this->dx_, x_trial_);
+			// 				dx_norm = ublas::norm_2(this->dx_);
+			// 				trust_radius_ *= 2.;
+			// 			}
+			// 			++limit_iteration;
+			// 		}
+			// 	}
+			// }
+			// if (int status = OneSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), hessian_); status != Status::SUCCESS)
+			// 	return status;
+			// return Status::SUCCESS;
 		}
 	};
 
@@ -2449,64 +2122,65 @@ namespace SBody {
 	  public:
 		GradientMultiFunctionSolver(int (*function)(const boost::numeric::ublas::bounded_vector<Type, N> &, boost::numeric::ublas::bounded_vector<Type, N> &, Parameter &), Parameter &params) : DNewtonMultiFunctionSolver<Type, N, Parameter>(function, params) {}
 		int Iterate() override {
-			namespace ublas = boost::numeric::ublas;
-			int signum, status;
-			gsl_matrix_memcpy(this->lu_, this->jacobian_);
-			if (status = gsl_linalg_LU_decomp(this->lu_, this->permutation_, &signum); status != Status::SUCCESS)
-				return status;
-			if (status = gsl_linalg_LU_solve(this->lu_, this->permutation_, this->f, this->dx); status != Status::SUCCESS)
-				return status;
-			const Type f_norm = ublas::norm_2(this->f_);
-			const Type trust_radius_limit = ublas::norm_2(this->x) * boost::math::tools::epsilon<Type>();
-			Type dx_norm = ublas::norm_2(this->dx_);
-			int iteration_count = 0;
-			while (true) {
-				gsl_vector_memcpy(this->x_trial_, this->x_);
-				if (dx_norm > this->trust_radius_)
-					gsl_blas_daxpy(-this->trust_radius_ / dx_norm, this->dx_, this->x_trial_);
-				else
-					gsl_blas_daxpy(-1., this->dx_, this->x_trial_);
-				if (int status = this->Eval(this->x_trial_, this->f_trial_); status != Status::SUCCESS) {
-					if (status != GSL_EDOM)
-						return Status::NUMERIC_ERROR;
-					gsl_vector_scale(this->x_trial_, std::min(Type{0.99999999}, gsl_vector_get(this->f_trial_, 0)));
-					gsl_vector_sub(this->x_trial_, this->x_);
-					// here x_trial_ is the difference between x and x_trial_
-					this->trust_radius_ = std::min(0.5 * this->trust_radius_, ublas::norm_2(this->x_trial_));
-					continue;
-				}
-				if (Type f_trial_norm = ublas::norm_2(this->f_trial_); f_trial_norm < f_norm) {
-					gsl_vector_memcpy(this->x_, this->x_trial_);
-					gsl_vector_memcpy(this->f_, this->f_trial_);
-					if (dx_norm > this->trust_radius_)
-						this->trust_radius_ *= 2.;
-					else
-						this->trust_radius_ = 2. * dx_norm;
-					break;
-				}
-				++iteration_count;
-				if (this->epsilon_coefficient_ > boost::math::tools::forth_root_epsilon<Type>())
-					this->epsilon_coefficient_ *= 0.5;
-				if (!this->directional_ && iteration_count == 2) {
-					this->trust_radius_ *= 2.;
-					if (status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * this->epsilon_coefficient_, this->jacobian_); status != Status::SUCCESS)
-						return Status::NUMERIC_ERROR;
-					gsl_blas_dgemv(CblasTrans, 1., this->jacobian_, this->f_, 0., this->dx_);
-					dx_norm = ublas::norm_2(this->dx_);
-					this->directional_ = true;
-				} else {
-					this->trust_radius_ *= 0.5;
-					if (this->trust_radius_ < trust_radius_limit)
-						return Status::TRUST_REGION_TOO_SMALL;
-				}
-			}
-			if (this->directional_)
-				status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * this->epsilon_coefficient_, this->jacobian_);
-			else
-				status = TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * this->epsilon_coefficient_, this->jacobian_);
-			if (status != Status::SUCCESS)
-				return Status::NUMERIC_ERROR;
-			return Status::SUCCESS;
+			return Status::NOT_IMPLEMENTED;
+			// namespace ublas = boost::numeric::ublas;
+			// int signum, status;
+			// gsl_matrix_memcpy(this->lu_, this->jacobian_);
+			// if (status = gsl_linalg_LU_decomp(this->lu_, this->permutation_, &signum); status != Status::SUCCESS)
+			// 	return status;
+			// if (status = gsl_linalg_LU_solve(this->lu_, this->permutation_, this->f, this->dx); status != Status::SUCCESS)
+			// 	return status;
+			// const Type f_norm = ublas::norm_2(this->f_);
+			// const Type trust_radius_limit = ublas::norm_2(this->x) * boost::math::tools::epsilon<Type>();
+			// Type dx_norm = ublas::norm_2(this->dx_);
+			// int iteration_count = 0;
+			// while (true) {
+			// 	gsl_vector_memcpy(this->x_trial_, this->x_);
+			// 	if (dx_norm > this->trust_radius_)
+			// 		gsl_blas_daxpy(-this->trust_radius_ / dx_norm, this->dx_, this->x_trial_);
+			// 	else
+			// 		gsl_blas_daxpy(-1., this->dx_, this->x_trial_);
+			// 	if (int status = this->Eval(this->x_trial_, this->f_trial_); status != Status::SUCCESS) {
+			// 		if (status != Status::SCALING_REQUIRED)
+			// 			return status;
+			// 		gsl_vector_scale(this->x_trial_, gsl_vector_get(this->f_trial_, 0));
+			// 		gsl_vector_sub(this->x_trial_, this->x_);
+			// 		// here x_trial_ is the difference between x and x_trial_
+			// 		this->trust_radius_ = std::min(0.5 * this->trust_radius_, ublas::norm_2(this->x_trial_));
+			// 		continue;
+			// 	}
+			// 	if (Type f_trial_norm = ublas::norm_2(this->f_trial_); f_trial_norm < f_norm) {
+			// 		gsl_vector_memcpy(this->x_, this->x_trial_);
+			// 		gsl_vector_memcpy(this->f_, this->f_trial_);
+			// 		if (dx_norm > this->trust_radius_)
+			// 			this->trust_radius_ *= 2.;
+			// 		else
+			// 			this->trust_radius_ = 2. * dx_norm;
+			// 		break;
+			// 	}
+			// 	++iteration_count;
+			// 	if (this->epsilon_coefficient_ > boost::math::tools::forth_root_epsilon<Type>())
+			// 		this->epsilon_coefficient_ *= 0.5;
+			// 	if (!this->directional_ && iteration_count == 2) {
+			// 		this->trust_radius_ *= 2.;
+			// 		if (status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * this->epsilon_coefficient_, this->jacobian_); status != Status::SUCCESS)
+			// 			return Status::NUMERIC_ERROR;
+			// 		gsl_blas_dgemv(CblasTrans, 1., this->jacobian_, this->f_, 0., this->dx_);
+			// 		dx_norm = ublas::norm_2(this->dx_);
+			// 		this->directional_ = true;
+			// 	} else {
+			// 		this->trust_radius_ *= 0.5;
+			// 		if (this->trust_radius_ < trust_radius_limit)
+			// 			return Status::TRUST_REGION_TOO_SMALL;
+			// 	}
+			// }
+			// if (this->directional_)
+			// 	status = TwoSidedDirectionalJacobian(this->x_, this->dx_, this->f_, boost::math::tools::root_epsilon<Type>() * this->epsilon_coefficient_, this->jacobian_);
+			// else
+			// 	status = TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * this->epsilon_coefficient_, this->jacobian_);
+			// if (status != Status::SUCCESS)
+			// 	return Status::NUMERIC_ERROR;
+			// return Status::SUCCESS;
 		}
 	};
 
@@ -2528,43 +2202,38 @@ namespace SBody {
 		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
 			this->x_ = x;
 			iteration_coefficient_ = 1.0;
-			for (int status = this->Eval(); status != Status::SUCCESS; status = this->Eval()) {
-				if (status != GSL_EDOM)
-					return status;
-				gsl_vector_scale(this->x_, gsl_vector_get(this->f_, 0));
-			}
+			if (int status = this->ScaleX(); status != Status::SUCCESS)
+				return status;
 			if (int status = this->OneSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_); status != Status::SUCCESS)
 				return status;
 			gradient_norm_ = 1.;
 			trust_radius_ = iteration_coefficient_ * boost::numeric::ublas::norm_2(this->x_);
-			gsl_vector_set_zero(this->dx_);
-			gsl_vector_set_zero(last_dx_);
+			this->dx_.clear();
+			last_dx_.clear();
 			return Status::SUCCESS;
 		}
-		int Iterate() override {
+		int Iterate() override { // TODO: Check
 			namespace ublas = boost::numeric::ublas;
 			const Type f_norm = ublas::norm_2(this->f_);
 			const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::root_epsilon<Type>();
-			if (int status = gsl_blas_dgemv(CblasTrans, 1., jacobian_, this->f_, 0., x_trial_); status != Status::SUCCESS)
-				return status;
+			x_trial_ = ublas::prod(jacobian_, this->f_);
 			Type gradient_norm = ublas::norm_2(x_trial_);
 			Type step_beta = gradient_norm / gradient_norm_;
 			gradient_norm_ = gradient_norm;
-			gsl_vector_memcpy(this->dx_, x_trial_);
-			gsl_blas_daxpy(step_beta, last_dx_, this->dx_);
+			this->dx_ = x_trial_ + step_beta * last_dx_;
 			Type dx_norm = ublas::norm_2(this->dx_);
 			int limit_iteration = 0;
 			while (true) {
-				gsl_vector_memcpy(x_trial_, this->x_);
+				x_trial_ = this->x_;
 				if (dx_norm > trust_radius_)
-					gsl_blas_daxpy(-trust_radius_ / dx_norm, this->dx_, x_trial_);
+					x_trial_ -= trust_radius_ * this->dx_ / dx_norm;
 				else
-					gsl_blas_daxpy(-1., this->dx_, x_trial_);
+					x_trial_ -= this->dx_;
 				if (int status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS) {
-					if (status != GSL_EDOM)
+					if (status != Status::SCALING_REQUIRED)
 						return status;
-					gsl_vector_scale(x_trial_, std::min(Type{0.99999999}, gsl_vector_get(f_trial_, 0)));
-					gsl_vector_sub(x_trial_, this->x_);
+					x_trial_ *= f_trial_(0);
+					x_trial_ -= this->x_;
 					// here x_trial_ is the difference between x and x_trial_
 					if (trust_radius_ = std::min(0.5 * trust_radius_, ublas::norm_2(x_trial_)); trust_radius_ < trust_radius_limit) {
 						if (int status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_); status != Status::SUCCESS)
@@ -2574,9 +2243,9 @@ namespace SBody {
 					continue;
 				}
 				if (Type f_trial_norm = ublas::norm_2(f_trial_); f_trial_norm < f_norm) {
-					gsl_vector_memcpy(this->x_, x_trial_);
-					gsl_vector_memcpy(this->f_, f_trial_);
-					gsl_vector_memcpy(last_dx_, this->dx_);
+					this->x_ = x_trial_;
+					this->f_ = f_trial_;
+					last_dx_ = this->dx_;
 					if (dx_norm > trust_radius_)
 						trust_radius_ *= 2.;
 					else
@@ -2589,10 +2258,8 @@ namespace SBody {
 						else if (limit_iteration == 0) {
 							if (int status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>(), jacobian_); status != Status::SUCCESS)
 								return status;
-							if (int status = gsl_blas_dgemv(CblasTrans, 1., jacobian_, this->f_, 0., x_trial_); status != Status::SUCCESS)
-								return status;
-							gsl_vector_memcpy(this->dx_, x_trial_);
-							gsl_blas_daxpy(step_beta, last_dx_, this->dx_);
+							x_trial_ = ublas::prod(jacobian_, this->f_);
+							this->dx_ = x_trial_ + step_beta * last_dx_;
 							dx_norm = ublas::norm_2(this->dx_);
 							trust_radius_ *= 2.;
 						}
@@ -2619,28 +2286,19 @@ namespace SBody {
 		int Set(const boost::numeric::ublas::bounded_vector<Type, N> &x) {
 			this->x_ = x;
 			int status;
-			for (status = this->Eval(); status != Status::SUCCESS; status = this->Eval()) {
-				if (status != GSL_EDOM)
-					return status;
-				this->x_ *= std::min(Type{0.99999999}, this->f_(0));
-			}
+			if (int status = this->ScaleX(); status != Status::SUCCESS)
+				return status;
 			// Type dx = -gsl_vector_get(x, 0) * boost::math::tools::root_epsilon<Type>(), dy = gsl_vector_get(x, 1) * boost::math::tools::root_epsilon<Type>();
 			x_a_ = this->x_;
 			x_b_ = this->x_;
 			x_a_(0) = this->x_(0) * (1. - 0.01);
 			x_b_(1) = this->x_(1) * (1. - 0.01);
 			for (int iteration = 0; iteration < 10; ++iteration) {
-				for (status = this->Eval(x_a_, f_a_); status != Status::SUCCESS; status = this->Eval(x_a_, f_a_)) {
-					if (status != GSL_EDOM)
-						return status;
-					x_a_ *= std::min(Type{0.99999999}, f_a_(0));
-				}
-				for (status = this->Eval(x_b_, f_b_); status != Status::SUCCESS; status = this->Eval(x_b_, f_b_)) {
-					if (status != GSL_EDOM)
-						return status;
-					x_b_ *= std::min(Type{0.99999999}, f_b_(0));
-				}
-				if (PointInTriangle(this->f_->data, f_a_->data, f_b_->data))
+				if (int status = this->ScaleX(x_a_, f_a_); status != Status::SUCCESS)
+					return status;
+				if (int status = this->ScaleX(x_b_, f_b_); status != Status::SUCCESS)
+					return status;
+				if (PointInTriangle(this->f_, f_a_, f_b_))
 					return Status::SUCCESS;
 				f_a_ -= this->f_;
 				f_b_ -= this->f_;
@@ -2660,14 +2318,11 @@ namespace SBody {
 			x_trial_ = x_a_;
 			x_trial_ += x_b_;
 			x_trial_ *= 0.5;
-			for (int status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS; status = this->Eval(x_trial_, f_trial_)) {
-				if (status != GSL_EDOM)
-					return status;
-				x_trial_ *= std::min(0.99999999, f_trial_(0));
-			}
+			if (int status = this->ScaleX(x_trial_, f_trial_); status != Status::SUCCESS)
+				return status;
 			this->dx_ = x_trial_;
 			this->dx_ -= this->x_;
-			if (PointInTriangle(f_trial_->data, this->f_->data, f_a_->data)) {
+			if (PointInTriangle(f_trial_, this->f_, f_a_)) {
 				x_b_ = x_a_;
 				f_b_ = f_a_;
 				x_a_ = this->x_;
@@ -2676,7 +2331,7 @@ namespace SBody {
 				this->f_ = f_trial_;
 				return Status::SUCCESS;
 			}
-			if (PointInTriangle(f_trial_->data, f_b_->data, this->f_->data)) {
+			if (PointInTriangle(f_trial_, f_b_, this->f_)) {
 				x_a_ = this->x_;
 				f_a_ = this->f_;
 				this->x_ = x_b_;
@@ -2709,14 +2364,11 @@ namespace SBody {
 			x_trial_ = x_a_;
 			x_trial_ += x_b_;
 			x_trial_ *= 0.5;
-			for (int status = this->Eval(x_trial_, f_trial_); status != Status::SUCCESS; status = this->Eval(x_trial_, f_trial_)) {
-				if (status != GSL_EDOM)
-					return status;
-				x_trial_ *= std::min(Type{0.99999999}, f_trial_(0));
-			}
+			if (int status = this->ScaleX(x_trial_, f_trial_); status != Status::SUCCESS)
+				return status;
 			this->dx_ = x_trial_;
 			this->dx_ -= this->x_;
-			if (PointInTriangle(f_trial_->data, this->f_->data, f_a_->data)) {
+			if (PointInTriangle(f_trial_, this->f_, f_a_)) {
 				x_b_ = x_a_;
 				f_b_ = f_a_;
 				x_a_ = this->x_;
@@ -2725,7 +2377,7 @@ namespace SBody {
 				this->f_ = f_trial_;
 				return Status::SUCCESS;
 			}
-			if (PointInTriangle(f_trial_->data, f_b_->data, this->f_->data)) {
+			if (PointInTriangle(f_trial_, f_b_, this->f_)) {
 				x_a_ = this->x_;
 				f_a_ = this->f_;
 				this->x_ = x_b_;
@@ -2844,7 +2496,7 @@ namespace SBody {
 				central_angle_ = ModBy2Pi(next_angle);
 				return Status::SUCCESS;
 			}
-			return Status::FAILURE;
+			return Status::MAX_ITERATIONS_EXCEEDED;
 		}
 	};
 } // namespace SBody
