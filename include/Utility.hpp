@@ -1304,7 +1304,6 @@ namespace SBody {
 		boost::numeric::ublas::bounded_vector<Type, N> newton_;
 		boost::numeric::ublas::bounded_vector<Type, N> gradient_;
 		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
-		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
 		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
 		// int Dogleg(const boost::numeric::ublas::bounded_vector<Type, N> &r, const boost::numeric::ublas::bounded_vector<Type, N> &qtf, const boost::numeric::ublas::bounded_vector<Type, N> &diag, Type delta, boost::numeric::ublas::bounded_vector<Type, N> &newton, boost::numeric::ublas::bounded_vector<Type, N> &gradient, boost::numeric::ublas::bounded_vector<Type, N> &p) {
 		// 	namespace ublas = boost::numeric::ublas;
@@ -1496,7 +1495,6 @@ namespace SBody {
 		boost::numeric::ublas::bounded_vector<Type, N> newton_;
 		boost::numeric::ublas::bounded_vector<Type, N> gradient_;
 		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
-		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
 		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
 
 	  public:
@@ -1680,7 +1678,6 @@ namespace SBody {
 		boost::numeric::ublas::bounded_vector<Type, N> x_trial_;
 		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
 		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
-		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
 		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
 
 	  public:
@@ -1703,11 +1700,10 @@ namespace SBody {
 				status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
 			if (status != Status::SUCCESS)
 				return status;
-			lu_ = jacobian_;
-			if (status = ublas::lu_factorize(lu_, permutation_); status != Status::SUCCESS)
+			if (status = ublas::lu_factorize(jacobian_, permutation_); status != Status::SUCCESS)
 				return status;
 			this->dx_ = this->f_;
-			ublas::lu_substitute(lu_, permutation_, this->dx_);
+			ublas::lu_substitute(jacobian_, permutation_, this->dx_);
 			const Type x_norm = ublas::norm_2(this->x_), f_norm = ublas::norm_2(this->f_);
 			const Type trust_radius_limit = std::max(Type{1.}, x_norm) * boost::math::tools::epsilon<Type>();
 			Type dx_norm = ublas::norm_2(this->dx_);
@@ -1767,7 +1763,6 @@ namespace SBody {
 		boost::numeric::ublas::bounded_vector<Type, N> x_trial_;
 		boost::numeric::ublas::bounded_vector<Type, N> dx_translation_;
 		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
-		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
 		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
 		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
 
@@ -1803,11 +1798,10 @@ namespace SBody {
 				status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
 			if (status != Status::SUCCESS)
 				return status;
-			lu_ = jacobian_;
-			if (status = ublas::lu_factorize(lu_, permutation_); status != Status::SUCCESS)
+			if (status = ublas::lu_factorize(jacobian_, permutation_); status != Status::SUCCESS)
 				return status;
-			this->x_ = this->f_;
-			ublas::lu_substitute(lu_, permutation_, this->dx_);
+			this->dx_ = this->f_;
+			ublas::lu_substitute(jacobian_, permutation_, this->dx_);
 			const Type x_norm = ublas::norm_2(this->x_), f_norm = ublas::norm_2(this->f_);
 			const Type rotation_radius_limit = std::max(Type{1.}, x_norm) * boost::math::tools::cbrt_epsilon<Type>();
 			const Type trust_radius_limit = std::max(Type{1.}, x_norm) * boost::math::tools::epsilon<Type>();
@@ -1903,7 +1897,6 @@ namespace SBody {
 		boost::numeric::ublas::bounded_vector<Type, N> x_trial_;
 		boost::numeric::ublas::bounded_vector<Type, N> dx_translation_;
 		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
-		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
 		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
 		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
 
@@ -1938,11 +1931,10 @@ namespace SBody {
 				status = this->TwoSidedJacobian(this->x_, this->f_, boost::math::tools::root_epsilon<Type>() * epsilon_coefficient_, jacobian_);
 			if (status != Status::SUCCESS)
 				return status;
-			lu_ = jacobian_;
-			if (status = ublas::lu_factorize(lu_, permutation_); status != Status::SUCCESS)
+			if (status = ublas::lu_factorize(jacobian_, permutation_); status != Status::SUCCESS)
 				return status;
 			this->dx_ = this->f_;
-			ublas::lu_substitute(lu_, permutation_, this->dx_);
+			ublas::lu_substitute(jacobian_, permutation_, this->dx_);
 			const Type f_norm = ublas::norm_2(this->f_);
 			const Type translation_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::cbrt_epsilon<Type>();
 			const Type trust_radius_limit = ublas::norm_2(this->x_) * boost::math::tools::epsilon<Type>();
@@ -2022,7 +2014,6 @@ namespace SBody {
 		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
 		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
 		boost::numeric::ublas::bounded_matrix<Type, N, N> hessian_;
-		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
 		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
 
 	  public:
@@ -2194,7 +2185,6 @@ namespace SBody {
 		boost::numeric::ublas::bounded_vector<Type, N> f_trial_;
 		boost::numeric::ublas::bounded_vector<Type, N> last_dx_;
 		boost::numeric::ublas::bounded_matrix<Type, N, N> jacobian_;
-		boost::numeric::ublas::bounded_matrix<Type, N, N> lu_;
 		boost::numeric::ublas::permutation_matrix<std::size_t> permutation_;
 
 	  public:

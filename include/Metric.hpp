@@ -209,8 +209,8 @@ namespace SBody {
 		 *
 		 * @param r_observer radius of the observer, \f$r_\text{obs}\f$.
 		 * @param theta_observer theta of the observer, \f$\theta_\text{obs}\f$.
-		 * @param sin_theta_observer std::sin(theta_observer), \f$\std::sin\theta_\text{obs}\f$.
-		 * @param cos_theta_observer std::cos(theta_observer), \f$\std::cos\theta_\text{obs}\f$.
+		 * @param sin_theta_observer sin(theta_observer), \f$\sin\theta_\text{obs}\f$.
+		 * @param cos_theta_observer cos(theta_observer), \f$\cos\theta_\text{obs}\f$.
 		 * @param r_object radius of the target, \f$r_\text{tar}\f$.
 		 * @param theta_object theta of the target, \f$\theta_\text{tar}\f$.
 		 * @param phi_object phi of the target, \f$\phi_\text{tar}\f$.
