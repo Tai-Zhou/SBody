@@ -1,5 +1,6 @@
 set(TEST_SOURCES
     TestUtility.cpp
+    TestView.cpp
 )
 
 foreach(TEST_FILE ${TEST_SOURCES})

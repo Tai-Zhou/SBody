@@ -33,6 +33,8 @@
 using namespace std;
 using namespace SBody;
 
+#define PRECISION double
+
 void InterruptHandler(int signum) {
 	fmt::print("\r\033[KSBody exiting...\n");
 	indicators::show_console_cursor(true);
@@ -79,17 +81,17 @@ void Help() {
 int Benchmark() {
 	auto t_start = chrono::steady_clock::now();
 	Unit unit(4.261e6);
-	double t = 0., t1 = 0., t_step = 3600. * unit.s / T_STEP_NUMBER;
-	shared_ptr<Metric<double>> main_metric = make_shared<Kerr<double>>(0.3);
-	// shared_ptr<Metric> main_metric = make_shared<Schwarzschild>();
-	auto view_ptr = make_unique<View<double>>(main_metric, 8180. * unit.pc, boost::math::double_constants::half_pi - 0.01, 0.);
-	Particle<double> star_0(main_metric, T, LAGRANGIAN, false);
+	PRECISION t = 0., t1 = 0., t_step = 3600. * unit.s / T_STEP_NUMBER;
+	unique_ptr<Metric<PRECISION>> main_metric = make_unique<Kerr<PRECISION>>(0.3);
+	// unique_ptr<Metric> main_metric = make_unique<Schwarzschild>();
+	auto view_ptr = make_unique<View<PRECISION>>(*main_metric, 8180. * unit.pc, boost::math::constants::half_pi<PRECISION>() - 0.01, 0.);
+	Particle<PRECISION> star_0(*main_metric, T, LAGRANGIAN, false);
 	star_0.InitializeKeplerian(4., 0.1, 0.2, 0., 0., 0., M_PI_4);
-	double temp[4];
-	boost::numeric::ublas::bounded_vector<double, 8> position;
-	boost::numeric::ublas::bounded_vector<double, 5> view_info;
+	PRECISION temp[4];
+	boost::numeric::ublas::bounded_vector<PRECISION, 8> position;
+	boost::numeric::ublas::bounded_vector<PRECISION, 5> view_info;
 	int status = 0;
-	double h = 1., stepPercent = 100. / T_STEP_NUMBER;
+	PRECISION h = 1., stepPercent = 100. / T_STEP_NUMBER;
 	indicators::show_console_cursor(false);
 	ProgressBar bars(2, "Benchmarking...");
 	for (int i = 1; i <= T_STEP_NUMBER; ++i) {
@@ -97,7 +99,7 @@ int Benchmark() {
 		status = star_0.IntegratorApply(t, t1, h);
 		if (status > 0) {
 			PrintlnError("Benchmark error, main status = {}", status);
-			return Status::FAILURE;
+			return StatusCode::FAILURE;
 		}
 		star_0.Position(temp);
 		temp[0] = t / unit.s;
@@ -110,15 +112,15 @@ int Benchmark() {
 		bars[0].set_option(indicators::option::PrefixText{fmt::format("Anticipated score is: {}? ", i * 200000000000ul / (T_STEP_NUMBER * chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()))});
 	}
 	bars.SetComplete(0, fmt::format("Final score is: {}! ", 200000000000ul / chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()));
-	return Status::SUCCESS;
+	return StatusCode::SUCCESS;
 }
 
 int main(int argc, char *argv[]) {
 	// Application Entry
 	auto TStart = chrono::steady_clock::now();
 	signal(SIGINT, InterruptHandler);
-	double mass = 4.261e6, spin = 0., NUT = 0.;
-	double tFinal = 3600.; // 128.43325526 for 4.15e6 M_sun
+	PRECISION mass = 4.261e6, spin = 0., NUT = 0.;
+	PRECISION tFinal = 3600.; // 128.43325526 for 4.15e6 M_sun
 	size_t tStepNumber = T_STEP_NUMBER;
 	int TCal = T_CAL;
 	size_t metric = 1;
@@ -128,13 +130,13 @@ int main(int argc, char *argv[]) {
 	int rest_mass = 1;
 	bool display_progress = true;
 	string store_format = "NumPy";
-	double inc = M_PI * 0. / 180., eps = 0.;
-	// double a = 8.3, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180. + M_PI_2, ascending_node = M_PI * 25.1 / 180., true_anomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
-	double a = 4.999960135538237, e = 0.884649, inclination = M_PI * 134.567 / 180., periapsis = M_PI * 66.263 / 180., ascending_node = M_PI * 228.171 / 180., true_anomaly = M_PI;
-	double input_parameter[10];
-	unique_ptr<View<double>> viewPtr;
+	PRECISION inc = M_PI * 0. / 180., eps = 0.;
+	// PRECISION a = 8.3, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180. + M_PI_2, ascending_node = M_PI * 25.1 / 180., true_anomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
+	PRECISION a = 4.999960135538237, e = 0.884649, inclination = M_PI * 134.567 / 180., periapsis = M_PI * 66.263 / 180., ascending_node = M_PI * 228.171 / 180., true_anomaly = M_PI;
+	PRECISION input_parameter[10];
+	unique_ptr<View<PRECISION>> viewPtr;
 	unique_ptr<thread> shadowPtr;
-	unique_ptr<Camera<double>> cameraPtr;
+	unique_ptr<Camera<PRECISION>> cameraPtr;
 	unique_ptr<thread> lensPtr;
 	const char *optShort = "m:s:l:K:E:I:o:O:t:k:c:n:P:R:a:r:i:e:f:LbBh";
 	const char *separator = ",";
@@ -243,10 +245,10 @@ int main(int argc, char *argv[]) {
 	Unit unit(mass);
 	tFinal *= unit.s;
 	tFinal = 18 * unit.yr;
-	double t = 8.3564958220072 * unit.yr, tStep = 0., tRec = tFinal / tStepNumber;
+	PRECISION t = 8.3564958220072 * unit.yr, tStep = 0., tRec = tFinal / tStepNumber;
 	if (metric == 0)
 		ray = 0;
-	shared_ptr<Metric<double>> main_metric = make_shared<Schwarzschild<double>>();
+	unique_ptr<Metric<PRECISION>> main_metric = make_unique<Schwarzschild<PRECISION>>();
 	// metric::setMetric(metric, PN, mass, spin, charge, NUT);
 	string strFormat = fmt::format(" ({:f},{:f})[{:f},{:f}]", spin, NUT, inc, eps);
 	optional<ProgressBar> bars;
@@ -255,34 +257,34 @@ int main(int argc, char *argv[]) {
 	}
 	if (ray & 5) {
 		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * unit.pc, inc, fmt::format("view ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps));
-		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * unit.pc, inc, fmt::format("view helical({:.2f},{:.6f},{:.6f},{:.6f},{:.6f})[{:f},{:f}]", 10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6, inc, eps));
-		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * unit.pc, inc, fmt::format("view helical({:f},{:f},{:f},{:f},{:f})[{:f},{:f}]", a, inclination, periapsis, e, ascending_node, inc, eps));
-		viewPtr = make_unique<View<double>>(make_unique<Schwarzschild<double>>(), 8180. * unit.pc, inc, eps);
+		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * unit.pc, inc, fmt::format("view conical({:.2f},{:.6f},{:.6f},{:.6f},{:.6f})[{:f},{:f}]", 10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6, inc, eps));
+		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * unit.pc, inc, fmt::format("view conical({:f},{:f},{:f},{:f},{:f})[{:f},{:f}]", a, inclination, periapsis, e, ascending_node, inc, eps));
+		viewPtr = make_unique<View<PRECISION>>(*main_metric, 8180. * unit.pc, inc, eps);
 		if (ray & 4)
-			shadowPtr = make_unique<thread>(&View<double>::Shadow, viewPtr.get(), "shadow", ref(bars));
+			shadowPtr = make_unique<thread>(&View<PRECISION>::Shadow, viewPtr.get(), "shadow", ref(bars));
 	}
 	if (ray & 10) {
-		cameraPtr = make_unique<Camera<double>>(make_unique<Schwarzschild<double>>(), 1000, 5e-2, 1.e3, inc, eps);
+		cameraPtr = make_unique<Camera<PRECISION>>(*main_metric, 1000, 5e-2, 1.e3, inc, eps);
 		if (ray & 8)
-			lensPtr = make_unique<thread>(&Camera<double>::Lens, cameraPtr.get(), ref(bars));
+			lensPtr = make_unique<thread>(&Camera<PRECISION>::Lens, cameraPtr.get(), ref(bars));
 	}
 	// Integrator integ(metric::function, metric::jacobian, metric != 0);
 	TimeSystem star_time = T;
-	Particle star_0(main_metric, star_time, LAGRANGIAN, false);
+	Particle star_0(*main_metric, star_time, LAGRANGIAN, false);
 	star_0.InitializeSchwarzschildKeplerianApocenter(a * unit.mpc, e, inclination, periapsis, ascending_node, inc, eps);
 	// star_0.InitializeGeodesic(a, inclination, periapsis, ascending_node, -0.16707659553531468, 0.3822615764261866, inc, eps);
 	// star_0.InitializeSchwarzschildKeplerianApocenterHarmonic(a * unit.mpc, e, inclination, periapsis, ascending_node, inc, eps);
-	// star_0.InitializeHelical(10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6);
+	// star_0.InitializeConical(10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6);
 	// Integrator &&integrator = main_metric->GetIntegrator(metric != 0);
 	// NumPy rec(main_metric->Name() + strFormat, {12});
 	// NumPy rec(fmt::format("HotSpot a={:.1f} e={:.2f} i={:.6f} o={:.2f}", a, e, inclination, periapsis), {12});
 	NumPy rec(fmt::format("mcmc test", a, inclination, periapsis, e, ascending_node), {17});
-	boost::numeric::ublas::bounded_vector<double, 8> position;
-	boost::numeric::ublas::bounded_vector<double, 5> view_info;
+	boost::numeric::ublas::bounded_vector<PRECISION, 8> position;
+	boost::numeric::ublas::bounded_vector<PRECISION, 5> view_info;
 	int status = 0;
-	double h = 1., stepPercent = 100. / tStepNumber;
+	PRECISION h = 1., stepPercent = 100. / tStepNumber;
 	h = -1;
-	auto object_pointer_collector = vector<Object<double> *>{&star_0};
+	auto object_pointer_collector = vector<Object<PRECISION> *>{&star_0};
 	if (status = star_0.IntegratorApply(t, 0., h); status != 0)
 		PrintlnWarning("star_0.IntegratorApply() = {}", status);
 	h = 1;
@@ -320,5 +322,5 @@ int main(int argc, char *argv[]) {
 		shadowPtr->join();
 	if (ray & 8)
 		lensPtr->join();
-	return Status::SUCCESS;
+	return StatusCode::SUCCESS;
 }

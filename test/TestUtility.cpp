@@ -37,23 +37,25 @@
 using namespace std;
 using namespace SBody;
 
+#define PRECISION long double
+
 BOOST_AUTO_TEST_CASE(TestPolySolveQuadratic) {
-	long double roots[2];
-	BOOST_CHECK_EQUAL(PolySolveQuadratic(1.l, 1.l, -1.l, roots), 2);
+	PRECISION roots[2];
+	BOOST_CHECK_EQUAL(PolySolveQuadratic(static_cast<PRECISION>(1.), static_cast<PRECISION>(1.), static_cast<PRECISION>(-1.), roots), 2);
 	BOOST_CHECK_CLOSE_FRACTION(roots[0], -1.6180339887498948482045868343656381177203091798057638l, 1e-15);
 	BOOST_CHECK_CLOSE_FRACTION(roots[1], 0.61803398874989484820458683436563811772030917980576384l, 1e-15);
 }
 
 BOOST_AUTO_TEST_CASE(TestPolySolveCubic) {
-	long double roots[3];
-	BOOST_CHECK_EQUAL(PolySolveCubic(5.l, 1.l, -1.l, roots), 3);
+	PRECISION roots[3];
+	BOOST_CHECK_EQUAL(PolySolveCubic(static_cast<PRECISION>(5.), static_cast<PRECISION>(1.), static_cast<PRECISION>(-1.), roots), 3);
 	BOOST_CHECK_CLOSE_FRACTION(roots[0], -4.74482607768192328566, 1e-15);
 	BOOST_CHECK_CLOSE_FRACTION(roots[1], -0.604068139818793694131, 1e-15);
 	BOOST_CHECK_CLOSE_FRACTION(roots[2], 0.348894217500716979788, 1e-15);
 }
 
 BOOST_AUTO_TEST_CASE(TestCarlsonRC) {
-	BOOST_CHECK_CLOSE_FRACTION(CarlsonRC(0.1l, -0.2l), 1.2022125790504758, 1e-15);
+	BOOST_CHECK_CLOSE_FRACTION(CarlsonRC(static_cast<PRECISION>(0.1), static_cast<PRECISION>(-0.2)), 1.2022125790504758, 1e-15);
 }
 
 BOOST_AUTO_TEST_CASE(TestCarlsonRJ) {
@@ -61,15 +63,15 @@ BOOST_AUTO_TEST_CASE(TestCarlsonRJ) {
 }
 
 BOOST_AUTO_TEST_CASE(TestEllint_1) {
-	const double phi = 0.5l;
-	const double k = 0.2l;
+	const PRECISION phi = 0.5l;
+	const PRECISION k = 0.2l;
 	BOOST_CHECK_CLOSE_FRACTION(boost::math::ellint_1(k, phi), 0.5007959922424561, 1e-15);
 	BOOST_CHECK_CLOSE_FRACTION(boost::math::ellint_1(k), 1.5868678474541662, 1e-15);
 }
 
 BOOST_AUTO_TEST_CASE(TestEllint_2) {
-	const double phi = 0.5l;
-	const double k = 0.2l;
+	const PRECISION phi = 0.5l;
+	const PRECISION k = 0.2l;
 	BOOST_CHECK_CLOSE_FRACTION(boost::math::ellint_2(k, phi), 0.49920624167354444, 1e-15);
 	BOOST_CHECK_CLOSE_FRACTION(boost::math::ellint_2(k), 1.5549685462425293, 1e-15);
 }
@@ -95,9 +97,9 @@ BOOST_AUTO_TEST_CASE(TestJacobiElliptic) {
 
 BOOST_AUTO_TEST_CASE(TestLUDecomposition) {
 	namespace ublas = boost::numeric::ublas;
-	ublas::bounded_matrix<double, 3, 3> A, LU;
+	ublas::bounded_matrix<PRECISION, 3, 3> A, LU;
 	ublas::permutation_matrix permutation(3);
-	ublas::bounded_vector<double, 3> b, x;
+	ublas::bounded_vector<PRECISION, 3> b, x;
 	A(0, 0) = 4.;
 	A(0, 1) = 3.;
 	A(0, 2) = 2.;
@@ -122,51 +124,40 @@ BOOST_AUTO_TEST_CASE(TestLUDecomposition) {
 
 BOOST_AUTO_TEST_CASE(TestTwoSidedJacobian) {
 	namespace ublas = boost::numeric::ublas;
-	int status = Status::SUCCESS;
-	auto func = [](boost::numeric::ublas::bounded_vector<double, 2> &x, boost::numeric::ublas::bounded_vector<double, 2> &f) -> int {
+	auto func = [](const boost::numeric::ublas::bounded_vector<PRECISION, 2> &x, boost::numeric::ublas::bounded_vector<PRECISION, 2> &f, double &_) -> int {
 		f(0) = x(0) * x(0) * x(1) + std::sin(x(1));
 		f(1) = x(0) * x(1) * x(1) + std::cos(x(0));
-		return Status::SUCCESS;
+		return StatusCode::SUCCESS;
 	};
-	boost::numeric::ublas::bounded_vector<double, 2> x, f;
+	double no_use = 0.;
+	DNewtonMultiFunctionSolver<PRECISION, 2, double> solver(func, no_use);
+	boost::numeric::ublas::bounded_vector<PRECISION, 2> x, x_dir, f;
 	x(0) = 0.5;
 	x(1) = 1.;
+	x_dir(0) = 0.5;
+	x_dir(1) = 0.5;
 	f(0) = 0.25 + std::sin(1);
 	f(1) = 0.5 + std::cos(0.5);
-	boost::numeric::ublas::bounded_matrix<double, 2, 2> jacobian;
-	double relative_epsilon = 1e-7;
-	ublas::bounded_vector<double, 2>
-		x1(x), f_trial_plus, f_trial_minus;
-	for (std::size_t j = 0; j < 2; ++j) {
-		const double x_j = x(j);
-		double dx = std::abs(x_j) >= 1. ? relative_epsilon * x_j : std::copysign(relative_epsilon, x_j);
-		while (std::abs(dx) > std::abs(x_j) * boost::math::tools::epsilon<double>()) {
-			x1(j) = x_j + dx;
-			if (status = func(x1, f_trial_plus); status == Status::SUCCESS)
-				break;
-			dx *= 0.5;
-		}
-		if (status != Status::SUCCESS) {
-			dx = std::abs(x_j) >= 1. ? relative_epsilon * x_j : std::copysign(relative_epsilon, x_j);
-			while (std::abs(dx) > std::abs(x_j) * boost::math::tools::epsilon<double>()) {
-				x1(j) = x_j - dx;
-				if (status = func(x1, f_trial_minus); status == Status::SUCCESS)
-					break;
-				dx *= 0.5;
-			}
-			if (status != Status::SUCCESS)
-				ublas::matrix_column(jacobian, j) = (f - f_trial_minus) / dx;
-		} else {
-			x1(j) = x_j - dx;
-			if (status = func(x1, f_trial_minus); status == Status::SUCCESS)
-				ublas::matrix_column(jacobian, j) = (f - f_trial_minus) / dx;
-			else
-				ublas::matrix_column(jacobian, j) = 0.5 * (f_trial_plus - f_trial_minus) / dx;
-		}
-		x1(j) = x_j;
-	}
+	boost::numeric::ublas::bounded_matrix<PRECISION, 2, 2> jacobian, directional_jacobian;
+	PRECISION relative_epsilon = 1e-7;
+	solver.TwoSidedJacobian(x, f, relative_epsilon, jacobian);
+	solver.TwoSidedDirectionalJacobian(x, x_dir, f, relative_epsilon, directional_jacobian);
+	BOOST_CHECK_CLOSE_FRACTION(jacobian(0, 0), directional_jacobian(0, 0), 1e-10);
+	BOOST_CHECK_CLOSE_FRACTION(jacobian(0, 1), directional_jacobian(0, 1), 1e-10);
+	BOOST_CHECK_CLOSE_FRACTION(jacobian(1, 0), directional_jacobian(1, 0), 1e-10);
+	BOOST_CHECK_CLOSE_FRACTION(jacobian(1, 1), directional_jacobian(1, 1), 1e-10);
 }
 
 BOOST_AUTO_TEST_CASE(TestCoordinateOrthogonalization) {
 	BOOST_CHECK_CLOSE_FRACTION(CarlsonRJ(0.2l, 0.1l, 0.3l, 0.4l), 7.584662876718954, 1e-15);
+}
+
+BOOST_AUTO_TEST_CASE(TestRotationAngleOfPerpendicularCoordiante) {
+	double sin_theta_observer = M_SQRT1_2;
+	double cos_theta_observer = M_SQRT1_2;
+	double iota, sin_iota, cos_iota, phi;
+	int status = RotationAngleOfPerpendicularCoordiante(sin_theta_observer, cos_theta_observer, 1., 0., M_SQRT1_2, -M_SQRT1_2, iota, sin_iota, cos_iota, phi);
+	BOOST_CHECK_EQUAL(status, StatusCode::SUCCESS);
+	BOOST_CHECK_CLOSE_FRACTION(iota, std::atan2(0.5, M_SQRT1_2), 1e-15);
+	BOOST_CHECK_CLOSE_FRACTION(phi, boost::math::constants::two_thirds_pi<double>(), 1e-15);
 }

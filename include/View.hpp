@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <boost/algorithm/algorithm.hpp>
+#include <boost/numeric/odeint/stepper/runge_kutta_dopri5.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include <fmt/core.h>
@@ -36,7 +37,7 @@
 namespace SBody {
 	template <typename Type>
 	struct TraceParameters {
-		std::shared_ptr<Metric<Type>> metric;
+		const Metric<Type> &metric;
 		std::function<void(const boost::numeric::ublas::bounded_vector<Type, 8> &, boost::numeric::ublas::bounded_vector<Type, 8> &, const Type)> integration_system;
 		boost::numeric::ublas::bounded_vector<Type, 8> &photon;
 		Type &photon_time;
@@ -44,12 +45,14 @@ namespace SBody {
 		const Type theta_obs, sin_theta_obs, cos_theta_obs;
 		const Type r_obj, x_obj, y_obj, z_obj;
 		const Type t_final;
-		TraceParameters(std::shared_ptr<Metric<Type>> metric, std::function<void(const boost::numeric::ublas::bounded_vector<Type, 8> &, boost::numeric::ublas::bounded_vector<Type, 8> &, const Type)> integration_system, boost::numeric::ublas::bounded_vector<Type, 8> &photon, Type &photon_time, Type r, Type r2, Type theta_obs, Type sin_theta_obs, Type cos_theta_obs, Type r_obj, Type sin_theta_obj, Type cos_theta_obj, Type sin_phi_obj, Type cos_phi_obj, Type t_final) : metric(metric), integration_system(integration_system), photon(photon), photon_time(photon_time), r(r), r2(r2), theta_obs(theta_obs), sin_theta_obs(sin_theta_obs), cos_theta_obs(cos_theta_obs), r_obj(r_obj), x_obj(r_obj * sin_theta_obj * cos_phi_obj), y_obj(r_obj * sin_theta_obj * sin_phi_obj), z_obj(r_obj * cos_theta_obj), t_final(t_final) {}
+		TraceParameters(const Metric<Type> &metric, boost::numeric::ublas::bounded_vector<Type, 8> &photon, Type &photon_time, Type r, Type r2, Type theta_obs, Type sin_theta_obs, Type cos_theta_obs, Type r_obj, Type sin_theta_obj, Type cos_theta_obj, Type sin_phi_obj, Type cos_phi_obj, Type t_final) : metric(metric), photon(photon), photon_time(photon_time), r(r), r2(r2), theta_obs(theta_obs), sin_theta_obs(sin_theta_obs), cos_theta_obs(cos_theta_obs), r_obj(r_obj), x_obj(r_obj * sin_theta_obj * cos_phi_obj), y_obj(r_obj * sin_theta_obj * sin_phi_obj), z_obj(r_obj * cos_theta_obj), t_final(t_final) {
+			metric.GetIntegrationSystem(integration_system, T, HAMILTONIAN);
+		}
 	};
 	template <typename Type>
 	class View {
 	  protected:
-		std::shared_ptr<Metric<Type>> metric_;
+		const Metric<Type> &metric_;
 		std::function<void(const boost::numeric::ublas::bounded_vector<Type, 8> &, boost::numeric::ublas::bounded_vector<Type, 8> &, const Type)> integration_system_;
 		/// Distance to the center black hole
 		const Type r_;
@@ -80,7 +83,7 @@ namespace SBody {
 		 * @param theta Angle between the observer and the \f$z\f$ axis, \f$\theta\f$.
 		 * @param iota Rotational angle of the coordiante of the view, \f$\iota\f$.
 		 */
-		View(std::shared_ptr<Metric<Type>> metric, Type r, Type theta, Type iota, Type v_alpha = 0.0, Type v_beta = 0.0) : metric_(metric), integration_system_(metric->GetIntegrationSystem(T, HAMILTONIAN)), r_(r), r2_(r * r), theta_(theta), sin_theta_(std::sin(theta)), cos_theta_(std::cos(theta)), iota_(iota), sin_iota_(std::sin(iota)), cos_iota_(std::cos(iota)), t_final_(-2e4) {
+		View(const Metric<Type> &metric, Type r, Type theta, Type iota, Type v_alpha = 0.0, Type v_beta = 0.0) : metric_(metric), r_(r), r2_(r * r), theta_(theta), sin_theta_(std::sin(theta)), cos_theta_(std::cos(theta)), iota_(iota), sin_iota_(std::sin(iota)), cos_iota_(std::cos(iota)), t_final_(-2e4) {
 			position_[0] = 0.0;
 			position_[1] = r_;
 			position_[2] = theta_;
@@ -102,7 +105,8 @@ namespace SBody {
 				position_[6] = v_xz / r_;
 				position_[7] = -v_y / (r * sin_theta_);
 			}
-			metric_->NormalizeTimelikeGeodesic(position_);
+			metric_.NormalizeTimelikeGeodesic(position_);
+			metric_.GetIntegrationSystem(integration_system_, T, HAMILTONIAN);
 			// record[0] = alpha * cos_iota_ - beta * sin_iota_; // alpha
 			// record[1] = beta * cos_iota_ + alpha * sin_iota_; // beta
 		}
@@ -116,7 +120,7 @@ namespace SBody {
 		 * @return status
 		 */
 		int InitializePhoton(boost::numeric::ublas::bounded_vector<Type, 8> &photon, Type &photon_time, Type alpha, Type beta) {
-			return metric_->InitializePhoton(photon, photon_time, alpha, beta, r_, r2_, theta_, sin_theta_);
+			return metric_.InitializePhoton(photon, photon_time, alpha, beta, r_, r2_, theta_, sin_theta_);
 		}
 
 		/**
@@ -129,20 +133,28 @@ namespace SBody {
 		 * @param fast_trace switch of the fast trace
 		 * @return status
 		 */
-		int Trace(const boost::numeric::ublas::bounded_vector<Type, 8> &position, TimeSystem object_time, boost::numeric::ublas::bounded_vector<Type, 5> &record, bool calculate_magnification, bool fast_trace = true) {
+		int Trace(const boost::numeric::ublas::bounded_vector<Type, 8> &position, TimeSystem object_time, boost::numeric::ublas::bounded_vector<Type, 5> &record, bool calculate_magnification, bool fast_trace_only = true) {
 			namespace ublas = boost::numeric::ublas;
 			Type alpha, beta;
 			ublas::bounded_vector<Type, 8> photon;
 			Type photon_time;
-			if (fast_trace && metric_->FastTrace(r_, theta_, sin_theta_, cos_theta_, position[1], position[2], position[3], alpha, beta, photon, photon_time) == Status::SUCCESS) {
-				PhotonInformation(position, object_time, record, photon, photon_time, alpha, beta);
-				return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : Status::SUCCESS;
+			int status = StatusCode::SUCCESS;
+			try {
+				status = metric_.FastTrace(r_, theta_, sin_theta_, cos_theta_, position[1], position[2], position[3], alpha, beta, photon, photon_time);
+			} catch (...) {
+				status = StatusCode::FAILURE;
 			}
+			if (status == StatusCode::SUCCESS) {
+				PhotonInformation(position, object_time, record, photon, photon_time, alpha, beta);
+				return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : StatusCode::SUCCESS;
+			}
+			if (fast_trace_only)
+				return status;
 			const Type r_object = position[1], sin_theta_object = SinTheta(position[2]), cos_theta_object = CosTheta(position[2]), sin_phi_object = std::sin(position[3]), cos_phi_object = std::cos(position[3]);
 			if (r_object <= 3.) {
 				PrintlnWarning("Object orbit radius = {:.6f}", r_object);
 				if (r_object < 0)
-					return Status::FALLS_INTO_BLACK_HOLE;
+					return StatusCode::FALL_INTO_BLACK_HOLE;
 			}
 			const Type cos_observer_object = sin_theta_ * sin_theta_object * cos_phi_object + cos_theta_ * cos_theta_object;
 			const Type alpha_coefficient = sin_theta_object * sin_phi_object, beta_coefficient = cos_theta_object * sin_theta_ - sin_theta_object * cos_phi_object * cos_theta_, sin_observer_object = std::hypot(alpha_coefficient, beta_coefficient), theta_observer_object = std::acos(cos_observer_object);
@@ -161,61 +173,57 @@ namespace SBody {
 				alpha_beta_initial_value(0) = effective_radius * alpha_coefficient;
 				alpha_beta_initial_value(1) = effective_radius * beta_coefficient;
 			}
-			TraceParameters trace_parameters(metric_, metric_->GetIntegrationSystem(T, HAMILTONIAN), photon, photon_time, r_, r2_, theta_, sin_theta_, cos_theta_, position[1], sin_theta_object, cos_theta_object, sin_phi_object, cos_phi_object, t_final_);
-			int status;
-			DNewtonTranslationMultiFunctionSolver<Type, 2, TraceParameters<Type>> alpha_beta_translation_solver(TraceToPlane, trace_parameters);
-			if (status = alpha_beta_translation_solver.Set(alpha_beta_initial_value, theta_, sin_theta_, cos_theta_, r_object, sin_theta_object, cos_theta_object, position[3], sin_phi_object, cos_phi_object, true); status == Status::SUCCESS)
-				if (status = alpha_beta_translation_solver.Solve(r_object * boost::math::tools::root_epsilon<Type>()); status == Status::SUCCESS) {
-					alpha = alpha_beta_translation_solver.Root()(0);
-					beta = alpha_beta_translation_solver.Root()(1);
-					photon_time -= r_;
-					PhotonInformation(position, object_time, record, photon, photon_time, alpha, beta);
-					return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : Status::SUCCESS;
-				}
-			DNewtonRotationMultiFunctionSolver<Type, 2, TraceParameters<Type>> alpha_beta_rotation_solver(TraceToPlane, trace_parameters);
-			if (status = alpha_beta_rotation_solver.Set(alpha_beta_translation_solver.Root(), theta_, sin_theta_, cos_theta_, r_object, sin_theta_object, cos_theta_object, position[3], sin_phi_object, cos_phi_object, true); status == Status::SUCCESS)
-				if (status = alpha_beta_rotation_solver.Solve(r_object * boost::math::tools::root_epsilon<Type>()); status == Status::SUCCESS) {
-					alpha = alpha_beta_rotation_solver.Root()(0);
-					beta = alpha_beta_rotation_solver.Root()(1);
-					photon_time -= r_;
-					PhotonInformation(position, object_time, record, photon, photon_time, alpha, beta);
-					return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : Status::SUCCESS;
-				}
-			// PrintlnWarning("Kerr FastTrace() TRANSLATION failed with status = {}", status);
-			DirectionMultiFunctionSolver<Type, 2, TraceParameters<Type>> alpha_beta_direction_solver(TraceToPlane, trace_parameters);
-			if (status = alpha_beta_direction_solver.Set(alpha_beta_rotation_solver.Root()); status == Status::SUCCESS)
-				// PrintlnError("Kerr Trace() set DIRECTION failed with status = {}", status);
-				if (status = alpha_beta_direction_solver.Solve(r_object * boost::math::tools::root_epsilon<Type>()); status == Status::SUCCESS) {
-					// PrintlnError("Kerr Trace() DIRECTION failed with status = {}", status);
-					alpha = alpha_beta_direction_solver.Root()(0);
-					beta = alpha_beta_direction_solver.Root()(1);
-					photon_time -= r_;
-					PhotonInformation(position, object_time, record, photon, photon_time, alpha, beta);
-					return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : Status::SUCCESS;
-				}
-			return status;
+			TraceParameters trace_parameters(metric_, photon, photon_time, r_, r2_, theta_, sin_theta_, cos_theta_, position[1], sin_theta_object, cos_theta_object, sin_phi_object, cos_phi_object, t_final_);
+			DNewtonMultiFunctionSolver<Type, 2, TraceParameters<Type>> alpha_beta_solver(TraceToPlane, trace_parameters);
+			if (status = alpha_beta_solver.Set(alpha_beta_initial_value); status != StatusCode::SUCCESS)
+				return status;
+			if (status = alpha_beta_solver.Solve(r_object * boost::math::tools::root_epsilon<double>()); status != StatusCode::SUCCESS)
+				return status;
+			// DNewtonRotationMultiFunctionSolver<Type, 2, TraceParameters<Type>> alpha_beta_rotation_solver(TraceToPlane, trace_parameters);
+			// if (alpha_beta_rotation_solver.Set(alpha_beta_initial_value, theta_, sin_theta_, cos_theta_, r_object, sin_theta_object, cos_theta_object, position[3], sin_phi_object, cos_phi_object, SPIN_CENTER_OFFSET * metric_->a_ * sin_theta_object / r_object, 0., true) != StatusCode::SUCCESS || alpha_beta_rotation_solver.Solve(r_object * boost::math::tools::root_epsilon<double>()) != StatusCode::SUCCESS) {
+			// 	DNewtonTranslationMultiFunctionSolver<Type, 2, TraceParameters<Type>> alpha_beta_translation_solver(TraceToPlane, trace_parameters);
+			// 	if (alpha_beta_translation_solver.Set(alpha_beta_rotation_solver.Root(), theta_, sin_theta_, cos_theta_, r_object, sin_theta_object, cos_theta_object, position[3], sin_phi_object, cos_phi_object, true) != StatusCode::SUCCESS || alpha_beta_translation_solver.Solve(r_object * boost::math::tools::root_epsilon<double>()) != StatusCode::SUCCESS) {
+			// 		DirectionMultiFunctionSolver<Type, 2, TraceParameters<Type>> alpha_beta_direction_solver(TraceToPlane, trace_parameters);
+			// 		if (status = alpha_beta_direction_solver.Set(alpha_beta_translation_solver.Root()); status != StatusCode::SUCCESS)
+			// 			return status;
+			// 		if (status = alpha_beta_direction_solver.Solve(r_object * boost::math::tools::root_epsilon<double>()); status != StatusCode::SUCCESS)
+			// 			return status;
+			// 		alpha = alpha_beta_direction_solver.Root()(0);
+			// 		beta = alpha_beta_direction_solver.Root()(1);
+			// 	} else {
+			// 		alpha = alpha_beta_translation_solver.Root()(0);
+			// 		beta = alpha_beta_translation_solver.Root()(1);
+			// 	}
+			// } else {
+			// 	alpha = alpha_beta_rotation_solver.Root()(0);
+			// 	beta = alpha_beta_rotation_solver.Root()(1);
+			// }
+			alpha = alpha_beta_solver.Root()(0);
+			beta = alpha_beta_solver.Root()(1);
+			PhotonInformation(position, object_time, record, photon, photon_time, alpha, beta);
+			return calculate_magnification ? Magnification(position, object_time, record[4], photon, record[2]) : StatusCode::SUCCESS;
 		}
 
 		static int TraceToPlane(const boost::numeric::ublas::bounded_vector<Type, 2> &alpha_beta, boost::numeric::ublas::bounded_vector<Type, 2> &delta_apparent_alpha_beta, TraceParameters<Type> &params) {
 			Type alpha = alpha_beta(0), beta = alpha_beta(1);
 			if (!std::isfinite(alpha) || !std::isfinite(beta))
-				return Status::NUMERIC_ERROR;
+				return StatusCode::NUMERIC_ERROR;
 			Type photon_time;
-			if (int status = params.metric->InitializePhoton(params.photon, photon_time, alpha, beta, params.r, params.r2, params.theta_obs, params.sin_theta_obs); status != Status::SUCCESS)
+			if (int status = params.metric.InitializePhoton(params.photon, photon_time, alpha, beta, params.r, params.r2, params.theta_obs, params.sin_theta_obs); status != StatusCode::SUCCESS)
 				return status;
-			params.metric->LagrangianToHamiltonian(params.photon);
+			params.metric.LagrangianToHamiltonian(params.photon);
 			Type h = -0.01 * params.r, last_h;
 #ifdef SBODY_RELEASE
 			auto wall_clock_start_time = std::chrono::steady_clock::now();
 #endif
 			auto integration_stepper = boost::numeric::odeint::make_dense_output(absolute_accuracy, relative_accuracy, boost::numeric::odeint::runge_kutta_dopri5<boost::numeric::ublas::bounded_vector<Type, 8>>());
 			integration_stepper.initialize(params.photon, photon_time, h);
-			Type photon_last_theta = params.photon[2], photon_hit_time, photon_hit_time_lower_bound, photon_hit_time_upper_bound;
-			while (true) {
+			Type photon_last_theta = params.photon[2], photon_hit_time, photon_hit_time_lower_bound, photon_hit_time_upper_bound = photon_time;
+			while (photon_hit_time_upper_bound > params.t_final) {
 				try {
 					integration_stepper.do_step(params.integration_system);
 				} catch (const std::exception &e) {
-					return Status::FAILURE;
+					return StatusCode::FAILURE;
 				}
 				const boost::numeric::ublas::bounded_vector<Type, 8> &photon_state = integration_stepper.current_state();
 				if (const Type cos_observer_object_photon = (params.x_obj - photon_state[1] * SinTheta(photon_state[2]) * std::cos(photon_state[3])) * params.sin_theta_obs + (params.z_obj - photon_state[1] * CosTheta(photon_state[2])) * params.cos_theta_obs; cos_observer_object_photon >= 0.) {
@@ -231,40 +239,37 @@ namespace SBody {
 							photon_hit_time_upper_bound = photon_hit_time;
 					}
 					// photon in the same plane with the object
-					params.photon_time = photon_hit_time;
+					params.photon_time = photon_hit_time - params.r;
 					delta_apparent_alpha_beta(0) = params.y_obj - photon_hit_state[1] * SinTheta(photon_hit_state[2]) * std::sin(photon_hit_state[3]);
 					delta_apparent_alpha_beta(1) = (params.z_obj - photon_hit_state[1] * CosTheta(photon_hit_state[2])) * params.sin_theta_obs - (params.x_obj - photon_hit_state[1] * SinTheta(photon_hit_state[2]) * std::cos(photon_hit_state[3])) * params.cos_theta_obs;
-					return Status::SUCCESS;
+					return StatusCode::SUCCESS;
 				}
 				// photon fall into the BH
 				if (std::abs(photon_state[5]) * boost::math::tools::root_epsilon<Type>() > 1.) {
 					delta_apparent_alpha_beta(0) = 1.1;
-					return Status::SCALING_REQUIRED;
+					return StatusCode::SCALING_REQUIRED;
 				}
 #ifdef SBODY_RELEASE
 				if (std::chrono::steady_clock::now() - wall_clock_start_time > std::chrono::milliseconds(100)) {
 					delta_apparent_alpha_beta(0) = 1.1;
-					return Status::COMPUTATION_TIMEOUT;
+					return StatusCode::COMPUTATION_TIMEOUT;
 				}
 #endif
 				// photon has not reached the plane of the object
-				if (integration_stepper.current_time() > params.t_final) {
-					photon_hit_time_upper_bound = integration_stepper.current_time();
-					DenseStepperMapTheta(integration_stepper, photon_last_theta);
-					continue;
-				}
-				// photon failed to hit the plane, the impact params need to be larger
-				delta_apparent_alpha_beta(0) = 1.01;
-				return Status::SCALING_REQUIRED;
+				photon_hit_time_upper_bound = integration_stepper.current_time();
+				DenseStepperMapTheta(integration_stepper, photon_last_theta);
 			}
+			// photon failed to hit the plane, the impact params need to be larger
+			delta_apparent_alpha_beta(0) = 1.01;
+			return StatusCode::SCALING_REQUIRED;
 		}
 
 		int PhotonInformation(const boost::numeric::ublas::bounded_vector<Type, 8> &position, TimeSystem object_time, boost::numeric::ublas::bounded_vector<Type, 5> &record, const boost::numeric::ublas::bounded_vector<Type, 8> &photon, Type photon_time, Type alpha, Type beta) {
-			record(0) = alpha * cos_iota_ - beta * sin_iota_;				 // alpha
-			record(1) = beta * cos_iota_ + alpha * sin_iota_;				 // beta
-			record(2) = metric_->Redshift(position, photon, object_time, T); // redshift
-			record(3) = photon_time;										 // look back time
-			return Status::SUCCESS;
+			record(0) = alpha * cos_iota_ - beta * sin_iota_;				// alpha
+			record(1) = beta * cos_iota_ + alpha * sin_iota_;				// beta
+			record(2) = metric_.Redshift(position, photon, object_time, T); // redshift
+			record(3) = photon_time;										// look back time
+			return StatusCode::SUCCESS;
 		}
 
 		/**
@@ -279,35 +284,18 @@ namespace SBody {
 		 */
 		int Magnification(const boost::numeric::ublas::bounded_vector<Type, 8> &position, TimeSystem object_time, Type &magnification, const boost::numeric::ublas::bounded_vector<Type, 8> &photon, Type redshift) {
 			namespace ublas = boost::numeric::ublas;
-			boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_dopri5<ublas::bounded_vector<Type, 8>>> integration_stepper;
-			ublas::bounded_vector<Type, 8> forward_photon;
-			ublas::bounded_vector<Type, 3> cone_record[SAMPLE_NUMBER], local_cone_record[SAMPLE_NUMBER], center_photon_velocity;
-			auto forward_photon_velocity = ublas::vector_range(forward_photon, ublas::range(4, 8));
-			forward_photon = photon;
-			metric_->NormalizeNullGeodesic(forward_photon);
-			metric_->LagrangianToHamiltonian(forward_photon);
-			try {
-				boost::numeric::odeint::integrate_adaptive(integration_stepper, integration_system_, forward_photon, 0.0, 1000., 1.0);
-			} catch (const std::exception &e) {
-				return Status::FAILURE;
-			}
-			metric_->HamiltonianToLagrangian(forward_photon);
-			SphericalToCartesian(forward_photon);
-			std::copy(forward_photon.begin() + 5, forward_photon.end(), center_photon_velocity.begin());
-			center_photon_velocity /= ublas::norm_2(center_photon_velocity);
-			ublas::bounded_matrix<Type, 4, 4> gmunu;			   // object local metric tensor
-			ublas::bounded_matrix<Type, 4, 4> coordinate;		   // object local inertial coordinate frame
-			ublas::bounded_matrix<Type, 4, 4> coordinate_gmunu;	   // object local inertial coordinate frame
-			ublas::permutation_matrix<std::size_t> permutation(4); // permutation used in the LU decomposition
-			ublas::bounded_vector<Type, 4> photon_transform;	   // photon in TimeSystem TAU
+			boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_fehlberg78<ublas::bounded_vector<Type, 8>>> integration_stepper;
+			ublas::bounded_matrix<Type, 4, 4> gmunu;		 // object local metric tensor
+			ublas::bounded_matrix<Type, 4, 4> coordinate;	 // object local inertial coordinate frame
+			ublas::bounded_vector<Type, 4> photon_transform; // photon in TimeSystem TAU
 			ublas::bounded_vector<Type, 4> photon_in_object_frame_cartesian, photon_in_object_frame_spherical;
-			metric_->MetricTensor(position, gmunu);
-			metric_->LocalInertialFrame(position, object_time, coordinate);
-			coordinate_gmunu = ublas::prod(gmunu, coordinate);									// gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu_gsl, coordinate_gsl, 0., coordinate_gmunu_gsl);
-			std::copy(photon.begin() + 5, photon.end(), photon_transform.begin() + 1);			// std::copy(photon.begin() + 5, photon.end(), gsl_vector_ptr(photon_transform_gsl, 1));
-			photon_transform(0) = 1.;															// gsl_vector_set(photon_transform_gsl, 0, 1.);
-			photon_in_object_frame_cartesian = ublas::prod(coordinate_gmunu, photon_transform); // gsl_blas_dgemv(CblasNoTrans, 1., coordinate_gmunu_gsl, photon_transform_gsl, 0., photon_in_object_frame_cartesian_gsl);
-			photon_in_object_frame_cartesian /= photon_in_object_frame_cartesian(0);			// gsl_vector_scale(photon_in_object_frame_cartesian, 1. / gsl_vector_get(photon_in_object_frame_cartesian, 0));
+			metric_.MetricTensor(position, gmunu);
+			metric_.LocalInertialFrame(position, object_time, coordinate);
+			ublas::bounded_matrix<Type, 4, 4> coordinate_gmunu = ublas::prod(coordinate, gmunu); // object local inertial coordinate frame
+			std::copy(photon.begin() + 5, photon.end(), photon_transform.begin() + 1);
+			photon_transform(0) = 1.;
+			photon_in_object_frame_cartesian = ublas::prod(coordinate_gmunu, photon_transform);
+			photon_in_object_frame_cartesian /= Type{-photon_in_object_frame_cartesian(0)};
 			CartesianToSpherical(photon_in_object_frame_cartesian, photon_in_object_frame_spherical);
 #ifndef SBODY_RELEASE
 			ublas::bounded_matrix<Type, 4, 4> coordinate_static;	   // object local static frame (only dt/d\tau != 0)
@@ -317,28 +305,42 @@ namespace SBody {
 			coordinate_static(1, 1) = std::sqrt(1. / gmunu(1, 1));
 			coordinate_static(2, 2) = std::sqrt(1. / gmunu(2, 2));
 			coordinate_static(3, 3) = std::sqrt(1. / gmunu(3, 3));
-			coordinate_static_gmunu = ublas::prod(gmunu, coordinate_static);
+			coordinate_static_gmunu = ublas::prod(coordinate_static, gmunu);
 			photon_in_static_frame_cartesian = ublas::prod(coordinate_static_gmunu, photon_transform);
 			// gsl_blas_dsymm(CblasRight, CblasUpper, 1., gmunu_gsl, coordinate_static, 0., coordinate_static_gmunu);
 			// gsl_blas_dgemv(CblasNoTrans, 1., coordinate_static_gmunu, photon_transform, 0., photon_in_static_frame_cartesian);
 			// local_redshift should equal to sqrt(EPSILON_POLYGON_AREA / cone_local_solid_angle),
 			// the main error comes from the calculation of the cone_local_solid_angle, due to the limited SAMPLE_NUMBER.
 			const Type local_redshift = photon_in_object_frame_cartesian(0) / photon_in_static_frame_cartesian(0);
-			photon_in_static_frame_cartesian /= photon_in_static_frame_cartesian(0);
+			photon_in_static_frame_cartesian /= Type{photon_in_static_frame_cartesian(0)};
 #endif
-			int signum;
+			ublas::bounded_vector<Type, 8> forward_photon = photon;
+			ublas::bounded_vector<Type, 3> cone_record[SAMPLE_NUMBER], local_cone_record[SAMPLE_NUMBER], center_photon_velocity;
+			metric_.NormalizeNullGeodesic(forward_photon);
+			metric_.LagrangianToHamiltonian(forward_photon);
+			try {
+				boost::numeric::odeint::integrate_adaptive(integration_stepper, integration_system_, forward_photon, 0.0, 1000., 1.0);
+			} catch (const std::exception &e) {
+				return StatusCode::FAILURE;
+			}
+			metric_.HamiltonianToLagrangian(forward_photon);
+			SphericalToCartesian(forward_photon);
+			std::copy(forward_photon.begin() + 5, forward_photon.end(), center_photon_velocity.begin());
+			center_photon_velocity /= ublas::norm_2(center_photon_velocity);
+			ublas::permutation_matrix<std::size_t> permutation(4); // permutation used in the LU decomposition
 			ublas::lu_factorize(coordinate_gmunu, permutation);
+			auto forward_photon_velocity = ublas::vector_range(forward_photon, ublas::range(4, 8));
 			for (int i = 0; i < SAMPLE_NUMBER; ++i) {
 				const Type angle = i * ANGLE_INTERVAL;
 				std::copy(photon.begin(), photon.begin() + 4, forward_photon.begin());
 				forward_photon[4] = -1.;
-				forward_photon[5] = std::cos(angle) * SIN_EPSILON;
-				forward_photon[6] = std::sin(angle) * SIN_EPSILON;
+				forward_photon[5] = std::cos(angle) * Type{SIN_EPSILON};
+				forward_photon[6] = std::sin(angle) * Type{SIN_EPSILON};
 				forward_photon[7] = COS_EPSILON;
 				RotateAroundAxis(forward_photon, true, Y, photon_in_object_frame_spherical[2]);
 				RotateAroundAxis(forward_photon, true, Z, photon_in_object_frame_spherical[3]);
 				ublas::lu_substitute(coordinate_gmunu, permutation, forward_photon_velocity);
-				metric_->NormalizeNullGeodesic(forward_photon);
+				metric_.NormalizeNullGeodesic(forward_photon);
 #ifndef SBODY_RELEASE
 				// local_cone_record[i][0] = metric_->DotProduct(photon, forward_photon + 4, coordinate_static->data + 4, 4);
 				local_cone_record[i][0] = ublas::inner_prod(forward_photon_velocity, ublas::matrix_row(coordinate_static_gmunu, 1));
@@ -348,13 +350,13 @@ namespace SBody {
 				local_cone_record[i][2] = ublas::inner_prod(forward_photon_velocity, ublas::matrix_row(coordinate_static_gmunu, 3));
 				local_cone_record[i] /= ublas::inner_prod(forward_photon_velocity, ublas::matrix_row(coordinate_static_gmunu, 0));
 #endif
-				metric_->LagrangianToHamiltonian(forward_photon);
+				metric_.LagrangianToHamiltonian(forward_photon);
 				try {
 					boost::numeric::odeint::integrate_adaptive(integration_stepper, integration_system_, forward_photon, 0.0, 1000., 1.0);
 				} catch (const std::exception &e) {
-					return Status::FAILURE;
+					return StatusCode::FAILURE;
 				}
-				metric_->HamiltonianToLagrangian(forward_photon);
+				metric_.HamiltonianToLagrangian(forward_photon);
 				SphericalToCartesian(forward_photon);
 				std::copy(forward_photon.begin() + 5, forward_photon.end(), cone_record[i].begin());
 				cone_record[i] /= ublas::norm_2(cone_record[i]);
@@ -366,13 +368,13 @@ namespace SBody {
 			Type cone_local_solid_angle = TriangleArea(photon_in_static_frame_cartesian_position, local_cone_record[0], local_cone_record[SAMPLE_NUMBER - 1]);
 #endif
 			for (int i = 1; i < SAMPLE_NUMBER; ++i) {
-				cone_solid_angle += TriangleArea(center_photon_velocity, cone_record[0], cone_record[SAMPLE_NUMBER - 1]);
+				cone_solid_angle += TriangleArea(center_photon_velocity, cone_record[i], cone_record[i - 1]);
 #ifndef SBODY_RELEASE
 				cone_local_solid_angle += TriangleArea(photon_in_static_frame_cartesian_position, local_cone_record[i], local_cone_record[i - 1]);
 #endif
 			}
 			magnification = EPSILON_POLYGON_AREA / (cone_solid_angle * redshift);
-			return Status::SUCCESS;
+			return StatusCode::SUCCESS;
 		}
 
 		/**
@@ -382,7 +384,7 @@ namespace SBody {
 		 * @return status
 		 */
 		int Shadow(std::string file_name, std::optional<ProgressBar> &bars) {
-			boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_dopri5<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper;
+			boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_fehlberg78<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper;
 			NumPy record(file_name, {2});
 			Type h, rin = 2., rout = 10., rmid = 6.;
 			boost::numeric::ublas::bounded_vector<Type, 8> photon;
@@ -420,11 +422,11 @@ namespace SBody {
 			}
 			if (progress_bar_index >= 0)
 				bars->SetComplete(progress_bar_index, "! Shadow");
-			return Status::SUCCESS;
+			return StatusCode::SUCCESS;
 		}
 
 		// int OmegaTest(std::optional<ProgressBar> &bars = std::nullopt) {
-		// 	boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_dopri5<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper;
+		// 	boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_fehlberg78<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper;
 		// 	Type position_[8] = {0., 3., M_PI_4, 0., 0., 0., 0., 0.};
 		// 	metric_->NormalizeTimelikeGeodesic(position_);
 		// 	gsl_matrix *coordinate = gsl_matrix_alloc(4, 4), *gmunu_gsl = gsl_matrix_alloc(4, 4), *coordinate_gmunu = gsl_matrix_alloc(4, 4);
@@ -512,7 +514,7 @@ namespace SBody {
 		// 		cone_record.Save({std::abs(area) / (boost::math::constants::two_pi<Type>() * boost::math::tools::epsilon<Type>())});
 		// 		bars.value()[0].tick();
 		// 	}
-		// 	return Status::SUCCESS;
+		// 	return StatusCode::SUCCESS;
 		// }
 	};
 
@@ -535,18 +537,18 @@ namespace SBody {
 		 * @param theta
 		 * @param file_name
 		 */
-		Camera(std::shared_ptr<Metric<Type>> metric, std::size_t pixel, Type half_angle, Type r, Type theta, Type iota) : View<Type>(metric, r, theta, iota), pixel_(pixel), half_angle_(half_angle) {
+		Camera(const Metric<Type> &metric, std::size_t pixel, Type half_angle, Type r, Type theta, Type iota) : View<Type>(metric, r, theta, iota), pixel_(pixel), half_angle_(half_angle) {
 			screen_ = std::vector<std::vector<Type>>(pixel, std::vector<Type>(pixel));
 			initial_positions_ = std::vector<boost::numeric::ublas::bounded_vector<Type, 8>>(pixel * pixel);
 			const Type pixel_size = 2. * half_angle * r / pixel, t1 = r + 100.;
-			boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_dopri5<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper;
+			boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_fehlberg78<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper;
 			for (std::size_t i = 0; i < pixel; ++i)
 				for (std::size_t j = 0; j < pixel; ++j)
 					this->InitializePhoton(initial_positions_[i * pixel + j], initial_times_[i * pixel + j], pixel_size * (i - 0.5 * pixel + 0.5), pixel_size * (j - 0.5 * pixel + 0.5));
 #pragma omp parallel for
 			for (int p = pixel * pixel - 1; p >= 0; --p) {
-				this->metric_->NormalizeNullGeodesic(initial_positions_[p], 1.);
-				this->metric_->LagrangianToHamiltonian(initial_positions_[p]);
+				this->metric_.NormalizeNullGeodesic(initial_positions_[p], 1.);
+				this->metric_.LagrangianToHamiltonian(initial_positions_[p]);
 				boost::numeric::odeint::integrate_adaptive(integration_stepper, this->integration_system_, initial_positions_[p], initial_times_[p], t1, -1.0);
 			}
 		}
@@ -557,7 +559,7 @@ namespace SBody {
 		 * @return int
 		 */
 		int Trace(std::vector<Object<Type> *> &object_list) {
-			boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_dopri5<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper;
+			boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_fehlberg78<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper;
 			const Type t1 = -1000.;
 #pragma omp parallel for
 			for (int p = pixel_ * pixel_ - 1; p >= 0; --p) {
@@ -579,7 +581,7 @@ namespace SBody {
 				if (status > 0)
 					PrintlnWarning("Camera::Trace() status = {}", status);
 			}
-			return Status::SUCCESS;
+			return StatusCode::SUCCESS;
 		}
 
 		/**
@@ -588,7 +590,7 @@ namespace SBody {
 		 * @return int
 		 */
 		int Lens(std::optional<ProgressBar> &bars) {
-			boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_dopri5<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper;
+			boost::numeric::odeint::controlled_runge_kutta<boost::numeric::odeint::runge_kutta_fehlberg78<boost::numeric::ublas::bounded_vector<Type, 8>>> integration_stepper;
 			const Type t1 = -1000. * this->r_, pixelPerAngle = 0.5 * pixel_ / half_angle_;
 			NumPy rec("lens", {2});
 			indicators::BlockProgressBar bar{
@@ -612,7 +614,7 @@ namespace SBody {
 					if (photon[1] <= 3.)
 						rec.Save({NAN, NAN});
 					else {
-						this->metric_->HamiltonianToLagrangian(photon);
+						this->metric_.HamiltonianToLagrangian(photon);
 						if (photon[2] < 0)
 							photon[2] += boost::math::constants::pi<Type>();
 						SphericalToCartesian(photon);
@@ -623,7 +625,7 @@ namespace SBody {
 				}
 			if (progress_bar_index >= 0)
 				bars->SetComplete(progress_bar_index, "! lens");
-			return Status::SUCCESS;
+			return StatusCode::SUCCESS;
 		}
 
 		/**
@@ -635,7 +637,7 @@ namespace SBody {
 			NumPy record(file_name, {2});
 			for (const std::vector<Type> &line : screen_)
 				record.Save(line);
-			return Status::SUCCESS;
+			return StatusCode::SUCCESS;
 		}
 	};
 } // namespace SBody
