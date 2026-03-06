@@ -1,8 +1,0 @@
-[submodule "indicators"]
-	path = indicators
-	url = https://github.com/p-ranav/indicators.git
-	shallow = true
-[submodule "fmt"]
-	path = fmt
-	url = https://github.com/fmtlib/fmt
-	shallow = true

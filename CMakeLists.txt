@@ -16,10 +16,73 @@ else()
     add_compile_definitions(BOOST_UBLAS_CHECK_RANGE)
 endif()
 
-set(SBODY_LIB_SHARED OFF)
-set(WITH_OPENMP ON)
-set(WITH_PYTHON ON)
-option(BUILD_DOC_ONLY "Build documentation without compiling the program" OFF)
+###############
+# Options
+###############
+
+option(WITH_OPENMP "Enable OpenMP" ON)
+option(WITH_PYTHON "Enable Python binding" ON)
+option(BUILD_DOC_ONLY "Build documentation only" OFF)
+
+###############
+# FetchContent dependencies
+###############
+
+include(FetchContent)
+
+# CLI11
+FetchContent_Declare(
+    CLI11
+    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+    GIT_TAG v2.6.2
+)
+
+# fmt
+FetchContent_Declare(
+    fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    GIT_TAG 11.2.0
+)
+
+# indicators
+FetchContent_Declare(
+    indicators
+    GIT_REPOSITORY https://github.com/p-ranav/indicators.git
+    GIT_TAG v2.3
+)
+
+FetchContent_MakeAvailable(CLI11 fmt indicators)
+
+###############
+# Boost
+###############
+
+find_package(Boost 1.71 REQUIRED COMPONENTS unit_test_framework)
+
+if(NOT BOOST_FOUND)
+    message(FATAL_ERROR "Please install Boost")
+endif()
+
+###############
+# OpenMP
+###############
+
+
+if(WITH_OPENMP)
+    find_package(OpenMP)
+
+    if(OpenMP_FOUND)
+        add_compile_definitions(WITH_OPENMP)
+        list(APPEND OPTIONAL_LIBS OpenMP::OpenMP_CXX)
+    else()
+        set(WITH_OPENMP OFF)
+        message(NOTICE "OpenMP not found")
+    endif()
+endif()
+
+###############
+# Doxygen
+###############
 
 find_package(Doxygen)
 
@@ -39,36 +102,67 @@ if(DOXYGEN_FOUND)
     endif()
 endif()
 
-find_package(Boost 1.71 REQUIRED COMPONENTS unit_test_framework)
+###############
+# Core library
+###############
 
-if(NOT BOOST_FOUND)
-    message(FATAL_ERROR "Please install Boost")
+add_library(sbody_static STATIC
+    src/file/file.cpp
+    src/file/writer.cpp
+    src/file/csv.cpp
+    src/file/numpy.cpp
+    src/infra/progress.cpp
+    src/infra/status.cpp
+)
+
+target_include_directories(
+    sbody_static
+    PUBLIC
+        ${PROJECT_SOURCE_DIR}/include
+)
+
+target_link_libraries(
+    sbody_static
+    PUBLIC
+        fmt::fmt
+        indicators
+)
+
+###############
+# Main executable
+###############
+
+add_executable(
+    sbody
+    src/main.cpp
+)
+
+target_link_libraries(
+    sbody
+    PRIVATE
+        sbody_static
+        CLI11::CLI11
+        Boost::boost
+        ${OPTIONAL_LIBS}
+)
+
+###############
+# Python binding
+###############
+
+if(WITH_PYTHON)
+    add_subdirectory(python)
 endif()
 
-if(WITH_OPENMP)
-    find_package(OpenMP)
-
-    if(OpenMP_FOUND)
-        add_compile_definitions(WITH_OPENMP)
-        list(APPEND OPTIONAL_LIBS OpenMP::OpenMP_CXX)
-    else()
-        set(WITH_OPENMP OFF)
-        message(NOTICE "OpenMP not found")
-    endif()
-endif()
-
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/include fmt/include indicators/include ${Python3_INCLUDE_DIRS})
-add_subdirectory(${PROJECT_SOURCE_DIR}/fmt)
-add_subdirectory(${PROJECT_SOURCE_DIR}/python)
-add_subdirectory(${PROJECT_SOURCE_DIR}/test)
-add_library(sbody_static STATIC src/file/file.cpp src/file/writer.cpp src/file/csv.cpp src/file/numpy.cpp src/infra/progress.cpp src/infra/status.cpp)
-set_target_properties(sbody_static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
-
-add_executable(sbody src/main.cpp)
-set_target_properties(sbody PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
-
-target_link_libraries(sbody PUBLIC sbody_static Boost::boost fmt::fmt ${OPTIONAL_LIBS})
+###############
+# Tests
+###############
 
 enable_testing()
 
-add_test(help-message ${EXECUTABLE_OUTPUT_PATH}/sbody -h)
+add_subdirectory(test)
+
+add_test(
+    NAME help-message
+    COMMAND sbody -h
+)
