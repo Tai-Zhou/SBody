@@ -3,7 +3,7 @@ if(WITH_PYTHON)
     find_package(pybind11 CONFIG)
 
     if(pybind11_FOUND)
-        pybind11_add_module(SBoPy MODULE Python.cpp)
+        pybind11_add_module(SBoPy MODULE sbopy.cpp s_star.cpp hotspot.cpp)
         target_link_libraries(SBoPy PUBLIC Boost::boost fmt::fmt ${OPTIONAL_LIBS})
     else()
         set(WITH_PYTHON OFF)

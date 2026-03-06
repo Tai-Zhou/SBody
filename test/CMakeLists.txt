@@ -1,6 +1,6 @@
 set(TEST_SOURCES
-    TestUtility.cpp
-    TestView.cpp
+    math/solver/polynomial_test.cpp
+    math/solver/system/nonlinear_system_test.cpp
 )
 
 foreach(TEST_FILE ${TEST_SOURCES})

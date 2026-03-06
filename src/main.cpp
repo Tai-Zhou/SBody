@@ -1,5 +1,5 @@
 /**
- * @file SBody.cpp
+ * @file main.cpp
  * @author Tai Zhou
  * @brief
  * @version 0.1
@@ -8,8 +8,6 @@
  * @copyright Copyright (c) 2022
  *
  */
-
-#include "SBody.h"
 
 #include <array>
 #include <chrono>
@@ -23,17 +21,32 @@
 
 #include <fmt/core.h>
 
-#include "IO.hpp"
-#include "Metric.hpp"
-#include "Object.hpp"
-#include "Unit.hpp"
-#include "Utility.hpp"
-#include "View.hpp"
+#include "metric/kerr.hpp"
+#include "metric/schwarzschild.hpp"
+#include "object/object.hpp"
+#include "object/particle.hpp"
+#include "units.hpp"
+#include "view/camera.hpp"
+#include "view/view.hpp"
 
 using namespace std;
-using namespace SBody;
+using namespace sbody;
 
 #define PRECISION double
+
+constexpr double MASS = 4.15e6;
+constexpr double SPIN = 0.0;
+constexpr double NUT = 0.0;
+constexpr double T_FINAL = 3600.;
+constexpr int T_STEP_NUMBER = 10000;
+constexpr int T_CAL = 3600000;
+constexpr int METRIC = 1;
+constexpr int PN = 1;
+constexpr int RAY = 1;
+constexpr double ABS_ACC = 1e-15;
+constexpr double REL_ACC = 1e-15;
+constexpr char FORMAT[6] = "NumPy";
+constexpr double KEPLER[6] = {1, 2, 3, 4, 5, 6};
 
 void InterruptHandler(int signum) {
 	fmt::print("\r\033[KSBody exiting...\n");
@@ -85,7 +98,7 @@ int Benchmark() {
 	unique_ptr<Metric<PRECISION>> main_metric = make_unique<Kerr<PRECISION>>(0.3);
 	// unique_ptr<Metric> main_metric = make_unique<Schwarzschild>();
 	auto view_ptr = make_unique<View<PRECISION>>(*main_metric, 8180. * unit.pc, boost::math::constants::half_pi<PRECISION>() - 0.01, 0.);
-	Particle<PRECISION> star_0(*main_metric, T, LAGRANGIAN, false);
+	Particle<PRECISION> star_0(*main_metric, TimeSystem::T, DynamicalSystem::LAGRANGIAN, false);
 	star_0.InitializeKeplerian(4., 0.1, 0.2, 0., 0., 0., M_PI_4);
 	PRECISION temp[4];
 	boost::numeric::ublas::bounded_vector<PRECISION, 8> position;
@@ -106,12 +119,12 @@ int Benchmark() {
 		temp[1] = star_0.Energy();
 		temp[2] = star_0.AngularMomentum();
 		temp[3] = star_0.CarterConstant();
-		view_ptr->Trace(position, T, view_info, false, true);
-		SphericalToCartesian(position);
+		view_ptr->Trace(position, TimeSystem::T, view_info, false, true);
+		sphericalToCartesian(position);
 		bars[0].set_progress(i * stepPercent);
 		bars[0].set_option(indicators::option::PrefixText{fmt::format("Anticipated score is: {}? ", i * 200000000000ul / (T_STEP_NUMBER * chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()))});
 	}
-	bars.SetComplete(0, fmt::format("Final score is: {}! ", 200000000000ul / chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()));
+	bars.setComplete(0, fmt::format("Final score is: {}! ", 200000000000ul / chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()));
 	return StatusCode::SUCCESS;
 }
 
@@ -269,16 +282,16 @@ int main(int argc, char *argv[]) {
 			lensPtr = make_unique<thread>(&Camera<PRECISION>::Lens, cameraPtr.get(), ref(bars));
 	}
 	// Integrator integ(metric::function, metric::jacobian, metric != 0);
-	TimeSystem star_time = T;
-	Particle star_0(*main_metric, star_time, LAGRANGIAN, false);
+	TimeSystem star_time = TimeSystem::T;
+	Particle star_0(*main_metric, star_time, DynamicalSystem::LAGRANGIAN, false);
 	star_0.InitializeSchwarzschildKeplerianApocenter(a * unit.mpc, e, inclination, periapsis, ascending_node, inc, eps);
 	// star_0.InitializeGeodesic(a, inclination, periapsis, ascending_node, -0.16707659553531468, 0.3822615764261866, inc, eps);
 	// star_0.InitializeSchwarzschildKeplerianApocenterHarmonic(a * unit.mpc, e, inclination, periapsis, ascending_node, inc, eps);
 	// star_0.InitializeConical(10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6);
 	// Integrator &&integrator = main_metric->GetIntegrator(metric != 0);
 	// NumPy rec(main_metric->Name() + strFormat, {12});
-	// NumPy rec(fmt::format("HotSpot a={:.1f} e={:.2f} i={:.6f} o={:.2f}", a, e, inclination, periapsis), {12});
-	NumPy rec(fmt::format("mcmc test", a, inclination, periapsis, e, ascending_node), {17});
+	// NumPy rec(fmt::format("Hotspot a={:.1f} e={:.2f} i={:.6f} o={:.2f}", a, e, inclination, periapsis), {12});
+	File rec(FileFormat::NUMPY, fmt::format("mcmc test", a, inclination, periapsis, e, ascending_node), {17});
 	boost::numeric::ublas::bounded_vector<PRECISION, 8> position;
 	boost::numeric::ublas::bounded_vector<PRECISION, 5> view_info;
 	int status = 0;
@@ -300,21 +313,21 @@ int main(int argc, char *argv[]) {
 			viewPtr->Trace(position, star_time, view_info, true);
 		if (ray & 2)
 			cameraPtr->Trace(object_pointer_collector);
-		SphericalToCartesian(position);
-		rec.Save(position);
-		rec.Save(t / unit.s);
-		rec.Save(star_0.Energy());
-		rec.Save(star_0.AngularMomentum());
-		rec.Save(star_0.CarterConstant());
+		sphericalToCartesian(position);
+		rec.save(position);
+		rec.save(t / unit.s);
+		rec.save(star_0.Energy());
+		rec.save(star_0.AngularMomentum());
+		rec.save(star_0.CarterConstant());
 		view_info[3] /= unit.s;
-		rec.Save(view_info);
+		rec.save(view_info);
 		if (display_progress)
 			(*bars)[0].set_progress(i * stepPercent);
 		if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count() >= TCal)
 			break;
 	}
 	if (display_progress) {
-		bars->SetComplete(0, string("!") + strFormat);
+		bars->setComplete(0, string("!") + strFormat);
 	}
 	if (ray & 2)
 		cameraPtr->Save("camera");

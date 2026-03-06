@@ -1,5 +1,5 @@
 /**
- * @file Python.cpp
+ * @file hotspot.cpp
  * @author Tai Zhou
  * @brief
  * @version 0.1
@@ -26,281 +26,25 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl_bind.h>
 
-#include "IO.hpp"
-#include "Metric.hpp"
-#include "Object.hpp"
-#include "Unit.hpp"
-#include "Utility.hpp"
-#include "View.hpp"
+#include "infra/status.hpp"
+#include "math/geometry.hpp"
+#include "math/interpolation.hpp"
+#include "metric/kerr.hpp"
+#include "metric/schwarzschild.hpp"
+#include "object/object.hpp"
+#include "object/particle.hpp"
+#include "units.hpp"
+#include "view/flux.hpp"
+#include "view/view.hpp"
 
 namespace py = pybind11;
 namespace ublas = boost::numeric::ublas;
 using namespace std;
-using namespace SBody;
+using namespace sbody;
 
 #define PRECISION double
 
 constexpr auto HOTSPOT_RETURN_WIDTH = 17UL;
-double CalculatePericenterTime(double mass, int metric, double fSP, double R, double t_apo, double a, double e, double inclination, double ascending_node, double periapsis) {
-	Unit unit(mass);
-	R *= unit.pc;
-	a *= R * unit.mas;
-	inclination *= M_PI / 180.;
-	ascending_node *= M_PI / 180.;
-	periapsis *= M_PI / 180.;
-	double t = (t_apo - 2002.) * unit.yr, tStep = 16.3 * unit.yr, tRec = 0.000001 * unit.yr;
-	unique_ptr<Metric<double>> main_metric;
-	unique_ptr<View<double>> view_ptr;
-	if (metric == 0)
-		main_metric = make_unique<PN1<double>>(fSP);
-	else {
-		main_metric = make_unique<Schwarzschild<double>>();
-		view_ptr = make_unique<View<double>>(*main_metric, R, 0., 0.);
-	}
-	auto star_0 = Particle(*main_metric, T, LAGRANGIAN, false);
-	if (metric == 2)
-		star_0.InitializeKeplerianHarmonic(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
-	else
-		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
-	double h = 1., last_radius = std::numeric_limits<double>::infinity(), t0;
-	ublas::bounded_vector<double, 8> position;
-	ublas::bounded_vector<double, 5> record;
-	star_0.Position(position);
-	if (metric == 0)
-		t0 = position[1] * CosTheta(position[2]);
-	else {
-		view_ptr->Trace(position, T, record, false);
-		t0 = record[3] / unit.s;
-	}
-	int status = 0;
-	for (int i = 0;; ++i) {
-		status = star_0.IntegratorApply(t, tStep, h);
-		if (status > 0)
-			PrintlnError("main status = {}", status);
-		star_0.Position(position);
-		if (position[1] > last_radius) {
-			if (metric == 0)
-				return (tStep + t0 - position[1] * CosTheta(position[2])) / unit.yr + 2002.;
-			else {
-				view_ptr->Trace(position, T, record, false);
-				return (tStep + (t0 * unit.s - record[3])) / unit.yr + 2002.;
-			}
-		}
-		last_radius = position[1];
-		tStep += tRec;
-	}
-}
-
-py::array_t<double> CalculateFullStarOrbit(double mass, int metric, double fSP, double R, double tp, double a, double e, double inclination, double ascending_node, double periapsis, double t1) {
-	Unit unit(mass);
-	R *= unit.pc;
-	a *= R * unit.mas;
-	inclination *= M_PI / 180.;
-	ascending_node *= M_PI / 180.;
-	periapsis *= M_PI / 180.;
-	size_t tStepNumber = 1000;
-	double t = (tp - 2002.) * unit.yr - M_PI * sqrt(Power3(a)), tStep = 0., tRec = (t1 - 2002.) * unit.yr / tStepNumber;
-	unique_ptr<Metric<double>> main_metric;
-	unique_ptr<View<double>> view_ptr;
-	if (metric == 0) {
-		main_metric = make_unique<PN1<double>>(fSP);
-	} else if (metric == 3) {
-		main_metric = make_unique<Newton<double>>(3);
-	} else {
-		main_metric = make_unique<Schwarzschild<double>>();
-		view_ptr = make_unique<View<double>>(*main_metric, R, 0., 0.);
-	}
-	TimeSystem star_time = T;
-	Particle<double> star_0(*main_metric, star_time, LAGRANGIAN, false);
-	if (metric == 2)
-		star_0.InitializeKeplerianHarmonic(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
-	else
-		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, M_PI, 0., 0.);
-	double h = -1.;
-	int status = 0;
-	if (status = star_0.IntegratorApply(t, 0., h); status != 0)
-		py::print("[!] IntegratorApply status =", status);
-	h = 1.;
-	auto result = py::array_t<double>(tStepNumber * 14);
-	double *result_ptr = result.mutable_data();
-	ublas::bounded_vector<double, 8> position;
-	ublas::bounded_vector<double, 5> record;
-	for (size_t i = 0; i < tStepNumber; ++i) {
-		tStep += tRec;
-		status = star_0.IntegratorApply(t, tStep, h);
-		if (status > 0)
-			PrintlnError("main status = {}", status);
-		star_0.Position(position);
-		if (metric)
-			view_ptr->Trace(position, star_time, record, false);
-		SphericalToCartesian(position);
-		copy(position.begin(), position.end(), result_ptr);
-		record[3] /= unit.s;
-		copy(record.begin(), record.end(), result_ptr + 10);
-		result_ptr[8] = t / unit.s;
-		const double delta_epsilon = 1. - 2. / hypot(result_ptr[1], result_ptr[2], result_ptr[3]);
-		result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - HypotSquare(result_ptr[5], result_ptr[6], result_ptr[7])) - 1.) * 299792.458;
-		result_ptr += 14;
-	}
-	return result.reshape({tStepNumber, 14UL});
-}
-
-py::array_t<double> CalculateStarOrbit(double mass, int metric, double fSP, double R, double tp, double a, double e, double inclination, double ascending_node, double periapsis, bool ray_tracing, bool gr_time_delay, const py::array_t<double> &obs_time) {
-	Unit unit(mass);
-	R *= unit.pc;
-	a *= R * unit.mas;
-	inclination *= M_PI / 180.;
-	ascending_node *= M_PI / 180.;
-	periapsis *= M_PI / 180.;
-	double t = (tp - 2002.) * unit.yr - M_PI * sqrt(Power3(a)), tStep = 0., tRec = 0.001 * unit.yr;
-	unique_ptr<Metric<double>> main_metric;
-	unique_ptr<View<double>> view_ptr;
-	if (metric == 0) {
-		main_metric = make_unique<PN1<double>>(fSP);
-		ray_tracing = false;
-		gr_time_delay = false;
-	} else if (metric == 3) {
-		main_metric = make_unique<Newton<double>>(3);
-	} else {
-		main_metric = make_unique<Schwarzschild<double>>();
-		view_ptr = make_unique<View<double>>(*main_metric, R, M_PI_4, 0.);
-	}
-	TimeSystem star_time = T;
-	Particle star_0(*main_metric, star_time, LAGRANGIAN, false);
-	double z0, t0, last_obs_time = 2002., this_obs_time;
-	ublas::bounded_vector<double, 8> last_position, this_position, cartesian_position;
-	ublas::bounded_vector<double, 5> last_view_info, this_view_info;
-	if (metric == 2)
-		star_0.InitializeKeplerianHarmonic(a, e, inclination, periapsis, ascending_node, 0., M_PI_4, 0.);
-	else
-		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, 0., M_PI_4, 0.);
-	star_0.Position(last_position);
-	z0 = last_position[1] * CosTheta(last_position[2]);
-	if (gr_time_delay) {
-		if (view_ptr->Trace(last_position, star_time, last_view_info, false) != StatusCode::SUCCESS) {
-			PrintlnError("Initially trace star Error!");
-			return py::array_t<double>();
-		}
-		t0 = last_view_info[3] / unit.s;
-	}
-	if (metric == 2)
-		star_0.InitializeKeplerianHarmonic(a, e, inclination, periapsis, ascending_node, M_PI, M_PI_4, 0.);
-	else
-		star_0.InitializeKeplerian(a, e, inclination, periapsis, ascending_node, M_PI, M_PI_4, 0.);
-	double h = -1.;
-	int status = 0;
-	if (status = star_0.IntegratorApply(t, 0., h); status != 0)
-		py::print("[!] IntegratorApply status =", status);
-	h = 1.;
-	size_t idx = 0, size = obs_time.size();
-	auto result = py::array_t<double>(size * 14);
-	double *result_ptr = result.mutable_data();
-	for (int i = 0;; ++i) {
-		tStep += tRec;
-		if (status = star_0.IntegratorApply(t, tStep, h); status != 0)
-			py::print("[!] IntegratorApply status =", status);
-		star_0.Position(this_position);
-		if (metric == 2)
-			this_obs_time = (t + z0 - (this_position[1] - 1.) * CosTheta(this_position[2])) / unit.yr + 2002.;
-		else
-			this_obs_time = (t + z0 - this_position[1] * CosTheta(this_position[2])) / unit.yr + 2002.;
-		if (this_obs_time > obs_time.at(idx)) {
-			if (gr_time_delay) {
-				if (view_ptr->Trace(last_position, star_time, last_view_info, false) != StatusCode::SUCCESS) {
-					PrintlnError("Trace last_position Error!");
-					return py::array_t<double>();
-				}
-				if (view_ptr->Trace(this_position, star_time, this_view_info, false) != StatusCode::SUCCESS) {
-					PrintlnError("Trace this_position Error!");
-					return py::array_t<double>();
-				}
-				double this_gr_obs_time = (t + (t0 * unit.s - this_view_info[3])) / unit.yr + 2002.;
-				double last_gr_obs_time = (t - tRec + (t0 * unit.s - last_view_info[3])) / unit.yr + 2002.;
-				InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, last_position, this_position, cartesian_position);
-				copy(cartesian_position.begin(), cartesian_position.end(), result_ptr);
-				result_ptr[8] = LinearInterpolation(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, tStep - tRec, tStep) / unit.s;
-				LinearInterpolation(obs_time.at(idx), last_gr_obs_time, this_gr_obs_time, last_view_info, this_view_info, result_ptr + 10);
-			} else {
-				InterpolateSphericalPositionToCartesian(obs_time.at(idx), last_obs_time, this_obs_time, last_position, this_position, cartesian_position);
-				if (metric != 2)
-					copy(cartesian_position.begin(), cartesian_position.end(), result_ptr);
-				if (ray_tracing) {
-					CartesianToSpherical(cartesian_position);
-					last_position = cartesian_position;
-					if (view_ptr->Trace(last_position, star_time, last_view_info, false) != StatusCode::SUCCESS) {
-						PrintlnError("Trace star position Error!");
-						return py::array_t<double>();
-					}
-					last_view_info[3] /= unit.s;
-					copy(last_view_info.begin(), last_view_info.end(), result_ptr + 10);
-				}
-				if (metric == 2) {
-					CartesianToSpherical(cartesian_position);
-					cartesian_position[1] -= 1.;
-					SphericalToCartesian(cartesian_position);
-					copy(cartesian_position.begin(), cartesian_position.end(), result_ptr);
-				}
-				result_ptr[8] = LinearInterpolation(obs_time.at(idx), last_obs_time, this_obs_time, tStep - tRec, tStep) / unit.s;
-			}
-			const double delta_epsilon = 1. - 2. / hypot(result_ptr[1], result_ptr[2], result_ptr[3]);
-			result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - HypotSquare(result_ptr[5], result_ptr[6], result_ptr[7])) - 1.) * 299792.458;
-			result_ptr += 14;
-			if (++idx >= size)
-				break;
-		}
-		last_obs_time = this_obs_time;
-		swap(last_position, this_position);
-		swap(last_view_info, this_view_info);
-	}
-	return result.reshape({size, 14UL});
-}
-
-double StarChi2(py::array_t<double> x, int metric, int gr_switch, py::array_t<double> obs_time, py::array_t<double> obs_redshift, py::array_t<double> redshift_sigma, py::array_t<double> obs_ra, py::array_t<double> ra_sigma, py::array_t<double> obs_dec, py::array_t<double> dec_sigma) {
-	if (x.at(9) > 0.99)
-		return std::numeric_limits<double>::infinity();
-	if (metric == 0 && gr_switch > 0) {
-		x.mutable_at(7) = 1.;
-		gr_switch = 0;
-	}
-	auto obs_data = CalculateStarOrbit(x.at(0), metric, x.at(7), x.at(3), x.at(13), x.at(8), x.at(9), x.at(10), x.at(11), x.at(12), gr_switch > 0, (gr_switch & 4) > 0, obs_time);
-	double redshift_prob = 0., ra_prob = 0., dec_prob = 0.;
-	const int size = obs_redshift.size();
-	if (gr_switch & 1) {
-		for (int i = 0; i < size; ++i)
-			if (obs_redshift.at(i) != std::numeric_limits<double>::infinity())
-				redshift_prob += Power2((obs_redshift.at(i) - (obs_data.at(i, 12) - 1.) * 299792.458 - x.at(6)) / redshift_sigma.at(i));
-	} else
-		for (int i = 0; i < size; ++i)
-			if (obs_redshift.at(i) != std::numeric_limits<double>::infinity())
-				redshift_prob += Power2((obs_redshift.at(i) - obs_data.at(i, 9) - x.at(6)) / redshift_sigma.at(i));
-	if (gr_switch & 2)
-		for (int i = 0; i < size; ++i) {
-			if (obs_ra.at(i) != std::numeric_limits<double>::infinity())
-				ra_prob += Power2((obs_ra.at(i) + obs_data.at(i, 10) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5)) / ra_sigma.at(i));
-			if (obs_dec.at(i) != std::numeric_limits<double>::infinity())
-				dec_prob += Power2((obs_dec.at(i) - obs_data.at(i, 11) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4)) / dec_sigma.at(i));
-		}
-	else
-		for (int i = 0; i < size; ++i) {
-			if (obs_ra.at(i) != std::numeric_limits<double>::infinity())
-				ra_prob += Power2((obs_ra.at(i) + obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(2) - (obs_time.at(i) - 2009.02) * x.at(5)) / ra_sigma.at(i));
-			if (obs_dec.at(i) != std::numeric_limits<double>::infinity())
-				dec_prob += Power2((obs_dec.at(i) + obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(3) - x.at(1) - (obs_time.at(i) - 2009.02) * x.at(4)) / dec_sigma.at(i));
-		}
-	double chi2 = redshift_prob + ra_prob + dec_prob;
-	if (isnan(chi2)) {
-		if (isnan(redshift_prob))
-			py::print("[!] redshift_prob is NaN");
-		if (isnan(ra_prob))
-			py::print("[!] ra_prob is NaN");
-		if (isnan(dec_prob))
-			py::print("[!] dec_prob is NaN");
-		auto obs_data_test = CalculateStarOrbit(x.at(0), metric, x.at(7), x.at(3), x.at(13), x.at(8), x.at(9), x.at(10), x.at(11), x.at(12), gr_switch > 0, (gr_switch & 4) > 0, obs_time);
-		for (int i = 0; i < 14; ++i)
-			py::print(x.at(i));
-	}
-	return chi2;
-}
 
 py::array_t<double> HSExit(const py::array_t<double> &x) {
 	return py::array_t<double>();
@@ -324,8 +68,8 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 		return py::array_t<double>();
 	}
 	view_ptr = make_unique<View<double>>(*main_metric, R, inclination, rotation);
-	TimeSystem hotspot_time = T;
-	HotSpot hotspot(*main_metric, hotspot_time, LAGRANGIAN, x.at(offset[mode]), x.at(offset[mode] + 1), x.at(offset[mode] + 2) * unit.s, x.at(offset[mode] + 3), false);
+	TimeSystem hotspot_time = TimeSystem::T;
+	Hotspot hotspot(*main_metric, hotspot_time, DynamicalSystem::LAGRANGIAN, x.at(offset[mode]), x.at(offset[mode] + 1), x.at(offset[mode] + 2) * unit.s, x.at(offset[mode] + 3), false);
 	double t = 0., tStep = 0., tRec = 0.25 * unit.s;
 	size_t tStepNumber = t1 * 4;
 	ublas::bounded_vector<double, 8> position;
@@ -362,13 +106,13 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 		}
 	} else if (mode == 6) { // schwarzschild geodesic with v_r/v_phi replaced with energy and angular momentum
 		PRECISION dtau_dt = (1. - 2. / r) / x.at(11);
-		PRECISION dphi_dt = x.at(12) / Power2(r) * dtau_dt;
-		PRECISION dr_dt = -SquareRoot((1. - 2. / r - Power2(dtau_dt) - Power2(r * dphi_dt)) * (1. - 2. / r));
+		PRECISION dphi_dt = x.at(12) / power2(r) * dtau_dt;
+		PRECISION dr_dt = -squareRoot((1. - 2. / r - power2(dtau_dt) - power2(r * dphi_dt)) * (1. - 2. / r));
 		if (hotspot.InitializeGeodesic(r, x.at(8) * M_PI / 180., x.at(9) * M_PI / 180., x.at(10) * M_PI / 180., dr_dt, dphi_dt, inclination, rotation) != StatusCode::SUCCESS)
 			return HSExit(x);
 	} else if (mode == 7) { // conical with last dim as angular momentum
 		PRECISION theta = x.at(8) * M_PI / 180.;
-		if (hotspot.InitializeConical(r, theta, x.at(9) * M_PI / 180., x.at(10), x.at(11) / Power2(r * sin(theta)), false) != StatusCode::SUCCESS)
+		if (hotspot.InitializeConical(r, theta, x.at(9) * M_PI / 180., x.at(10), x.at(11) / power2(r * sin(theta)), false) != StatusCode::SUCCESS)
 			return HSExit(x);
 	} else {
 		PrintlnWarning("Mode Error!");
@@ -397,11 +141,11 @@ py::array_t<double> CalculateFullHSOrbit(const py::array_t<double> &x, int metri
 			// result_ptr[15] = Flux(hotspot.Luminosity(tStep), result_ptr[14], result_ptr[12]);
 			// result_ptr[16] = FluxDensity(hotspot.SpectralDensity(tStep, result_ptr[12]), result_ptr[14]);
 		}
-		SphericalToCartesian(position);
+		sphericalToCartesian(position);
 		copy(position.begin(), position.end(), result_ptr);
 		result_ptr[8] = t / unit.s;
 		const double delta_epsilon = 1. - 2. / hypot(result_ptr[1], result_ptr[2], result_ptr[3]);
-		result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - HypotSquare(result_ptr[5], result_ptr[6], result_ptr[7])) - 1.) * 299792.458;
+		result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - hypotSquare(result_ptr[5], result_ptr[6], result_ptr[7])) - 1.) * 299792.458;
 		result_ptr[15] = hotspot.Energy();
 		result_ptr[16] = hotspot.AngularMomentum();
 		result_ptr += HOTSPOT_RETURN_WIDTH;
@@ -414,7 +158,7 @@ tuple<py::array_t<double>, int> CalculateHSOrbit(const py::array_t<double> &x, i
 #ifdef SBODY_RELEASE
 	auto t_start = chrono::steady_clock::now();
 #endif
-	const array<double, 8> estimate_step = {60., 30., 10., 3., 1., 0.5, 0.1, 0.};
+	const array<double, 9> estimate_step = {120., 60., 30., 10., 3., 1., 0.5, 0.1, 0.};
 	size_t estimate_idx = 0;
 	PRECISION this_gr_obs_time, last_gr_obs_time, gr_offset = 0.;
 	Unit unit(x.at(0)); // double fSP, double R, double r, double theta, double phi, double v_r, double v_phi, double inclination,
@@ -431,8 +175,8 @@ tuple<py::array_t<double>, int> CalculateHSOrbit(const py::array_t<double> &x, i
 		return {py::array_t<double>(), StatusCode::INVALID_ARGUMENT};
 	}
 	view_ptr = make_unique<View<PRECISION>>(*main_metric, R, inclination, rotation);
-	TimeSystem hotspot_time = T;
-	HotSpot<PRECISION> hotspot(*main_metric, hotspot_time, LAGRANGIAN, x.at(offset[mode]), x.at(offset[mode] + 1), x.at(offset[mode] + 2) * unit.s, x.at(offset[mode] + 3) * unit.s, false);
+	TimeSystem hotspot_time = TimeSystem::T;
+	Hotspot<PRECISION> hotspot(*main_metric, hotspot_time, DynamicalSystem::LAGRANGIAN, x.at(offset[mode]), x.at(offset[mode] + 1), x.at(offset[mode] + 2) * unit.s, x.at(offset[mode] + 3) * unit.s, false);
 	PRECISION t = 0., tStep = 0., tRec = 0.1 * unit.s, t0, last_obs_time = 0., this_obs_time;
 	ublas::bounded_vector<PRECISION, 8> last_position, this_position, cartesian_position;
 	ublas::bounded_vector<PRECISION, 5> last_view_info, this_view_info;
@@ -459,12 +203,12 @@ tuple<py::array_t<double>, int> CalculateHSOrbit(const py::array_t<double> &x, i
 	} else if (mode == 6) { // schwarzschild geodesic with v_r/v_phi replaced with energy and angular momentum
 		PRECISION dtau_dt = (1. - 2. / r) / x.at(11);
 		PRECISION v_phi = x.at(12) / r * dtau_dt;
-		PRECISION v_r = -SquareRoot((1. - 2. / r - Power2(dtau_dt) - Power2(v_phi)) * (1. - 2. / r));
+		PRECISION v_r = -squareRoot((1. - 2. / r - power2(dtau_dt) - power2(v_phi)) * (1. - 2. / r));
 		if (int status = hotspot.InitializeGeodesic(r, x.at(8) * M_PI / 180., x.at(9) * M_PI / 180., x.at(10) * M_PI / 180., v_r, v_phi, inclination, rotation); status != StatusCode::SUCCESS)
 			return {HSExit(x), status};
 	} else if (mode == 7) { // conical with last dim as angular momentum
 		PRECISION theta = x.at(8) * M_PI / 180.;
-		if (int status = hotspot.InitializeConical(r, theta, x.at(9) * M_PI / 180., x.at(10), x.at(11) / Power2(r * sin(theta)), false); status != StatusCode::SUCCESS)
+		if (int status = hotspot.InitializeConical(r, theta, x.at(9) * M_PI / 180., x.at(10), x.at(11) / power2(r * sin(theta)), false); status != StatusCode::SUCCESS)
 			return {HSExit(x), status};
 	} else {
 		PrintlnWarning("Mode Error!");
@@ -475,18 +219,18 @@ tuple<py::array_t<double>, int> CalculateHSOrbit(const py::array_t<double> &x, i
 		// py::print("[!] R < 3.0, stop!");
 		return {py::array_t<double>(), StatusCode::FALL_INTO_BLACK_HOLE};
 	}
-	PRECISION x0 = last_position[1] * abs(sin(last_position[2])) * cos(last_position[3]), z0 = last_position[1] * CosTheta(last_position[2]);
+	PRECISION x0 = last_position[1] * abs(sin(last_position[2])) * cos(last_position[3]), z0 = last_position[1] * cosTheta(last_position[2]);
 	if (gr_time_delay) {
 		if (int status = view_ptr->Trace(last_position, hotspot_time, last_view_info, calculate_magnification); status != StatusCode::SUCCESS) {
 			// PrintlnError("Initially trace star Error!");
-			auto numpy = NumPy(fmt::format("log/hotspot/metric_{}/mode_{}/trace/{}", metric, mode, chrono::duration_cast<chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()), {6});
+			auto numpy = File(FileFormat::NUMPY, fmt::format("log/hotspot/metric_{}/mode_{}/trace/{}", metric, mode, chrono::duration_cast<chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()), {6});
 			if (metric == 2)
-				numpy.Save(x.at(1));
+				numpy.save(x.at(1));
 			else
-				numpy.Save(0.0);
-			numpy.Save(inclination);
+				numpy.save(0.0);
+			numpy.save(inclination);
 			for (int i = 0; i < 4; ++i)
-				numpy.Save(last_position[i]);
+				numpy.save(last_position[i]);
 			return {HSExit(x), status};
 		}
 		t0 = last_view_info[3] / unit.s;
@@ -521,20 +265,20 @@ tuple<py::array_t<double>, int> CalculateHSOrbit(const py::array_t<double> &x, i
 			// py::print("[!] R < 3.0, stop!");
 			return {py::array_t<double>(), StatusCode::FALL_INTO_BLACK_HOLE};
 		}
-		this_obs_time = (t + vz0 - this_position[1] * (SinTheta(this_position[2]) * cos(this_position[3]) * sin_inc + CosTheta(this_position[2]) * cos_inc)) / unit.s;
+		this_obs_time = (t + vz0 - this_position[1] * (sinTheta(this_position[2]) * cos(this_position[3]) * sin_inc + cosTheta(this_position[2]) * cos_inc)) / unit.s;
 		if (gr_time_delay) {
 			if (this_obs_time + gr_offset + estimate_step[estimate_idx] > obs_time.at(idx)) {
 				if (status = view_ptr->Trace(this_position, hotspot_time, this_view_info, calculate_magnification); status != StatusCode::SUCCESS) {
 					if (this_obs_time + gr_offset - 0.1 > obs_time.at(idx)) {
 						// PrintlnError("Trace star this position Error!");
-						auto numpy = NumPy(fmt::format("log/hotspot/metric_{}/mode_{}/trace/{}", metric, mode, chrono::duration_cast<chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()), {6});
+						auto numpy = File(FileFormat::NUMPY, fmt::format("log/hotspot/metric_{}/mode_{}/trace/{}", metric, mode, chrono::duration_cast<chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()), {6});
 						if (metric == 2)
-							numpy.Save(x.at(1));
+							numpy.save(x.at(1));
 						else
-							numpy.Save(0.0);
-						numpy.Save(inclination);
+							numpy.save(0.0);
+						numpy.save(inclination);
 						for (int j = 0; j < 4; ++j)
-							numpy.Save(this_position[j]);
+							numpy.save(this_position[j]);
 						return {HSExit(x), status};
 					}
 					if (estimate_idx + 2 < estimate_step.size())
@@ -554,23 +298,25 @@ tuple<py::array_t<double>, int> CalculateHSOrbit(const py::array_t<double> &x, i
 					// PrintlnError("gr_offset > 3600 s!");
 					// for (int j = 0; j < 8; ++j)
 					// 	py::print("this_position[", j, "]=", this_position[j]);
-					auto numpy = NumPy(fmt::format("log/hotspot/metric_{}/mode_{}/gr_offset/{}", metric, mode, chrono::duration_cast<chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()), {6});
+					auto numpy = File(FileFormat::NUMPY, fmt::format("log/hotspot/metric_{}/mode_{}/gr_offset/{}", metric, mode, chrono::duration_cast<chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()), {6});
 					if (metric == 2)
-						numpy.Save(x.at(1));
+						numpy.save(x.at(1));
 					else
-						numpy.Save(0.0);
-					numpy.Save(inclination);
+						numpy.save(0.0);
+					numpy.save(inclination);
 					for (int j = 0; j < 4; ++j)
-						numpy.Save(this_position[j]);
+						numpy.save(this_position[j]);
 					return {HSExit(x), StatusCode::FAILURE};
 				}
 				if (++estimate_idx >= estimate_step.size()) {
 					estimate_idx = 0;
+					if (min(abs(obs_time.at(idx) - last_gr_obs_time), abs(obs_time.at(idx) - this_gr_obs_time)) > 10. * abs(this_gr_obs_time - last_gr_obs_time))
+						return {HSExit(x), StatusCode::NUMERIC_ERROR};
 					InterpolateSphericalPositionToCartesian(static_cast<PRECISION>(obs_time.at(idx)), last_gr_obs_time, this_gr_obs_time, last_position, this_position, cartesian_position);
 					copy(cartesian_position.begin(), cartesian_position.end(), result_ptr);
 					result_ptr[8] = LinearInterpolation(static_cast<PRECISION>(obs_time.at(idx)), last_gr_obs_time, this_gr_obs_time, tStep - tRec, tStep) / unit.s;
 					const PRECISION delta_epsilon = 1. - 2. / hypot(result_ptr[1], result_ptr[2], result_ptr[3]);
-					result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - HypotSquare(result_ptr[5], result_ptr[6], result_ptr[7])) - 1.) * 299792.458;
+					result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - hypotSquare(result_ptr[5], result_ptr[6], result_ptr[7])) - 1.) * 299792.458;
 					LinearInterpolation(static_cast<PRECISION>(obs_time.at(idx)), last_gr_obs_time, this_gr_obs_time, last_view_info, this_view_info, result_ptr + 10);
 					LinearInterpolation(static_cast<PRECISION>(obs_time.at(idx)), last_gr_obs_time, this_gr_obs_time, last_hotspot_info, this_hotspot_info, result_ptr + 15);
 					result_ptr += HOTSPOT_RETURN_WIDTH;
@@ -585,7 +331,7 @@ tuple<py::array_t<double>, int> CalculateHSOrbit(const py::array_t<double> &x, i
 			InterpolateSphericalPositionToCartesian(static_cast<PRECISION>(obs_time.at(idx)), last_obs_time, this_obs_time, last_position, this_position, cartesian_position);
 			copy(cartesian_position.begin(), cartesian_position.end(), result_ptr);
 			if (ray_tracing) {
-				CartesianToSpherical(cartesian_position);
+				cartesianToSpherical(cartesian_position);
 				if (status = view_ptr->Trace(cartesian_position, hotspot_time, last_view_info, calculate_magnification); status != StatusCode::SUCCESS) {
 					PrintlnError("Trace star position Error!");
 					return {HSExit(x), status};
@@ -601,7 +347,7 @@ tuple<py::array_t<double>, int> CalculateHSOrbit(const py::array_t<double> &x, i
 			}
 			result_ptr[8] = LinearInterpolation(static_cast<PRECISION>(obs_time.at(idx)), last_obs_time, this_obs_time, tStep - tRec, tStep) / unit.s;
 			const double delta_epsilon = 1. - 2. / hypot(result_ptr[1], result_ptr[2], result_ptr[3]);
-			result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - HypotSquare(result_ptr[5], result_ptr[6], result_ptr[7])) - 1.) * 299792.458;
+			result_ptr[9] = ((1. - result_ptr[7] / sqrt(delta_epsilon)) / sqrt(delta_epsilon - hypotSquare(result_ptr[5], result_ptr[6], result_ptr[7])) - 1.) * 299792.458;
 			result_ptr += HOTSPOT_RETURN_WIDTH;
 			if (++idx >= size)
 				break;
@@ -628,16 +374,16 @@ py::array_t<double> CalculateHotspotEnergyAngularMomentumAndMinimumRadius(const 
 		PrintlnError("Metric Error!");
 		return result;
 	}
-	HotSpot<double> hotspot(*main_metric, T, LAGRANGIAN, x.at(13), x.at(14), x.at(15) * unit.s, x.at(16) * unit.s, false);
+	Hotspot<double> hotspot(*main_metric, TimeSystem::T, DynamicalSystem::LAGRANGIAN, x.at(13), x.at(14), x.at(15) * unit.s, x.at(16) * unit.s, false);
 	if (hotspot.InitializeGeodesic(r, x.at(8) * M_PI / 180., x.at(9) * M_PI / 180., x.at(10) * M_PI / 180., x.at(11), x.at(12), inclination, rotation) != StatusCode::SUCCESS)
 		return result;
 	result_ptr[0] = hotspot.Energy();
 	if (metric == 1) {
-		result_ptr[1] = Power2(hotspot.Position(1)) * sqrt(Power2(hotspot.Position(6)) + Power2(std::sin(hotspot.Position(2)) * hotspot.Position(7)));
+		result_ptr[1] = power2(hotspot.Position(1)) * sqrt(power2(hotspot.Position(6)) + power2(std::sin(hotspot.Position(2)) * hotspot.Position(7)));
 		double cubic_roots[3];
-		double coeff = 1. / (Power2(result_ptr[0]) - 1.);
-		double L2_coeff = Power2(result_ptr[1]) * coeff;
-		int num_of_roots = PolySolveCubic(2. * coeff, -L2_coeff, 2. * L2_coeff, cubic_roots);
+		double coeff = 1. / (power2(result_ptr[0]) - 1.);
+		double L2_coeff = power2(result_ptr[1]) * coeff;
+		int num_of_roots = polySolveCubic(2. * coeff, -L2_coeff, 2. * L2_coeff, cubic_roots);
 		for (int i = 0; i < num_of_roots; ++i)
 			if (cubic_roots[i] > 0.) {
 				result_ptr[2] = cubic_roots[i];
@@ -652,10 +398,10 @@ double HSFluxChi2(py::array_t<double> &x, py::array_t<double> &intrinsic_time, p
 	Unit unit(x.at(0));
 	const int size = obs_flux.size();
 	unique_ptr<Metric<double>> main_metric;
-	HotSpot<double> hotspot(*main_metric, TAU, LAGRANGIAN, x.at(0), x.at(1), x.at(2) * unit.s, x.at(3) * unit.s, false);
+	Hotspot<double> hotspot(*main_metric, TimeSystem::TAU, DynamicalSystem::LAGRANGIAN, x.at(0), x.at(1), x.at(2) * unit.s, x.at(3) * unit.s, false);
 	double chi2 = 0.;
 	for (int i = 0; i < size; ++i)
-		chi2 += Power2((FluxDensity(hotspot.SpectralDensity(intrinsic_time.at(i), obs_redshift.at(i)), obs_magnification.at(i)) - obs_flux.at(i)) / flux_sigma.at(i));
+		chi2 += power2((FluxDensity(hotspot.SpectralDensity(intrinsic_time.at(i), obs_redshift.at(i)), obs_magnification.at(i)) - obs_flux.at(i)) / flux_sigma.at(i));
 	return chi2;
 }
 tuple<py::array_t<double>, int> HSDistinctChi2(py::array_t<double> &x, int metric, int mode, int gr_switch, py::array_t<double> &obs_time, py::array_t<double> &obs_flux, py::array_t<double> &flux_sigma, py::array_t<double> &obs_ra, py::array_t<double> &ra_sigma, py::array_t<double> &obs_dec, py::array_t<double> &dec_sigma, double disk_flux) {
@@ -672,22 +418,22 @@ tuple<py::array_t<double>, int> HSDistinctChi2(py::array_t<double> &x, int metri
 	memset(result_ptr, 0, size * sizeof(double));
 	if (gr_switch & 8)
 		for (int i = 0; i < size; ++i)
-			result_ptr[i] += Power2((obs_flux.at(i) - obs_data.at(i, 16)) / flux_sigma.at(i));
+			result_ptr[i] += power2((obs_flux.at(i) - obs_data.at(i, 16)) / flux_sigma.at(i));
 	if (gr_switch & 2)
 		for (int i = 0; i < size; ++i) { // 9.870628713769018e-6 = 1. / (unit.pc * unit.mas)
-			result_ptr[i] += Power2((obs_ra.at(i) + obs_data.at(i, 10) * x.at(0) * 9.870628713769018e-6 / x.at(2) * (1. - disk_flux / obs_flux.at(i)) - x.at(3)) / ra_sigma.at(i));
-			result_ptr[i] += Power2((obs_dec.at(i) - obs_data.at(i, 11) * x.at(0) * 9.870628713769018e-6 / x.at(2) * (1. - disk_flux / obs_flux.at(i)) - x.at(4)) / dec_sigma.at(i));
+			result_ptr[i] += power2((obs_ra.at(i) + obs_data.at(i, 10) * x.at(0) * 9.870628713769018e-6 / x.at(2) * (1. - disk_flux / obs_flux.at(i)) - x.at(3)) / ra_sigma.at(i));
+			result_ptr[i] += power2((obs_dec.at(i) - obs_data.at(i, 11) * x.at(0) * 9.870628713769018e-6 / x.at(2) * (1. - disk_flux / obs_flux.at(i)) - x.at(4)) / dec_sigma.at(i));
 		}
 	else {
 		PrintlnError("Inclination and rotation is ignored!");
 		for (int i = 0; i < size; ++i) {
-			result_ptr[i] += Power2((obs_ra.at(i) + obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(2) * (1. - disk_flux / obs_flux.at(i)) - x.at(3)) / ra_sigma.at(i));	 // FIXME: inclination!
-			result_ptr[i] += Power2((obs_dec.at(i) + obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(2) * (1. - disk_flux / obs_flux.at(i)) - x.at(4)) / dec_sigma.at(i)); // FIXME: inclination!
+			result_ptr[i] += power2((obs_ra.at(i) + obs_data.at(i, 2) * x.at(0) * 9.870628713769018e-6 / x.at(2) * (1. - disk_flux / obs_flux.at(i)) - x.at(3)) / ra_sigma.at(i));	 // FIXME: inclination!
+			result_ptr[i] += power2((obs_dec.at(i) + obs_data.at(i, 1) * x.at(0) * 9.870628713769018e-6 / x.at(2) * (1. - disk_flux / obs_flux.at(i)) - x.at(4)) / dec_sigma.at(i)); // FIXME: inclination!
 		}
 	}
 	return {result, 0};
 }
-py::tuple HSChi2(py::array_t<double> &x, int metric, int mode, int gr_switch, py::array_t<double> &obs_time, py::array_t<double> &obs_flux, py::array_t<double> &flux_sigma, py::array_t<double> &obs_ra, py::array_t<double> &ra_sigma, py::array_t<double> &obs_dec, py::array_t<double> &dec_sigma) {
+py::tuple HotspotChi2(py::array_t<double> &x, int metric, int mode, int gr_switch, py::array_t<double> &obs_time, py::array_t<double> &obs_flux, py::array_t<double> &flux_sigma, py::array_t<double> &obs_ra, py::array_t<double> &ra_sigma, py::array_t<double> &obs_dec, py::array_t<double> &dec_sigma, double black_hole_sigma) {
 	cerr.rdbuf(cout.rdbuf());
 	auto [result, status] = HSDistinctChi2(x, metric, mode, gr_switch, obs_time, obs_flux, flux_sigma, obs_ra, ra_sigma, obs_dec, dec_sigma, 0.0);
 	if (result.size() == 0)
@@ -696,7 +442,7 @@ py::tuple HSChi2(py::array_t<double> &x, int metric, int mode, int gr_switch, py
 	for (int i = 0; i < result.size(); ++i)
 		prob_sum += result.at(i);
 	if (gr_switch & 16)
-		prob_sum += (Power2(x.at(3)) + Power2(x.at(4))) * 400.;
+		prob_sum += (power2(x.at(3)) + power2(x.at(4))) / power2(black_hole_sigma);
 	if (isnan(prob_sum)) {
 		for (int i = 0; i < result.size(); ++i)
 			py::print(result.at(i));
@@ -795,11 +541,11 @@ py::array_t<double> ShadowChi2(const py::array_t<double> &observed_shadow_silhou
 	vector<double> corresponding_weight(data_point_number);
 	resolution = 0.5 / resolution;
 	for (int i = 1; i < data_point_number; ++i) {
-		double half_distance = resolution * sqrt(Power2(observed_shadow_silhouette_reader(i, 0) - observed_shadow_silhouette_reader(i - 1, 0)) + Power2(observed_shadow_silhouette_reader(i, 1) - observed_shadow_silhouette_reader(i - 1, 1)));
+		double half_distance = resolution * sqrt(power2(observed_shadow_silhouette_reader(i, 0) - observed_shadow_silhouette_reader(i - 1, 0)) + power2(observed_shadow_silhouette_reader(i, 1) - observed_shadow_silhouette_reader(i - 1, 1)));
 		corresponding_weight[i] += half_distance;
 		corresponding_weight[i - 1] += half_distance;
 	}
-	double half_distance = resolution * sqrt(Power2(observed_shadow_silhouette_reader(data_point_number - 1, 0) - observed_shadow_silhouette_reader(0, 0)) + Power2(observed_shadow_silhouette_reader(data_point_number - 1, 1) - observed_shadow_silhouette_reader(0, 1)));
+	double half_distance = resolution * sqrt(power2(observed_shadow_silhouette_reader(data_point_number - 1, 0) - observed_shadow_silhouette_reader(0, 0)) + power2(observed_shadow_silhouette_reader(data_point_number - 1, 1) - observed_shadow_silhouette_reader(0, 1)));
 	corresponding_weight[data_point_number - 1] += half_distance;
 	corresponding_weight[0] += half_distance;
 	auto result = py::array_t<double>(data_point_number);
@@ -807,7 +553,7 @@ py::array_t<double> ShadowChi2(const py::array_t<double> &observed_shadow_silhou
 	auto calculated_shadow_silhouette = CalculateShadowSilhouette(black_hole_parameters, metric);
 	auto calculated_shadow_silhouette_reader = calculated_shadow_silhouette.unchecked<2>();
 	for (int i = 0; i < data_point_number; ++i) {
-		result_writer(i) = corresponding_weight[i] * sqrt(Power2(calculated_shadow_silhouette_reader(i, 0) - observed_shadow_silhouette_reader(i, 0)) + Power2(calculated_shadow_silhouette_reader(i, 1) - observed_shadow_silhouette_reader(i, 1)));
+		result_writer(i) = corresponding_weight[i] * sqrt(power2(calculated_shadow_silhouette_reader(i, 0) - observed_shadow_silhouette_reader(i, 0)) + power2(calculated_shadow_silhouette_reader(i, 1) - observed_shadow_silhouette_reader(i, 1)));
 	}
 	return result;
 }
@@ -828,8 +574,8 @@ int HotspotOrbitTest(const py::array_t<double> &x, int metric, int mode, bool ra
 		return StatusCode::FAILURE;
 	}
 	int status = StatusCode::SUCCESS;
-	TimeSystem hotspot_time = T;
-	HotSpot<PRECISION> hotspot(*main_metric, hotspot_time, LAGRANGIAN, x.at(offset[mode]), x.at(offset[mode] + 1), x.at(offset[mode] + 2) * unit.s, x.at(offset[mode] + 3) * unit.s, false);
+	TimeSystem hotspot_time = TimeSystem::T;
+	Hotspot<PRECISION> hotspot(*main_metric, hotspot_time, DynamicalSystem::LAGRANGIAN, x.at(offset[mode]), x.at(offset[mode] + 1), x.at(offset[mode] + 2) * unit.s, x.at(offset[mode] + 3) * unit.s, false);
 	PRECISION t = 0., tStep = 0., tRec = 10. * unit.s;
 	if (mode == 0) { // circular
 		if (hotspot.InitializeCircular(r, x.at(8) * M_PI / 180., x.at(9)) != StatusCode::SUCCESS)
@@ -870,52 +616,7 @@ int HotspotOrbitTest(const py::array_t<double> &x, int metric, int mode, bool ra
 	return StatusCode::SUCCESS;
 }
 
-PYBIND11_MODULE(SBoPy, m) {
-	m.doc() = R"pbdoc(
-        Pybind11 example plugin
-        -----------------------
-        .. currentmodule:: cmake_example
-        .. autosummary::
-           :toctree: _generate
-           add
-           subtract
-    )pbdoc";
-
-	py::enum_<StatusCode>(m, "StatusCode")
-		.value("SUCCESS", StatusCode::SUCCESS)
-		.value("CONTINUE", StatusCode::CONTINUE)
-		.value("FAILURE", StatusCode::FAILURE)
-		.value("INVALID_ARGUMENT", StatusCode::INVALID_ARGUMENT)
-		.value("DOMAIN_ERROR", StatusCode::DOMAIN_ERROR)
-		.value("DIVISION_BY_ZERO", StatusCode::DIVISION_BY_ZERO)
-		.value("MAX_ITERATIONS_EXCEEDED", StatusCode::MAX_ITERATIONS_EXCEEDED)
-		.value("SINGULAR_MATRIX", StatusCode::SINGULAR_MATRIX)
-		.value("NUMERIC_ERROR", StatusCode::NUMERIC_ERROR)
-		.value("TRUST_REGION_TOO_SMALL", StatusCode::TRUST_REGION_TOO_SMALL)
-		.value("SCALING_REQUIRED", StatusCode::SCALING_REQUIRED)
-		.value("STEP_SIZE_TOO_SMALL", StatusCode::STEP_SIZE_TOO_SMALL)
-		.value("NO_INTERSECTION_WITH_TARGET_SURFACE", StatusCode::NO_INTERSECTION_WITH_TARGET_SURFACE)
-		.value("FALL_INTO_BLACK_HOLE", StatusCode::FALL_INTO_BLACK_HOLE)
-		.value("INPUT_OUTPUT_ERROR", StatusCode::INPUT_OUTPUT_ERROR)
-		.value("NOT_IMPLEMENTED", StatusCode::NOT_IMPLEMENTED)
-		.value("COMPUTATION_TIMEOUT", StatusCode::COMPUTATION_TIMEOUT);
-
-	m.def("CalculatePericenterTime", &CalculatePericenterTime, R"pbdoc(
-		Get observed pericenter time.
-	)pbdoc");
-
-	m.def("CalculateFullStarOrbit", &CalculateFullStarOrbit, R"pbdoc(
-		Get trajectory, redshift, apparent position with orbital parameters
-	)pbdoc");
-
-	m.def("CalculateStarOrbit", &CalculateStarOrbit, R"pbdoc(
-		Get trajectory, redshift, apparent position with orbital parameters
-	)pbdoc");
-
-	m.def("StarChi2", &StarChi2, R"pbdoc(
-		Get chi2
-	)pbdoc");
-
+void bindHotspotModule(py::module_ &m) {
 	m.def("CalculateFullHSOrbit", &CalculateFullHSOrbit, R"pbdoc(
 		Get trajectory, redshift, apparent position with orbital parameters
 	)pbdoc");
@@ -924,7 +625,7 @@ PYBIND11_MODULE(SBoPy, m) {
 		Get trajectory, redshift, apparent position with orbital parameters
 	)pbdoc");
 
-	m.def("HSChi2", &HSChi2, R"pbdoc(
+	m.def("HotspotChi2", &HotspotChi2, R"pbdoc(
 		Get MCMC log probability
 	)pbdoc");
 
@@ -934,18 +635,6 @@ PYBIND11_MODULE(SBoPy, m) {
 
 	m.def("CalculateHotspotEnergyAngularMomentumAndMinimumRadius", &CalculateHotspotEnergyAngularMomentumAndMinimumRadius, R"pbdoc(
 		Calculate Hotspot Energy Angular Momentum And Minimum Radius for geodesic orbits.
-	)pbdoc");
-
-	m.def("EllipticIntegral", &EllipticIntegral<double>, R"pbdoc(
-		Elliptic Integral
-	)pbdoc");
-
-	m.def("EllipticIntegral2Complex", &EllipticIntegral2Complex<double>, R"pbdoc(
-		Elliptic Integral with 2 complex roots
-	)pbdoc");
-
-	m.def("EllipticIntegral4Complex", &EllipticIntegral4Complex<double>, R"pbdoc(
-		Elliptic Integral with 4 complex roots
 	)pbdoc");
 
 	m.def("FastTrace", &FastTrace, R"pbdoc(
@@ -967,6 +656,4 @@ PYBIND11_MODULE(SBoPy, m) {
 	m.def("HotspotOrbitTest", &HotspotOrbitTest, R"pbdoc(
 		HotspotOrbitTest
 	)pbdoc");
-
-	m.attr("__version__") = VERSION;
 }

@@ -9,72 +9,72 @@
  *
  */
 
-#ifndef SBODY_UNIT_HPP
-#define SBODY_UNIT_HPP
+#ifndef SBODY_UNITS_HPP
+#define SBODY_UNITS_HPP
 
-namespace SBody {
+namespace sbody {
 	/**
 	 * @brief SBody uses the Geometrized units, in which \f$c=G=1\f$. In addition, the central black hole mass is set to 1.
 	 *
 	 */
-	template <typename Type>
+	template <typename T>
 	class Unit {
 	  public:
 		/// Degree, in unit of rad
-		static constexpr Type deg = 1.745329251994329576923690768488612713442871888541728e-2l;
+		static constexpr T deg = 1.745329251994329576923690768488612713442871888541728e-2l;
 		/// Minute of arc, in unit of rad
-		static constexpr Type min = 2.908882086657215961539484614147687855738119814236213e-4l;
+		static constexpr T min = 2.908882086657215961539484614147687855738119814236213e-4l;
 		/// Second of arc, in unit of rad
-		static constexpr Type sec = 4.8481368110953599358991410235794797595635330237270218e-6l;
+		static constexpr T sec = 4.8481368110953599358991410235794797595635330237270218e-6l;
 		/// Millisecond of arc, in unit of rad
-		static constexpr Type mas = 4.8481368110953599358991410235794797595635330237270218e-9l;
+		static constexpr T mas = 4.8481368110953599358991410235794797595635330237270218e-9l;
 		/// Microsecond of arc, in unit of rad
-		static constexpr Type uas = 4.8481368110953599358991410235794797595635330237270218e-12l;
+		static constexpr T uas = 4.8481368110953599358991410235794797595635330237270218e-12l;
 		/// Second
-		Type s;
+		T s;
 		/// Hour
-		Type hr;
+		T hr;
 		/// Day
-		Type day;
+		T day;
 		/// Year
-		Type yr;
+		T yr;
 		/// Centimeter
-		Type cm;
+		T cm;
 		/// Meter
-		Type m;
+		T m;
 		/// Kilometer
-		Type km;
+		T km;
 		/// Radius of the Sun, \f$R_\odot\f$
-		Type R_sun;
+		T R_sun;
 		/// The astronomical unit
-		Type AU;
+		T AU;
 		/// Milliparsec
-		Type mpc;
+		T mpc;
 		/// Parsec
-		Type pc;
+		T pc;
 		/// Kiloparsec
-		Type kpc;
+		T kpc;
 		/// Megaparsec
-		Type Mpc;
+		T Mpc;
 		/// Gigaparsec
-		Type Gpc;
+		T Gpc;
 		/// Mass of the Sun, \f$M_\odot\f$
-		Type M_sun;
+		T M_sun;
 		/// Mass of Earth, \f$M_\oplus\f$
-		Type M_earth;
+		T M_earth;
 		/// Mass of Jupiter, \f$M_\mathrm{jup}\f$
-		Type M_jup;
+		T M_jup;
 		/// Erg
-		Type erg;
+		T erg;
 		/// Joules
-		Type J;
+		T J;
 		/**
 		 * @brief Initialize the unit system
 		 *
 		 * @param mass mass of the central black hole, in unit of \f$M_\odot\f$
 		 * @return status
 		 */
-		Unit(Type mass) {
+		Unit(T mass) {
 			if (mass <= 0)
 				throw std::invalid_argument("Mass must be positive.");
 			M_sun = 1. / mass;
@@ -98,6 +98,6 @@ namespace SBody {
 			J = 1.e7 * erg;
 		}
 	};
-} // namespace SBody
+} // namespace sbody
 
 #endif

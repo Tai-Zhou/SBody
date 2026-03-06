@@ -16,9 +16,6 @@ else()
     add_compile_definitions(BOOST_UBLAS_CHECK_RANGE)
 endif()
 
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-
 set(SBODY_LIB_SHARED OFF)
 set(WITH_OPENMP ON)
 set(WITH_PYTHON ON)
@@ -62,10 +59,15 @@ endif()
 
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/include fmt/include indicators/include ${Python3_INCLUDE_DIRS})
 add_subdirectory(${PROJECT_SOURCE_DIR}/fmt)
-add_subdirectory(${PROJECT_SOURCE_DIR}/src)
+add_subdirectory(${PROJECT_SOURCE_DIR}/python)
 add_subdirectory(${PROJECT_SOURCE_DIR}/test)
-add_executable(sbody src/SBody.cpp)
-target_link_libraries(sbody PUBLIC Boost::boost fmt::fmt ${OPTIONAL_LIBS})
+add_library(sbody_static STATIC src/file/file.cpp src/file/writer.cpp src/file/csv.cpp src/file/numpy.cpp src/infra/progress.cpp src/infra/status.cpp)
+set_target_properties(sbody_static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
+
+add_executable(sbody src/main.cpp)
+set_target_properties(sbody PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+
+target_link_libraries(sbody PUBLIC sbody_static Boost::boost fmt::fmt ${OPTIONAL_LIBS})
 
 enable_testing()
 
