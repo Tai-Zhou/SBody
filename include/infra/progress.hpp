@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2026
  *
  */
-#ifndef SBODY_PROGRESS_HPP
-#define SBODY_PROGRESS_HPP
+
+#pragma once
 
 #include <string>
 
@@ -18,22 +18,29 @@
 #include <indicators/dynamic_progress.hpp>
 
 namespace sbody {
-	/**
-	 * @brief
-	 *
-	 */
-	class ProgressBar : public indicators::DynamicProgress<indicators::BlockProgressBar> {
-	  public:
-		ProgressBar(int color, std::string prefix_text);
-		~ProgressBar();
-		/**
-		 * @brief Set a specific progress bar as completed.
-		 *
-		 * @param index index of the progress bar in the container
-		 * @param prefix prefix shown in the completed progress bar
-		 */
-		void setComplete(int index, std::string prefix);
-	};
+/**
+ * @brief
+ *
+ */
+class ProgressBar : public indicators::DynamicProgress<indicators::BlockProgressBar> {
+  public:
+    ProgressBar(int color, std::string prefix_text);
+    ~ProgressBar();
+    void tick(int index);
+    /**
+     * @brief Set the Progress object
+     *
+     * @param index
+     * @param progress
+     */
+    void setProgress(int index, double progress);
+    /**
+     * @brief Set a specific progress bar as completed.
+     *
+     * @param index index of the progress bar in the container
+     * @param prefix prefix shown in the completed progress bar
+     */
+    void setComplete(int index, std::string prefix);
+};
 
 } // namespace sbody
-#endif

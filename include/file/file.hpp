@@ -9,13 +9,11 @@
  *
  */
 
-#ifndef SBODY_FILE_HPP
-#define SBODY_FILE_HPP
+#pragma once
 
 #include <array>
 #include <filesystem>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include <boost/numeric/ublas/vector.hpp>
@@ -23,31 +21,37 @@
 #include "file/writer.hpp"
 
 namespace sbody {
-	enum class FileFormat {
-		NUMPY,
-		CSV,
-	};
+enum class FileFormat {
+    NUMPY,
+    CSV,
+};
 
-	class File {
-	  protected:
-		FileFormat format_;
-		std::unique_ptr<Writer> writer_;
+/**
+ * @brief Get the File Format enum
+ *
+ * @param name
+ * @return FileFormat
+ */
+FileFormat getFileFormat(const std::string &name);
 
-	  public:
-		File(FileFormat format, std::filesystem::path file_path, std::vector<std::size_t> feature_shape);
-		template <std::size_t N>
-		void save(const std::array<double, N> &data) {
-			writer_->save(data.data(), N);
-		}
-		template <std::size_t N>
-		void save(const boost::numeric::ublas::bounded_vector<double, N> &data) {
-			static_assert(N > 0, "N must be greater than 0");
-			writer_->save(&data[0], N);
-		}
-		void save(const std::vector<double> &data);
-		void save(const double data[], uint length);
-		void save(double datum);
-	};
+class File {
+  protected:
+    FileFormat format_;
+    std::unique_ptr<Writer> writer_;
+
+  public:
+    File(FileFormat format, std::filesystem::path file_path, std::vector<std::size_t> feature_shape);
+    template <std::size_t N>
+    void save(const std::array<double, N> &data) {
+        writer_->save(data.data(), N);
+    }
+    template <std::size_t N>
+    void save(const boost::numeric::ublas::bounded_vector<double, N> &data) {
+        static_assert(N > 0, "N must be greater than 0");
+        writer_->save(&data[0], N);
+    }
+    void save(const std::vector<double> &data);
+    void save(const double data[], uint length);
+    void save(double datum);
+};
 } // namespace sbody
-
-#endif

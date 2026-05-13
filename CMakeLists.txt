@@ -1,14 +1,15 @@
 cmake_minimum_required(VERSION 3.12)
-project(SBody VERSION 0.0.6.220525)
-add_compile_definitions(VERSION="${PROJECT_VERSION}" HAVE_INLINE)
+project(SBody VERSION 0.0.7.260316)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wextra -Wshadow -Wuninitialized")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O1 -g -fsanitize=address -fno-optimize-sibling-calls")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -fomit-frame-pointer -fno-math-errno -fno-trapping-math -DNDEBUG")
 
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL Linux)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fPIC")
 endif()
+
+add_compile_definitions(SBODY_PRECISION=0)
 
 if(CMAKE_BUILD_TYPE STREQUAL Release)
     add_compile_definitions(SBODY_RELEASE)
@@ -70,12 +71,9 @@ endif()
 
 if(WITH_OPENMP)
     find_package(OpenMP)
-
     if(OpenMP_FOUND)
-        add_compile_definitions(WITH_OPENMP)
         list(APPEND OPTIONAL_LIBS OpenMP::OpenMP_CXX)
     else()
-        set(WITH_OPENMP OFF)
         message(NOTICE "OpenMP not found")
     endif()
 endif()
@@ -107,12 +105,22 @@ endif()
 ###############
 
 add_library(sbody_static STATIC
+    src/benchmark/benchmark.cpp
     src/file/file.cpp
     src/file/writer.cpp
     src/file/csv.cpp
     src/file/numpy.cpp
     src/infra/progress.cpp
     src/infra/status.cpp
+)
+
+target_compile_definitions(sbody_static PUBLIC
+    SBODY_VERSION="${PROJECT_VERSION}"
+    SBODY_CPP_STANDARD="${CMAKE_CXX_STANDARD}"
+    SBODY_COMPILER_ID="${CMAKE_CXX_COMPILER_ID}"
+    SBODY_COMPILER_VERSION="${CMAKE_CXX_COMPILER_VERSION}"
+    SBODY_CMAKE_VERSION="${CMAKE_VERSION}"
+    SBODY_BOOST_VERSION="${Boost_VERSION}"
 )
 
 target_include_directories(
@@ -124,8 +132,11 @@ target_include_directories(
 target_link_libraries(
     sbody_static
     PUBLIC
+        Boost::boost
+        CLI11::CLI11
         fmt::fmt
         indicators
+        ${OPTIONAL_LIBS}
 )
 
 ###############
@@ -139,11 +150,9 @@ add_executable(
 
 target_link_libraries(
     sbody
-    PRIVATE
+    PUBLIC
         sbody_static
         CLI11::CLI11
-        Boost::boost
-        ${OPTIONAL_LIBS}
 )
 
 ###############

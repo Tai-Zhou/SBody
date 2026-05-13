@@ -16,7 +16,7 @@
 namespace sbody {
 	CSV::CSV(std::filesystem::path file_path, char separator) : Writer(file_path.replace_extension(".csv"), std::ios::out), separator_(separator) {}
 	void CSV::save(const double data[], uint length) {
-		for (int i = 0; i < length; ++i) {
+		for (uint i = 0; i < length; ++i) {
 			std::string datum_s = std::to_string(data[i]);
 			write(datum_s.c_str(), datum_s.length());
 			put(separator_);

@@ -9,31 +9,29 @@
  *
  */
 
-#ifndef SBODY_CSV_HPP
-#define SBODY_CSV_HPP
+#pragma once
 
 #include "file/writer.hpp"
 
 namespace sbody {
-	/**
-	 * @brief
-	 *
-	 */
-	class CSV : public Writer {
-	  private:
-		/// Separator of the file.
-		char separator_;
+/**
+ * @brief
+ *
+ */
+class CSV : public Writer {
+  private:
+    /// Separator of the file.
+    char separator_;
 
-	  public:
-		/**
-		 * @brief Construct a new CSV object.
-		 *
-		 * @param file_path
-		 * @param separator Separator of the file. If `separator == '\t'`, the file would be a Tab-Separated Values (TSV).
-		 */
-		CSV(std::filesystem::path file_path, char separator = ',');
-		void save(const double data[], uint length) override;
-		void save(const double datum) override;
-	};
+  public:
+    /**
+     * @brief Construct a new CSV object.
+     *
+     * @param file_path
+     * @param separator Separator of the file. If `separator == '\t'`, the file would be a Tab-Separated Values (TSV).
+     */
+    CSV(std::filesystem::path file_path, char separator = ',');
+    void save(const double data[], uint length) override;
+    void save(const double datum) override;
+};
 } // namespace sbody
-#endif

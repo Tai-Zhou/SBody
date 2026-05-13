@@ -35,8 +35,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SBODY_POLYNOMIAL_HPP
-#define SBODY_POLYNOMIAL_HPP
+#pragma once
 
 #include <cmath>
 
@@ -46,264 +45,267 @@
 #include "math/scalar.hpp"
 
 namespace sbody {
-	template <typename T, typename Iterator>
-	int polishQuadraticRoot(T a, T b, Iterator roots_begin, Iterator roots_end) {
-		int convinced_root_num = 0;
-		for (auto p = roots_begin; p != roots_end; ++p) {
-			for (int j = 32; j > 0; --j) {
-				T f = *p + a;
-				f = std::fma(f, *p, b);
-				T df = std::fma(2.l, *p, a);
-				const T diff = f * df / (df * df - f);
-				if (std::abs(*p) * boost::math::tools::epsilon<T>() < std::abs(diff))
-					*p -= diff;
-				else {
-					++convinced_root_num;
-					break;
-				}
-			}
-		}
-		std::sort(roots_begin, roots_begin + convinced_root_num);
-		return convinced_root_num;
-	}
+template <typename T, typename Iterator>
+int polishQuadraticRoot(T a, T b, Iterator roots_begin, Iterator roots_end) {
+    int convinced_root_num = 0;
+    for (auto p = roots_begin; p != roots_end; ++p) {
+        for (int j = 32; j > 0; --j) {
+            T f = *p + a;
+            f = std::fma(f, *p, b);
+            T df = std::fma(2.l, *p, a);
+            const T diff = f * df / (df * df - f);
+            if (std::abs(*p) * boost::math::tools::epsilon<T>() < std::abs(diff))
+                *p -= diff;
+            else {
+                ++convinced_root_num;
+                break;
+            }
+        }
+    }
+    std::sort(roots_begin, roots_begin + convinced_root_num);
+    return convinced_root_num;
+}
 
-	template <typename T>
-	int polySolveQuadratic(T a, T b, T c, T roots[]) {
-		if (a == 0.) {
-			if (b == 0.)
-				return 0;
-			roots[0] = -c / b;
-			return 1;
-		}
-		if (b == 0.) {
-			const T square_of_root = -c / a;
-			if (square_of_root < 0.)
-				return 0;
-			roots[1] = std::sqrt(square_of_root);
-			roots[0] = -roots[1];
-			return 2;
-		}
-		const T delta = b * b - 4. * a * c;
-		if (delta < 0.)
-			return 0;
-		else if (delta == 0.) {
-			roots[0] = roots[1] = -0.5 * b / a;
-			return 2;
-		}
-		const T numerator = -0.5 * (b + std::copysign(std::sqrt(delta), b));
-		if (oppositeSign(a, b)) {
-			roots[0] = c / numerator;
-			roots[1] = numerator / a;
-		} else {
-			roots[0] = numerator / a;
-			roots[1] = c / numerator;
-		}
-		return 2;
-	}
+template <typename T>
+int polySolveQuadratic(T a, T b, T c, T roots[]) {
+    if (a == 0.) {
+        if (b == 0.)
+            return 0;
+        roots[0] = -c / b;
+        return 1;
+    }
+    if (b == 0.) {
+        const T square_of_root = -c / a;
+        if (square_of_root < 0.)
+            return 0;
+        roots[1] = std::sqrt(square_of_root);
+        roots[0] = -roots[1];
+        return 2;
+    }
+    const T delta = b * b - 4. * a * c;
+    if (delta < 0.)
+        return 0;
+    else if (delta == 0.) {
+        roots[0] = roots[1] = -0.5 * b / a;
+        return 2;
+    }
+    const T numerator = -0.5 * (b + std::copysign(std::sqrt(delta), b));
+    if (oppositeSign(a, b)) {
+        roots[0] = c / numerator;
+        roots[1] = numerator / a;
+    } else {
+        roots[0] = numerator / a;
+        roots[1] = c / numerator;
+    }
+    return 2;
+}
 
-	template <typename T>
-	int polishCubicRoot(T a, T b, T c, T roots[], int root_num) {
-		int convinced_root_num = 0;
-		for (int i = 0; i < root_num; ++i) {
-			for (int j = 32; j > 0; --j) {
-				T f = roots[i] + a;
-				f = std::fma(f, roots[i], b);
-				f = std::fma(f, roots[i], c);
-				if ((1. + std::abs(a) + std::abs(b) + std::abs(c)) * boost::math::tools::epsilon<T>() >= std::abs(f)) {
-					++convinced_root_num;
-					break;
-				}
-				T df = std::fma(3.l, roots[i], 2. * a);
-				df = std::fma(df, roots[i], b);
-				T d2f = std::fma(6.l, roots[i], 2. * a);
-				const T diff = f * df / (df * df - 0.5 * f * d2f);
-				if (std::abs(roots[i]) * boost::math::tools::epsilon<T>() >= std::abs(diff)) {
-					++convinced_root_num;
-					break;
-				}
-				roots[i] -= diff;
-			}
-		}
-		std::sort(roots, roots + convinced_root_num);
-		return convinced_root_num;
-	}
+template <typename T>
+int polishCubicRoot(T a, T b, T c, T roots[], int root_num) {
+    int convinced_root_num = 0;
+    for (int i = 0; i < root_num; ++i) {
+        for (int j = 32; j > 0; --j) {
+            T f = roots[i] + a;
+            f = std::fma(f, roots[i], b);
+            f = std::fma(f, roots[i], c);
+            if ((1. + std::abs(a) + std::abs(b) + std::abs(c)) * boost::math::tools::epsilon<T>() >= std::abs(f)) {
+                ++convinced_root_num;
+                break;
+            }
+            T df = std::fma(3.l, roots[i], 2. * a);
+            df = std::fma(df, roots[i], b);
+            T d2f = std::fma(6.l, roots[i], 2. * a);
+            const T diff = f * df / (df * df - 0.5 * f * d2f);
+            if (std::abs(roots[i]) * boost::math::tools::epsilon<T>() >= std::abs(diff)) {
+                ++convinced_root_num;
+                break;
+            }
+            roots[i] -= diff;
+        }
+    }
+    std::sort(roots, roots + convinced_root_num);
+    return convinced_root_num;
+}
 
-	template <typename T>
-	int polySolveCubic(T a, T b, T c, T roots[]) {
-		if (c == 0.) {
-			roots[0] = 0.;
-			int root_num = polySolveQuadratic<T>(1., a, b, roots + 1) + 1;
-			return polishCubicRoot(a, b, c, roots, root_num);
-		}
-		T B = (a * a - 3. * b) / 9.;
-		T C = (2. * a * a * a - 9. * a * b + 27. * c) / 54.;
-		T Delta = C * C - B * B * B;
-		if (Delta < 0.) {
-			T sqrt_B = std::sqrt(B);
-			T theta = acos(C / (B * sqrt_B)) / 3.;
-			T sqrt3_sin_theta = boost::math::constants::root_three<T>() * std::sin(theta);
-			T cos_theta = std::cos(theta);
-			roots[0] = -2. * sqrt_B * cos_theta - a / 3.;
-			roots[1] = sqrt_B * (cos_theta - sqrt3_sin_theta) - a / 3.;
-			roots[2] = sqrt_B * (cos_theta + sqrt3_sin_theta) - a / 3.;
-			return polishCubicRoot(a, b, c, roots, 3);
-		}
-		T X = (C >= 0. ? -1. : 1.) * cbrt(std::abs(C) + std::sqrt(Delta));
-		T Y = X == 0. ? 0. : B / X;
-		roots[0] = X + Y - a / 3.;
-		if (X == Y || Delta == 0.) {
-			roots[1] = roots[2] = -X - a / 3.;
-			return polishCubicRoot(a, b, c, roots, 3);
-		}
-		return polishCubicRoot(a, b, c, roots, 1);
-	}
+template <typename T>
+int polySolveCubic(T a, T b, T c, T roots[]) {
+    if (c == 0.) {
+        roots[0] = 0.;
+        int root_num = polySolveQuadratic<T>(1., a, b, roots + 1) + 1;
+        return polishCubicRoot(a, b, c, roots, root_num);
+    }
+    T B = (a * a - 3. * b) / 9.;
+    T C = (2. * a * a * a - 9. * a * b + 27. * c) / 54.;
+    T Delta = C * C - B * B * B;
+    if (Delta < 0.) {
+        T sqrt_B = std::sqrt(B);
+        T theta = acos(C / (B * sqrt_B)) / 3.;
+        T sqrt3_sin_theta = boost::math::constants::root_three<T>() * std::sin(theta);
+        T cos_theta = std::cos(theta);
+        roots[0] = -2. * sqrt_B * cos_theta - a / 3.;
+        roots[1] = sqrt_B * (cos_theta - sqrt3_sin_theta) - a / 3.;
+        roots[2] = sqrt_B * (cos_theta + sqrt3_sin_theta) - a / 3.;
+        return polishCubicRoot(a, b, c, roots, 3);
+    }
+    T X = (C >= 0. ? -1. : 1.) * cbrt(std::abs(C) + std::sqrt(Delta));
+    T Y = X == 0. ? 0. : B / X;
+    roots[0] = X + Y - a / 3.;
+    if (X == Y || Delta == 0.) {
+        roots[1] = roots[2] = -X - a / 3.;
+        return polishCubicRoot(a, b, c, roots, 3);
+    }
+    return polishCubicRoot(a, b, c, roots, 1);
+}
 
-	template <typename T>
-	int polishQuarticRoot(T a, T b, T c, T d, T roots[], int root_num) {
-		int convinced_root_num = 0;
-		for (int i = 0; i < root_num; ++i) {
-			for (int j = 32; j > 0; --j) {
-				T f = roots[i] + a;
-				f = std::fma(f, roots[i], b);
-				f = std::fma(f, roots[i], c);
-				f = std::fma(f, roots[i], d);
-				if ((1. + std::abs(a) + std::abs(b) + std::abs(c) + std::abs(d)) * boost::math::tools::epsilon<T>() >= std::abs(f)) {
-					++convinced_root_num;
-					break;
-				}
-				T df = std::fma(4., roots[i], 3. * a);
-				df = std::fma(df, roots[i], 2. * b);
-				df = std::fma(df, roots[i], c);
-				T d2f = std::fma(12., roots[i], 6. * a);
-				d2f = std::fma(d2f, roots[i], 2. * b);
-				const T diff = f * df / (df * df - 0.5 * f * d2f);
-				if (std::abs(roots[i]) * boost::math::tools::epsilon<T>() >= std::abs(diff)) {
-					++convinced_root_num;
-					break;
-				}
-				roots[i] -= diff;
-			}
-		}
-		std::sort(roots, roots + convinced_root_num);
-		return convinced_root_num;
-	}
+template <typename T>
+int polishQuarticRoot(T a, T b, T c, T d, T roots[], int root_num) {
+    int convinced_root_num = 0;
+    for (int i = 0; i < root_num; ++i) {
+        for (int j = 32; j > 0; --j) {
+            T f = roots[i] + a;
+            f = std::fma(f, roots[i], b);
+            f = std::fma(f, roots[i], c);
+            f = std::fma(f, roots[i], d);
+            if ((1. + std::abs(a) + std::abs(b) + std::abs(c) + std::abs(d)) * boost::math::tools::epsilon<T>() >=
+                std::abs(f)) {
+                ++convinced_root_num;
+                break;
+            }
+            T df = std::fma(4., roots[i], 3. * a);
+            df = std::fma(df, roots[i], 2. * b);
+            df = std::fma(df, roots[i], c);
+            T d2f = std::fma(12., roots[i], 6. * a);
+            d2f = std::fma(d2f, roots[i], 2. * b);
+            const T diff = f * df / (df * df - 0.5 * f * d2f);
+            if (std::abs(roots[i]) * boost::math::tools::epsilon<T>() >= std::abs(diff)) {
+                ++convinced_root_num;
+                break;
+            }
+            roots[i] -= diff;
+        }
+    }
+    std::sort(roots, roots + convinced_root_num);
+    return convinced_root_num;
+}
 
-	template <typename T>
-	int polySolveQuarticWithZero(T a, T b, T c, T offset, T roots[]) {
-		if (int root_num = polySolveCubic(a, b, c, roots); root_num == 1) {
-			if (roots[0] < 0.) {
-				roots[0] += offset;
-				roots[1] = offset;
-			} else {
-				roots[1] = roots[0] + offset;
-				roots[0] = offset;
-			}
-			return 2;
-		}
-		// root_num == 3
-		roots[3] = offset;
-		if (offset != 0.)
-			for (int i = 0; i < 3; ++i)
-				roots[i] += offset;
-		for (int i = 3; i > 0 && roots[i] < roots[i - 1]; --i)
-			std::swap(roots[i], roots[i - 1]);
-		return 4;
-	}
+template <typename T>
+int polySolveQuarticWithZero(T a, T b, T c, T offset, T roots[]) {
+    if (int root_num = polySolveCubic(a, b, c, roots); root_num == 1) {
+        if (roots[0] < 0.) {
+            roots[0] += offset;
+            roots[1] = offset;
+        } else {
+            roots[1] = roots[0] + offset;
+            roots[0] = offset;
+        }
+        return 2;
+    }
+    // root_num == 3
+    roots[3] = offset;
+    if (offset != 0.)
+        for (int i = 0; i < 3; ++i)
+            roots[i] += offset;
+    for (int i = 3; i > 0 && roots[i] < roots[i - 1]; --i)
+        std::swap(roots[i], roots[i - 1]);
+    return 4;
+}
 
-	/**
-	 * @brief Solve for real roots of the quartic equation \f$x^4+ax^3+bx^2+cx=0\f$. The roots are returned in `x0`, `x1`, `x2`, and `x3` and satisfied \f$x_0\leq x_1\leq x_2\leq x_3\f$. The function is based on `quartic_roots` from `boost/math/tools/quartic_roots.hpp`.
-	 *
-	 * @param a \f$a\f$
-	 * @param b \f$b\f$
-	 * @param c \f$c\f$
-	 * @param d \f$d\f$
-	 * @param roots
-	 *
-	 * @return number of real roots
-	 */
-	template <typename T>
-	int polySolveQuartic(T a, T b, T c, T d, T roots[]) {
-		if (d == 0.)
-			return polishQuarticRoot(a, b, c, d, roots, polySolveQuarticWithZero(a, b, c, T{0.}, roots));
-		// Now solve x^4 + ax^3 + bx^2 + cx + d = 0.
-		const T a_4 = 0.25 * a;
-		const T a2_16 = power2(a_4);
-		// Let x = y - a/4:
-		// Mathematica: Expand[(y - a/4)^4 + a*(y - a/4)^3 + b*(y - a/4)^2 + c*(y - a/4) + d]
-		// We now solve the depressed quartic y^4 + py^2 + qy + r = 0.
-		const T p = b - 6. * a2_16;
-		const T q = c - 2. * b * a_4 + 2. * a * a2_16;
-		const T r = d - c * a_4 + b * a2_16 - 3. * a2_16 * a2_16;
-		if (r == 0.)
-			return polishQuarticRoot(a, b, c, d, roots, polySolveQuarticWithZero(T{0.}, p, q, -a_4, roots));
-		// Biquadratic case:
-		if (q == 0.) {
-			if (int root_num = polySolveQuadratic(T{1.}, p, r, roots); root_num == 0)
-				return 0;
-			if (roots[0] >= 0.) { // roots[1] >= roots[0]
-				T root_of_root_0 = std::sqrt(roots[0]);
-				T root_of_root_1 = std::sqrt(roots[1]);
-				roots[0] = -root_of_root_1 - a_4;
-				roots[1] = -root_of_root_0 - a_4;
-				roots[2] = root_of_root_0 - a_4;
-				roots[3] = root_of_root_1 - a_4;
-				return polishQuarticRoot(a, b, c, d, roots, 4);
-			}
-			if (roots[1] >= 0.) {
-				T root_of_root_1 = std::sqrt(roots[1]);
-				roots[0] = -root_of_root_1 - a_4;
-				roots[1] = root_of_root_1 - a_4;
-				return polishQuarticRoot(a, b, c, d, roots, 2);
-			}
-			return 0;
-		}
+/**
+ * @brief Solve for real roots of the quartic equation \f$x^4+ax^3+bx^2+cx=0\f$. The roots are returned in `x0`, `x1`, `x2`, and
+ * `x3` and satisfied \f$x_0\leq x_1\leq x_2\leq x_3\f$. The function is based on `quartic_roots` from
+ * `boost/math/tools/quartic_roots.hpp`.
+ *
+ * @param a \f$a\f$
+ * @param b \f$b\f$
+ * @param c \f$c\f$
+ * @param d \f$d\f$
+ * @param roots
+ *
+ * @return number of real roots
+ */
+template <typename T>
+int polySolveQuartic(T a, T b, T c, T d, T roots[]) {
+    if (d == 0.)
+        return polishQuarticRoot(a, b, c, d, roots, polySolveQuarticWithZero(a, b, c, T{0.}, roots));
+    // Now solve x^4 + ax^3 + bx^2 + cx + d = 0.
+    const T a_4 = 0.25 * a;
+    const T a2_16 = power2(a_4);
+    // Let x = y - a/4:
+    // Mathematica: Expand[(y - a/4)^4 + a*(y - a/4)^3 + b*(y - a/4)^2 + c*(y - a/4) + d]
+    // We now solve the depressed quartic y^4 + py^2 + qy + r = 0.
+    const T p = b - 6. * a2_16;
+    const T q = c - 2. * b * a_4 + 2. * a * a2_16;
+    const T r = d - c * a_4 + b * a2_16 - 3. * a2_16 * a2_16;
+    if (r == 0.)
+        return polishQuarticRoot(a, b, c, d, roots, polySolveQuarticWithZero(T{0.}, p, q, -a_4, roots));
+    // Biquadratic case:
+    if (q == 0.) {
+        if (int root_num = polySolveQuadratic(T{1.}, p, r, roots); root_num == 0)
+            return 0;
+        if (roots[0] >= 0.) { // roots[1] >= roots[0]
+            T root_of_root_0 = std::sqrt(roots[0]);
+            T root_of_root_1 = std::sqrt(roots[1]);
+            roots[0] = -root_of_root_1 - a_4;
+            roots[1] = -root_of_root_0 - a_4;
+            roots[2] = root_of_root_0 - a_4;
+            roots[3] = root_of_root_1 - a_4;
+            return polishQuarticRoot(a, b, c, d, roots, 4);
+        }
+        if (roots[1] >= 0.) {
+            T root_of_root_1 = std::sqrt(roots[1]);
+            roots[0] = -root_of_root_1 - a_4;
+            roots[1] = root_of_root_1 - a_4;
+            return polishQuarticRoot(a, b, c, d, roots, 2);
+        }
+        return 0;
+    }
 
-		// Now split the depressed quartic into two quadratics:
-		// y^4 + py^2 + qy + r = (y^2 + sy + u)(y^2 - sy + v) = y^4 + (v+u-s^2)y^2 + s(v - u)y + uv
-		// So p = v+u-s^2, q = s(v - u), r = uv.
-		// Then (v+u)^2 - (v-u)^2 = 4uv = 4r = (p+s^2)^2 - q^2/s^2.
-		// Multiply through by s^2 to get s^2(p+s^2)^2 - q^2 - 4rs^2 = 0, which is a cubic in s^2.
-		// Then we let z = s^2, to get
-		// z^3 + 2pz^2 + (p^2 - 4r)z - q^2 = 0.
-		int z_root_num = polySolveCubic(2. * p, p * p - 4. * r, -q * q, roots);
-		// z = s^2, so s = sqrt(z).
-		// Hence we require a root > 0, and for the sake of sanity we should take the largest one:
-		T largest_root = z_root_num == 1 ? roots[0] : roots[2];
-		if (int status = polishCubicRoot(2. * p, p * p - 4. * r, -q * q, &largest_root, 1); status == 0)
-			largest_root = z_root_num == 1 ? roots[0] : roots[2];
-		if (largest_root <= 0.) // No real roots:
-			return 0;
-		const T s = std::sqrt(largest_root);
-		// s is nonzero, because we took care of the biquadratic case.
-		const T v = 0.5 * (p + largest_root + q / s);
-		const T u = v - q / s;
-		// We have q != 0., so u != v
-		if (u > v) {
-			// Now solve y^2 - sy + v = 0:
-			if (polySolveQuadratic(T{1.}, -s, v, roots) == 0)
-				return 0;
-			std::swap(roots[0], roots[1]); // roots[1] > 0 are more convinced, put it to the front
-		} else {
-			// Now solve y^2 + sy + u = 0:
-			if (polySolveQuadratic(T{1.}, s, u, roots) == 0) // roots[0] < 0 are more convinced
-				return 0;
-		}
-		roots[0] -= a_4;
-		roots[1] -= a_4;
-		if (int status = polishQuarticRoot(a, b, c, d, roots, 2); status == 1) { // roots[1] is not convinced, solve the cubic to get another root:
-			int rest_root_num = polySolveCubic(a + roots[0], b + (a + roots[0]) * roots[0], -d / roots[0], roots + 1);
-			if (rest_root_num == 3 && u < v)
-				std::swap(roots[1], roots[3]); // we want the largest root in this case
-			polishQuarticRoot(a, b, c, d, roots + 1, 1);
-		}
-		const T prod_r2_r3 = d / (roots[0] * roots[1]);
-		const T sum_r2_r3 = prod_r2_r3 * (roots[0] + roots[1]) / (roots[0] * roots[1]);
-		if (polySolveQuadratic(T{1.}, sum_r2_r3, prod_r2_r3, roots + 2) == 0) {
-			if (roots[0] > roots[1])
-				std::swap(roots[0], roots[1]);
-			return 2;
-		}
-		return polishQuarticRoot(a, b, c, d, roots, 4);
-	}
+    // Now split the depressed quartic into two quadratics:
+    // y^4 + py^2 + qy + r = (y^2 + sy + u)(y^2 - sy + v) = y^4 + (v+u-s^2)y^2 + s(v - u)y + uv
+    // So p = v+u-s^2, q = s(v - u), r = uv.
+    // Then (v+u)^2 - (v-u)^2 = 4uv = 4r = (p+s^2)^2 - q^2/s^2.
+    // Multiply through by s^2 to get s^2(p+s^2)^2 - q^2 - 4rs^2 = 0, which is a cubic in s^2.
+    // Then we let z = s^2, to get
+    // z^3 + 2pz^2 + (p^2 - 4r)z - q^2 = 0.
+    int z_root_num = polySolveCubic(2. * p, p * p - 4. * r, -q * q, roots);
+    // z = s^2, so s = sqrt(z).
+    // Hence we require a root > 0, and for the sake of sanity we should take the largest one:
+    T largest_root = z_root_num == 1 ? roots[0] : roots[2];
+    if (int status = polishCubicRoot(2. * p, p * p - 4. * r, -q * q, &largest_root, 1); status == 0)
+        largest_root = z_root_num == 1 ? roots[0] : roots[2];
+    if (largest_root <= 0.) // No real roots:
+        return 0;
+    const T s = std::sqrt(largest_root);
+    // s is nonzero, because we took care of the biquadratic case.
+    const T v = 0.5 * (p + largest_root + q / s);
+    const T u = v - q / s;
+    // We have q != 0., so u != v
+    if (u > v) {
+        // Now solve y^2 - sy + v = 0:
+        if (polySolveQuadratic(T{1.}, -s, v, roots) == 0)
+            return 0;
+        std::swap(roots[0], roots[1]); // roots[1] > 0 are more convinced, put it to the front
+    } else {
+        // Now solve y^2 + sy + u = 0:
+        if (polySolveQuadratic(T{1.}, s, u, roots) == 0) // roots[0] < 0 are more convinced
+            return 0;
+    }
+    roots[0] -= a_4;
+    roots[1] -= a_4;
+    if (int status = polishQuarticRoot(a, b, c, d, roots, 2);
+        status == 1) { // roots[1] is not convinced, solve the cubic to get another root:
+        int rest_root_num = polySolveCubic(a + roots[0], b + (a + roots[0]) * roots[0], -d / roots[0], roots + 1);
+        if (rest_root_num == 3 && u < v)
+            std::swap(roots[1], roots[3]); // we want the largest root in this case
+        polishQuarticRoot(a, b, c, d, roots + 1, 1);
+    }
+    const T prod_r2_r3 = d / (roots[0] * roots[1]);
+    const T sum_r2_r3 = prod_r2_r3 * (roots[0] + roots[1]) / (roots[0] * roots[1]);
+    if (polySolveQuadratic(T{1.}, sum_r2_r3, prod_r2_r3, roots + 2) == 0) {
+        if (roots[0] > roots[1])
+            std::swap(roots[0], roots[1]);
+        return 2;
+    }
+    return polishQuarticRoot(a, b, c, d, roots, 4);
+}
 } // namespace sbody
-#endif

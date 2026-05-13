@@ -35,13 +35,11 @@
 using namespace std;
 using namespace sbody;
 
-#define PRECISION long double
-
 BOOST_AUTO_TEST_CASE(TestLUDecomposition) {
 	namespace ublas = boost::numeric::ublas;
-	ublas::bounded_matrix<PRECISION, 3, 3> A, LU;
+	ublas::bounded_matrix<long double, 3, 3> A, LU;
 	ublas::permutation_matrix permutation(3);
-	ublas::bounded_vector<PRECISION, 3> b, x;
+	ublas::bounded_vector<long double, 3> b, x;
 	A(0, 0) = 4.;
 	A(0, 1) = 3.;
 	A(0, 2) = 2.;
@@ -66,22 +64,22 @@ BOOST_AUTO_TEST_CASE(TestLUDecomposition) {
 
 BOOST_AUTO_TEST_CASE(TestTwoSidedJacobian) {
 	namespace ublas = boost::numeric::ublas;
-	auto func = [](const boost::numeric::ublas::bounded_vector<PRECISION, 2> &x, boost::numeric::ublas::bounded_vector<PRECISION, 2> &f, double &_) -> int {
+	auto func = [](const boost::numeric::ublas::bounded_vector<long double, 2> &x, boost::numeric::ublas::bounded_vector<long double, 2> &f, double &_) -> int {
 		f(0) = x(0) * x(0) * x(1) + std::sin(x(1));
 		f(1) = x(0) * x(1) * x(1) + std::cos(x(0));
 		return StatusCode::SUCCESS;
 	};
 	double no_use = 0.;
-	GaussNewtonSolver<PRECISION, 2, double> solver(func, no_use);
-	boost::numeric::ublas::bounded_vector<PRECISION, 2> x, x_dir, f;
+	GaussNewtonSolver<long double, 2, double> solver(func, no_use);
+	boost::numeric::ublas::bounded_vector<long double, 2> x, x_dir, f;
 	x(0) = 0.5;
 	x(1) = 1.;
 	x_dir(0) = 0.5;
 	x_dir(1) = 0.5;
 	f(0) = 0.25 + std::sin(1);
 	f(1) = 0.5 + std::cos(0.5);
-	boost::numeric::ublas::bounded_matrix<PRECISION, 2, 2> jacobian, directional_jacobian;
-	PRECISION relative_epsilon = 1e-7;
+	boost::numeric::ublas::bounded_matrix<long double, 2, 2> jacobian, directional_jacobian;
+	long double relative_epsilon = 1e-7;
 	solver.TwoSidedJacobian(x, f, relative_epsilon, jacobian);
 	solver.TwoSidedDirectionalJacobian(x, x_dir, f, relative_epsilon, directional_jacobian);
 	BOOST_CHECK_CLOSE_FRACTION(jacobian(0, 0), directional_jacobian(0, 0), 1e-10);

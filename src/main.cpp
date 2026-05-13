@@ -9,331 +9,97 @@
  *
  */
 
-#include <array>
-#include <chrono>
 #include <csignal>
-#include <memory>
-#include <string>
-#include <thread>
-#include <vector>
 
-#include <getopt.h>
-
+#include <CLI/CLI.hpp>
 #include <fmt/core.h>
 
-#include "metric/kerr.hpp"
-#include "metric/schwarzschild.hpp"
-#include "object/object.hpp"
-#include "object/particle.hpp"
-#include "units.hpp"
-#include "view/camera.hpp"
-#include "view/view.hpp"
+#include "benchmark.hpp"
+#include "config/config.hpp"
+#include "math/precision.hpp"
+#include "particle_motion.hpp"
 
-using namespace std;
 using namespace sbody;
 
-#define PRECISION double
-
-constexpr double MASS = 4.15e6;
-constexpr double SPIN = 0.0;
-constexpr double NUT = 0.0;
-constexpr double T_FINAL = 3600.;
-constexpr int T_STEP_NUMBER = 10000;
-constexpr int T_CAL = 3600000;
-constexpr int METRIC = 1;
-constexpr int PN = 1;
-constexpr int RAY = 1;
-constexpr double ABS_ACC = 1e-15;
-constexpr double REL_ACC = 1e-15;
-constexpr char FORMAT[6] = "NumPy";
-constexpr double KEPLER[6] = {1, 2, 3, 4, 5, 6};
-
 void InterruptHandler(int signum) {
-	fmt::print("\r\033[KSBody exiting...\n");
-	indicators::show_console_cursor(true);
-	exit(signum);
+    fmt::print("\r\033[KSBody exiting...\n");
+    indicators::show_console_cursor(true);
+    exit(signum);
 }
 
-void Help() {
-	PrintlnBold("\n{}SBODY{} ({}, precision {})", VERSION, LDBL_MANT_DIG);
-	fmt::println("  A relativistic ray tracing program.");
-	PrintlnBold("\n{}OPTIONS{}");
-	fmt::println("  -m --mass    [f]: mass of the source [{}] (M_sun)", MASS);
-	fmt::println("  -s --spin    [f]: spin of the source [{}]", SPIN);
-	fmt::println("  -l --NUT     [f]: NUT charge of the source [{}]", NUT);
-	fmt::println("  -K --kepler [6f]: 6 doubles, separated by \",\", in order of:");
-	fmt::println("                    semimajor axis (r_g)");
-	fmt::println("                    eccentricity");
-	fmt::println("                    inclination (deg)");
-	fmt::println("                    position angle of periapsis (deg)");
-	fmt::println("                    ascending node (deg)");
-	fmt::println("                    true anomaly (deg)");
-	fmt::println("  -E --ec      [f]: eccentricity of the star");
-	fmt::println("  -I --in      [f]: inclination of the star (deg)");
-	fmt::println("  -o --pe      [f]: position angle of periapsis of the star (deg)");
-	fmt::println("  -O --an      [f]: ascending node of the star (deg)");
-	fmt::println("  -t --time    [f]: time limit [{}] (s)", T_FINAL);
-	fmt::println("  -k --rec     [i]: record number [{}] (s)", T_STEP_NUMBER);
-	fmt::println("  -c --tcal    [i]: time limit of calculation [{}] (ms)", T_CAL);
-	fmt::println("  -n --metric  [i]: Newton (0)/Schwarzschild (1)/Kerr (2)/KerrTaubNUT (3) [{}]", METRIC);
-	fmt::println("  -P --PN      [i]: PN1 (1) + PN2 (2) + PN2.5 (4) + PN3 (8) + PN3.5 (16) [{}]", PN);
-	fmt::println("  -R --ray     [i]: ray tracing, view (1) + shadow (4) + camera (2) [{}]", RAY);
-	fmt::println("  -a --abs     [f]: absolute accuracy [{}]", ABS_ACC);
-	fmt::println("  -r --rel     [f]: relative accuracy [{}]", REL_ACC);
-	fmt::println("  -i --inc     [f]: inclination of the BH");
-	fmt::println("  -e --eps     [f]: epsilon of the BH");
-	fmt::println("  -f --format  [s]: storage format [{}]", FORMAT);
-	fmt::println("  -L --light      : light instead of particle");
-	fmt::println("  -b --bar        : display progress bar");
-	fmt::println("  -B --bench      : run benchmark");
-	fmt::println("  -h --help       : show this help information");
-	PrintlnBold("\n{}EXAMPLE{}\n  $ sbody"); // TODO: add example
-	PrintlnBold("\n{}SUPPORT{}\n  github.com/Tai-Zhou/SBody");
+void registerParticleMotion(CLI::App &app, RuntimeConfig<real_t> &config) {
+    app.add_option("-m,--mass", config.mass_, "mass of the source (M_sun)")->default_str(fmt::format("{}", config.mass_));
+    app.add_option("-n,--metric", config.metric_, "Post-Newtonian/Schwarzschild/Kerr/KerrTaubNUT")
+        ->default_str(fmt::format("{}", config.metric_name_));
+    app.add_option("-s,--spin", config.metric_params_.spin_, "spin of the source")
+        ->default_str(fmt::format("{}", config.metric_params_.spin_));
+    app.add_option("-l,--nut", config.metric_params_.NUT_, "NUT charge of the source")
+        ->default_str(fmt::format("{}", config.metric_params_.NUT_));
+    app.add_option("-R,--sa", config.kepler_[0], "semimajor axis of the star")
+        ->default_str(fmt::format("{}", config.kepler_[0]));
+    app.add_option("-E,--ec", config.kepler_[1], "eccentricity of the star")->default_str(fmt::format("{}", config.kepler_[1]));
+    app.add_option("-I,--in", config.kepler_[2], "inclination of the star (deg)")
+        ->default_str(fmt::format("{}", config.kepler_[2]));
+    app.add_option("-o,--pe", config.kepler_[3], "position angle of periapsis of the star (deg)")
+        ->default_str(fmt::format("{}", config.kepler_[3]));
+    app.add_option("-O,--an", config.kepler_[4], "ascending node of the star (deg)")
+        ->default_str(fmt::format("{}", config.kepler_[4]));
+    app.add_option("-t,--time", config.t_final_, "time limit (s)")->default_str(fmt::format("{}", config.t_final_));
+    app.add_option("-k,--rec", config.t_step_number_, "record number")->default_str(fmt::format("{}", config.t_step_number_));
+    app.add_option("-c,--tcal", config.t_calculation_, "real time limit of calculation (s)")
+        ->default_str(fmt::format("{}", config.t_calculation_));
+    app.add_option("-a,--abs", config.absolute_accuracy_, "absolute accuracy")
+        ->default_str(fmt::format("{}", config.absolute_accuracy_));
+    app.add_option("-r,--rel", config.relative_accuracy_, "relative accuracy")
+        ->default_str(fmt::format("{}", config.relative_accuracy_));
+    app.add_option("-i,--inc", config.inclination_, "inclination of the BH")
+        ->default_str(fmt::format("{}", config.inclination_));
+    app.add_option("-e,--eps", config.position_angle_, "epsilon of the BH")
+        ->default_str(fmt::format("{}", config.position_angle_));
+    app.add_option("-f,--format", config.output_dir_, "storage folder")->default_str(fmt::format("{}", config.output_dir_));
+    app.add_option("-f,--format", config.output_format_, "storage format")
+        ->default_str(fmt::format("{}", config.output_format_));
+    app.add_flag("-b,--pbar", config.progress_bar_, "display progress bar");
 }
 
-int Benchmark() {
-	auto t_start = chrono::steady_clock::now();
-	Unit unit(4.261e6);
-	PRECISION t = 0., t1 = 0., t_step = 3600. * unit.s / T_STEP_NUMBER;
-	unique_ptr<Metric<PRECISION>> main_metric = make_unique<Kerr<PRECISION>>(0.3);
-	// unique_ptr<Metric> main_metric = make_unique<Schwarzschild>();
-	auto view_ptr = make_unique<View<PRECISION>>(*main_metric, 8180. * unit.pc, boost::math::constants::half_pi<PRECISION>() - 0.01, 0.);
-	Particle<PRECISION> star_0(*main_metric, TimeSystem::T, DynamicalSystem::LAGRANGIAN, false);
-	star_0.InitializeKeplerian(4., 0.1, 0.2, 0., 0., 0., M_PI_4);
-	PRECISION temp[4];
-	boost::numeric::ublas::bounded_vector<PRECISION, 8> position;
-	boost::numeric::ublas::bounded_vector<PRECISION, 5> view_info;
-	int status = 0;
-	PRECISION h = 1., stepPercent = 100. / T_STEP_NUMBER;
-	indicators::show_console_cursor(false);
-	ProgressBar bars(2, "Benchmarking...");
-	for (int i = 1; i <= T_STEP_NUMBER; ++i) {
-		t1 += t_step;
-		status = star_0.IntegratorApply(t, t1, h);
-		if (status > 0) {
-			PrintlnError("Benchmark error, main status = {}", status);
-			return StatusCode::FAILURE;
-		}
-		star_0.Position(temp);
-		temp[0] = t / unit.s;
-		temp[1] = star_0.Energy();
-		temp[2] = star_0.AngularMomentum();
-		temp[3] = star_0.CarterConstant();
-		view_ptr->Trace(position, TimeSystem::T, view_info, false, true);
-		sphericalToCartesian(position);
-		bars[0].set_progress(i * stepPercent);
-		bars[0].set_option(indicators::option::PrefixText{fmt::format("Anticipated score is: {}? ", i * 200000000000ul / (T_STEP_NUMBER * chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()))});
-	}
-	bars.setComplete(0, fmt::format("Final score is: {}! ", 200000000000ul / chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - t_start).count()));
-	return StatusCode::SUCCESS;
+// void registerShadow(CLI::App &app, RuntimeConfig &config) { // TODO:
+// }
+
+void registerBenchmarks(CLI::App &app) {
+    auto cli_benchmark = app.add_subcommand("benchmark", "run benchmark");
+    cli_benchmark->require_subcommand(1);
+    auto cli_benchmark_serial = cli_benchmark->add_subcommand("serial");
+    auto cli_benchmark_parallel = cli_benchmark->add_subcommand("parallel");
+    size_t thread_num = 0;
+    cli_benchmark_parallel->add_option("-t,--threads", thread_num)->default_str("auto");
+    cli_benchmark_serial->callback(serialBenchmark);
+    cli_benchmark_parallel->callback([thread_num]() { parallelBenchmark(thread_num); });
 }
 
 int main(int argc, char *argv[]) {
-	// Application Entry
-	auto TStart = chrono::steady_clock::now();
-	signal(SIGINT, InterruptHandler);
-	PRECISION mass = 4.261e6, spin = 0., NUT = 0.;
-	PRECISION tFinal = 3600.; // 128.43325526 for 4.15e6 M_sun
-	size_t tStepNumber = T_STEP_NUMBER;
-	int TCal = T_CAL;
-	size_t metric = 1;
-	size_t Hamiltonian = 0;
-	size_t PN = 1;
-	size_t ray = 1;
-	int rest_mass = 1;
-	bool display_progress = true;
-	string store_format = "NumPy";
-	PRECISION inc = M_PI * 0. / 180., eps = 0.;
-	// PRECISION a = 8.3, e = 0., inclination = M_PI * 162. / 180., periapsis = M_PI * 198.9 / 180. + M_PI_2, ascending_node = M_PI * 25.1 / 180., true_anomaly = M_PI_2; // phi=[2.73633242 3.92974873 3.32166381 3.2093593 3.67372211 5.18824159 | 3.19861806 2.63708292 3.05259405]
-	PRECISION a = 4.999960135538237, e = 0.884649, inclination = M_PI * 134.567 / 180., periapsis = M_PI * 66.263 / 180., ascending_node = M_PI * 228.171 / 180., true_anomaly = M_PI;
-	PRECISION input_parameter[10];
-	unique_ptr<View<PRECISION>> viewPtr;
-	unique_ptr<thread> shadowPtr;
-	unique_ptr<Camera<PRECISION>> cameraPtr;
-	unique_ptr<thread> lensPtr;
-	const char *optShort = "m:s:l:K:E:I:o:O:t:k:c:n:P:R:a:r:i:e:f:LbBh";
-	const char *separator = ",";
-	char *parameter;
-	const struct option optLong[] = {
-		{"mass", required_argument, NULL, 'm'},
-		{"spin", required_argument, NULL, 's'},
-		{"NUT", required_argument, NULL, 'l'},
-		{"kepler", required_argument, NULL, 'K'},
-		{"ec", required_argument, NULL, 'E'},
-		{"in", required_argument, NULL, 'I'},
-		{"pe", required_argument, NULL, 'o'},
-		{"an", required_argument, NULL, 'O'},
-		{"time", required_argument, NULL, 't'},
-		{"rec", required_argument, NULL, 'k'},
-		{"tcal", required_argument, NULL, 'c'},
-		{"metric", required_argument, NULL, 'n'},
-		{"PN", required_argument, NULL, 'P'},
-		{"ray", required_argument, NULL, 'R'},
-		{"abs", required_argument, NULL, 'a'},
-		{"rel", required_argument, NULL, 'r'},
-		{"inc", required_argument, NULL, 'i'},
-		{"eps", required_argument, NULL, 'e'},
-		{"format", required_argument, NULL, 'f'},
-		{"light", no_argument, NULL, 'L'},
-		{"bar", no_argument, NULL, 'b'},
-		{"bench", no_argument, NULL, 'B'},
-		{"help", no_argument, NULL, 'h'},
-		{NULL, 0, NULL, 0}};
-	int opt;
-	while ((opt = getopt_long(argc, argv, optShort, optLong, NULL)) != -1)
-		switch (opt) {
-		case 'm':
-			mass = atof(optarg);
-			break;
-		case 's':
-			spin = atof(optarg);
-			break;
-		case 'l':
-			NUT = atof(optarg);
-			break;
-		case 'K':
-			parameter = strtok(optarg, separator);
-			for (int i = 0; i < 10 && parameter != nullptr; parameter = strtok(nullptr, separator))
-				input_parameter[i++] = atof(parameter);
-			break;
-		case 'E':
-			e = atof(optarg);
-			break;
-		case 'I':
-			inclination = atof(optarg) * M_PI / 180.;
-			break;
-		case 'o':
-			periapsis = atof(optarg) * M_PI / 180.;
-			break;
-		case 'O':
-			ascending_node = atof(optarg);
-			break;
-		case 't':
-			tFinal = atof(optarg);
-			break;
-		case 'k':
-			tStepNumber = atoi(optarg);
-			break;
-		case 'c':
-			TCal = atof(optarg);
-			break;
-		case 'n':
-			metric = atoi(optarg);
-			if (metric > 3)
-				Help();
-			break;
-		case 'P':
-			PN = atoi(optarg);
-			break;
-		case 'R':
-			ray = atoi(optarg);
-			break;
-		case 'a':
-			absolute_accuracy = atof(optarg);
-			break;
-		case 'r':
-			relative_accuracy = atof(optarg);
-			break;
-		case 'i':
-			inc = atof(optarg);
-			break;
-		case 'e':
-			eps = atof(optarg);
-			break;
-		case 'f':
-			store_format = atoi(optarg);
-			break;
-		case 'L':
-			rest_mass = 0;
-			break;
-		case 'b':
-			display_progress = true;
-			break;
-		case 'B':
-			return Benchmark();
-		default:
-			Help();
-			return opt != 'h';
-		}
-	Unit unit(mass);
-	tFinal *= unit.s;
-	tFinal = 18 * unit.yr;
-	PRECISION t = 8.3564958220072 * unit.yr, tStep = 0., tRec = tFinal / tStepNumber;
-	if (metric == 0)
-		ray = 0;
-	unique_ptr<Metric<PRECISION>> main_metric = make_unique<Schwarzschild<PRECISION>>();
-	// metric::setMetric(metric, PN, mass, spin, charge, NUT);
-	string strFormat = fmt::format(" ({:f},{:f})[{:f},{:f}]", spin, NUT, inc, eps);
-	optional<ProgressBar> bars;
-	if (display_progress) {
-		bars.emplace(metric, string("?") + strFormat);
-	}
-	if (ray & 5) {
-		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * unit.pc, inc, fmt::format("view ({:.1f},{:.1f},{:.1f})[{:f},{:f}]", spin, charge, NUT, inc, eps));
-		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * unit.pc, inc, fmt::format("view conical({:.2f},{:.6f},{:.6f},{:.6f},{:.6f})[{:f},{:f}]", 10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6, inc, eps));
-		// viewPtr = make_unique<View>(make_unique<Schwarzschild>(HAMILTONIAN), 8180. * unit.pc, inc, fmt::format("view conical({:f},{:f},{:f},{:f},{:f})[{:f},{:f}]", a, inclination, periapsis, e, ascending_node, inc, eps));
-		viewPtr = make_unique<View<PRECISION>>(*main_metric, 8180. * unit.pc, inc, eps);
-		if (ray & 4)
-			shadowPtr = make_unique<thread>(&View<PRECISION>::Shadow, viewPtr.get(), "shadow", ref(bars));
-	}
-	if (ray & 10) {
-		cameraPtr = make_unique<Camera<PRECISION>>(*main_metric, 1000, 5e-2, 1.e3, inc, eps);
-		if (ray & 8)
-			lensPtr = make_unique<thread>(&Camera<PRECISION>::Lens, cameraPtr.get(), ref(bars));
-	}
-	// Integrator integ(metric::function, metric::jacobian, metric != 0);
-	TimeSystem star_time = TimeSystem::T;
-	Particle star_0(*main_metric, star_time, DynamicalSystem::LAGRANGIAN, false);
-	star_0.InitializeSchwarzschildKeplerianApocenter(a * unit.mpc, e, inclination, periapsis, ascending_node, inc, eps);
-	// star_0.InitializeGeodesic(a, inclination, periapsis, ascending_node, -0.16707659553531468, 0.3822615764261866, inc, eps);
-	// star_0.InitializeSchwarzschildKeplerianApocenterHarmonic(a * unit.mpc, e, inclination, periapsis, ascending_node, inc, eps);
-	// star_0.InitializeConical(10.6, M_PI * 0.75, M_PI * 7. / 9., 0.01, 0.45 / 10.6);
-	// Integrator &&integrator = main_metric->GetIntegrator(metric != 0);
-	// NumPy rec(main_metric->Name() + strFormat, {12});
-	// NumPy rec(fmt::format("Hotspot a={:.1f} e={:.2f} i={:.6f} o={:.2f}", a, e, inclination, periapsis), {12});
-	File rec(FileFormat::NUMPY, fmt::format("mcmc test", a, inclination, periapsis, e, ascending_node), {17});
-	boost::numeric::ublas::bounded_vector<PRECISION, 8> position;
-	boost::numeric::ublas::bounded_vector<PRECISION, 5> view_info;
-	int status = 0;
-	PRECISION h = 1., stepPercent = 100. / tStepNumber;
-	h = -1;
-	auto object_pointer_collector = vector<Object<PRECISION> *>{&star_0};
-	if (status = star_0.IntegratorApply(t, 0., h); status != 0)
-		PrintlnWarning("star_0.IntegratorApply() = {}", status);
-	h = 1;
-	for (int i = 1; i <= tStepNumber; ++i) {
-		tStep += tRec;
-		status = star_0.IntegratorApply(t, tStep, h);
-		if (status > 0)
-			PrintlnError("main status = {}", status);
-		star_0.Position(position);
-		if (Hamiltonian)
-			main_metric->HamiltonianToLagrangian(position);
-		if (ray & 1)
-			viewPtr->Trace(position, star_time, view_info, true);
-		if (ray & 2)
-			cameraPtr->Trace(object_pointer_collector);
-		sphericalToCartesian(position);
-		rec.save(position);
-		rec.save(t / unit.s);
-		rec.save(star_0.Energy());
-		rec.save(star_0.AngularMomentum());
-		rec.save(star_0.CarterConstant());
-		view_info[3] /= unit.s;
-		rec.save(view_info);
-		if (display_progress)
-			(*bars)[0].set_progress(i * stepPercent);
-		if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - TStart).count() >= TCal)
-			break;
-	}
-	if (display_progress) {
-		bars->setComplete(0, string("!") + strFormat);
-	}
-	if (ray & 2)
-		cameraPtr->Save("camera");
-	if (ray & 4)
-		shadowPtr->join();
-	if (ray & 8)
-		lensPtr->join();
-	return StatusCode::SUCCESS;
+    CLI::App cli_sbody{"A relativistic ray tracing program."};
+    cli_sbody.set_version_flag("-V,--version", fmt::format("SBody {} ({})\n\nC++: {}\nCompiler: {} {}\nCMake: {}\nBoost: {}",
+                                                           SBODY_VERSION, PRECISION_NAME, SBODY_CPP_STANDARD, SBODY_COMPILER_ID,
+                                                           SBODY_COMPILER_VERSION, SBODY_CMAKE_VERSION, SBODY_BOOST_VERSION));
+    RuntimeConfig<real_t> runtime_cfg;
+    registerParticleMotion(cli_sbody, runtime_cfg);
+    registerBenchmarks(cli_sbody);
+    cli_sbody.footer("SUPPORT:\n  https://github.com/tai-zhou/SBody");
+    cli_sbody.get_formatter()->enable_footer_formatting(false);
+    // CLI11_PARSE(cli_sbody, argc, argv);
+    try {
+        cli_sbody.parse(argc, argv);
+    } catch (const CLI::ParseError &e) {
+        return cli_sbody.exit(e);
+    }
+    if (argc == 1) {
+        std::cout << cli_sbody.help();
+        return 0;
+    }
+    if (runtime_cfg.validate() == false) {
+        fmt::print(stderr, "Invalid configuration!\n");
+        return 1;
+    }
+    signal(SIGINT, InterruptHandler);
+    return particleMotion(runtime_cfg);
 }

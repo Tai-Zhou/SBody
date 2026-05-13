@@ -9,24 +9,24 @@
  *
  */
 
-#ifndef SBODY_NOVIKOV_THORNE_DISK_HPP
-#define SBODY_NOVIKOV_THORNE_DISK_HPP
+#pragma once
+
+#include "object/disk/disk.hpp"
 
 namespace sbody {
-	template <typename T>
-	class NovikovThorneDisk : public Disk<T> {
-	  protected:
-	  public:
-		NovikovThorneDisk(const Metric<T> &metric, T outer_radius) : Disk(metric, metric.innermostCircularOrbitRadius().first, outer_radius) {
-		}
-		int Hit(const boost::numeric::ublas::bounded_vector<T, 8> &current, const boost::numeric::ublas::bounded_vector<T, 8> &last) {
-			if (!OppositeSign(current[2], last[2]))
-				return StatusCode::SUCCESS;
-			if (std::abs(current[2]) < boost::math::constants::third_pi<T>())
-				return StatusCode::SUCCESS;
-			return StatusCode::FAILURE;
-		}
-	};
+template <typename T>
+class NovikovThorneDisk : public Disk<T> {
+  protected:
+  public:
+    NovikovThorneDisk(const Metric<T> &metric, T outer_radius)
+        : Disk(metric, metric.innermostCircularOrbitRadius().first, outer_radius) {}
+    int Hit(const boost::numeric::ublas::bounded_vector<T, 8> &current,
+            const boost::numeric::ublas::bounded_vector<T, 8> &last) {
+        if (!OppositeSign(current[2], last[2]))
+            return StatusCode::SUCCESS;
+        if (std::abs(current[2]) < boost::math::constants::third_pi<T>())
+            return StatusCode::SUCCESS;
+        return StatusCode::FAILURE;
+    }
+};
 } // namespace sbody
-
-#endif
