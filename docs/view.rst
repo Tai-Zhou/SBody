@@ -5,16 +5,25 @@
 View
 ====
 
-.. doxygenclass:: SBody::View
+View Base Class
+---------------
+
+.. doxygenclass:: sbody::View
    :members:
    :no-link:
 
 Camera
 ------
 
-.. index::
-   Camera
-
-.. doxygenclass:: SBody::Camera
+.. doxygenclass:: sbody::Camera
    :members:
+   :no-link:
+
+Flux Functions
+--------------
+
+.. doxygenfunction:: sbody::Flux
+   :no-link:
+
+.. doxygenfunction:: sbody::FluxDensity
    :no-link:

@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <numeric>
 
 #include <boost/math/constants/constants.hpp>
@@ -22,6 +23,7 @@
 namespace sbody {
 enum class Axis { X, Y, Z };
 
+// [UNT-02] formulas/unt/unt.py
 /// Degree, in unit of rad
 constexpr real_t deg_in_rad = 1.745329251994329576923690768488612713442871888541728e-2l;
 /// Minute of arc, in unit of rad
@@ -70,6 +72,7 @@ T cosTheta(T theta) {
  * @param z 3 dimensional vector
  * @return result
  */
+// [DAT-04] formulas/dat/dat.py
 template <typename T>
 T dotCross(const boost::numeric::ublas::bounded_vector<T, 3> &x, const boost::numeric::ublas::bounded_vector<T, 3> &y,
            const boost::numeric::ublas::bounded_vector<T, 3> &z) {
@@ -84,6 +87,7 @@ T dotCross(const boost::numeric::ublas::bounded_vector<T, 3> &x, const boost::nu
  * @param c side length
  * @return result
  */
+// [DAT-04] formulas/dat/dat.py
 template <typename T>
 T triangleArea(const boost::numeric::ublas::bounded_vector<T, 3> &x, const boost::numeric::ublas::bounded_vector<T, 3> &y,
                const boost::numeric::ublas::bounded_vector<T, 3> &z) {
@@ -120,6 +124,7 @@ T triangleArea(const boost::numeric::ublas::bounded_vector<T, 3> &x, const boost
  * @param y y coordiante of the point
  * @return result
  */
+// [DAT-04] formulas/dat/dat.py
 template <typename T>
 bool pointInTriangle(T xa, T ya, T xb, T yb, T xc, T yc, T x = 0.0, T y = 0.0) {
     const T ap_cross_ab = (x - xa) * (yb - ya) - (y - ya) * (xb - xa);
@@ -160,6 +165,7 @@ bool pointInTriangle(const boost::numeric::ublas::bounded_vector<T, 2> &a, const
  * @param angle in rad
  * @return status
  */
+// [MET-10] formulas/met/metric.py
 template <typename T>
 void rotateAroundAxis(boost::numeric::ublas::bounded_vector<T, 8> &x, bool rotate_velocity, Axis axis, T angle) {
     const T sin_angle = std::sin(angle), cos_angle = std::cos(angle);
@@ -190,6 +196,7 @@ void rotateAroundAxis(boost::numeric::ublas::bounded_vector<T, 8> &x, bool rotat
  * @param spherical 4 dimensional array
  * @return status
  */
+// [MET-10] formulas/met/metric.py
 template <typename T>
 void cartesianToSpherical(const boost::numeric::ublas::bounded_vector<T, 4> &cartesian,
                           boost::numeric::ublas::bounded_vector<T, 4> &spherical) {
@@ -197,7 +204,8 @@ void cartesianToSpherical(const boost::numeric::ublas::bounded_vector<T, 4> &car
         throw std::domain_error(
             fmt::format("{}#{} {}: Cartesian coordinates (0, 0, 0) is not allowed.", __FILE__, __LINE__, __func__));
     spherical(0) = cartesian(0);
-    spherical(2) = std::acos(cartesian(3) / spherical(1));
+    const T r_xy = std::hypot(cartesian(1), cartesian(2));
+    spherical(2) = std::atan2(r_xy, cartesian(3));
     spherical(3) = std::atan2(cartesian(2), cartesian(1));
 }
 
@@ -208,6 +216,7 @@ void cartesianToSpherical(const boost::numeric::ublas::bounded_vector<T, 4> &car
  * @param spherical 8 dimensional array
  * @return status
  */
+// [MET-10] formulas/met/metric.py
 template <typename T>
 void cartesianToSpherical(const boost::numeric::ublas::bounded_vector<T, 8> &cartesian,
                           boost::numeric::ublas::bounded_vector<T, 8> &spherical) {
@@ -215,14 +224,15 @@ void cartesianToSpherical(const boost::numeric::ublas::bounded_vector<T, 8> &car
         throw std::domain_error(
             fmt::format("{}#{} {}: Cartesian coordinates (0, 0, 0) is not allowed.", __FILE__, __LINE__, __func__));
     const T r_1 = 1. / spherical[1];
+    const T r_xy = std::hypot(cartesian(1), cartesian(2));
     spherical[0] = cartesian[0];
-    spherical[2] = std::acos(cartesian[3] * r_1);
+    spherical[2] = std::atan2(r_xy, cartesian[3]);
     spherical[4] = cartesian[4];
     spherical[5] = std::inner_product(cartesian.begin() + 1, cartesian.begin() + 4, cartesian.begin() + 5, T{0.}) * r_1;
-    if (const T r_xy = std::hypot(cartesian(1), cartesian(2)); r_xy == 0.) {
+    if (r_xy == 0.) {
         spherical[3] = std::atan2(cartesian[6], cartesian[5]);
         spherical[6] = std::copysign(r_1, cartesian[3]) * std::hypot(cartesian(5), cartesian(6));
-        spherical[7] = 0;
+        spherical[7] = 0.;
     } else {
         spherical[3] = std::atan2(cartesian[2], cartesian[1]);
         spherical[6] = (-cartesian[7] + cartesian[3] * r_1 * spherical[5]) / r_xy;
@@ -251,6 +261,7 @@ void cartesianToSpherical(boost::numeric::ublas::bounded_vector<T, N> &x) {
  * @param dimension 4 or 8.
  * @return status
  */
+// [MET-10] formulas/met/metric.py
 template <typename T>
 void sphericalToCartesian(const boost::numeric::ublas::bounded_vector<T, 4> &spherical,
                           boost::numeric::ublas::bounded_vector<T, 4> &cartesian) {
@@ -261,6 +272,7 @@ void sphericalToCartesian(const boost::numeric::ublas::bounded_vector<T, 4> &sph
     cartesian[3] = spherical[1] * cos_theta;
 }
 
+// [MET-10] formulas/met/metric.py
 template <typename T>
 void sphericalToCartesian(const boost::numeric::ublas::bounded_vector<T, 8> &spherical,
                           boost::numeric::ublas::bounded_vector<T, 8> &cartesian) {
@@ -291,13 +303,17 @@ void sphericalToCartesian(boost::numeric::ublas::bounded_vector<T, N> &x) {
     sphericalToCartesian(cartesian, x);
 }
 
+// [MET-11] formulas/met/metric.py
 template <typename T>
-T sphericalAngle(T cos_theta_x, T cos_theta_y, T delta_theta_xy, T delta_phi_xy) {
-    const T a = power2(std::sin(0.5 * delta_theta_xy)) +
-                cos_theta_x * cos_theta_y * power2(std::sin(0.5 * phiDifference(delta_phi_xy)));
-    return 2. * std::atan2(squareRoot(a), squareRoot(1. - a));
+T sphericalAngle(T sin_theta_x, T cos_theta_x, T sin_theta_y, T cos_theta_y, T delta_phi_xy) {
+    const T sin_delta_phi = std::sin(delta_phi_xy);
+    const T cos_delta_phi = std::cos(delta_phi_xy);
+    return std::atan2(
+        std::hypot(sin_theta_x * cos_theta_y * cos_delta_phi - cos_theta_x * sin_theta_y, sin_theta_x * sin_delta_phi),
+        sin_theta_x * sin_theta_y * cos_delta_phi + cos_theta_x * cos_theta_y);
 }
 
+// [MET-11] formulas/met/metric.py
 template <typename T>
 void rotationAngleOfPerpendicularCoordiante(T sin_theta_observer, T cos_theta_observer, T sin_theta0, T cos_theta0, T sin_phi0,
                                             T cos_phi0, T &iota, T &sin_iota, T &cos_iota, T &phi1) {
@@ -306,12 +322,14 @@ void rotationAngleOfPerpendicularCoordiante(T sin_theta_observer, T cos_theta_ob
         iota = 0.0;
         sin_iota = 0.0;
         cos_iota = 1.0;
+        return;
     }
     if (cos_theta_observer == -cos_theta0 && cos_phi0 == -1.0) {
         phi1 = M_PI;
         iota = 0.0;
         sin_iota = 0.0;
         cos_iota = 1.0;
+        return;
     }
     const T x = sin_theta0 * cos_phi0;
     const T y = sin_theta0 * sin_phi0;
@@ -326,6 +344,7 @@ void rotationAngleOfPerpendicularCoordiante(T sin_theta_observer, T cos_theta_ob
     phi1 = std::atan2(yz1, x1); // 0.0 <= phi1 <= pi
 }
 
+// [MET-11] formulas/met/metric.py
 template <typename T>
 void rotateSphericalAxis(T sin_theta_observer, T cos_theta_observer, T sin_theta0, T cos_theta0, T sin_phi0, T cos_phi0,
                          T &theta1, T &sin_theta1, T &cos_theta1, T &phi1, T &sin_phi1, T &cos_phi1) {
@@ -340,6 +359,7 @@ void rotateSphericalAxis(T sin_theta_observer, T cos_theta_observer, T sin_theta
     phi1 = std::atan2(y, x1);
 }
 
+// [MET-11] formulas/met/metric.py
 template <typename T>
 void rotateSphericalAxisWithIota(T sin_theta_observer, T cos_theta_observer, T sin_iota, T cos_iota, T sin_theta0, T cos_theta0,
                                  T sin_phi0, T cos_phi0, T &theta1, T &sin_theta1, T &cos_theta1, T &phi1, T &sin_phi1,
@@ -360,6 +380,7 @@ void rotateSphericalAxisWithIota(T sin_theta_observer, T cos_theta_observer, T s
         phi1 += boost::math::constants::two_pi<T>();
 }
 
+// [MET-11] formulas/met/metric.py
 template <typename T>
 void rotateSphericalAxisToLineOfSight(T sin_theta_observer, T cos_theta_observer,
                                       const boost::numeric::ublas::bounded_vector<T, 2> &source,
@@ -431,6 +452,7 @@ void denseStepperMapTheta(Stepper &stepper, T &last_theta) {
  * @param phi \f$\phi\f$
  * @return result
  */
+// [MET-12] formulas/met/metric.py
 template <typename T>
 T modBy2Pi(T phi) {
     return phi - floor(phi / boost::math::constants::two_pi<T>()) * boost::math::constants::two_pi<T>();
@@ -442,6 +464,7 @@ T modBy2Pi(T phi) {
  * @param phi \f$\phi\f$
  * @return result
  */
+// [MET-12] formulas/met/metric.py
 template <typename T>
 T phiDifference(T phi) {
     return phi - floor(phi / boost::math::constants::two_pi<T>() + 0.5) * boost::math::constants::two_pi<T>();

@@ -11,7 +11,7 @@ Progress Bar
 .. index::
    Progress Bar
 
-.. doxygenclass:: SBody::ProgressBar
+.. doxygenclass:: sbody::ProgressBar
    :members:
    :no-link:
 
@@ -21,7 +21,7 @@ File
 .. index::
    File
 
-.. doxygenclass:: SBody::File
+.. doxygenclass:: sbody::File
    :members:
    :no-link:
 
@@ -31,7 +31,7 @@ NumPy
 .. index::
    NumPy
 
-.. doxygenclass:: SBody::NumPy
+.. doxygenclass:: sbody::NumPy
    :members:
    :no-link:
 
@@ -41,6 +41,6 @@ Comma-Separated Values
 .. index::
    CSV
 
-.. doxygenclass:: SBody::CSV
+.. doxygenclass:: sbody::CSV
    :members:
    :no-link:

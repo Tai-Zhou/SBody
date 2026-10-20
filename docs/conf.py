@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "SBody"
-copyright = "2021-2022, Tai Zhou"
+copyright = "2021-2026, Tai Zhou"
 author = "Tai Zhou"
 
 

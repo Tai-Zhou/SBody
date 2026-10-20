@@ -67,14 +67,14 @@ BOOST_AUTO_TEST_CASE(PolySolveCubicZeroCTest) {
 }
 
 BOOST_AUTO_TEST_CASE(PolySolveCubicOneRealRootTest) {
-	long double roots[3];
-	BOOST_CHECK_EQUAL(polySolveCubic(static_cast<long double>(0.), static_cast<long double>(1.), static_cast<long double>(1.), roots), 1);
+	long double roots[3] = {};
+	BOOST_CHECK_EQUAL(polySolveCubic(static_cast<long double>(0.), static_cast<long double>(1.), static_cast<long double>(2.), roots), 1);
 	BOOST_CHECK_CLOSE_FRACTION(roots[0], -1., 1e-15);
 }
 
 BOOST_AUTO_TEST_CASE(PolySolveQuarticTest) {
-	long double roots[4];
-	BOOST_CHECK_EQUAL(polySolveQuartic(static_cast<long double>(0.), static_cast<long double>(-10.), static_cast<long double>(35.), static_cast<long double>(-50.), roots), 4);
+	long double roots[4] = {};
+	BOOST_CHECK_EQUAL(polySolveQuartic(static_cast<long double>(-11.), static_cast<long double>(42.), static_cast<long double>(-68.), static_cast<long double>(40.), roots), 4);
 	BOOST_CHECK_CLOSE_FRACTION(roots[0], 2., 1e-15);
 	BOOST_CHECK_CLOSE_FRACTION(roots[1], 2., 1e-15);
 	BOOST_CHECK_CLOSE_FRACTION(roots[2], 2., 1e-15);
@@ -82,8 +82,8 @@ BOOST_AUTO_TEST_CASE(PolySolveQuarticTest) {
 }
 
 BOOST_AUTO_TEST_CASE(PolySolveQuarticZeroDTest) {
-	long double roots[4];
-	BOOST_CHECK_EQUAL(polySolveQuartic(static_cast<long double>(0.), static_cast<long double>(-5.), static_cast<long double>(4.), static_cast<long double>(0.), roots), 4);
+	long double roots[4] = {};
+	BOOST_CHECK_EQUAL(polySolveQuartic(static_cast<long double>(-3.), static_cast<long double>(-6.), static_cast<long double>(8.), static_cast<long double>(0.), roots), 4);
 	BOOST_CHECK_CLOSE_FRACTION(roots[0], -2., 1e-15);
 	BOOST_CHECK_CLOSE_FRACTION(roots[1], 0., 1e-15);
 	BOOST_CHECK_CLOSE_FRACTION(roots[2], 1., 1e-15);
@@ -91,15 +91,15 @@ BOOST_AUTO_TEST_CASE(PolySolveQuarticZeroDTest) {
 }
 
 BOOST_AUTO_TEST_CASE(PolySolveQuarticNoRealRootsTest) {
-	long double roots[4];
+	long double roots[4] = {};
 	BOOST_CHECK_EQUAL(polySolveQuartic(static_cast<long double>(0.), static_cast<long double>(0.), static_cast<long double>(1.), static_cast<long double>(1.), roots), 0);
 }
 
 BOOST_AUTO_TEST_CASE(PolySolveQuarticBiquadraticTest) {
-	long double roots[4];
-	BOOST_CHECK_EQUAL(polySolveQuartic(static_cast<long double>(0.), static_cast<long double>(-5.), static_cast<long double>(4.), static_cast<long double>(0.), roots), 4);
+	long double roots[4] = {};
+	BOOST_CHECK_EQUAL(polySolveQuartic(static_cast<long double>(0.), static_cast<long double>(-5.), static_cast<long double>(0.), static_cast<long double>(4.), roots), 4);
 	BOOST_CHECK_CLOSE_FRACTION(roots[0], -2., 1e-15);
-	BOOST_CHECK_CLOSE_FRACTION(roots[1], 0., 1e-15);
+	BOOST_CHECK_CLOSE_FRACTION(roots[1], -1., 1e-15);
 	BOOST_CHECK_CLOSE_FRACTION(roots[2], 1., 1e-15);
-	BOOST_CHECK_CLOSE_FRACTION(roots[3], 4., 1e-15);
+	BOOST_CHECK_CLOSE_FRACTION(roots[3], 2., 1e-15);
 }

@@ -56,7 +56,7 @@ void registerParticleMotion(CLI::App &app, RuntimeConfig<real_t> &config) {
         ->default_str(fmt::format("{}", config.inclination_));
     app.add_option("-e,--eps", config.position_angle_, "epsilon of the BH")
         ->default_str(fmt::format("{}", config.position_angle_));
-    app.add_option("-f,--format", config.output_dir_, "storage folder")->default_str(fmt::format("{}", config.output_dir_));
+    app.add_option("-d,--dir", config.output_dir_, "storage folder")->default_str(fmt::format("{}", config.output_dir_));
     app.add_option("-f,--format", config.output_format_, "storage format")
         ->default_str(fmt::format("{}", config.output_format_));
     app.add_flag("-b,--pbar", config.progress_bar_, "display progress bar");

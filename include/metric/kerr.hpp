@@ -20,6 +20,7 @@
 
 #include "infra/infra_context.hpp"
 #include "math/geometry.hpp"
+#include "math/scalar.hpp"
 #include "math/solver/polynomial.hpp"
 #include "math/solver/system/gauss_newton.hpp"
 #include "math/special_functions.hpp"
@@ -97,14 +98,16 @@ class Kerr : public Metric<T> {
                                  I_phi_mu_0, I_phi_mu_full_turn);
             status != StatusCode::SUCCESS)
             return status;
-        T mu_f_0, mu_f_1, t_mu, phi_mu_0, phi_mu_1;
+        T mu_f_0, mu_f_1, sin_theta_0, sin_theta_1, t_mu, phi_mu_0, phi_mu_1;
         if (status = muFIntegral(a, a2, l, q2, M_minus_plus[1], M_minus_plus[0], delta_M, delta_M_plus, mu_plus, mu_minus,
                                  I_u_0, I_mu_0, I_mu_full_turn, I_t_mu_0, I_t_mu_full_turn, I_phi_mu_0, I_phi_mu_full_turn, A,
-                                 k, n, alpha_1, alpha_2, mu_f_0, t_mu, phi_mu_0);
+                                 k, n, alpha_1, alpha_2, mu_f_0, sin_theta_0, t_mu, phi_mu_0);
             status != StatusCode::SUCCESS)
             return status;
         const T phi_0 = phi_mu_0 + params.kerr_->u_r * ((l * params.kerr_->u_plus_1 + 2. * (a - l)) * I_u_plus_0 -
                                                         (l * params.kerr_->u_minus_1 + 2. * (a - l)) * I_u_minus_0);
+        // I_u_4 (p5=-4) enters photon_time, which View::photonInformation stores as the
+        // look-back time used by the GR-delay observation matching.
         params.tau_ = -t_mu - I_u_4_0;
         params.t_ = params.tau_ -
                     2. * params.kerr_->u_r *
@@ -120,9 +123,8 @@ class Kerr : public Metric<T> {
         // mu_f_0 * mu_f_0), mu_f_0, -std::sin(phi_0), std::cos(phi_0), theta_f, sin_theta_f, cos_theta_f, phi_f, sin_phi_f,
         // cos_phi_f);
         if (params.line_of_sight_axis_) {
-            rotationAngleOfPerpendicularCoordiante(params.sin_theta_obs_, params.mu_obs_, squareRoot(1. - mu_f_0 * mu_f_0),
-                                                   mu_f_0, -std::sin(phi_0), std::cos(phi_0), phi_f, sin_phi_f, cos_phi_f,
-                                                   theta_f);
+            rotationAngleOfPerpendicularCoordiante(params.sin_theta_obs_, params.mu_obs_, sin_theta_0, mu_f_0, -std::sin(phi_0),
+                                                   std::cos(phi_0), phi_f, sin_phi_f, cos_phi_f, theta_f);
             if (std::abs(phiDifference(alpha_beta(1) - phi_f)) > boost::math::constants::half_pi<T>()) {
                 phi_f += boost::math::constants::pi<T>();
                 theta_f = boost::math::constants::two_pi<T>() - theta_f;
@@ -130,9 +132,9 @@ class Kerr : public Metric<T> {
             delta_u_mu_phi(0) = theta_f - params.theta_obs_obj_;
             delta_u_mu_phi(1) = phiDifference(phi_f - params.iota_);
         } else {
-            rotateSphericalAxisWithIota(params.sin_theta_obs_, params.mu_obs_, params.sin_iota_, params.cos_iota_,
-                                        squareRoot(1. - mu_f_0 * mu_f_0), mu_f_0, -std::sin(phi_0), std::cos(phi_0), theta_f,
-                                        sin_theta_f, cos_theta_f, phi_f, sin_phi_f, cos_phi_f);
+            rotateSphericalAxisWithIota(params.sin_theta_obs_, params.mu_obs_, params.sin_iota_, params.cos_iota_, sin_theta_0,
+                                        mu_f_0, -std::sin(phi_0), std::cos(phi_0), theta_f, sin_theta_f, cos_theta_f, phi_f,
+                                        sin_phi_f, cos_phi_f);
             delta_u_mu_phi(0) = cos_theta_f;
             delta_u_mu_phi(1) = phiDifference(phi_f - params.theta_obs_obj_);
         }
@@ -144,7 +146,7 @@ class Kerr : public Metric<T> {
             return StatusCode::SUCCESS;
         if (status = muFIntegral(a, a2, l, q2, M_minus_plus[1], M_minus_plus[0], delta_M, delta_M_plus, mu_plus, mu_minus,
                                  I_u_1, I_mu_0, I_mu_full_turn, I_t_mu_0, I_t_mu_full_turn, I_phi_mu_0, I_phi_mu_full_turn, A,
-                                 k, n, alpha_1, alpha_2, mu_f_1, t_mu, phi_mu_1);
+                                 k, n, alpha_1, alpha_2, mu_f_1, sin_theta_1, t_mu, phi_mu_1);
             status != StatusCode::SUCCESS)
             return status;
         const T phi_1 = phi_mu_1 + params.kerr_->u_r * ((l * params.kerr_->u_plus_1 + 2. * (a - l)) * I_u_plus_1 -
@@ -153,9 +155,8 @@ class Kerr : public Metric<T> {
         T delta_theta_1, delta_phi_1;
         // T delta_phi_1 = phi_f - params.theta_observer_object;
         if (params.line_of_sight_axis_) {
-            rotationAngleOfPerpendicularCoordiante(params.sin_theta_obs_, params.mu_obs_, squareRoot(1. - mu_f_1 * mu_f_1),
-                                                   mu_f_1, -std::sin(phi_1), std::cos(phi_1), phi_f, sin_phi_f, cos_phi_f,
-                                                   theta_f);
+            rotationAngleOfPerpendicularCoordiante(params.sin_theta_obs_, params.mu_obs_, sin_theta_1, mu_f_1, -std::sin(phi_1),
+                                                   std::cos(phi_1), phi_f, sin_phi_f, cos_phi_f, theta_f);
             if (std::abs(phiDifference(alpha_beta(1) - phi_f)) > boost::math::constants::half_pi<T>()) {
                 phi_f += boost::math::constants::pi<T>();
                 theta_f = boost::math::constants::two_pi<T>() - theta_f;
@@ -163,9 +164,9 @@ class Kerr : public Metric<T> {
             delta_theta_1 = theta_f - params.theta_obs_obj_;
             delta_phi_1 = phiDifference(phi_f - params.iota_);
         } else {
-            rotateSphericalAxisWithIota(params.sin_theta_obs_, params.mu_obs_, params.sin_iota_, params.cos_iota_,
-                                        squareRoot(1. - mu_f_1 * mu_f_1), mu_f_1, -std::sin(phi_1), std::cos(phi_1), theta_f,
-                                        sin_theta_f, cos_theta_f, phi_f, sin_phi_f, cos_phi_f);
+            rotateSphericalAxisWithIota(params.sin_theta_obs_, params.mu_obs_, params.sin_iota_, params.cos_iota_, sin_theta_1,
+                                        mu_f_1, -std::sin(phi_1), std::cos(phi_1), theta_f, sin_theta_f, cos_theta_f, phi_f,
+                                        sin_phi_f, cos_phi_f);
             delta_theta_1 = cos_theta_f;
             delta_phi_1 = phiDifference(phi_f - params.theta_obs_obj_);
         }
@@ -401,12 +402,13 @@ class Kerr : public Metric<T> {
             alpha_1 = beta_sign * sign(mu_obs);
             A = mu_plus * std::abs(a);
             k = 1.;
-            const T mu0_mu_plus = std::min(T{1.}, std::abs(mu_obs) / mu_plus);
             I_mu_full_turn = std::numeric_limits<T>::infinity();
             I_t_mu_full_turn = std::numeric_limits<T>::max();
-            const T phi = std::acos(mu0_mu_plus);
-            I_t_mu_0 = squareRoot(1. - power2(mu0_mu_plus));
-            I_mu_0 = std::log((1. + I_t_mu_0) / mu0_mu_plus) / A;
+            const T mu0_mu_plus = std::min(T{1.}, std::abs(mu_obs) / mu_plus);
+            const T sin_phi = squareRoot((1. - mu0_mu_plus) * (1. + mu0_mu_plus));
+            const T phi = std::atan2(sin_phi, mu0_mu_plus);
+            I_t_mu_0 = sin_phi;
+            I_mu_0 = std::atanh(sin_phi) / A;
             if (M_plus == 1.)
                 return StatusCode::SUCCESS;
             n = M_plus / delta_M_plus;
@@ -420,10 +422,11 @@ class Kerr : public Metric<T> {
             alpha_1 = beta_sign * sign(mu_obs);
             A = mu_plus * std::abs(a);
             k = squareRoot(delta_M / M_plus);
-            const T x = std::min(T{1.}, squareRoot((M_plus - power2(mu_obs)) / delta_M));
+            // const T x = std::min(T{1.}, squareRoot((M_plus - power2(mu_obs)) / delta_M));
             I_mu_full_turn = boost::math::ellint_1(k) / A;
             I_t_mu_full_turn = boost::math::ellint_2(k);
-            const T phi = asin(x);
+            const T mu2_obs = power2(mu_obs);
+            const T phi = std::atan2(squareRoot(M_plus - mu2_obs), squareRoot(mu2_obs - M_minus));
             I_mu_0 = boost::math::ellint_1(k, phi) / A;
             I_t_mu_0 = boost::math::ellint_2(k, phi);
             if (M_plus == 1.)
@@ -442,7 +445,7 @@ class Kerr : public Metric<T> {
         // const T x =squareRoot(1. -power2(mu_obs / mu_plus));
         I_mu_full_turn = 2. * boost::math::ellint_1(k) / A;
         I_t_mu_full_turn = 2. * boost::math::ellint_2(k);
-        const T phi = acos(std::min(T{1.}, std::abs(mu_obs) / mu_plus));
+        const T phi = std::atan2(squareRoot((mu_plus - mu_obs) * (mu_plus + mu_obs)), std::abs(mu_obs));
         if (mu_obs >= 0.) {
             I_mu_0 = boost::math::ellint_1(k, phi) / A;
             I_t_mu_0 = boost::math::ellint_2(k, phi);
@@ -465,7 +468,7 @@ class Kerr : public Metric<T> {
     }
     static int muFIntegral(T a, T a2, T l, T q2, T M_plus, T M_minus, T delta_M, T delta_M_plus, T mu_plus, T mu_minus, T I_u,
                            T I_mu_0, T I_mu_full_turn, T I_t_mu_0, T I_t_mu_full_turn, T I_phi_mu_0, T I_phi_mu_full_turn, T A,
-                           T k, T n, int alpha_1, int &alpha_2, T &mu_f, T &t_mu, T &phi_mu) {
+                           T k, T n, int alpha_1, int &alpha_2, T &mu_f, T &sin_theta_f, T &t_mu, T &phi_mu) {
         const int N =
             alpha_1 > 0 ? ceil((I_u - I_mu_0) / I_mu_full_turn) : floor((I_u + I_mu_0) / I_mu_full_turn); // s_mu = alpha_1
         int alpha_3;
@@ -488,90 +491,107 @@ class Kerr : public Metric<T> {
             const T cos_phi = 1. / cosh(std::abs(a * mu_plus) * (I_u - alpha_1 * I_mu_0));
             const T sin_phi = tanh(std::abs(a * mu_plus) * (I_u - alpha_1 * I_mu_0));
             mu_f = mu_plus * cos_phi;
-            if (cos_phi < sin_phi)
-                phi = acos(cos_phi);
-            else
-                phi = asin(sin_phi);
+            phi = std::atan2(sin_phi, cos_phi);
             t_mu = A * (alpha_1 * I_t_mu_0 + alpha_2 * sin_phi + alpha_3 * I_t_mu_full_turn);
             if (M_plus == 1.) {
-                if (alpha_1 != alpha_2)
+                if (alpha_1 != alpha_2) {
                     phi_mu = 0.;
-                else
+                } else {
                     phi_mu = std::copysign(boost::math::constants::pi<T>(), l);
-            } else
+                }
+            } else {
                 phi_mu = l * (-I_u + (alpha_1 * I_phi_mu_0 + alpha_2 * boost::math::ellint_3(k, -n, phi) +
                                       alpha_3 * I_phi_mu_full_turn) /
                                          (A * delta_M_plus)); // TODO: simplify;
+            }
+            sin_theta_f = squareRoot(delta_M_plus + M_plus * power2(sin_phi));
             return StatusCode::SUCCESS;
         }
         const T I = (I_u - alpha_1 * I_mu_0 - alpha_3 * I_mu_full_turn) / alpha_2;
+        // T J;
+        T sn, cn, dn;
         if (M_minus > 0.) {
-            mu_f = mu_plus * boost::math::jacobi_dn(k, mu_plus * std::abs(a) * I);
-            if (T sin2_phi = (M_plus - power2(mu_f)) / delta_M; sin2_phi < 0.5)
-                phi = asin(squareRoot(sin2_phi));
-            else
-                phi = acos(squareRoot((power2(mu_f) - M_minus) / delta_M));
+            sn = boost::math::jacobi_elliptic(k, mu_plus * std::abs(a) * I, &cn, &dn);
+            mu_f = mu_plus * dn;
+            const T mu2_f = power2(mu_f);
+            phi = std::atan2(squareRoot(M_plus - mu2_f), squareRoot(mu2_f - M_minus));
             t_mu = A * (alpha_1 * I_t_mu_0 + alpha_2 * boost::math::ellint_2(k, phi) + alpha_3 * I_t_mu_full_turn);
             if (M_plus == 1.) {
-                if (alpha_1 != alpha_2)
+                if (alpha_1 != alpha_2) {
                     phi_mu = 0.;
-                else
+                } else {
                     phi_mu = std::copysign(boost::math::constants::pi<T>(), l);
-            } else
+                }
+            } else {
                 phi_mu = l * (-I_u + (alpha_1 * I_phi_mu_0 + alpha_2 * boost::math::ellint_3(k, -n, phi) +
                                       alpha_3 * I_phi_mu_full_turn) /
                                          (A * delta_M_plus));
+            }
+            sin_theta_f = squareRoot(delta_M_plus + delta_M * power2(sn));
             return StatusCode::SUCCESS;
         }
-        // T J;
-        T sn, cn, dn;
         // M_minus < 0.
         if (I <= 0.5 * I_mu_full_turn) {
             sn = boost::math::jacobi_elliptic(k, squareRoot(delta_M) * std::abs(a) * I, &cn, &dn);
             mu_f = mu_plus * cn;
-            if (cn < sn)
-                phi = std::acos(cn);
-            else
-                phi = std::asin(sn);
+            phi = std::atan2(sn, cn);
             t_mu = a2 * M_minus * I_u +
                    A * (alpha_1 * I_t_mu_0 + alpha_2 * boost::math::ellint_2(k, phi) + alpha_3 * I_t_mu_full_turn);
             if (M_plus == 1.) {
-                if (alpha_1 != alpha_2)
+                if (alpha_1 != alpha_2) {
                     phi_mu = 0.;
-                else
+                } else {
                     phi_mu = std::copysign(boost::math::constants::pi<T>(), l);
-            } else
+                }
+            } else {
                 phi_mu = l * (-I_u + (alpha_1 * I_phi_mu_0 + alpha_2 * boost::math::ellint_3(k, -n, phi) +
                                       alpha_3 * I_phi_mu_full_turn) /
                                          (A * delta_M_plus));
+            }
+            sin_theta_f = squareRoot(delta_M_plus + M_plus * power2(sn));
             return StatusCode::SUCCESS;
         }
         // I > 0.5 * I_mu_full_turn, the photon has to cross the equatorial plane.
         sn = boost::math::jacobi_elliptic(k, squareRoot(delta_M) * std::abs(a) * (I_mu_full_turn - I), &cn, &dn);
         mu_f = mu_minus * cn;
-        if (cn < sn)
-            phi = std::acos(cn);
-        else
-            phi = std::asin(sn);
+        phi = std::atan2(sn, cn);
         t_mu = a2 * M_minus * I_u +
                A * (alpha_1 * I_t_mu_0 - alpha_2 * boost::math::ellint_2(k, phi) + (alpha_2 + alpha_3) * I_t_mu_full_turn);
         if (M_plus == 1.) {
-            if (alpha_1 != alpha_2)
+            if (alpha_1 != alpha_2) {
                 phi_mu = 0.;
-            else
+            } else {
                 phi_mu = std::copysign(boost::math::constants::pi<T>(), l);
-        } else
+            }
+        } else {
             phi_mu = l * (-I_u + (alpha_1 * I_phi_mu_0 - alpha_2 * boost::math::ellint_3(k, -n, phi) +
                                   (alpha_2 + alpha_3) * I_phi_mu_full_turn) /
                                      (A * delta_M_plus));
+        }
+        sin_theta_f = squareRoot(delta_M_plus + M_plus * power2(sn));
         return StatusCode::SUCCESS;
     }
 
   public:
+    // [MET-02] formulas/met/metric.py
     Kerr(T spin)
         : a_(spin), a2_(a_ * a_), a4_(a2_ * a2_), sqrt_delta_a2_(std::sqrt(1. - a2_)), u_plus_1(1. + sqrt_delta_a2_),
           u_plus(1. / u_plus_1), u_minus_1(a2_ * u_plus), u_minus(1. / u_minus_1), u_r(-0.5 / sqrt_delta_a2_) {}
     std::string name() const override { return "Kerr"; }
+    // [MET-08] formulas/met/metric.py
+    int angularMomentumCarterConstantToAlphaBeta(T l, T q2, T cos_theta, T sin_theta, T &alpha, T &abs_beta) const override {
+        if (sin_theta == 0.)
+            return StatusCode::FAILURE;
+        alpha = -l / sin_theta;
+        const T beta2 = q2 - (power2(alpha) - a2_) * power2(cos_theta);
+        if (beta2 < 0.)
+            return StatusCode::DOMAIN_ERROR;
+        abs_beta = std::sqrt(beta2);
+        return StatusCode::SUCCESS;
+    }
+    T getRho2(T r, T theta) const { return r * r + a2_ * power2(std::cos(theta)); }
+    T getDelta(T r) const { return r * r - 2. * r + a2_; }
+    // [MET-01] formulas/met/metric.py
     int metricTensor(const boost::numeric::ublas::bounded_vector<T, 8> &position,
                      boost::numeric::ublas::bounded_matrix<T, 4, 4> &metric) const override {
         const T r = position[1], r2 = r * r, Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * power2(std::cos(position[2])),
@@ -581,13 +601,13 @@ class Kerr : public Metric<T> {
         const T r_rho_2 = 2. * r / rho2;
         metric.clear();
         metric(0, 0) = -(1. - r_rho_2);
-        metric(0, 3) = -r_rho_2 * a_ * sin2_theta;
+        metric(0, 3) = metric(3, 0) = -r_rho_2 * a_ * sin2_theta;
         metric(1, 1) = rho2 / Delta;
         metric(2, 2) = rho2;
-        metric(3, 0) = -r_rho_2 * a_ * sin2_theta;
         metric(3, 3) = (r2 + a2_ * (1. + r_rho_2 * sin2_theta)) * sin2_theta;
         return StatusCode::SUCCESS;
     }
+    // [MET-04] formulas/met/metric.py
     T dotProduct3D(const boost::numeric::ublas::bounded_vector<T, 8> &position, T x1, T x2, T x3, T y1, T y2,
                    T y3) const override {
         const T r = position[1], r2 = power2(r), Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * power2(std::cos(position[2])),
@@ -595,6 +615,7 @@ class Kerr : public Metric<T> {
         return (rho2 / Delta) * x1 * y1 + rho2 * x2 * y2 +
                ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * sin2_theta * sin2_theta) * x3 * y3;
     }
+    // [MET-04] formulas/met/metric.py
     T dotProduct4D(const boost::numeric::ublas::bounded_vector<T, 8> &position, T x0, T x1, T x2, T x3, T y0, T y1, T y2,
                    T y3) const override {
         const T r = position[1], r2 = power2(r), Delta = r2 - 2. * r + a2_, rho2 = r2 + a2_ * power2(std::cos(position[2])),
@@ -602,6 +623,7 @@ class Kerr : public Metric<T> {
         return (r_rho_2 - 1.) * x0 * y0 - r_rho_2 * a_ * sin2_theta * (x0 * y3 + x3 * y0) + (rho2 / Delta) * x1 * y1 +
                rho2 * x2 * y2 + ((r2 + a2_) * sin2_theta + r_rho_2 * a2_ * sin2_theta * sin2_theta) * x3 * y3;
     }
+    // [MET-04] formulas/met/metric.py
     T distanceSquare(const boost::numeric::ublas::bounded_vector<T, 8> &x, const boost::numeric::ublas::bounded_vector<T, 8> &y,
                      bool include_time) const override {
         const T r = x[1], r2 = r * r, d0 = x[0] - y[0], d3 = phiDifference(x[3] - y[3]);
@@ -614,6 +636,7 @@ class Kerr : public Metric<T> {
         return (rho2 / Delta) * power2(x[1] - y[1]) + rho2 * power2(x[2] - y[2]) +
                ((r2 + a2_) * sin2_theta + 2. * r * a2_ * power2(sin2_theta) / rho2) * power2(d3);
     }
+    // [MET-06] formulas/met/metric.py
     int lagrangianToHamiltonian(boost::numeric::ublas::bounded_vector<T, 8> &y) const override {
         const T dt_dtau = 1. / y[4], r2 = power2(y[1]), sin2_theta = power2(std::sin(y[2]));
         const T Delta = r2 - 2. * y[1] + a2_, rho2 = r2 + a2_ * power2(std::cos(y[2]));
@@ -626,6 +649,7 @@ class Kerr : public Metric<T> {
         y[7] = (-r_rho_2 * a_ + (r2 + a2_ * (1. + r_rho_2 * sin2_theta)) * y[7]) * sin2_theta * dt_dtau;
         return StatusCode::SUCCESS;
     }
+    // [MET-06] formulas/met/metric.py
     int hamiltonianToLagrangian(boost::numeric::ublas::bounded_vector<T, 8> &y) const override {
         const T pt = y[4] - 1., r2 = power2(y[1]), sin2_theta = power2(std::sin(y[2]));
         const T Delta = r2 - 2. * y[1] + a2_, rho2 = r2 + a2_ * power2(std::cos(y[2]));
@@ -651,10 +675,6 @@ class Kerr : public Metric<T> {
         const T sin_theta_object = sinTheta(theta_object), cos_theta_object = cosTheta(theta_object),
                 sin_phi_object = std::sin(phi_object), cos_phi_object = std::cos(phi_object);
         const T sin2_theta_object = power2(sin_theta_object), cos2_theta_object = power2(cos_theta_object);
-        const T cos_observer_object =
-            sin_theta_observer * sin_theta_object * cos_phi_object + cos_theta_observer * cos_theta_object;
-        const T theta_observer_object = acos(cos_observer_object),
-                sin_observer_object = squareRoot(1. - power2(cos_observer_object));
         const T r2_object = power2(r_object), r2_observer = power2(r_observer), u_observer = 1. / r_observer,
                 u_object = 1. / r_object;
         const T Delta_object = r_object * (r_object - 2.) + a2_, rho2_object = r2_object + a2_ * cos2_theta_object;
@@ -663,10 +683,13 @@ class Kerr : public Metric<T> {
         const T g00_object = -(1. - r_rho_2_object), g03_object = -r_rho_2_object * a_ * sin2_theta_object;
         const T g11_object = rho2_object / Delta_object, g22_object = rho2_object,
                 g33_object = (r2_object + a2_) * sin2_theta_object - g03_object * a_ * sin2_theta_object;
-        T iota, sin_iota, cos_iota, phi1;
+        T iota, sin_iota, cos_iota, theta_observer_object;
         int status;
         rotationAngleOfPerpendicularCoordiante(sin_theta_observer, cos_theta_observer, sin_theta_object, cos_theta_object,
-                                               sin_phi_object, cos_phi_object, iota, sin_iota, cos_iota, phi1);
+                                               sin_phi_object, cos_phi_object, iota, sin_iota, cos_iota, theta_observer_object);
+        const T sin_observer_object =
+            std::hypot(sin_theta_object * sin_phi_object,
+                       cos_theta_object * sin_theta_observer - sin_theta_object * cos_phi_object * cos_theta_observer);
         KerrFastTraceParameters<T> fast_trace_parameters(
             this, r_observer, r2_observer, u_observer, u_object, cos_theta_observer, cos_theta_object, theta_observer,
             sin_theta_observer, iota, sin_iota, cos_iota, theta_observer_object, false);
@@ -739,15 +762,15 @@ class Kerr : public Metric<T> {
                     (g03_object * fast_trace_parameters.L_ + g33_object * fast_trace_parameters.E_);
         photon(6) =
             -fast_trace_parameters.mu_dir_ *
-            std::sqrt(fast_trace_parameters.Q_ * power2(photon(4)) -
-                      cos2_theta_object * (power2(-r_rho_2_object * a_ +
-                                                  (a2_ + r2_object + r_rho_2_object * a2_ * sin2_theta_object) * photon(7)) *
-                                               sin2_theta_object -
-                                           a2_ * power2(r_rho_2_object * (1. - a_ * sin2_theta_object * photon(7)) - 1.))) *
+            squareRoot(fast_trace_parameters.Q_ * power2(photon(4)) -
+                       cos2_theta_object * (power2(-r_rho_2_object * a_ +
+                                                   (a2_ + r2_object + r_rho_2_object * a2_ * sin2_theta_object) * photon(7)) *
+                                                sin2_theta_object -
+                                            a2_ * power2(r_rho_2_object * (1. - a_ * sin2_theta_object * photon(7)) - 1.))) *
             rho_2_object;
-        photon(5) = -fast_trace_parameters.u_dir_ * std::sqrt(-(g00_object + g22_object * power2(photon(6)) +
-                                                                2. * g03_object * photon(7) + g33_object * power2(photon(7))) /
-                                                              g11_object); // solved by normalization
+        photon(5) = -fast_trace_parameters.u_dir_ * squareRoot(-(g00_object + g22_object * power2(photon(6)) +
+                                                                 2. * g03_object * photon(7) + g33_object * power2(photon(7))) /
+                                                               g11_object); // solved by normalization
         photon_time = fast_trace_parameters.t_;
         return StatusCode::SUCCESS;
     }
@@ -775,6 +798,7 @@ class Kerr : public Metric<T> {
         ublas::vector<T> int_u_plus_0(N), int_u_plus_1(N);
         ublas::vector<T> int_u_minus_0(N), int_u_minus_1(N);
         ublas::vector<T> int_u_2_0(N), int_u_2_1(N);
+        // uIntegral also returns the u^4 integrals; calcThetaPhi does not use them.
         ublas::vector<T> int_u_4_0(N), int_u_4_1(N);
         for (int i = 0; i < N; ++i) {
             if (int status = uIntegral(a_, a2_, u_plus_1, u_minus_1, u_plus, u_minus, l, l2, q2, r_observer, u_obs, u(i),
@@ -805,14 +829,14 @@ class Kerr : public Metric<T> {
         int alpha_1, alpha_2;
         mu0Integral(a_, q2, M_minus_plus[1], M_minus_plus[0], delta_M, delta_M_plus, sign(beta), mu_obs, mu_plus, mu_minus, A,
                     k, n, alpha_1, I_mu_0, I_mu_full_turn, I_t_mu_0, I_t_mu_full_turn, I_phi_mu_0, I_phi_mu_full_turn);
-        T mu_f_0, mu_f_1, t_mu, phi_mu_0, phi_mu_1;
+        T mu_f_0, mu_f_1, sin_theta_0, sin_theta_1, t_mu, phi_mu_0, phi_mu_1;
         for (int i = 0; i < N; ++i) {
             if (int status = muFIntegral(a_, a2_, l, q2, M_minus_plus[1], M_minus_plus[0], delta_M, delta_M_plus, mu_plus,
                                          mu_minus, I_u_0[i], I_mu_0, I_mu_full_turn, I_t_mu_0, I_t_mu_full_turn, I_phi_mu_0,
-                                         I_phi_mu_full_turn, A, k, n, alpha_1, alpha_2, mu_f_0, t_mu, phi_mu_0);
+                                         I_phi_mu_full_turn, A, k, n, alpha_1, alpha_2, mu_f_0, sin_theta_0, t_mu, phi_mu_0);
                 status != StatusCode::SUCCESS)
                 return status;
-            theta_0[i] = std::acos(mu_f_0);
+            theta_0[i] = std::atan2(sin_theta_0, mu_f_0);
             const T phi_u_0 =
                 u_r * ((l * u_plus_1 + 2. * (a_ - l)) * int_u_plus_0[i] - (l * u_minus_1 + 2. * (a_ - l)) * int_u_minus_0[i]);
             phi_0[i] = phi_u_0 + phi_mu_0;
@@ -824,10 +848,10 @@ class Kerr : public Metric<T> {
                 continue;
             if (int status = muFIntegral(a_, a2_, l, q2, M_minus_plus[1], M_minus_plus[0], delta_M, delta_M_plus, mu_plus,
                                          mu_minus, I_u_1[i], I_mu_0, I_mu_full_turn, I_t_mu_0, I_t_mu_full_turn, I_phi_mu_0,
-                                         I_phi_mu_full_turn, A, k, n, alpha_1, alpha_2, mu_f_1, t_mu, phi_mu_1);
+                                         I_phi_mu_full_turn, A, k, n, alpha_1, alpha_2, mu_f_1, sin_theta_1, t_mu, phi_mu_1);
                 status != StatusCode::SUCCESS)
                 return status;
-            theta_1[i] = std::acos(mu_f_1);
+            theta_1[i] = std::atan2(sin_theta_1, mu_f_1);
             const T phi_u_1 =
                 u_r * ((l * u_plus_1 + 2. * (a_ - l)) * int_u_plus_1[i] - (l * u_minus_1 + 2. * (a_ - l)) * int_u_minus_1[i]);
             phi_1[i] = phi_u_1 + phi_mu_1;
@@ -885,6 +909,7 @@ class Kerr : public Metric<T> {
         // }
         // return 1;
     }
+    // [ORB-02] formulas/orb/orbit.py
     T energy(const boost::numeric::ublas::bounded_vector<T, 8> &y, TimeSystem time, DynamicalSystem dynamics) const override {
         if (dynamics == DynamicalSystem::LAGRANGIAN) {
             if (time == TimeSystem::T)
@@ -897,6 +922,7 @@ class Kerr : public Metric<T> {
         } // dynamics == DynamicalSystem::HAMILTONIAN
         return 1. - y[4];
     }
+    // [ORB-03] formulas/orb/orbit.py
     T angularMomentum(const boost::numeric::ublas::bounded_vector<T, 8> &y, TimeSystem time,
                       DynamicalSystem dynamics) const override {
         if (dynamics == DynamicalSystem::LAGRANGIAN) {
@@ -909,6 +935,7 @@ class Kerr : public Metric<T> {
         } // dynamics == DynamicalSystem::HAMILTONIAN
         return y[7];
     }
+    // [ORB-04] formulas/orb/orbit.py
     T carterConstant(const boost::numeric::ublas::bounded_vector<T, 8> &y, const T mu2, TimeSystem time,
                      DynamicalSystem dynamics) const override {
         if (dynamics == DynamicalSystem::LAGRANGIAN) {
@@ -928,6 +955,22 @@ class Kerr : public Metric<T> {
         } // dynamics == DynamicalSystem::HAMILTONIAN
         return power2(y[6]) + power2(std::cos(y[2])) * (a2_ * (mu2 - power2(1. - y[4])) + power2(y[7] / std::sin(y[2])));
     }
+    // [ORB-05] formulas/orb/orbit.py
+    int energyAxialAngularMomentumToVelocity(boost::numeric::ublas::bounded_vector<T, 8> &y, TimeSystem time, T E,
+                                             T L_z) const {
+        const T r = y[1], r2 = power2(r), sin2_theta = power2(std::sin(y[2]));
+        const T rho2 = r2 + a2_ * power2(std::cos(y[2]));
+        const T Delta = r2 - 2. * r + a2_;
+        if (time == TimeSystem::T) {
+            y[4] = rho2 / ((power2(r2 + a2_) * E - 2. * r * a_ * L_z) / Delta - a2_ * E * sin2_theta);
+            y[7] = (a_ / Delta * (2. * r * E - a_ * L_z) + L_z / sin2_theta) / rho2 * y[4];
+        } else {
+            y[4] = ((power2(r2 + a2_) * E - 2. * r * a_ * L_z) / Delta - a2_ * E * sin2_theta) / rho2;
+            y[7] = (a_ / Delta * (2. * r * E - a_ * L_z) + L_z / sin2_theta) / rho2;
+        }
+        return StatusCode::SUCCESS;
+    }
+    // [ORB-01] formulas/orb/orbit.py
     int normalizeTimelikeGeodesic(boost::numeric::ublas::bounded_vector<T, 8> &y) const override {
         const T r = y[1], r2 = power2(r), a2_r2 = a2_ + r2;
         const T sin2_theta = power2(std::sin(y[2])), sin4_theta = power2(sin2_theta);
@@ -939,7 +982,10 @@ class Kerr : public Metric<T> {
                           (a2_r2 * sin2_theta + r_rho_2 * a2_ * sin4_theta) * power2(y[7])));
         return std::isnan(y[4]) ? StatusCode::DOMAIN_ERROR : StatusCode::SUCCESS;
     }
+    // [MET-07] formulas/met/metric.py; [ORB-06] formulas/orb/orbit.py
     int normalizeNullGeodesic(boost::numeric::ublas::bounded_vector<T, 8> &y, T frequency = 1.) const override {
+        if (frequency <= 0.)
+            return StatusCode::DOMAIN_ERROR;
         const T r = y[1], r2 = r * r;
         const T sin2_theta = power2(std::sin(y[2]));
         const T rho2 = r2 + a2_ * power2(std::cos(y[2]));
@@ -948,7 +994,7 @@ class Kerr : public Metric<T> {
                     (a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * sin2_theta * y[7] * y[7];
         const T b = -2. * r_rho_2 * a_ * sin2_theta * y[7];
         const T c = r_rho_2 - 1.;
-        const T coefficient = std::copysign(0.5 / a, frequency) * (-b + std::sqrt(b * b - 4. * a * c));
+        const T coefficient = 0.5 / a * (-b + std::sqrt(b * b - 4. * a * c));
         if (std::isnan(coefficient))
             return StatusCode::DOMAIN_ERROR;
         y[4] = frequency;
@@ -957,6 +1003,7 @@ class Kerr : public Metric<T> {
         y[7] *= coefficient;
         return StatusCode::SUCCESS;
     }
+    // [ORB-16] formulas/met/kerr.py
     int getIntegrationSystem(std::function<void(const boost::numeric::ublas::bounded_vector<T, 8> &,
                                                 boost::numeric::ublas::bounded_vector<T, 8> &, T)> &system,
                              TimeSystem time, DynamicalSystem dynamics,
@@ -1172,6 +1219,7 @@ class Kerr : public Metric<T> {
         }
         throw std::logic_error("Kerr::getIntegrationSystem() invaild");
     }
+    // [ORB-17] formulas/met/kerr.py
     T innermostStableCircularOrbitRadius(bool prograde) const override {
         const T Z1 = 1. + std::cbrt(1. - a2_) * (std::cbrt(1. + a_) + std::cbrt(1. - a_));
         const T Z2 = std::sqrt(3. * a2_ + power2(Z1));

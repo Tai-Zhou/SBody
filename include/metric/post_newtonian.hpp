@@ -26,6 +26,11 @@ class PostNewtonian : public Metric<T> {
   public:
     PostNewtonian(int PN) : PN_(PN) {};
     std::string name() const override { return "Post-Newtonian"; }
+    int angularMomentumCarterConstantToAlphaBeta([[maybe_unused]] T l, [[maybe_unused]] T q2,
+                                                 [[maybe_unused]] T cos_theta, [[maybe_unused]] T sin_theta,
+                                                 [[maybe_unused]] T &alpha, [[maybe_unused]] T &abs_beta) const override {
+        return StatusCode::NOT_IMPLEMENTED;
+    }
     int metricTensor(const boost::numeric::ublas::bounded_vector<T, 8> &position,
                      boost::numeric::ublas::bounded_matrix<T, 4, 4> &metric) const override { // FIXME: Check
         metric.clear();
@@ -124,9 +129,9 @@ class PostNewtonian : public Metric<T> {
         throw std::invalid_argument(
             fmt::format("{}#{} {}: only LAGRANGIAN with TimeSystem::T is supported", __FILE__, __LINE__, __func__));
     }
-    T redshift(const boost::numeric::ublas::bounded_vector<T, 8> &y,
-               const boost::numeric::ublas::bounded_vector<T, 8> &photon_position, TimeSystem object_time,
-               TimeSystem photon_time) const override {
+    T dopplerFactor(const boost::numeric::ublas::bounded_vector<T, 8> &y,
+                    const boost::numeric::ublas::bounded_vector<T, 8> &photon_position, TimeSystem object_time,
+                    TimeSystem photon_time) const override {
         namespace ublas = boost::numeric::ublas;
         if (object_time == TimeSystem::T && photon_time == TimeSystem::T) {
             const T delta_epsilon = 1. - 2. / y[1];

@@ -29,6 +29,11 @@ class KerrNewman : public Metric<T> {
           u_plus(1. / u_plus_1), u_minus_1(a2_ * u_plus), u_minus(1. / u_minus_1), u_r(-0.5 / sqrt_delta_a2_),
           r_Q_(0.5 * std::sqrt(M_1_PI) * charge), r_Q2_(r_Q_ * r_Q_), r_Q4_(r_Q2_ * r_Q2_) {}
     std::string name() const override { return "Kerr-Newman"; }
+    int angularMomentumCarterConstantToAlphaBeta([[maybe_unused]] T l, [[maybe_unused]] T q2,
+                                                 [[maybe_unused]] T cos_theta, [[maybe_unused]] T sin_theta,
+                                                 [[maybe_unused]] T &alpha, [[maybe_unused]] T &abs_beta) const override {
+        return StatusCode::NOT_IMPLEMENTED;
+    }
     int metricTensor(const boost::numeric::ublas::bounded_vector<T, 8> &position,
                      boost::numeric::ublas::bounded_matrix<T, 4, 4> &metric) const override {
         const T r = position[1], r2 = r * r, Delta = r2 - 2. * r + a2_ + r_Q2_, rho2 = r2 + a2_ * power2(std::cos(position[2])),
@@ -147,6 +152,8 @@ class KerrNewman : public Metric<T> {
         return std::isnan(y[4]) ? StatusCode::DOMAIN_ERROR : StatusCode::SUCCESS;
     }
     int normalizeNullGeodesic(boost::numeric::ublas::bounded_vector<T, 8> &y, T frequency = 1.) const override {
+        if (frequency <= 0.)
+            return StatusCode::DOMAIN_ERROR;
         const T r = y[1], r2 = power2(r);
         const T sin2_theta = power2(std::sin(y[2]));
         const T rho2 = r2 + a2_ * power2(std::cos(y[2]));
@@ -155,7 +162,7 @@ class KerrNewman : public Metric<T> {
                     ((a2_ + r2 + r_rho_2 * a2_ * sin2_theta) * sin2_theta) * power2(y[7]);
         const T b = -2. * r_rho_2 * a_ * sin2_theta * y[7];
         const T c = r_rho_2 - 1.;
-        const T coefficient = std::copysign(0.5 / a, frequency) * (-b + std::sqrt(b * b - 4. * a * c));
+        const T coefficient = 0.5 / a * (-b + std::sqrt(b * b - 4. * a * c));
         if (std::isnan(coefficient))
             return StatusCode::DOMAIN_ERROR;
         y[4] = frequency;

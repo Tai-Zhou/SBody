@@ -105,6 +105,7 @@ class Metric {
      * @param include_time include time related terms if true.
      * @return result
      */
+    // [MET-04] formulas/met/metric.py
     template <typename VecExp1, typename VecExp2>
     T dotProduct(const boost::numeric::ublas::bounded_vector<T, 8> &position, const VecExp1 &x, const VecExp2 &y,
                  bool include_time) const {
@@ -120,6 +121,7 @@ class Metric {
      * @param y 8 dimensional vector
      * @return result
      */
+    // [MET-04] formulas/met/metric.py
     virtual T distanceSquare(const boost::numeric::ublas::bounded_vector<T, 8> &x,
                              const boost::numeric::ublas::bounded_vector<T, 8> &y, bool include_time) const = 0;
 
@@ -131,6 +133,7 @@ class Metric {
      * @param coordinate matrix with size 4×4
      * @return status
      */
+    // [MET-05] formulas/met/metric.py
     int localInertialFrame(const boost::numeric::ublas::bounded_vector<T, 8> &position, TimeSystem time,
                            boost::numeric::ublas::bounded_matrix<T, 4, 4> &coordinate) const {
         namespace ublas = boost::numeric::ublas;
@@ -155,7 +158,7 @@ class Metric {
             coordinate_row /= std::sqrt(std::abs(dotProduct(position, coordinate_row, coordinate_row, true)));
             ublas::matrix_row<ublas::bounded_matrix<T, 4, 4>>(product, i) = ublas::prod(metric, coordinate_row);
         }
-        return std::isnan(coordinate(3, 0)) ? StatusCode::NUMERIC_ERROR : StatusCode::SUCCESS;
+        return std::isfinite(coordinate(3, 0)) ? StatusCode::SUCCESS : StatusCode::NUMERIC_ERROR;
     }
 
     /**
@@ -164,6 +167,7 @@ class Metric {
      * @param y 8 dimensional vector
      * @return status
      */
+    // [MET-06] formulas/met/metric.py
     virtual int lagrangianToHamiltonian(boost::numeric::ublas::bounded_vector<T, 8> &y) const = 0;
 
     /**
@@ -172,8 +176,10 @@ class Metric {
      * @param y 8 dimensional vector
      * @return status
      */
+    // [MET-06] formulas/met/metric.py
     virtual int hamiltonianToLagrangian(boost::numeric::ublas::bounded_vector<T, 8> &y) const = 0;
 
+    // [MET-07] formulas/met/metric.py
     int initializePhoton(boost::numeric::ublas::bounded_vector<T, 8> &photon, T &photon_time, T alpha, T beta, T r, T r2,
                          T theta, T sin_theta) const {
         photon[0] = 0.;
@@ -201,16 +207,24 @@ class Metric {
         return normalizeNullGeodesic(photon, 1.);
     }
 
-    int angularMomentumCarterConstantToAlphaBeta(T l, T q2, T cos_theta, T sin_theta, T &alpha, T &abs_beta) const {
-        if (sin_theta == 0.)
-            return StatusCode::FAILURE;
-        alpha = -l / sin_theta;
-        const T beta2 = q2 - power2(cos_theta * alpha);
-        if (beta2 < 0.)
-            return StatusCode::DOMAIN_ERROR;
-        abs_beta = std::sqrt(beta2);
-        return StatusCode::SUCCESS;
-    }
+    /**
+     * @brief Convert the photon constants \f$(l,q^2)\f$ to the apparent position
+     * \f$(\alpha,\beta)\f$ at the observer.
+     *
+     * Each metric implements its own relation; the base class returns
+     * \f$\mathrm{NOT\_IMPLEMENTED}\f$.
+     *
+     * @param l specific angular momentum
+     * @param q2 Carter constant divided by \f$E^2\f$
+     * @param cos_theta cosine of the observer polar angle
+     * @param sin_theta sine of the observer polar angle
+     * @param alpha apparent position in the first screen direction
+     * @param abs_beta absolute value of the apparent position in the second screen direction
+     * @return status
+     */
+    // [MET-08] formulas/met/metric.py
+    virtual int angularMomentumCarterConstantToAlphaBeta(T l, T q2, T cos_theta, T sin_theta, T &alpha,
+                                                          T &abs_beta) const = 0;
 
     /**
      * @brief Trace the photon from the observer to the target, using elliptic integrals.
@@ -273,7 +287,7 @@ class Metric {
                              DynamicalSystem dynamics) const = 0;
 
     /**
-     * @brief Calculate the redshift of the object, \f$1+z\f$
+     * @brief Calculate the Doppler factor of the object, \f$g=1/(1+z)=E_\text{obs}/E_\text{emit}\f$
      *
      * @param y 8 dimensional vector of the object
      * @param photon photon traced to the object
@@ -281,9 +295,10 @@ class Metric {
      * @param photon_time time system of the photon
      * @return result
      */
-    virtual T redshift(const boost::numeric::ublas::bounded_vector<T, 8> &y,
-                       const boost::numeric::ublas::bounded_vector<T, 8> &photon_position, TimeSystem object_time,
-                       TimeSystem photon_time) const {
+    // [MET-09] formulas/met/metric.py
+    virtual T dopplerFactor(const boost::numeric::ublas::bounded_vector<T, 8> &y,
+                            const boost::numeric::ublas::bounded_vector<T, 8> &photon_position, TimeSystem object_time,
+                            TimeSystem photon_time) const {
         namespace ublas = boost::numeric::ublas;
         ublas::bounded_vector<T, 4> u, v;
         u(0) = 1.;
@@ -306,6 +321,21 @@ class Metric {
     }
 
     /**
+     * @brief Calculate the redshift \f$1+z=E_\text{emit}/E_\text{obs}\f$.
+     *
+     * @param y 8 dimensional vector of the object
+     * @param photon photon traced to the object
+     * @param object_time time system of the object
+     * @param photon_time time system of the photon
+     * @return result
+     */
+    T redshift(const boost::numeric::ublas::bounded_vector<T, 8> &y,
+               const boost::numeric::ublas::bounded_vector<T, 8> &photon_position, TimeSystem object_time,
+               TimeSystem photon_time) const {
+        return 1. / dopplerFactor(y, photon_position, object_time, photon_time);
+    }
+
+    /**
      * @brief Normalize the timelike geodesic.
      *
      * @param y 8 dimensional vector
@@ -316,7 +346,11 @@ class Metric {
     /**
      * @brief Normalize the null geodesic.
      *
+     * The 8-vector follows TimeSystem::T: y[4] = dlambda/dt. The affine rate
+     * `frequency` must be positive (future-directed); it is not the photon energy.
+     *
      * @param y 8 dimensional vector
+     * @param frequency affine rate dlambda/dt (> 0)
      * @return status
      */
     virtual int normalizeNullGeodesic(boost::numeric::ublas::bounded_vector<T, 8> &y, T frequency = 1.) const = 0;

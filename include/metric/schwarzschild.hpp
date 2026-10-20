@@ -20,6 +20,7 @@
 
 #include "infra/infra_context.hpp"
 #include "math/constants.hpp"
+#include "math/geometry.hpp"
 #include "math/solver/polynomial.hpp"
 #include "math/special_functions.hpp"
 #include "metric/metric.hpp"
@@ -30,6 +31,18 @@ class Schwarzschild : public Metric<T> {
   public:
     Schwarzschild() = default;
     std::string name() const override { return "Schwarzschild"; }
+    // [MET-08] formulas/met/metric.py
+    int angularMomentumCarterConstantToAlphaBeta(T l, T q2, T cos_theta, T sin_theta, T &alpha, T &abs_beta) const override {
+        if (sin_theta == 0.)
+            return StatusCode::FAILURE;
+        alpha = -l / sin_theta;
+        const T beta2 = q2 - power2(cos_theta * alpha);
+        if (beta2 < 0.)
+            return StatusCode::DOMAIN_ERROR;
+        abs_beta = std::sqrt(beta2);
+        return StatusCode::SUCCESS;
+    }
+    // [MET-03] formulas/met/metric.py
     int metricTensor(const boost::numeric::ublas::bounded_vector<T, 8> &position,
                      boost::numeric::ublas::bounded_matrix<T, 4, 4> &metric) const override {
         metric.clear();
@@ -39,6 +52,7 @@ class Schwarzschild : public Metric<T> {
         metric(3, 3) = power2(position[1] * std::sin(position[2]));
         return position[1] == 2. ? StatusCode::DIVISION_BY_ZERO : StatusCode::SUCCESS;
     }
+    // [MET-04] formulas/met/metric.py
     T dotProduct3D(const boost::numeric::ublas::bounded_vector<T, 8> &position, T x1, T x2, T x3, T y1, T y2,
                    T y3) const override {
         return position[1] * x1 * y1 / (position[1] - 2.) + position[1] * position[1] * x2 * y2 +
@@ -49,6 +63,7 @@ class Schwarzschild : public Metric<T> {
         return -(1. - 2. / position[1]) * x0 * y0 + position[1] * x1 * y1 / (position[1] - 2.) +
                position[1] * position[1] * x2 * y2 + power2(position[1] * std::sin(position[2])) * x3 * y3;
     }
+    // [MET-04] formulas/met/metric.py
     T distanceSquare(const boost::numeric::ublas::bounded_vector<T, 8> &x, const boost::numeric::ublas::bounded_vector<T, 8> &y,
                      bool include_time) const override {
         if (include_time)
@@ -57,6 +72,7 @@ class Schwarzschild : public Metric<T> {
         return x[1] * power2(x[1] - y[1]) / (x[1] - 2.) + power2(x[1] * (x[2] - y[2])) +
                power2(x[1] * std::sin(x[2]) * phiDifference(x[3] - y[3]));
     }
+    // [MET-06] formulas/met/metric.py
     int lagrangianToHamiltonian(boost::numeric::ublas::bounded_vector<T, 8> &y) const override {
         const T dt_dtau = 1. / y[4], r2 = power2(y[1]);
         y[4] = (y[4] - 1. + 2. / y[1]) * dt_dtau; // 1 + p_t
@@ -65,6 +81,7 @@ class Schwarzschild : public Metric<T> {
         y[7] *= r2 * power2(std::sin(y[2])) * dt_dtau;
         return StatusCode::SUCCESS;
     }
+    // [MET-06] formulas/met/metric.py
     int hamiltonianToLagrangian(boost::numeric::ublas::bounded_vector<T, 8> &y) const override {
         const T r_1 = 1. / y[1], g11_1 = 1. - 2. * r_1;
         y[4] = -g11_1 / (y[4] - 1.);
@@ -77,12 +94,15 @@ class Schwarzschild : public Metric<T> {
                   const T r_object, const T theta_object, const T phi_object, T &alpha, T &beta,
                   boost::numeric::ublas::bounded_vector<T, 8> &photon, T &photon_time, T absolute_accuracy, T relative_accuracy,
                   const InfraContext &infra_context) const override {
+        // [RYT-04] formulas/ryt/ray.py
         const T sin_theta_object = sinTheta(theta_object), cos_theta_object = cosTheta(theta_object),
                 sin_phi_object = std::sin(phi_object), cos_phi_object = std::cos(phi_object);
+        const T sin_observer_object =
+            std::hypot(sin_theta_observer * cos_theta_object * cos_phi_object - cos_theta_observer * sin_theta_object,
+                       sin_theta_observer * sin_phi_object);
         const T cos_observer_object =
             sin_theta_observer * sin_theta_object * cos_phi_object + cos_theta_observer * cos_theta_object;
-        const T delta_phi = std::acos(cos_observer_object),
-                sin_observer_object = std::sqrt(1. - cos_observer_object * cos_observer_object);
+        const T delta_phi = std::atan2(sin_observer_object, cos_observer_object);
         const T u0 = 1. / r_observer, u1 = 1. / r_object, u12 = u1 * u1;
         const T g11_1 = 1. - 2. * u1;
         if (delta_phi == 0.) {
@@ -101,10 +121,10 @@ class Schwarzschild : public Metric<T> {
         }
         T impact_parameter_upper_limit = r_object / std::sqrt(g11_1), turning_phi;
         if (T x02[2];
-            u1 * 3. < 1. && polySolveQuadratic(T{2.}, -g11_1, -g11_1 * u1, x02) == 2) // remove (x-u1) as cubic_roots[1] = u1
+            u1 * 3. < 1. && polySolveQuadratic(T{2.}, -g11_1, -g11_1 * u1, x02) == 2) { // remove (x-u1) as cubic_roots[1] = u1
             turning_phi = boost::math::constants::half_root_two<T>() *
                           ellipticIntegral(0, u0, u1, T{0.}, T{0.}, u1, T{-1.}, -x02[0], T{1.}, x02[1], T{-1.});
-        else { // there is no turning point on the trajectory
+        } else { // there is no turning point on the trajectory
             impact_parameter_upper_limit = T{M_SQRT27} - boost::math::tools::epsilon<T>();
             turning_phi = boost::math::constants::pi<T>(); // make delta_phi <= turning_phi
         }
@@ -112,19 +132,19 @@ class Schwarzschild : public Metric<T> {
         std::array<T, 3> cubic_roots;
         try {
             boost::uintmax_t max_iteration = 64;
-            if (delta_phi > turning_phi)
+            if (delta_phi > turning_phi) {
                 impact_root = boost::math::tools::toms748_solve(
                     [u0, u1, delta_phi, &cubic_roots](T l) -> T {
                         if (l == 0.)
                             return -delta_phi;
                         T half_l_2 = 0.5 / (l * l);
                         if (polySolveCubic(T{-0.5}, T{0.}, half_l_2, cubic_roots.begin()) == 3) {
-                            if (cubic_roots[1] < u1) // cubic_roots[1] < u1 < cubic_roots[1] + EPSILON
+                            if (cubic_roots[1] < u1) { // cubic_roots[1] < u1 < cubic_roots[1] + EPSILON
                                 return boost::math::constants::half_root_two<T>() *
                                            ellipticIntegral(0, u0, u1, T{0.}, T{1.}, u1, T{-1.}, -cubic_roots[0], T{1.},
                                                             cubic_roots[2], T{-1.}) -
                                        delta_phi;
-                            else // u1 -> turning point -> u1 -> u0
+                            } else { // u1 -> turning point -> u1 -> u0
                                 return boost::math::constants::root_two<T>() *
                                            ellipticIntegral(0., u1, cubic_roots[1], T{0.}, T{1.}, cubic_roots[1], T{-1.},
                                                             -cubic_roots[0], T{1.}, cubic_roots[2], T{-1.}) +
@@ -132,6 +152,7 @@ class Schwarzschild : public Metric<T> {
                                            ellipticIntegral(0, u0, u1, T{0.}, T{1.}, cubic_roots[1], T{-1.}, -cubic_roots[0],
                                                             T{1.}, cubic_roots[2], T{-1.}) -
                                        delta_phi;
+                            }
                         }
                         // impact_parameter < std::sqrt(27)
                         cubic_roots[1] = std::nan("");
@@ -142,23 +163,24 @@ class Schwarzschild : public Metric<T> {
                     },
                     T{M_SQRT27} + boost::math::tools::root_epsilon<T>(), impact_parameter_upper_limit,
                     boost::math::tools::eps_tolerance<double>(), max_iteration);
-            else
+            } else {
                 impact_root = boost::math::tools::toms748_solve(
                     [u0, u1, delta_phi, &cubic_roots](T l) -> T {
                         if (l == 0.)
                             return -delta_phi;
                         T half_l_2 = 0.5 / (l * l);
                         if (polySolveCubic(T{-0.5}, T{0.}, half_l_2, cubic_roots.begin()) == 3) {
-                            if (cubic_roots[1] < u1) // cubic_roots[1] < u1 < cubic_roots[1] + EPSILON
+                            if (cubic_roots[1] < u1) { // cubic_roots[1] < u1 < cubic_roots[1] + EPSILON
                                 return boost::math::constants::half_root_two<T>() *
                                            ellipticIntegral(0, u0, u1, T{0.}, T{1.}, u1, T{-1.}, -cubic_roots[0], T{1.},
                                                             cubic_roots[2], T{-1.}) -
                                        delta_phi;
-                            else // u1 -> u0
+                            } else { // u1 -> u0
                                 return boost::math::constants::half_root_two<T>() *
                                            ellipticIntegral(0, u0, u1, T{0.}, T{1.}, cubic_roots[1], T{-1.}, -cubic_roots[0],
                                                             T{1.}, cubic_roots[2], T{-1.}) -
                                        delta_phi;
+                            }
                         }
                         // impact_parameter < std::sqrt(27)
                         cubic_roots[1] = std::nan("");
@@ -168,6 +190,7 @@ class Schwarzschild : public Metric<T> {
                                delta_phi;
                     },
                     T{0.}, impact_parameter_upper_limit, boost::math::tools::eps_tolerance<double>(), max_iteration);
+            }
         } catch (const std::exception &e) {
             infra_context.logger_.warning("Failed to find impact root: {}, delta_phi {} turning_phi", e.what(),
                                           delta_phi < turning_phi ? "<" : ">");
@@ -237,10 +260,11 @@ class Schwarzschild : public Metric<T> {
         photon(2) = theta_object;
         photon(3) = phi_object;
         photon(4) = g11_1 / (1. - 2. * u0); // dt/d\tau = 1. when r = r_observer
-        if (delta_phi > turning_phi)
+        if (delta_phi > turning_phi) {
             photon(5) = -g11_1 * squareRoot(1. - g11_1 * u12 * impact_root_value2);
-        else
+        } else {
             photon(5) = g11_1 * squareRoot(1. - g11_1 * u12 * impact_root_value2);
+        }
         // the direction of the angular momentum is [alpha * cos_theta_observer, beta, -alpha * sin_theta_observer],
         // the y component should have the same sign as the component perpendicular to [std::cos(phi), std::sin(phi), 0],
         // which is also the component along the [-std::sin(phi), std::cos(phi), 0] direction.
@@ -260,10 +284,12 @@ class Schwarzschild : public Metric<T> {
                    [[maybe_unused]] const T sin_theta_observer, [[maybe_unused]] const T cos_theta_observer,
                    [[maybe_unused]] const T alpha, [[maybe_unused]] const T beta,
                    [[maybe_unused]] const T r_min) const override {
+        // [RYT-04] formulas/ryt/ray.py
         if (alpha * alpha + beta * beta <= 27.)
             return 0;
         return 1;
     }
+    // [ORB-07] formulas/orb/orbit.py
     T energy(const boost::numeric::ublas::bounded_vector<T, 8> &y, TimeSystem time, DynamicalSystem dynamics) const override {
         if (dynamics == DynamicalSystem::LAGRANGIAN) {
             if (time == TimeSystem::T)
@@ -273,6 +299,7 @@ class Schwarzschild : public Metric<T> {
         } // dynamics == DynamicalSystem::HAMILTONIAN
         return 1. - y[4];
     }
+    // [ORB-07] formulas/orb/orbit.py
     T angularMomentum(const boost::numeric::ublas::bounded_vector<T, 8> &y, TimeSystem time,
                       DynamicalSystem dynamics) const override {
         if (dynamics == DynamicalSystem::LAGRANGIAN) {
@@ -283,6 +310,7 @@ class Schwarzschild : public Metric<T> {
         } // dynamics == DynamicalSystem::HAMILTONIAN
         return y[7];
     }
+    // [ORB-07] formulas/orb/orbit.py
     T carterConstant(const boost::numeric::ublas::bounded_vector<T, 8> &y, [[maybe_unused]] const T mu2, TimeSystem time,
                      DynamicalSystem dynamics) const override {
         if (dynamics == DynamicalSystem::LAGRANGIAN) {
@@ -293,6 +321,7 @@ class Schwarzschild : public Metric<T> {
         } // dynamics == DynamicalSystem::HAMILTONIAN
         return power2(y[6]) + power2(y[7] / tan(y[2]));
     }
+    // [ORB-07] formulas/orb/orbit.py
     int normalizeTimelikeGeodesic(boost::numeric::ublas::bounded_vector<T, 8> &y) const override {
         const T g11_1 = 1. - 2. / y[1];
         if (g11_1 <= 0)
@@ -300,12 +329,15 @@ class Schwarzschild : public Metric<T> {
         y[4] = std::sqrt(g11_1 - (power2(y[5]) / g11_1 + power2(y[1] * y[6]) + power2(y[1] * std::sin(y[2]) * y[7])));
         return std::isnan(y[4]) ? StatusCode::DOMAIN_ERROR : StatusCode::SUCCESS;
     }
+    // [MET-07] formulas/met/metric.py; [ORB-07] formulas/orb/orbit.py
     int normalizeNullGeodesic(boost::numeric::ublas::bounded_vector<T, 8> &y, T frequency = 1.) const override {
+        if (frequency <= 0.)
+            return StatusCode::DOMAIN_ERROR;
         const T g11_1 = 1. - 2. / y[1];
         if (g11_1 <= 0)
             return 1;
-        const T coefficient = std::copysign(g11_1, frequency) /
-                              std::sqrt(y[5] * y[5] + g11_1 * (power2(y[1] * y[6]) + power2(y[1] * std::sin(y[2]) * y[7])));
+        const T coefficient =
+            g11_1 / std::sqrt(y[5] * y[5] + g11_1 * (power2(y[1] * y[6]) + power2(y[1] * std::sin(y[2]) * y[7])));
         if (std::isnan(coefficient))
             return StatusCode::DOMAIN_ERROR;
         y[4] = frequency;
@@ -314,6 +346,7 @@ class Schwarzschild : public Metric<T> {
         y[7] *= coefficient;
         return StatusCode::SUCCESS;
     }
+    // [ORB-15] formulas/met/schwarzschild.py
     int getIntegrationSystem(std::function<void(const boost::numeric::ublas::bounded_vector<T, 8> &,
                                                 boost::numeric::ublas::bounded_vector<T, 8> &, T)> &system,
                              TimeSystem time, DynamicalSystem dynamics,
@@ -322,7 +355,7 @@ class Schwarzschild : public Metric<T> {
             if (dynamics == DynamicalSystem::LAGRANGIAN) {
                 if (motion == MotionMode::GEODESIC) {
                     system = [](const boost::numeric::ublas::bounded_vector<T, 8> &y,
-                                boost::numeric::ublas::bounded_vector<T, 8> &dydt, T t) {
+                                boost::numeric::ublas::bounded_vector<T, 8> &dydt, T) {
                         dydt[0] = y[4]; // d\tau/dt
                         dydt[1] = y[5]; // dr/dt
                         dydt[2] = y[6]; // d\theta/dt
@@ -348,7 +381,7 @@ class Schwarzschild : public Metric<T> {
                     return StatusCode::SUCCESS;
                 } else if (motion == MotionMode::CIRCULAR) {
                     system = [](const boost::numeric::ublas::bounded_vector<T, 8> &y,
-                                boost::numeric::ublas::bounded_vector<T, 8> &dydt, T t) {
+                                boost::numeric::ublas::bounded_vector<T, 8> &dydt, T) {
                         dydt[0] = y[4]; // d\tau/dt
                         dydt[1] = 0.;   // dr/dt
                         dydt[2] = 0.;   // d\theta/dt
@@ -361,7 +394,7 @@ class Schwarzschild : public Metric<T> {
                     return StatusCode::SUCCESS;
                 } else if (motion == MotionMode::CONICAL) {
                     system = [](const boost::numeric::ublas::bounded_vector<T, 8> &y,
-                                boost::numeric::ublas::bounded_vector<T, 8> &dydt, T t) {
+                                boost::numeric::ublas::bounded_vector<T, 8> &dydt, T) {
                         const T r = y[1];
                         if (r <= 2.)
                             throw std::domain_error("Schwarzschild orbital radius r <= 2");
@@ -384,7 +417,7 @@ class Schwarzschild : public Metric<T> {
                     return StatusCode::SUCCESS;
                 } else if (motion == MotionMode::CYLINDRICAL) {
                     system = [](const boost::numeric::ublas::bounded_vector<T, 8> &y,
-                                boost::numeric::ublas::bounded_vector<T, 8> &dydt, T t) {
+                                boost::numeric::ublas::bounded_vector<T, 8> &dydt, T) {
                         const T r = y[1];
                         if (r <= 2.)
                             throw std::domain_error("Schwarzschild orbital radius r <= 2");
@@ -406,7 +439,7 @@ class Schwarzschild : public Metric<T> {
                     return StatusCode::SUCCESS;
                 } else if (motion == MotionMode::CONICAL_FIXED_ENERGY) {
                     system = [](const boost::numeric::ublas::bounded_vector<T, 8> &y,
-                                boost::numeric::ublas::bounded_vector<T, 8> &dydt, T t) {
+                                boost::numeric::ublas::bounded_vector<T, 8> &dydt, T) {
                         const T r = y[1];
                         if (r <= 2.)
                             throw std::domain_error("Schwarzschild orbital radius r <= 2");
@@ -429,7 +462,7 @@ class Schwarzschild : public Metric<T> {
                     return StatusCode::SUCCESS;
                 } else if (motion == MotionMode::CYLINDRICAL_FIXED_ENERGY) {
                     system = [](const boost::numeric::ublas::bounded_vector<T, 8> &y,
-                                boost::numeric::ublas::bounded_vector<T, 8> &dydt, T t) {
+                                boost::numeric::ublas::bounded_vector<T, 8> &dydt, T) {
                         const T r = y[1];
                         if (r <= 2.)
                             throw std::domain_error("Schwarzschild orbital radius r <= 2");
@@ -458,7 +491,7 @@ class Schwarzschild : public Metric<T> {
                 }
             } else if (dynamics == DynamicalSystem::HAMILTONIAN && motion == MotionMode::GEODESIC) {
                 system = [](const boost::numeric::ublas::bounded_vector<T, 8> &y,
-                            boost::numeric::ublas::bounded_vector<T, 8> &dydt, T t) {
+                            boost::numeric::ublas::bounded_vector<T, 8> &dydt, T) {
                     const T r_1 = 1. / y[1], r_2 = power2(r_1), g11_1 = 1. - 2. * r_1, E = 1. - y[4], L2 = power2(y[7]);
                     const T sin_1_theta = 1. / sinTheta(y[2]), sin_2_theta = power2(sin_1_theta);
                     //[\tau,r,\theta>\pi/2?\theta-\pi:\theta,\phi,1+p_t,p_r,p_\theta,p_\phi]
@@ -476,7 +509,7 @@ class Schwarzschild : public Metric<T> {
             }
         } else if (time == TimeSystem::TAU && dynamics == DynamicalSystem::LAGRANGIAN && motion == MotionMode::GEODESIC) {
             system = [](const boost::numeric::ublas::bounded_vector<T, 8> &y, boost::numeric::ublas::bounded_vector<T, 8> &dydt,
-                        T t) {
+                        T) {
                 dydt[0] = y[4]; // dt/d\tau
                 dydt[1] = y[5]; // dr/d\tau
                 dydt[2] = y[6]; // d\theta/d\tau

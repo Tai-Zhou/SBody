@@ -29,6 +29,11 @@ class KerrTaubNUT : public Metric<T> {
           u_plus(1. / u_plus_1), u_minus_1(a2_ * u_plus), u_minus(1. / u_minus_1), u_r(-0.5 / sqrt_delta_a2_), l_(NUT),
           l2_(l_ * l_), l4_(l2_ * l2_) {}
     std::string name() const override { return "Kerr-Taub-NUT"; }
+    int angularMomentumCarterConstantToAlphaBeta([[maybe_unused]] T l, [[maybe_unused]] T q2,
+                                                 [[maybe_unused]] T cos_theta, [[maybe_unused]] T sin_theta,
+                                                 [[maybe_unused]] T &alpha, [[maybe_unused]] T &abs_beta) const override {
+        return StatusCode::NOT_IMPLEMENTED;
+    }
     int metricTensor(const boost::numeric::ublas::bounded_vector<T, 8> &position,
                      boost::numeric::ublas::bounded_matrix<T, 4, 4> &metric) const override {
         return StatusCode::NOT_IMPLEMENTED;
@@ -158,6 +163,8 @@ class KerrTaubNUT : public Metric<T> {
         return std::isnan(y[4]) ? StatusCode::DOMAIN_ERROR : StatusCode::SUCCESS;
     }
     int normalizeNullGeodesic(boost::numeric::ublas::bounded_vector<T, 8> &y, T frequency = 1.) const override {
+        if (frequency <= 0.)
+            return StatusCode::DOMAIN_ERROR;
         const T r = y[1], r2 = power2(r);
         const T sin2_theta = power2(std::sin(y[2])), cos_theta = cosTheta(y[2]);
         const T Delta = r2 - 2. * r - l2_ + a2_;
@@ -168,7 +175,7 @@ class KerrTaubNUT : public Metric<T> {
                     rho_2 * (power2(rho2_a_chi) * sin2_theta - power2(chi) * Delta) * power2(y[7]);
         const T b = -4. * rho_2 * ((r + l2_) * chi + l_ * cos_theta * rho2_a_chi) * y[7];
         const T c = -rho_2 * (Delta - a2_ * sin2_theta);
-        const T coefficient = std::copysign(0.5 / a, frequency) * (-b + std::sqrt(b * b - 4. * a * c));
+        const T coefficient = 0.5 / a * (-b + std::sqrt(b * b - 4. * a * c));
         if (std::isnan(coefficient))
             return StatusCode::DOMAIN_ERROR;
         y[4] = frequency;

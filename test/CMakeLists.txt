@@ -1,6 +1,12 @@
 set(TEST_SOURCES
+    math/geometry_test.cpp
+    math/special_functions_test.cpp
     math/solver/polynomial_test.cpp
     math/solver/system/nonlinear_system_test.cpp
+    metric/inertial_frame_test.cpp
+    metric/kerr_eom_test.cpp
+    metric/kerr_metric_test.cpp
+    metric/schwarzschild_eom_test.cpp
 )
 
 foreach(TEST_FILE ${TEST_SOURCES})

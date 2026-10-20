@@ -70,6 +70,10 @@ class Object {
      * @param photon_time
      * @return T
      */
-    virtual T redshift(const boost::numeric::ublas::bounded_vector<T, 8> &photon, TimeSystem photon_time) const = 0;
+    virtual T dopplerFactor(const boost::numeric::ublas::bounded_vector<T, 8> &photon,
+                            TimeSystem photon_time) const = 0;
+    T redshift(const boost::numeric::ublas::bounded_vector<T, 8> &photon, TimeSystem photon_time) const {
+        return 1. / dopplerFactor(photon, photon_time);
+    }
 };
 } // namespace sbody

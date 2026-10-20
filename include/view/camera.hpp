@@ -88,7 +88,7 @@ class Camera : public View<T> {
                 integration_stepper.try_step(this->integration_system_, photon, t, h);
                 for (auto object_pointer : object_list)
                     if (object_pointer->hit(photon, last))
-                        screen_[i][j] = object_pointer->redshift(photon, TimeSystem::T); // FIXME: if multi objects
+                        screen_[i][j] = object_pointer->dopplerFactor(photon, TimeSystem::T); // FIXME: if multi objects
                 if (screen_[i][j] > boost::math::tools::root_epsilon<T>())
                     break;
             }

@@ -14,6 +14,7 @@
 #include <boost/numeric/odeint.hpp>
 
 #include "math/geometry.hpp"
+#include "metric/kerr.hpp"
 #include "object/object.hpp"
 
 namespace sbody {
@@ -55,6 +56,7 @@ class Particle : public Object<T> {
     T position(std::size_t idx) { return position_(idx); }
     void position(T *position) { std::copy(position_.begin(), position_.end(), position); }
     void position(boost::numeric::ublas::bounded_vector<T, 8> &position) { position = position_; }
+    // [ORB-13] formulas/orb/orbit.py
     int initializeKeplerian(T a, T e, T inclination, T periapsis, T ascending_node, T true_anomaly, T observer_inclination = 0.,
                             T observer_rotation = 0.) {
         if (int status = this->metric_.getIntegrationSystem(integration_system_, time_, coordinate_, MotionMode::GEODESIC);
@@ -96,44 +98,94 @@ class Particle : public Object<T> {
         cartesianToSpherical(position_);
         return this->metric_.normalizeTimelikeGeodesic(position_);
     }
+    // [ORB-11] formulas/orb/orbit.py
     int initializeGeodesic(T orbital_radius, T inclination, T periapsis, T ascending_node, T v_r, T v_phi,
-                           T observer_inclination = 0., T observer_rotation = 0.) {
+                           T observer_inclination, T observer_rotation) {
         if (int status = this->metric_.getIntegrationSystem(integration_system_, time_, coordinate_, MotionMode::GEODESIC);
             status != StatusCode::SUCCESS)
             return status;
+        const T sin_inclination = std::sin(inclination), cos_inclination = std::cos(inclination);
+        const T sin_periapsis = std::sin(periapsis), cos_periapsis = std::cos(periapsis);
+        const T sin_ascending_node = std::sin(ascending_node), cos_ascending_node = std::cos(ascending_node);
+        const T sin_observer_inclination = std::sin(observer_inclination),
+                cos_observer_inclination = std::cos(observer_inclination);
+        const T sin_observer_rotation = std::sin(observer_rotation), cos_observer_rotation = std::cos(observer_rotation);
         position_[0] = 0.;
-        const T tp1 = -orbital_radius * std::cos(periapsis),
-                tp2 = -orbital_radius * std::sin(periapsis) * std::cos(inclination);
-        const T xp1 = tp1 * std::cos(ascending_node) - tp2 * std::sin(ascending_node),
-                xp2 = tp2 * std::cos(ascending_node) + tp1 * std::sin(ascending_node),
-                xp3 = -orbital_radius * std::sin(periapsis) * std::sin(inclination);
-        position_[1] =
-            (xp1 * std::cos(observer_rotation) + xp2 * std::sin(observer_rotation)) * std::cos(observer_inclination) +
-            xp3 * std::sin(observer_inclination);
-        position_[2] = xp2 * std::cos(observer_rotation) - xp1 * std::sin(observer_rotation);
-        position_[3] = xp3 * std::cos(observer_inclination) -
-                       (xp1 * std::cos(observer_rotation) + xp2 * std::sin(observer_rotation)) * std::sin(observer_inclination);
+        const T tp1 = -orbital_radius * std::cos(periapsis), tp2 = -orbital_radius * sin_periapsis * cos_inclination;
+        const T xp1 = tp1 * cos_ascending_node - tp2 * sin_ascending_node,
+                xp2 = tp2 * cos_ascending_node + tp1 * sin_ascending_node,
+                xp3 = -orbital_radius * sin_periapsis * sin_inclination;
+        position_[1] = (xp1 * cos_observer_rotation + xp2 * sin_observer_rotation) * cos_observer_inclination +
+                       xp3 * sin_observer_inclination;
+        position_[2] = xp2 * cos_observer_rotation - xp1 * sin_observer_rotation;
+        position_[3] = xp3 * cos_observer_inclination -
+                       (xp1 * cos_observer_rotation + xp2 * sin_observer_rotation) * sin_observer_inclination;
         if (fixed_) {
             position_[5] = 0.;
             position_[6] = 0.;
             position_[7] = 0.;
         } else {
-            const T tp5 = v_phi * std::sin(periapsis) - v_r * std::cos(periapsis),
-                    tp6 = -(v_phi * std::cos(periapsis) + v_r * std::sin(periapsis)) * std::cos(inclination);
-            const T xp5 = tp5 * std::cos(ascending_node) - tp6 * std::sin(ascending_node),
-                    xp6 = tp5 * std::sin(ascending_node) + tp6 * std::cos(ascending_node),
-                    xp7 = -(v_phi * std::cos(periapsis) + v_r * std::sin(periapsis)) * std::sin(inclination);
-            position_[5] =
-                (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::cos(observer_inclination) +
-                xp7 * std::sin(observer_inclination);
-            position_[6] = xp6 * std::cos(observer_rotation) - xp5 * std::sin(observer_rotation);
-            position_[7] =
-                xp7 * std::cos(observer_inclination) -
-                (xp5 * std::cos(observer_rotation) + xp6 * std::sin(observer_rotation)) * std::sin(observer_inclination);
+            const T tp5 = v_phi * sin_periapsis - v_r * cos_periapsis,
+                    tp6 = -(v_phi * cos_periapsis + v_r * sin_periapsis) * cos_inclination;
+            const T xp5 = tp5 * cos_ascending_node - tp6 * sin_ascending_node,
+                    xp6 = tp5 * sin_ascending_node + tp6 * cos_ascending_node,
+                    xp7 = -(v_phi * cos_periapsis + v_r * sin_periapsis) * sin_inclination;
+            position_[5] = (xp5 * cos_observer_rotation + xp6 * sin_observer_rotation) * cos_observer_inclination +
+                           xp7 * sin_observer_inclination;
+            position_[6] = xp6 * cos_observer_rotation - xp5 * sin_observer_rotation;
+            position_[7] = xp7 * cos_observer_inclination -
+                           (xp5 * cos_observer_rotation + xp6 * sin_observer_rotation) * sin_observer_inclination;
         }
         cartesianToSpherical(position_);
         return this->metric_.normalizeTimelikeGeodesic(position_);
     }
+    // [ORB-12] formulas/orb/orbit.py
+    int initializeKerrGeodesicWithEnergyAndAxialAngularMomentum(T orbital_radius, T inclination, T periapsis, T ascending_node,
+                                                                T E, T L_z, T observer_inclination, T observer_rotation) {
+        if (int status = this->metric_.getIntegrationSystem(integration_system_, time_, coordinate_, MotionMode::GEODESIC);
+            status != StatusCode::SUCCESS)
+            return status;
+        const T sin_inclination = std::sin(inclination), cos_inclination = std::cos(inclination);
+        const T sin_periapsis = std::sin(periapsis), cos_periapsis = std::cos(periapsis);
+        const T sin_ascending_node = std::sin(ascending_node), cos_ascending_node = std::cos(ascending_node);
+        const T sin_observer_inclination = std::sin(observer_inclination),
+                cos_observer_inclination = std::cos(observer_inclination);
+        const T sin_observer_rotation = std::sin(observer_rotation), cos_observer_rotation = std::cos(observer_rotation);
+        position_[0] = 0.;
+        const T tp1 = -orbital_radius * std::cos(periapsis), tp2 = -orbital_radius * sin_periapsis * cos_inclination;
+        const T xp1 = tp1 * cos_ascending_node - tp2 * sin_ascending_node,
+                xp2 = tp2 * cos_ascending_node + tp1 * sin_ascending_node,
+                xp3 = -orbital_radius * sin_periapsis * sin_inclination;
+        position_[1] = (xp1 * cos_observer_rotation + xp2 * sin_observer_rotation) * cos_observer_inclination +
+                       xp3 * sin_observer_inclination;
+        position_[2] = xp2 * cos_observer_rotation - xp1 * sin_observer_rotation;
+        position_[3] = xp3 * cos_observer_inclination -
+                       (xp1 * cos_observer_rotation + xp2 * sin_observer_rotation) * sin_observer_inclination;
+        // v_r = 0, v_phi = 1
+        const T tp5 = sin_periapsis, tp6 = -cos_periapsis * cos_inclination;
+        const T xp5 = tp5 * cos_ascending_node - tp6 * sin_ascending_node,
+                xp6 = tp5 * sin_ascending_node + tp6 * cos_ascending_node, xp7 = -cos_periapsis * sin_inclination;
+        position_[5] = (xp5 * cos_observer_rotation + xp6 * sin_observer_rotation) * cos_observer_inclination +
+                       xp7 * sin_observer_inclination;
+        position_[6] = xp6 * cos_observer_rotation - xp5 * sin_observer_rotation;
+        position_[7] = xp7 * cos_observer_inclination -
+                       (xp5 * cos_observer_rotation + xp6 * sin_observer_rotation) * sin_observer_inclination;
+        cartesianToSpherical(position_);
+        boost::numeric::ublas::bounded_matrix<T, 4, 4> metric;
+        if (int status = this->metric_.metricTensor(position_, metric); status != StatusCode::SUCCESS)
+            return status;
+        // then we derive the ratio between dtheta/dt and dphi/dt
+        position_[6] /= position_[7];
+        // the desired dtau/dt and dphi/dt can be derived from the energy and angular momentum
+        dynamic_cast<const Kerr<T> &>(this->metric_).energyAxialAngularMomentumToVelocity(position_, time_, E, L_z);
+        // the desired dtheta/dt can be derived from the ratio and dphi/dt
+        position_[6] *= position_[7];
+        position_[5] = std::sqrt((-power2(position_[4]) - metric(0, 0) - metric(2, 2) * power2(position_[6]) -
+                                  metric(3, 3) * power2(position_[7]) - 2. * metric(0, 3) * position_[7]) /
+                                 metric(1, 1));
+        return std::isnan(position_[5]) ? StatusCode::DOMAIN_ERROR : StatusCode::SUCCESS;
+    }
+    // [ORB-14] formulas/orb/orbit.py
     int initializeSchwarzschildKeplerianPericenter(T a, T e, T inclination, T periapsis, T ascending_node,
                                                    T observer_inclination, T observer_rotation) {
         if (int status = this->metric_.getIntegrationSystem(integration_system_, time_, coordinate_, MotionMode::GEODESIC);
@@ -173,6 +225,7 @@ class Particle : public Object<T> {
         cartesianToSpherical(position_);
         return this->metric_.normalizeTimelikeGeodesic(position_);
     }
+    // [ORB-14] formulas/orb/orbit.py
     int initializeSchwarzschildKeplerianApocenter(T a, T e, T inclination, T periapsis, T ascending_node,
                                                   T observer_inclination, T observer_rotation) {
         if (int status = this->metric_.getIntegrationSystem(integration_system_, time_, coordinate_, MotionMode::GEODESIC);
@@ -212,6 +265,7 @@ class Particle : public Object<T> {
         cartesianToSpherical(position_);
         return this->metric_.normalizeTimelikeGeodesic(position_);
     }
+    // [ORB-13] formulas/orb/orbit.py
     int initializeKeplerianHarmonic(T a, T e, T inclination, T periapsis, T ascending_node, T true_anomaly,
                                     T observer_inclination, T observer_rotation) {
         initializeKeplerian(a, e, inclination, periapsis, ascending_node, true_anomaly, observer_inclination,
@@ -219,6 +273,7 @@ class Particle : public Object<T> {
         position_[1] += 1.;
         return this->metric_.normalizeTimelikeGeodesic(position_);
     }
+    // [ORB-08] formulas/orb/orbit.py
     int initializeCircular(T r, T phi, T v_phi_ratio) {
         if (int status = this->metric_.getIntegrationSystem(integration_system_, time_, coordinate_, MotionMode::CIRCULAR);
             status != StatusCode::SUCCESS)
@@ -238,6 +293,7 @@ class Particle : public Object<T> {
         }
         return this->metric_.normalizeTimelikeGeodesic(position_);
     }
+    // [ORB-09] formulas/orb/orbit.py
     int initializeConical(T r, T theta, T phi, T v_r, T v_phi, bool fixed_energy) {
         if (int status = this->metric_.getIntegrationSystem(
                 integration_system_, time_, coordinate_, fixed_energy ? MotionMode::CONICAL_FIXED_ENERGY : MotionMode::CONICAL);
@@ -258,6 +314,7 @@ class Particle : public Object<T> {
         }
         return this->metric_.normalizeTimelikeGeodesic(position_);
     }
+    // [ORB-10] formulas/orb/orbit.py
     int initializeCylindrical(T r, T phi, T z, T v_z, T v_phi, bool fixed_energy) {
         if (int status = this->metric_.getIntegrationSystem(integration_system_, time_, coordinate_,
                                                             fixed_energy ? MotionMode::CYLINDRICAL_FIXED_ENERGY
@@ -346,14 +403,14 @@ class Particle : public Object<T> {
     }
 
     /**
-     * @brief return frequency
+     * @brief Return the Doppler factor \f$g=1/(1+z)=E_\text{obs}/E_\text{emit}\f$.
      *
      * @param photon
      * @param photon_time
      * @return T
      */
-    T redshift(const boost::numeric::ublas::bounded_vector<T, 8> &photon, TimeSystem photon_time) const override {
-        return this->metric_.redshift(position_, photon, time_, photon_time);
+    T dopplerFactor(const boost::numeric::ublas::bounded_vector<T, 8> &photon, TimeSystem photon_time) const override {
+        return this->metric_.dopplerFactor(position_, photon, time_, photon_time);
     }
 
     int metricTensor(boost::numeric::ublas::bounded_matrix<T, 4, 4> &metric) const {
@@ -409,13 +466,22 @@ class Hotspot : public Particle<T> {
             T spectral_index, T luminosity, T luminosity_mu, T luminosity_sigma, bool fixed)
         : Particle<T>(metric, time, coordinate, absolute_accuracy, relative_accuracy, fixed), spectral_index_(spectral_index),
           luminosity_(luminosity), luminosity_mu_(luminosity_mu), luminosity_sigma_(luminosity_sigma) {}
+    // [OBS-04] formulas/obs/obs.py
     T luminosity(T t) const {
         T intrinsic_time = this->time_ == TimeSystem::T ? this->position_[0] : t;
         return luminosity_ * exp(-0.5 * power2((intrinsic_time - luminosity_mu_) / luminosity_sigma_));
     }
-    T spectralDensity(T t, T redshift) const {
+    /**
+     * @brief Return the frequency-shifted spectral density
+     * \f$L_\nu(\nu_\text{obs}/g)=L_\nu g^\alpha\f$ for \f$L_\nu\propto\nu^{-\alpha}\f$.
+     *
+     * The remaining \f$g^3\f$ beaming factor is included in the magnification computed by
+     * \f$View::Magnification\f$.
+     */
+    // [OBS-04] formulas/obs/obs.py
+    T spectralDensity(T t, T doppler_factor) const {
         T intrinsic_time = this->time_ == TimeSystem::T ? this->position_[0] : t;
-        return luminosity_ * pow(redshift, spectral_index_) *
+        return luminosity_ * pow(doppler_factor, spectral_index_) *
                exp(-0.5 * power2((intrinsic_time - luminosity_mu_) / luminosity_sigma_));
     }
 };

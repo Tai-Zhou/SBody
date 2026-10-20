@@ -176,11 +176,13 @@ class View {
             if (r_object < 0)
                 return StatusCode::FALL_INTO_BLACK_HOLE;
         }
+        // [RYT-01] formulas/ryt/ray.py
         const T cos_observer_object = sin_theta_ * sin_theta_object * cos_phi_object + cos_theta_ * cos_theta_object;
+        // [RYT-02] formulas/ryt/ray.py
         const T alpha_coefficient = sin_theta_object * sin_phi_object,
                 beta_coefficient = cos_theta_object * sin_theta_ - sin_theta_object * cos_phi_object * cos_theta_,
                 sin_observer_object = std::hypot(alpha_coefficient, beta_coefficient),
-                theta_observer_object = std::acos(cos_observer_object);
+                theta_observer_object = std::atan2(sin_observer_object, cos_observer_object);
         ublas::bounded_vector<T, 2> alpha_beta_initial_value;
         if (cos_observer_object == -1.) {
             infra_context.logger_.warning("Object behind black hole, cos(theta) = {:.6f}\n", cos_observer_object);
@@ -240,6 +242,7 @@ class View {
     static int TraceToPlane(const boost::numeric::ublas::bounded_vector<T, 2> &alpha_beta,
                             boost::numeric::ublas::bounded_vector<T, 2> &delta_apparent_alpha_beta,
                             TraceParameters<T> &params) {
+        // [RYT-03] formulas/ryt/ray.py
         T alpha = alpha_beta(0), beta = alpha_beta(1);
         if (!std::isfinite(alpha) || !std::isfinite(beta))
             return StatusCode::NUMERIC_ERROR;
@@ -315,13 +318,14 @@ class View {
         return StatusCode::SCALING_REQUIRED;
     }
 
+    // [OBS-01] formulas/obs/obs.py
     int photonInformation(const boost::numeric::ublas::bounded_vector<T, 8> &position, TimeSystem object_time,
                           boost::numeric::ublas::bounded_vector<T, 5> &record,
                           const boost::numeric::ublas::bounded_vector<T, 8> &photon, T photon_time, T alpha, T beta) const {
-        record(0) = alpha * cos_iota_ - beta * sin_iota_;                           // alpha
-        record(1) = beta * cos_iota_ + alpha * sin_iota_;                           // beta
-        record(2) = metric_.redshift(position, photon, object_time, TimeSystem::T); // redshift
-        record(3) = photon_time;                                                    // look back time
+        record(0) = alpha * cos_iota_ - beta * sin_iota_;                                // alpha
+        record(1) = beta * cos_iota_ + alpha * sin_iota_;                                // beta
+        record(2) = metric_.dopplerFactor(position, photon, object_time, TimeSystem::T); // Doppler factor g=1/(1+z)
+        record(3) = photon_time;                                                         // look back time
         return StatusCode::SUCCESS;
     }
 
@@ -332,11 +336,12 @@ class View {
      * @param object_time time system of the object
      * @param magnification position to save the magnification
      * @param photon 8 dimensional vector of the photon traced to the object
-     * @param redshift redshift of the photon
+     * @param doppler_factor Doppler factor \f$g=1/(1+z)\f$ of the photon
      * @return int
      */
+    // [OBS-02] formulas/obs/obs.py
     int Magnification(const boost::numeric::ublas::bounded_vector<T, 8> &position, TimeSystem object_time, T &magnification,
-                      const boost::numeric::ublas::bounded_vector<T, 8> &photon, T redshift) const {
+                      const boost::numeric::ublas::bounded_vector<T, 8> &photon, T doppler_factor) const {
         namespace ublas = boost::numeric::ublas;
         boost::numeric::odeint::controlled_runge_kutta<
             boost::numeric::odeint::runge_kutta_fehlberg78<ublas::bounded_vector<T, 8>>>
@@ -434,7 +439,8 @@ class View {
                 triangleArea(photon_in_static_frame_cartesian_position, local_cone_record[i], local_cone_record[i - 1]);
 #endif
         }
-        magnification = EPSILON_POLYGON_AREA / (cone_solid_angle * redshift);
+        // The documented magnification is Omega_emit * g / cone_solid_angle.
+        magnification = EPSILON_POLYGON_AREA * doppler_factor / cone_solid_angle;
         return StatusCode::SUCCESS;
     }
 

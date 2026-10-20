@@ -1,5 +1,5 @@
 if(WITH_PYTHON)
-    find_package(Python3 COMPONENTS Interpreter Development)
+    find_package(Python3 3.14 COMPONENTS Interpreter Development)
     find_package(pybind11 CONFIG)
 
     if(pybind11_FOUND)

@@ -47,19 +47,46 @@
 namespace sbody {
 template <typename T, typename Iterator>
 int polishQuadraticRoot(T a, T b, Iterator roots_begin, Iterator roots_end) {
+    const auto value_at = [a, b](T x) {
+        T f = x + a;
+        return std::fma(f, x, b);
+    };
+    // See polishCubicRoot for the scale of the residual below which f is indistinguishable from zero.
+    const auto tolerance_at = [a, b](T x) {
+        T scale = 1.;
+        scale = std::fma(scale, std::abs(x), std::abs(a));
+        scale = std::fma(scale, std::abs(x), std::abs(b));
+        return boost::math::tools::epsilon<T>() * scale;
+    };
     int convinced_root_num = 0;
     for (auto p = roots_begin; p != roots_end; ++p) {
-        for (int j = 32; j > 0; --j) {
-            T f = *p + a;
-            f = std::fma(f, *p, b);
-            T df = std::fma(2.l, *p, a);
-            const T diff = f * df / (df * df - f);
-            if (std::abs(*p) * boost::math::tools::epsilon<T>() < std::abs(diff))
-                *p -= diff;
-            else {
+        T f = value_at(*p);
+        // As in polishCubicRoot: monotone steps make an iteration limit unnecessary.
+        while (true) {
+            if (tolerance_at(*p) >= std::abs(f)) {
                 ++convinced_root_num;
                 break;
             }
+            T df = std::fma(2.l, *p, a);
+            const T denom = df * df - f; // Halley denominator (d2f = 2 here)
+            T diff = denom != 0. ? f * df / denom : (df != 0. ? f / df : 0.);
+            if (diff == 0.)
+                break; // f' and f'' both vanish here: this seed cannot be polished any further
+            if (std::abs(*p) * boost::math::tools::epsilon<T>() >= std::abs(diff)) {
+                ++convinced_root_num; // the step is below the resolution of the root
+                break;
+            }
+            T candidate = *p - diff;
+            T f_candidate = value_at(candidate);
+            if (df != 0. && !(std::abs(f_candidate) < std::abs(f))) {
+                diff = f / df;
+                candidate = *p - diff;
+                f_candidate = value_at(candidate);
+            }
+            if (!(std::abs(f_candidate) < std::abs(f)))
+                break;
+            *p = candidate;
+            f = f_candidate;
         }
     }
     std::sort(roots_begin, roots_begin + convinced_root_num);
@@ -102,25 +129,56 @@ int polySolveQuadratic(T a, T b, T c, T roots[]) {
 
 template <typename T>
 int polishCubicRoot(T a, T b, T c, T roots[], int root_num) {
+    const auto value_at = [a, b, c](T x) {
+        T f = x + a;
+        f = std::fma(f, x, b);
+        return std::fma(f, x, c);
+    };
+    // |f(x)| below eps * (|x|^3 + |a||x|^2 + |b||x| + |c|) cannot be told apart from zero in floating
+    // point; a fixed coefficient scale would be far too tight for |x| >> 1 and would leave genuinely
+    // converged roots unconvinced.
+    const auto tolerance_at = [a, b, c](T x) {
+        T scale = 1.;
+        scale = std::fma(scale, std::abs(x), std::abs(a));
+        scale = std::fma(scale, std::abs(x), std::abs(b));
+        scale = std::fma(scale, std::abs(x), std::abs(c));
+        return boost::math::tools::epsilon<T>() * scale;
+    };
     int convinced_root_num = 0;
     for (int i = 0; i < root_num; ++i) {
-        for (int j = 32; j > 0; --j) {
-            T f = roots[i] + a;
-            f = std::fma(f, roots[i], b);
-            f = std::fma(f, roots[i], c);
-            if ((1. + std::abs(a) + std::abs(b) + std::abs(c)) * boost::math::tools::epsilon<T>() >= std::abs(f)) {
+        T f = value_at(roots[i]);
+        // No iteration limit is needed: a step is only accepted when it strictly decreases |f|, and a
+        // strictly decreasing sequence of floating point values is finite; when neither Halley nor
+        // Newton can reduce |f| any further the root is handed to the caller as it is.
+        while (true) {
+            if (tolerance_at(roots[i]) >= std::abs(f)) {
                 ++convinced_root_num;
                 break;
             }
             T df = std::fma(3.l, roots[i], 2. * a);
             df = std::fma(df, roots[i], b);
             T d2f = std::fma(6.l, roots[i], 2. * a);
-            const T diff = f * df / (df * df - 0.5 * f * d2f);
+            // The Halley denominator can vanish (and then the numerator too); fall back to a Newton
+            // step, and give up only when neither of them makes progress.
+            const T denom = df * df - 0.5 * f * d2f;
+            T diff = denom != 0. ? f * df / denom : (df != 0. ? f / df : 0.);
+            if (diff == 0.)
+                break; // f' and f'' both vanish here: this seed cannot be polished any further
             if (std::abs(roots[i]) * boost::math::tools::epsilon<T>() >= std::abs(diff)) {
-                ++convinced_root_num;
+                ++convinced_root_num; // the step is below the resolution of the root
                 break;
             }
-            roots[i] -= diff;
+            T candidate = roots[i] - diff;
+            T f_candidate = value_at(candidate);
+            if (df != 0. && !(std::abs(f_candidate) < std::abs(f))) {
+                diff = f / df;
+                candidate = roots[i] - diff;
+                f_candidate = value_at(candidate);
+            }
+            if (!(std::abs(f_candidate) < std::abs(f)))
+                break;
+            roots[i] = candidate;
+            f = f_candidate;
         }
     }
     std::sort(roots, roots + convinced_root_num);
@@ -139,7 +197,7 @@ int polySolveCubic(T a, T b, T c, T roots[]) {
     T Delta = C * C - B * B * B;
     if (Delta < 0.) {
         T sqrt_B = std::sqrt(B);
-        T theta = acos(C / (B * sqrt_B)) / 3.;
+        T theta = std::acos(C / (B * sqrt_B)) / 3.;
         T sqrt3_sin_theta = boost::math::constants::root_three<T>() * std::sin(theta);
         T cos_theta = std::cos(theta);
         roots[0] = -2. * sqrt_B * cos_theta - a / 3.;
@@ -159,15 +217,27 @@ int polySolveCubic(T a, T b, T c, T roots[]) {
 
 template <typename T>
 int polishQuarticRoot(T a, T b, T c, T d, T roots[], int root_num) {
+    const auto value_at = [a, b, c, d](T x) {
+        T f = x + a;
+        f = std::fma(f, x, b);
+        f = std::fma(f, x, c);
+        return std::fma(f, x, d);
+    };
+    // See polishCubicRoot for the scale of the residual below which f is indistinguishable from zero.
+    const auto tolerance_at = [a, b, c, d](T x) {
+        T scale = 1.;
+        scale = std::fma(scale, std::abs(x), std::abs(a));
+        scale = std::fma(scale, std::abs(x), std::abs(b));
+        scale = std::fma(scale, std::abs(x), std::abs(c));
+        scale = std::fma(scale, std::abs(x), std::abs(d));
+        return boost::math::tools::epsilon<T>() * scale;
+    };
     int convinced_root_num = 0;
     for (int i = 0; i < root_num; ++i) {
-        for (int j = 32; j > 0; --j) {
-            T f = roots[i] + a;
-            f = std::fma(f, roots[i], b);
-            f = std::fma(f, roots[i], c);
-            f = std::fma(f, roots[i], d);
-            if ((1. + std::abs(a) + std::abs(b) + std::abs(c) + std::abs(d)) * boost::math::tools::epsilon<T>() >=
-                std::abs(f)) {
+        T f = value_at(roots[i]);
+        // As in polishCubicRoot: monotone steps make an iteration limit unnecessary.
+        while (true) {
+            if (tolerance_at(roots[i]) >= std::abs(f)) {
                 ++convinced_root_num;
                 break;
             }
@@ -176,12 +246,25 @@ int polishQuarticRoot(T a, T b, T c, T d, T roots[], int root_num) {
             df = std::fma(df, roots[i], c);
             T d2f = std::fma(12., roots[i], 6. * a);
             d2f = std::fma(d2f, roots[i], 2. * b);
-            const T diff = f * df / (df * df - 0.5 * f * d2f);
+            const T denom = df * df - 0.5 * f * d2f;
+            T diff = denom != 0. ? f * df / denom : (df != 0. ? f / df : 0.);
+            if (diff == 0.)
+                break; // f' and f'' both vanish here: this seed cannot be polished any further
             if (std::abs(roots[i]) * boost::math::tools::epsilon<T>() >= std::abs(diff)) {
-                ++convinced_root_num;
+                ++convinced_root_num; // the step is below the resolution of the root
                 break;
             }
-            roots[i] -= diff;
+            T candidate = roots[i] - diff;
+            T f_candidate = value_at(candidate);
+            if (df != 0. && !(std::abs(f_candidate) < std::abs(f))) {
+                diff = f / df;
+                candidate = roots[i] - diff;
+                f_candidate = value_at(candidate);
+            }
+            if (!(std::abs(f_candidate) < std::abs(f)))
+                break;
+            roots[i] = candidate;
+            f = f_candidate;
         }
     }
     std::sort(roots, roots + convinced_root_num);
@@ -300,8 +383,8 @@ int polySolveQuartic(T a, T b, T c, T d, T roots[]) {
         polishQuarticRoot(a, b, c, d, roots + 1, 1);
     }
     const T prod_r2_r3 = d / (roots[0] * roots[1]);
-    const T sum_r2_r3 = prod_r2_r3 * (roots[0] + roots[1]) / (roots[0] * roots[1]);
-    if (polySolveQuadratic(T{1.}, sum_r2_r3, prod_r2_r3, roots + 2) == 0) {
+    const T neg_sum_r2_r3 = (prod_r2_r3 * (roots[0] + roots[1]) + c) / (roots[0] * roots[1]);
+    if (polySolveQuadratic(T{1.}, neg_sum_r2_r3, prod_r2_r3, roots + 2) == 0) {
         if (roots[0] > roots[1])
             std::swap(roots[0], roots[1]);
         return 2;

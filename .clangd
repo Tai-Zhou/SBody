@@ -1,0 +1,9 @@
+CompileFlags:
+  Add:
+  - "-I/home/tai/SBody/include"
+  - "-I/usr/lib/llvm-10/include/openmp/"
+  - "-I/home/tai/SBody/build/_deps/indicators-src/include"
+  CompilationDatabase: build
+
+InlayHints:
+  ParameterNames: false

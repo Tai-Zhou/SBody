@@ -25,6 +25,11 @@ class Hayward : public Metric<T> {
   public:
     Hayward(T alpha, T beta, T charge);
     std::string name() const override;
+    int angularMomentumCarterConstantToAlphaBeta([[maybe_unused]] T l, [[maybe_unused]] T q2,
+                                                 [[maybe_unused]] T cos_theta, [[maybe_unused]] T sin_theta,
+                                                 [[maybe_unused]] T &alpha, [[maybe_unused]] T &abs_beta) const override {
+        return StatusCode::NOT_IMPLEMENTED;
+    }
     int metricTensor(const boost::numeric::ublas::bounded_vector<T, 8> &position,
                      boost::numeric::ublas::bounded_matrix<T, 4, 4> &metric) const override;
     T dotProduct3D(const boost::numeric::ublas::bounded_vector<T, 8> &position, T x1, T x2, T x3, T y1, T y2,

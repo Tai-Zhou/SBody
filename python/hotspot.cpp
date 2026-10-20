@@ -44,6 +44,7 @@ namespace ublas = boost::numeric::ublas;
 using namespace sbody;
 
 constexpr real_t HOTSPOT_TRACE_INNER_RADIUS = 3.0;
+// [UNT-03] formulas/unt/unt.py
 constexpr real_t M_SUN_RG_IN_PARSEC_MAS = 1.0 / (20896825544594.496 * mas_in_rad);
 constexpr real_t SPEED_OF_LIGHT_IN_KM_PER_SECOND = 299792.458;
 
@@ -82,7 +83,9 @@ std::unique_ptr<Metric<real_t>> getMetric(int metric, real_t spin) {
     throw std::invalid_argument("Metric Error!");
 }
 
-int initializeHotspotMotion(const Unit<real_t> &unit, Hotspot<real_t> &hotspot, const std::vector<real_t> &x, int mode) {
+// [UNT-05] formulas/unt/unt.py
+int initializeHotspotMotion(const Unit<real_t> &unit, Hotspot<real_t> &hotspot, const std::vector<real_t> &x,
+                            const Metric<real_t> &metric, int mode) {
     const real_t R = x[2] * unit.pc;
     const real_t r = x[7] * R * mas_in_rad;
     const real_t inclination = x[5] * M_PI / 180.;
@@ -100,26 +103,43 @@ int initializeHotspotMotion(const Unit<real_t> &unit, Hotspot<real_t> &hotspot, 
         return hotspot.initializeConical(r, x[8] * M_PI / 180., x[9] * M_PI / 180., x[10], x[11], true);
     } else if (mode == 5) { // cylindrical fixed energy
         return hotspot.initializeCylindrical(r, x[8] * M_PI / 180., x[9] * R * mas_in_rad, x[10], x[11], true);
-    } else if (mode == 6) { // schwarzschild geodesic with v_r/v_phi replaced with energy and angular momentum
-        real_t dtau_dt = (1. - 2. / r) / x[11];
-        real_t dphi_dt = x[12] / power2(r) * dtau_dt;
-        real_t dr_dt = -squareRoot((1. - 2. / r - power2(dtau_dt) - power2(r * dphi_dt)) * (1. - 2. / r));
-        return hotspot.initializeGeodesic(r, x[8] * M_PI / 180., x[9] * M_PI / 180., x[10] * M_PI / 180., dr_dt, dphi_dt,
-                                          inclination, rotation);
-    } else if (mode == 7) { // conical with last dim as angular momentum
-        real_t theta = x[8] * M_PI / 180.;
-        return hotspot.initializeConical(r, theta, x[9] * M_PI / 180., x[10], x[11] / power2(r * sin(theta)), false);
+        // [ORB-19] formulas/orb/orbit.py
+    } else if (mode == 6) { // geodesic with v_r/v_phi replaced with energy and angular momentum
+        if (metric.name() == "Schwarzschild") {
+            real_t dtau_dt = (1. - 2. / r) / x[11];
+            real_t dphi_dt = x[12] / power2(r) * dtau_dt;
+            real_t dr_dt = -squareRoot((1. - 2. / r - power2(dtau_dt) - power2(r * dphi_dt)) * (1. - 2. / r));
+            // initializeGeodesic expects the linear tangential velocity in the orbital plane.
+            return hotspot.initializeGeodesic(r, x[8] * M_PI / 180., x[9] * M_PI / 180., x[10] * M_PI / 180., dr_dt,
+                                              r * dphi_dt, inclination, rotation);
+        } else {
+            return hotspot.initializeKerrGeodesicWithEnergyAndAxialAngularMomentum(
+                r, x[8] * M_PI / 180., x[9] * M_PI / 180., x[10] * M_PI / 180., x[11], x[12], inclination, rotation);
+        }
+        // [ORB-20] formulas/orb/orbit.py
+    } else if (mode == 7) { // conical with conserved L_z (Schwarzschild only)
+        if (metric.name() != "Schwarzschild")
+            return StatusCode::NOT_IMPLEMENTED;
+        const real_t theta = x[8] * M_PI / 180.;
+        const real_t f = 1. - 2. / r, g33 = power2(r * std::sin(theta));
+        const real_t numerator = f - power2(x[10]) / f;
+        if (g33 == 0. || numerator <= 0.)
+            return StatusCode::DOMAIN_ERROR;
+        const real_t dtau_dt = std::sqrt(numerator / (1. + power2(x[11]) / g33));
+        const real_t dphi_dt = x[11] * dtau_dt / g33;
+        return hotspot.initializeConical(r, theta, x[9] * M_PI / 180., x[10], dphi_dt, false);
     }
     return StatusCode::INVALID_ARGUMENT;
 }
 
 Hotspot<real_t> initializeHotspot(const Unit<real_t> &unit, Metric<real_t> &metric, const std::vector<real_t> &x,
                                   int motion_mode, const InfraContext &infra_context) {
+    // [ORB-18] formulas/orb/orbit.py
     const std::array<int, 8> offset = {10, 13, 12, 12, 12, 12, 13, 12};
     Hotspot<real_t> hotspot(metric, TimeSystem::T, DynamicalSystem::LAGRANGIAN, HOTSPOT_TRACE_ABS_ACC, HOTSPOT_TRACE_REL_ACC,
                             x[offset[motion_mode]], x[offset[motion_mode] + 1], x[offset[motion_mode] + 2] * unit.s,
                             x[offset[motion_mode] + 3] * unit.s, false);
-    if (motion_mode >= 0 && initializeHotspotMotion(unit, hotspot, x, motion_mode) != StatusCode::SUCCESS) {
+    if (motion_mode >= 0 && initializeHotspotMotion(unit, hotspot, x, metric, motion_mode) != StatusCode::SUCCESS) {
         infra_context.logger_.error("initializeHotspot error!");
         throw std::runtime_error("initializeHotspot error!");
     }
@@ -185,6 +205,7 @@ py::array_t<real_t> calculateHotspotFullOrbit(const std::vector<real_t> &x, int 
     return result.reshape({tStepNumber, HOTSPOT_RETURN_WIDTH});
 }
 
+// [OBS-05] formulas/obs/obs.py
 int calculateHotspotOrbitWithGRDelay(
     const Unit<real_t> &unit, View<real_t> &view, const Hotspot<real_t> &hotspot, const std::array<real_t, 9> &estimate_step,
     size_t &estimate_idx, const std::vector<real_t> &obs_time, size_t &idx, real_t this_obs_time, real_t &gr_offset, real_t t,
@@ -245,6 +266,7 @@ int calculateHotspotOrbitWithGRDelay(
     return StatusCode::SUCCESS;
 }
 
+// [OBS-05] formulas/obs/obs.py
 int calculateHotspotOrbitWithRomerDelay(const Unit<real_t> &unit, View<real_t> &view, const Hotspot<real_t> &hotspot,
                                         const std::vector<real_t> &obs_time, size_t &idx, real_t last_obs_time,
                                         real_t this_obs_time, real_t t_step, real_t t_rec,
@@ -434,9 +456,10 @@ py::array_t<double> calculateHotspotEnergyAngularMomentumAndMinimumRadius(const 
     return result;
 }
 
+// [STA-03] formulas/sta/sta.py
 double hotspotFluxChi2(std::vector<real_t> &x, int metric, std::vector<real_t> &intrinsic_time,
-                       std::vector<real_t> &obs_magnification, std::vector<real_t> &obs_redshift, std::vector<real_t> &obs_flux,
-                       std::vector<real_t> &flux_sigma) {
+                       std::vector<real_t> &obs_magnification, std::vector<real_t> &obs_doppler_factor,
+                       std::vector<real_t> &obs_flux, std::vector<real_t> &flux_sigma) {
     Unit unit(x.at(0));
     InfraContext infra_context(HOTSPOT_LOG_LEVEL, HOTSPOT_STD_OUT, HOTSPOT_STD_ERR);
     std::unique_ptr<Metric<real_t>> main_metric;
@@ -451,12 +474,14 @@ double hotspotFluxChi2(std::vector<real_t> &x, int metric, std::vector<real_t> &
     double chi2 = 0.;
     for (size_t i = 0; i < obs_flux.size(); ++i)
         chi2 +=
-            power2((fluxDensity(hotspot.spectralDensity(intrinsic_time.at(i), obs_redshift.at(i)), obs_magnification.at(i)) -
+            power2((fluxDensity(hotspot.spectralDensity(intrinsic_time.at(i), obs_doppler_factor.at(i)),
+                               obs_magnification.at(i)) -
                     obs_flux.at(i)) /
                    flux_sigma.at(i));
     return chi2;
 }
 
+// [STA-02] formulas/sta/sta.py
 std::tuple<py::array_t<double>, int> hotspotDistinctChi2(const std::vector<real_t> &x, int metric, int mode, bool ray_tracing,
                                                          bool light_bending, bool gr_time_delay, bool calculate_motion_chi2,
                                                          bool calculate_flux_chi2,
@@ -503,6 +528,7 @@ std::tuple<py::array_t<double>, int> hotspotDistinctChi2(const std::vector<real_
     return {result, StatusCode::SUCCESS};
 }
 
+// [STA-01] formulas/sta/sta.py
 std::tuple<double, int> hotspotChi2(const std::vector<real_t> &x, int metric, int mode, bool ray_tracing, bool light_bending,
                                     bool gr_time_delay, double black_hole_sigma, bool calculate_motion_chi2,
                                     bool calculate_flux_chi2, const std::array<std::vector<real_t>, 7> &obs_data,
@@ -676,41 +702,41 @@ class HotspotEvent {
         }
         return chi2;
     }
-    std::tuple<double, int> motionLogProb(const py::array_t<double> x) {
+    std::tuple<double, int> calculateChi2(const py::array_t<double> x, bool calculate_motion_chi2, bool calculate_flux_chi2) {
         if (embedCheck(x))
-            return {-std::numeric_limits<double>::infinity(), StatusCode::INVALID_ARGUMENT};
-        auto [chi2, status] =
-            hotspotChi2(embed_x_, metric_, motion_mode_, ray_tracing_, light_bending_, gr_time_delay_,
-                        black_hole_constraint_ ? black_hole_sigma_ : 0.0, true, false, obs_data_, infra_context_);
+            return {std::numeric_limits<double>::infinity(), StatusCode::INVALID_ARGUMENT};
+        auto [chi2, status] = hotspotChi2(embed_x_, metric_, motion_mode_, ray_tracing_, light_bending_, gr_time_delay_,
+                                          black_hole_constraint_ ? black_hole_sigma_ : 0.0, calculate_motion_chi2,
+                                          calculate_flux_chi2, obs_data_, infra_context_);
         if (status != StatusCode::SUCCESS)
-            return {-std::numeric_limits<double>::infinity(), status};
+            return {std::numeric_limits<double>::infinity(), status};
         if (isnan(chi2))
+            return {std::numeric_limits<double>::infinity(), StatusCode::FAILURE};
+        return {chi2, StatusCode::SUCCESS};
+    }
+    std::tuple<double, int> motionLogProb(const py::array_t<double> x) {
+        try {
+            auto [chi2, status] = calculateChi2(x, true, false);
+            return {-0.5 * chi2, status};
+        } catch (const std::exception &e) {
             return {-std::numeric_limits<double>::infinity(), StatusCode::FAILURE};
-        return {-0.5 * chi2, StatusCode::SUCCESS};
+        }
     }
     std::tuple<double, int> fluxLogProb(const py::array_t<double> x) {
-        if (embedCheck(x))
-            return {-std::numeric_limits<double>::infinity(), StatusCode::INVALID_ARGUMENT};
-        auto [chi2, status] =
-            hotspotChi2(embed_x_, metric_, motion_mode_, ray_tracing_, light_bending_, gr_time_delay_,
-                        black_hole_constraint_ ? black_hole_sigma_ : 0.0, false, true, obs_data_, infra_context_);
-        if (status != StatusCode::SUCCESS)
-            return {-std::numeric_limits<double>::infinity(), status};
-        if (isnan(chi2))
+        try {
+            auto [chi2, status] = calculateChi2(x, false, true);
+            return {-0.5 * chi2, status};
+        } catch (const std::exception &e) {
             return {-std::numeric_limits<double>::infinity(), StatusCode::FAILURE};
-        return {-0.5 * chi2, StatusCode::SUCCESS};
+        }
     }
     std::tuple<double, int> totalLogProb(const py::array_t<double> x) {
-        if (embedCheck(x))
-            return {-std::numeric_limits<double>::infinity(), StatusCode::INVALID_ARGUMENT};
-        auto [chi2, status] =
-            hotspotChi2(embed_x_, metric_, motion_mode_, ray_tracing_, light_bending_, gr_time_delay_,
-                        black_hole_constraint_ ? black_hole_sigma_ : 0.0, true, true, obs_data_, infra_context_);
-        if (status != StatusCode::SUCCESS)
-            return {-std::numeric_limits<double>::infinity(), status};
-        if (isnan(chi2))
+        try {
+            auto [chi2, status] = calculateChi2(x, true, true);
+            return {-0.5 * chi2, status};
+        } catch (const std::exception &e) {
             return {-std::numeric_limits<double>::infinity(), StatusCode::FAILURE};
-        return {-0.5 * chi2, StatusCode::SUCCESS};
+        }
     }
 };
 
@@ -743,13 +769,15 @@ class HotspotCombinationEvent {
     const std::vector<size_t> data_num_list_;
     const std::vector<std::array<std::vector<real_t>, 7>> obs_data_list_;
     const double black_hole_sigma_;
+    const int conical_switch_;
     const InfraContext infra_context_;
 
   public:
     HotspotCombinationEvent(int metric, int mode, int gr_switch, std::vector<real_t> fix_value, std::vector<uint8_t> fix_mask,
                             std::vector<real_t> lower_bound, std::vector<real_t> upper_bound,
                             std::vector<uint8_t> combination_mask,
-                            std::vector<std::array<std::vector<real_t>, 7>> obs_data_list, double black_hole_sigma)
+                            std::vector<std::array<std::vector<real_t>, 7>> obs_data_list, double black_hole_sigma,
+                            int conical_switch)
         : metric_(metric), motion_mode_(mode), ray_tracing_(gr_switch > 0), light_bending_((gr_switch & 2) > 0),
           gr_time_delay_((gr_switch & 4) > 0), black_hole_constraint_((gr_switch & 16) > 0), value_dim_(fix_value.size()),
           fix_value_(std::move(fix_value)), fix_mask_(std::move(fix_mask)), lower_bound_(std::move(lower_bound)),
@@ -757,7 +785,7 @@ class HotspotCombinationEvent {
           embed_x_list_(event_num_, std::vector<real_t>(value_dim_)), first_event_dim_(combination_mask.size()),
           additional_dim_(std::accumulate(combination_mask.begin(), combination_mask.end(), 0)),
           combination_mask_(std::move(combination_mask)), data_num_list_(getEventDataNumList(obs_data_list)),
-          obs_data_list_(std::move(obs_data_list)), black_hole_sigma_(black_hole_sigma),
+          obs_data_list_(std::move(obs_data_list)), black_hole_sigma_(black_hole_sigma), conical_switch_(conical_switch),
           infra_context_(HOTSPOT_LOG_LEVEL, HOTSPOT_STD_OUT, HOTSPOT_STD_ERR) {
         assert(value_dim_ == fix_mask_.size());
         assert(value_dim_ == lower_bound_.size());
@@ -796,12 +824,13 @@ class HotspotCombinationEvent {
                 }
                 ++x_idx;
             }
-        return false;
+        return conicalFlip();
     }
 
-    bool conicalFlip(int conical_switch) {
-        if (conical_switch == 0)
+    bool conicalFlip() {
+        if ((motion_mode_ != 2 && motion_mode_ != 4) || conical_switch_ == 0)
             return false;
+        int conical_switch = conical_switch_;
         for (size_t i = 1; i < event_num_; ++i) {
             if (conical_switch & 1)
                 embed_x_list_[i][8] = 180. - embed_x_list_[i][8];
@@ -832,49 +861,137 @@ class HotspotCombinationEvent {
         return calculateHotspotOrbit(embed_x_list_[event_idx], metric_, motion_mode_, ray_tracing_, gr_time_delay_,
                                      obs_data_list_[event_idx][OBS_TIME_IDX], calculate_magnification, infra_context_);
     }
-
-    std::tuple<double, int> motionLogProb(const py::array_t<double> x) {
+    std::tuple<double, int> calculateChi2(const py::array_t<double> x, bool calculate_motion_chi2, bool calculate_flux_chi2) {
         if (embedCheck(x))
-            return {-std::numeric_limits<double>::infinity(), StatusCode::INVALID_ARGUMENT};
+            return {std::numeric_limits<double>::infinity(), StatusCode::INVALID_ARGUMENT};
         double chi2 = 0.0;
         for (size_t i = 0; i < event_num_; ++i) {
-            auto [chi2_i, status] = hotspotChi2(embed_x_list_[i], metric_, motion_mode_, ray_tracing_, light_bending_,
-                                                gr_time_delay_, 0.0, true, false, obs_data_list_[i], infra_context_);
+            auto [chi2_i, status] =
+                hotspotChi2(embed_x_list_[i], metric_, motion_mode_, ray_tracing_, light_bending_, gr_time_delay_, 0.0,
+                            calculate_motion_chi2, calculate_flux_chi2, obs_data_list_[i], infra_context_);
             if (status != StatusCode::SUCCESS)
-                return {-std::numeric_limits<double>::infinity(), status};
+                return {std::numeric_limits<double>::infinity(), status};
             chi2 += chi2_i;
         }
-        if (black_hole_constraint_)
+        if (calculate_motion_chi2 && black_hole_constraint_)
             chi2 += (power2(embed_x_list_[0].at(3)) + power2(embed_x_list_[0].at(4))) / power2(black_hole_sigma_);
-        return {-0.5 * chi2, StatusCode::SUCCESS};
+        return {chi2, StatusCode::SUCCESS};
+    }
+    std::tuple<double, int> motionLogProb(const py::array_t<double> x) {
+        try {
+            auto [chi2, status] = calculateChi2(x, true, false);
+            return {-0.5 * chi2, status};
+        } catch (const std::exception &e) {
+            return {-std::numeric_limits<double>::infinity(), StatusCode::FAILURE};
+        }
     }
     std::tuple<double, int> fluxLogProb(const py::array_t<double> x) {
-        if (embedCheck(x))
-            return {-std::numeric_limits<double>::infinity(), StatusCode::INVALID_ARGUMENT};
-        double chi2 = 0.0;
-        for (size_t i = 0; i < event_num_; ++i) {
-            auto [chi2_i, status] = hotspotChi2(embed_x_list_[i], metric_, motion_mode_, ray_tracing_, light_bending_,
-                                                gr_time_delay_, 0.0, false, true, obs_data_list_[i], infra_context_);
-            if (status != StatusCode::SUCCESS)
-                return {-std::numeric_limits<double>::infinity(), status};
-            chi2 += chi2_i;
+        try {
+            auto [chi2, status] = calculateChi2(x, false, true);
+            return {-0.5 * chi2, status};
+        } catch (const std::exception &e) {
+            return {-std::numeric_limits<double>::infinity(), StatusCode::FAILURE};
         }
-        return {-0.5 * chi2, StatusCode::SUCCESS};
     }
     std::tuple<double, int> totalLogProb(const py::array_t<double> x) {
+        try {
+            auto [chi2, status] = calculateChi2(x, true, true);
+            return {-0.5 * chi2, status};
+        } catch (const std::exception &e) {
+            return {-std::numeric_limits<double>::infinity(), StatusCode::FAILURE};
+        }
+    }
+};
+
+class HotspotBlackHoleCombinationEvent {
+  protected:
+    const int metric_;
+    const int motion_mode_;
+    const bool ray_tracing_;
+    const bool light_bending_;
+    const bool gr_time_delay_;
+    const bool black_hole_constraint_;
+    const size_t value_dim_;
+    const std::vector<uint8_t> fix_mask_;
+    const std::vector<real_t> lower_bound_;
+    const std::vector<real_t> upper_bound_;
+    const size_t event_num_;
+    std::vector<std::vector<real_t>> embed_x_list_;
+    const std::vector<size_t> data_num_list_;
+    const std::vector<std::array<std::vector<real_t>, 7>> obs_data_list_;
+    const double black_hole_sigma_;
+    const InfraContext infra_context_;
+
+  public:
+    HotspotBlackHoleCombinationEvent(int metric, int mode, int gr_switch, std::vector<std::vector<real_t>> event_fix_values,
+                                     std::vector<uint8_t> fix_mask, std::vector<real_t> lower_bound,
+                                     std::vector<real_t> upper_bound,
+                                     std::vector<std::array<std::vector<real_t>, 7>> obs_data_list, double black_hole_sigma)
+        : metric_(metric), motion_mode_(mode), ray_tracing_(gr_switch > 0), light_bending_((gr_switch & 2) > 0),
+          gr_time_delay_((gr_switch & 4) > 0), black_hole_constraint_((gr_switch & 16) > 0), value_dim_(fix_mask.size()),
+          fix_mask_(std::move(fix_mask)), lower_bound_(std::move(lower_bound)), upper_bound_(std::move(upper_bound)),
+          event_num_(obs_data_list.size()), embed_x_list_(event_num_), data_num_list_(getEventDataNumList(obs_data_list)),
+          obs_data_list_(std::move(obs_data_list)), black_hole_sigma_(black_hole_sigma),
+          infra_context_(HOTSPOT_LOG_LEVEL, HOTSPOT_STD_OUT, HOTSPOT_STD_ERR) {
+        assert(event_num_ == event_fix_values.size());
+        assert(value_dim_ == lower_bound_.size());
+        assert(value_dim_ == upper_bound_.size());
+        for (size_t j = 0; j < event_num_; ++j) {
+            assert(value_dim_ == event_fix_values[j].size());
+            embed_x_list_[j].resize(value_dim_);
+            for (size_t i = 0; i < value_dim_; ++i) {
+                if (!fix_mask_[i])
+                    continue;
+                embed_x_list_[j][i] = event_fix_values[j][i];
+                assert(embed_x_list_[j][i] >= lower_bound_[i]);
+                assert(embed_x_list_[j][i] < upper_bound_[i]);
+            }
+        }
+        for (size_t i = 0; i < event_num_; ++i)
+            for (size_t j = 1; j < 7; ++j)
+                assert(data_num_list_[i] == obs_data_list_[i][j].size());
+    };
+
+    bool embedCheck(const py::array_t<double> x) {
+        auto x_uncheck = x.unchecked<1>();
+        ssize_t x_idx = 0;
+        for (size_t i = 0; i < value_dim_; ++i)
+            if (!fix_mask_[i]) {
+                real_t val = x_uncheck(x_idx++);
+                if (val < lower_bound_[i] || val >= upper_bound_[i])
+                    return true;
+                for (size_t j = 0; j < event_num_; ++j)
+                    embed_x_list_[j][i] = val;
+            }
+        return false;
+    }
+    std::tuple<double, int> calculateChi2(const py::array_t<double> x, bool calculate_motion_chi2, bool calculate_flux_chi2) {
         if (embedCheck(x))
-            return {-std::numeric_limits<double>::infinity(), StatusCode::INVALID_ARGUMENT};
+            return {std::numeric_limits<double>::infinity(), StatusCode::INVALID_ARGUMENT};
         double chi2 = 0.0;
         for (size_t i = 0; i < event_num_; ++i) {
-            auto [chi2_i, status] = hotspotChi2(embed_x_list_[i], metric_, motion_mode_, ray_tracing_, light_bending_,
-                                                gr_time_delay_, 0.0, true, true, obs_data_list_[i], infra_context_);
+            auto [chi2_i, status] =
+                hotspotChi2(embed_x_list_[i], metric_, motion_mode_, ray_tracing_, light_bending_, gr_time_delay_, 0.0,
+                            calculate_motion_chi2, calculate_flux_chi2, obs_data_list_[i], infra_context_);
             if (status != StatusCode::SUCCESS)
-                return {-std::numeric_limits<double>::infinity(), status};
+                return {std::numeric_limits<double>::infinity(), status};
             chi2 += chi2_i;
         }
-        if (black_hole_constraint_)
+        if (calculate_motion_chi2 && black_hole_constraint_)
             chi2 += (power2(embed_x_list_[0].at(3)) + power2(embed_x_list_[0].at(4))) / power2(black_hole_sigma_);
-        return {-0.5 * chi2, StatusCode::SUCCESS};
+        return {chi2, StatusCode::SUCCESS};
+    }
+    std::tuple<double, int> motionLogProb(const py::array_t<double> x) {
+        auto [chi2, status] = calculateChi2(x, true, false);
+        return {-0.5 * chi2, status};
+    }
+    std::tuple<double, int> fluxLogProb(const py::array_t<double> x) {
+        auto [chi2, status] = calculateChi2(x, false, true);
+        return {-0.5 * chi2, status};
+    }
+    std::tuple<double, int> totalLogProb(const py::array_t<double> x) {
+        auto [chi2, status] = calculateChi2(x, true, true);
+        return {-0.5 * chi2, status};
     }
 };
 
@@ -891,7 +1008,7 @@ void bindHotspotModule(py::module_ &m) {
 
     py::class_<HotspotCombinationEvent>(m, "HotspotCombinationEvent")
         .def(py::init<int, int, int, std::vector<real_t>, std::vector<uint8_t>, std::vector<real_t>, std::vector<real_t>,
-                      std::vector<uint8_t>, std::vector<std::array<std::vector<real_t>, 7>>, double>())
+                      std::vector<uint8_t>, std::vector<std::array<std::vector<real_t>, 7>>, double, int>())
         .def("embed_check", &HotspotCombinationEvent::embedCheck, py::arg("x"))
         .def("print_embed", &HotspotCombinationEvent::printEmbed)
         .def("calculate_full_orbit", &HotspotCombinationEvent::calculateFullOrbit, py::arg("x"), py::arg("event_idx"),
@@ -901,6 +1018,14 @@ void bindHotspotModule(py::module_ &m) {
         .def("motion_log_prob", &HotspotCombinationEvent::motionLogProb, py::arg("x"))
         .def("flux_log_prob", &HotspotCombinationEvent::fluxLogProb, py::arg("x"))
         .def("total_log_prob", &HotspotCombinationEvent::totalLogProb, py::arg("x"));
+
+    py::class_<HotspotBlackHoleCombinationEvent>(m, "HotspotBlackHoleCombinationEvent")
+        .def(py::init<int, int, int, std::vector<std::vector<real_t>>, std::vector<uint8_t>, std::vector<real_t>,
+                      std::vector<real_t>, std::vector<std::array<std::vector<real_t>, 7>>, double>())
+        .def("embed_check", &HotspotBlackHoleCombinationEvent::embedCheck, py::arg("x"))
+        .def("motion_log_prob", &HotspotBlackHoleCombinationEvent::motionLogProb, py::arg("x"))
+        .def("flux_log_prob", &HotspotBlackHoleCombinationEvent::fluxLogProb, py::arg("x"))
+        .def("total_log_prob", &HotspotBlackHoleCombinationEvent::totalLogProb, py::arg("x"));
 
     m.def("calculate_hotspot_full_orbit", &calculateHotspotFullOrbit, R"pbdoc(
     	Get trajectory, redshift, apparent position with orbital parameters

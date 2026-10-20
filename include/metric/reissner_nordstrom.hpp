@@ -23,6 +23,17 @@ class ReissnerNordstrom : public Metric<T> {
   public:
     ReissnerNordstrom(T charge) : r_Q_(0.5 * std::sqrt(M_1_PI) * charge), r_Q2_(r_Q_ * r_Q_), r_Q4_(r_Q2_ * r_Q2_) {}
     std::string name() const override { return "Reissner-Nordstrom"; }
+    int angularMomentumCarterConstantToAlphaBeta(T l, T q2, T cos_theta, T sin_theta, T &alpha,
+                                                 T &abs_beta) const override {
+        if (sin_theta == 0.)
+            return StatusCode::FAILURE;
+        alpha = -l / sin_theta;
+        const T beta2 = q2 - power2(cos_theta * alpha);
+        if (beta2 < 0.)
+            return StatusCode::DOMAIN_ERROR;
+        abs_beta = std::sqrt(beta2);
+        return StatusCode::SUCCESS;
+    }
     int metricTensor(const boost::numeric::ublas::bounded_vector<T, 8> &position,
                      boost::numeric::ublas::bounded_matrix<T, 4, 4> &metric) const override {
         const T r_1 = 1. / position[1];
@@ -114,10 +125,12 @@ class ReissnerNordstrom : public Metric<T> {
         return std::isnan(y[4]) ? StatusCode::DOMAIN_ERROR : StatusCode::SUCCESS;
     }
     int normalizeNullGeodesic(boost::numeric::ublas::bounded_vector<T, 8> &y, T frequency = 1.) const override {
+        if (frequency <= 0.)
+            return StatusCode::DOMAIN_ERROR;
         const T r_1 = 1. / y[1], g11_1 = 1. - (2. - r_Q2_ * r_1) * r_1;
         if (g11_1 <= 0)
             return 1;
-        const T coefficient = std::copysign(g11_1, frequency) /
+        const T coefficient = g11_1 /
                               std::sqrt(power2(y[5]) + g11_1 * (power2(y[1] * y[6]) + power2(y[1] * std::sin(y[2]) * y[7])));
         if (std::isnan(coefficient))
             return StatusCode::DOMAIN_ERROR;
