@@ -26,6 +26,28 @@ option(WITH_PYTHON "Enable Python binding" ON)
 option(BUILD_DOC_ONLY "Build documentation only" OFF)
 
 ###############
+# Doxygen
+###############
+
+find_package(Doxygen)
+
+if(BUILD_DOC_ONLY AND NOT DOXYGEN_FOUND)
+    message(FATAL_ERROR "Doxygen not found, please install it")
+endif()
+
+if(DOXYGEN_FOUND)
+    set(DOXYGEN_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/doxygen")
+    set(DOXYGEN_GENERATE_HTML NO)
+    set(DOXYGEN_GENERATE_LATEX NO)
+    set(DOXYGEN_GENERATE_XML YES)
+    set(DOXYGEN_XML_OUTPUT .)
+    doxygen_add_docs(docs "${PROJECT_SOURCE_DIR}/include")
+    if(BUILD_DOC_ONLY)
+        return()
+    endif()
+endif()
+
+###############
 # FetchContent dependencies
 ###############
 
@@ -75,28 +97,6 @@ if(WITH_OPENMP)
         list(APPEND OPTIONAL_LIBS OpenMP::OpenMP_CXX)
     else()
         message(NOTICE "OpenMP not found")
-    endif()
-endif()
-
-###############
-# Doxygen
-###############
-
-find_package(Doxygen)
-
-if(BUILD_DOC_ONLY AND NOT DOXYGEN_FOUND)
-    message(FATAL_ERROR "Doxygen not found, please install it")
-endif()
-
-if(DOXYGEN_FOUND)
-    set(DOXYGEN_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/doxygen")
-    set(DOXYGEN_GENERATE_HTML NO)
-    set(DOXYGEN_GENERATE_LATEX NO)
-    set(DOXYGEN_GENERATE_XML YES)
-    set(DOXYGEN_XML_OUTPUT .)
-    doxygen_add_docs(docs "${PROJECT_SOURCE_DIR}/include")
-    if (BUILD_DOC_ONLY)
-        return()
     endif()
 endif()
 
