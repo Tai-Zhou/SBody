@@ -1,0 +1,307 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Math Module &mdash; SBody  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Input &amp; Output" href="io.html" />
+    <link rel="prev" title="File Module" href="file.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            SBody
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">SBody</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="infra.html">Infrastructure Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="file.html">File Module</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Math Module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#scalar-operations">Scalar Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#constants">Constants</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#geometry">Geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#special-functions">Special Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="io.html">Input &amp; Output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metric.html">Metric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="object.html">Object</a></li>
+<li class="toctree-l1"><a class="reference internal" href="unit.html">Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utility.html">Utility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="view.html">View</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">SBody</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Math Module</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="math-module">
+<h1>Math Module<a class="headerlink" href="#math-module" title="Link to this heading"></a></h1>
+<p>This module provides mathematical utilities for numerical computations.</p>
+<section id="scalar-operations">
+<h2>Scalar Operations<a class="headerlink" href="#scalar-operations" title="Link to this heading"></a></h2>
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5sbody4signE1T1T" title="sbody::sign::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">sign</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5sbody4signE1T1T" title="sbody::sign::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span><span class="sig-paren">)</span><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5sbody6power2E1T1T" title="sbody::power2::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">power2</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5sbody6power2E1T1T" title="sbody::power2::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span><span class="sig-paren">)</span><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5sbody6power3E1T1T" title="sbody::power3::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">power3</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5sbody6power3E1T1T" title="sbody::power3::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span><span class="sig-paren">)</span><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5sbody6power4E1T1T" title="sbody::power4::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">power4</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5sbody6power4E1T1T" title="sbody::power4::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span><span class="sig-paren">)</span><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5sbody10squareRootE1T1T" title="sbody::squareRoot::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">squareRoot</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5sbody10squareRootE1T1T" title="sbody::squareRoot::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><p>Square root of <code class="docutils literal notranslate"><span class="pre">x</span></code>. Return <code class="docutils literal notranslate"><span class="pre">0</span></code> if <code class="docutils literal notranslate"><span class="pre">x</span></code> is negative. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> – number </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>result </p>
+</dd>
+</dl>
+</dd></dl>
+
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Unable to resolve function “sbody::hypotSquare” with arguments None in doxygen xml output for project “SBody” from directory: ../doxygen.
+Potential matches:
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">T</span> <span class="n">hypotSquare</span><span class="p">(</span><span class="n">T</span> <span class="n">x</span><span class="p">,</span> <span class="n">T</span> <span class="n">y</span><span class="p">)</span>
+<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">T</span> <span class="n">hypotSquare</span><span class="p">(</span><span class="n">T</span> <span class="n">x</span><span class="p">,</span> <span class="n">T</span> <span class="n">y</span><span class="p">,</span> <span class="n">T</span> <span class="n">z</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">oppositeSign</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5sbody12oppositeSignEb1T1T" title="sbody::oppositeSign::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <a class="reference internal" href="#_CPPv4I0EN5sbody12oppositeSignEb1T1T" title="sbody::oppositeSign::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">y</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">1</span></code> if <code class="docutils literal notranslate"><span class="pre">x</span></code>, <code class="docutils literal notranslate"><span class="pre">y</span></code> have opposite signs, else <code class="docutils literal notranslate"><span class="pre">0</span></code>. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – number </p></li>
+<li><p><strong>y</strong> – number </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>result </p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="constants">
+<h2>Constants<a class="headerlink" href="#constants" title="Link to this heading"></a></h2>
+</section>
+<section id="geometry">
+<h2>Geometry<a class="headerlink" href="#geometry" title="Link to this heading"></a></h2>
+<dl class="cpp enum-class">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">Axis</span></span></span><br /></dt>
+<dd><p><em>Values:</em></p>
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">X</span></span></span><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Y</span></span></span><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Z</span></span></span><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5sbody8sinThetaE1T1T" title="sbody::sinTheta::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">sinTheta</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5sbody8sinThetaE1T1T" title="sbody::sinTheta::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">theta</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>T</strong> – </p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>theta</strong> – </p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>T </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5sbody8cosThetaE1T1T" title="sbody::cosTheta::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">cosTheta</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5sbody8cosThetaE1T1T" title="sbody::cosTheta::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">theta</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>T</strong> – </p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>theta</strong> – </p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>T </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5sbody8dotCrossE1TRKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEE" title="sbody::dotCross::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">dotCross</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody8dotCrossE1TRKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEE" title="sbody::dotCross::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">x</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody8dotCrossE1TRKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEE" title="sbody::dotCross::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">y</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody8dotCrossE1TRKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEE" title="sbody::dotCross::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">z</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><p>Dot product of vector <code class="docutils literal notranslate"><span class="pre">x</span></code> and the cross product of vector <code class="docutils literal notranslate"><span class="pre">y</span></code> and vector <code class="docutils literal notranslate"><span class="pre">z</span></code>. <span class="math notranslate nohighlight">\(\vec{x}\cdot(\vec{y}\times\vec{z})\)</span>. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – 3 dimensional vector </p></li>
+<li><p><strong>y</strong> – 3 dimensional vector </p></li>
+<li><p><strong>z</strong> – 3 dimensional vector </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>result </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5sbody12triangleAreaE1TRKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEE" title="sbody::triangleArea::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">triangleArea</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody12triangleAreaE1TRKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEE" title="sbody::triangleArea::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">x</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody12triangleAreaE1TRKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEE" title="sbody::triangleArea::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">y</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody12triangleAreaE1TRKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEERKN5boost7numeric5ublas14bounded_vectorI1TXL3EEEE" title="sbody::triangleArea::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">z</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><p>Calculate the area of a triangle. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a</strong> – side length </p></li>
+<li><p><strong>b</strong> – side length </p></li>
+<li><p><strong>c</strong> – side length </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>result </p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="special-functions">
+<h2>Special Functions<a class="headerlink" href="#special-functions" title="Link to this heading"></a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::CarlsonRC” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::CarlsonRJ” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::EllipticIntegral” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::EllipticIntegral2Complex” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::EllipticIntegral4Complex” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="file.html" class="btn btn-neutral float-left" title="File Module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="io.html" class="btn btn-neutral float-right" title="Input &amp; Output" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021-2026, Tai Zhou.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

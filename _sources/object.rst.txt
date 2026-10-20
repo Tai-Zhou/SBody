@@ -5,26 +5,37 @@
 Object
 ======
 
-.. doxygenclass:: SBody::Object
+Base Object
+-----------
+
+.. doxygenclass:: sbody::Object
+   :members:
+   :no-link:
+
+Particle
+--------
+
+.. doxygenclass:: sbody::Particle
    :members:
    :no-link:
 
 Star
-====
+----
 
-.. index::
-   Star
-
-.. doxygenclass:: SBody::Star
+.. doxygenclass:: sbody::Star
    :members:
    :no-link:
 
 Disk
-====
+----
 
-.. index::
-   Disk
+.. doxygenclass:: sbody::Disk
+   :members:
+   :no-link:
 
-.. doxygenclass:: SBody::Disk
+Novikov-Thorne Disk
+~~~~~~~~~~~~~~~~~~~
+
+.. doxygenclass:: sbody::NovikovThorneDisk
    :members:
    :no-link:

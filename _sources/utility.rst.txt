@@ -5,42 +5,42 @@
 Utility
 =======
 
-.. doxygenvariable:: SBody::absolute_accuracy
+.. doxygenvariable:: sbody::absolute_accuracy
    :no-link:
-.. doxygenvariable:: SBody::relative_accuracy
+.. doxygenvariable:: sbody::relative_accuracy
    :no-link:
-.. doxygenvariable:: SBody::M_2PI
+.. doxygenvariable:: sbody::M_2PI
    :no-link:
-.. doxygenvariable:: SBody::M_PI2
+.. doxygenvariable:: sbody::M_PI2
    :no-link:
-.. doxygenvariable:: SBody::M_SQRT27
+.. doxygenvariable:: sbody::M_SQRT27
    :no-link:
-.. doxygenvariable:: SBody::EPSILON
+.. doxygenvariable:: sbody::EPSILON
    :no-link:
-.. doxygenvariable:: SBody::SIN_EPSILON
+.. doxygenvariable:: sbody::SIN_EPSILON
    :no-link:
-.. doxygenvariable:: SBody::COS_EPSILON
+.. doxygenvariable:: sbody::COS_EPSILON
    :no-link:
-.. doxygenvariable:: SBody::EPSILON_CIRCLE_AREA
+.. doxygenvariable:: sbody::EPSILON_CIRCLE_AREA
    :no-link:
-.. doxygenvariable:: SBody::SAMPLE_NUMBER
+.. doxygenvariable:: sbody::SAMPLE_NUMBER
    :no-link:
-.. doxygenvariable:: SBody::ANGLE_INTERVAL
+.. doxygenvariable:: sbody::ANGLE_INTERVAL
    :no-link:
-.. doxygenvariable:: SBody::EPSILON_POLYGON_AREA
+.. doxygenvariable:: sbody::EPSILON_POLYGON_AREA
    :no-link:
 
 Integrator
 ==========
 
-.. doxygenclass:: SBody::Integrator
+.. doxygenclass:: sbody::Integrator
    :members:
    :no-link:
 
 Solver
 ======
 
-.. doxygenclass:: SBody::Solver
+.. doxygenclass:: sbody::Solver
    :members:
    :no-link:
 
@@ -48,7 +48,7 @@ Solver
 DerivativeSolver
 ----------------
 
-.. doxygenclass:: SBody::DerivativeSolver
+.. doxygenclass:: sbody::DerivativeSolver
    :members:
    :no-link:
 
@@ -56,95 +56,95 @@ DerivativeSolver
 MultiSolver
 ===========
 
-.. doxygenclass:: SBody::MultiSolver
+.. doxygenclass:: sbody::MultiSolver
    :members:
    :no-link:
 
 MultiFunctionSolver
 -------------------
 
-.. doxygenclass:: SBody::MultiFunctionSolver
+.. doxygenclass:: sbody::MultiFunctionSolver
    :members:
    :no-link:
 
 MultiDerivativeSolver
 ---------------------
 
-.. doxygenclass:: SBody::MultiDerivativeSolver
+.. doxygenclass:: sbody::MultiDerivativeSolver
    :members:
    :no-link:
 
 GslBlock
 ========
 
-.. doxygenclass:: SBody::GslBlock
+.. doxygenclass:: sbody::GslBlock
    :members:
    :no-link:
 
 Math
 ====
 
-.. doxygenfunction:: SBody::Dot(const double[], const double[], size_t);
+.. doxygenfunction:: sbody::Dot(const double[], const double[], size_t);
    :no-link:
 
-.. doxygenfunction:: SBody::Dot(const double[], size_t);
+.. doxygenfunction:: sbody::Dot(const double[], size_t);
    :no-link:
 
-.. doxygenfunction:: SBody::Norm
+.. doxygenfunction:: sbody::Norm
    :no-link:
 
-.. doxygenfunction:: SBody::Cross
+.. doxygenfunction:: sbody::Cross
    :no-link:
 
-.. doxygenfunction:: SBody::DotCross
+.. doxygenfunction:: sbody::DotCross
    :no-link:
 
-.. doxygenfunction:: SBody::TriangleArea(double, double, double)
+.. doxygenfunction:: sbody::TriangleArea(double, double, double)
    :no-link:
 
-.. doxygenfunction:: SBody::TriangleArea(const double[], const double[], const double[])
+.. doxygenfunction:: sbody::TriangleArea(const double[], const double[], const double[])
    :no-link:
 
-.. doxygenfunction:: SBody::RotateAroundAxis
+.. doxygenfunction:: sbody::RotateAroundAxis
    :no-link:
 
-.. doxygenfunction:: SBody::CartesianToSpherical(const double[], double[], size_t)
+.. doxygenfunction:: sbody::CartesianToSpherical(const double[], double[], size_t)
    :no-link:
 
-.. doxygenfunction:: SBody::CartesianToSpherical(double[], size_t)
+.. doxygenfunction:: sbody::CartesianToSpherical(double[], size_t)
    :no-link:
 
-.. doxygenfunction:: SBody::SphericalToCartesian(const double[], double[], size_t)
+.. doxygenfunction:: sbody::SphericalToCartesian(const double[], double[], size_t)
    :no-link:
 
-.. doxygenfunction:: SBody::SphericalToCartesian(double[], size_t)
+.. doxygenfunction:: sbody::SphericalToCartesian(double[], size_t)
    :no-link:
 
-.. doxygenfunction:: SBody::OppositeSign
+.. doxygenfunction:: sbody::OppositeSign
    :no-link:
 
-.. doxygenfunction:: SBody::MapTheta
+.. doxygenfunction:: sbody::MapTheta
    :no-link:
 
-.. doxygenfunction:: SBody::ModBy2Pi
+.. doxygenfunction:: sbody::ModBy2Pi
    :no-link:
 
-.. doxygenfunction:: SBody::PhiDifference
+.. doxygenfunction:: sbody::PhiDifference
    :no-link:
 
-.. doxygenfunction:: SBody::LinearInterpolation(double, double, double, double, double)
+.. doxygenfunction:: sbody::LinearInterpolation(double, double, double, double, double)
    :no-link:
 
-.. doxygenfunction:: SBody::LinearInterpolation(double, double, double, const double[], const double[], double[], size_t)
+.. doxygenfunction:: sbody::LinearInterpolation(double, double, double, const double[], const double[], double[], size_t)
    :no-link:
 
-.. doxygenfunction:: SBody::InterpolateSphericalPositionToCartesian
+.. doxygenfunction:: sbody::InterpolateSphericalPositionToCartesian
    :no-link:
 
-.. doxygenfunction:: SBody::Flux
+.. doxygenfunction:: sbody::Flux
    :no-link:
 
-.. doxygenfunction:: SBody::FluxDensity
+.. doxygenfunction:: sbody::FluxDensity
    :no-link:
 
 Elliptic Integrals
@@ -152,17 +152,17 @@ Elliptic Integrals
 
 Calculate the elliptic integrals using the Legendre forms. Further information can be found in `GSL Manual <https://www.gnu.org/software/gsl/doc/html/specfunc.html#elliptic-integrals>`_, `Carlson (1988) <https://www.ams.org/mcom/1988-51-183/S0025-5718-1988-0942154-7/>`_, `Carlson (1989) <https://www.ams.org/mcom/1989-53-187/S0025-5718-1989-0969482-4/>`_, `Carlson (1991) <https://www.ams.org/mcom/1991-56-193/S0025-5718-1991-1052087-6/>`_, and `Carlson (1992) <https://www.ams.org/mcom/1992-59-199/S0025-5718-1992-1134720-4/>`_.
 
-.. doxygenfunction:: SBody::EllipticIntegral
+.. doxygenfunction:: sbody::EllipticIntegral
    :no-link:
 
-.. doxygenfunction:: SBody::EllipticIntegral2Complex
+.. doxygenfunction:: sbody::EllipticIntegral2Complex
    :no-link:
 
-.. doxygenfunction:: SBody::EllipticIntegral4Complex
+.. doxygenfunction:: sbody::EllipticIntegral4Complex
    :no-link:
 
-.. doxygenfunction:: SBody::Carlson_RC
+.. doxygenfunction:: sbody::Carlson_RC
    :no-link:
 
-.. doxygenfunction:: SBody::Carlson_RJ
+.. doxygenfunction:: sbody::Carlson_RJ
    :no-link:

@@ -10,6 +10,10 @@ SBody
    :maxdepth: 2
 
    intro
+   config
+   infra
+   file
+   math
    io
    metric
    object

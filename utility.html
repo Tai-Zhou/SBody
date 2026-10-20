@@ -8,15 +8,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Utility &mdash; SBody  documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="_static/doctools.js?v=9bcbadda"></script>
-      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -45,6 +45,10 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="intro.html">SBody</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="infra.html">Infrastructure Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="file.html">File Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="math.html">Math Module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="io.html">Input &amp; Output</a></li>
 <li class="toctree-l1"><a class="reference internal" href="metric.html">Metric</a></li>
 <li class="toctree-l1"><a class="reference internal" href="object.html">Object</a></li>
@@ -95,71 +99,67 @@
              
   <section id="utility">
 <span id="index-0"></span><h1>Utility<a class="headerlink" href="#utility" title="Link to this heading"></a></h1>
-<dl class="cpp var">
-<dt class="sig sig-object cpp">
-<span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">absolute_accuracy</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1e-15</span></span><br /></dt>
-<dd><p>Global absolute accuracy. </p>
-</dd></dl>
-
-<dl class="cpp var">
-<dt class="sig sig-object cpp">
-<span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">relative_accuracy</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1e-15</span></span><br /></dt>
-<dd><p>Global relative accuracy. </p>
-</dd></dl>
-
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenvariable: Cannot find variable “SBody::M_2PI” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenvariable: Cannot find variable “sbody::absolute_accuracy” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenvariable: Cannot find variable “SBody::M_PI2” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenvariable: Cannot find variable “sbody::relative_accuracy” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenvariable: Cannot find variable “sbody::M_2PI” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenvariable: Cannot find variable “sbody::M_PI2” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <dl class="cpp var">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">M_SQRT27</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">5.19615242270663188058233902451761710l</span></span><br /></dt>
+<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">M_SQRT27</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">5.19615242270663188058233902451761710l</span></span><br /></dt>
 <dd><p><span class="math notranslate nohighlight">\(\sqrt{27}\)</span></p>
 </dd></dl>
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EPSILON</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1e-10l</span></span><br /></dt>
+<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EPSILON</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1e-10l</span></span><br /></dt>
 <dd><p>Epsilon, a small value. <span class="math notranslate nohighlight">\(\varepsilon\)</span>. </p>
 </dd></dl>
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">SIN_EPSILON</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1e-10l</span></span><br /></dt>
+<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">SIN_EPSILON</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1e-10l</span></span><br /></dt>
 <dd><p><span class="math notranslate nohighlight">\(\sin\varepsilon\)</span>. </p>
 </dd></dl>
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">COS_EPSILON</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0.999999999999999999995l</span></span><br /></dt>
+<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">COS_EPSILON</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0.999999999999999999995l</span></span><br /></dt>
 <dd><p><span class="math notranslate nohighlight">\(\cos\varepsilon\)</span>. </p>
 </dd></dl>
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EPSILON_CIRCLE_AREA</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">math</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">long_double_constants</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">pi</span></span><span class="w"> </span><span class="o"><span class="pre">*</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">math</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">tools</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">epsilon</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">double</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">)</span></span><br /></dt>
+<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EPSILON_CIRCLE_AREA</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">math</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">long_double_constants</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">pi</span></span><span class="w"> </span><span class="o"><span class="pre">*</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N5sbody7EPSILONE" title="sbody::EPSILON"><span class="n"><span class="pre">EPSILON</span></span></a><span class="w"> </span><span class="o"><span class="pre">*</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N5sbody7EPSILONE" title="sbody::EPSILON"><span class="n"><span class="pre">EPSILON</span></span></a><br /></dt>
 <dd><p>Area of a circle with radius of SQRT_DBL_EPSILON. <span class="math notranslate nohighlight">\(\pi\varepsilon^2\)</span>. </p>
 </dd></dl>
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">SAMPLE_NUMBER</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">100</span></span><br /></dt>
+<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">SAMPLE_NUMBER</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">100</span></span><br /></dt>
 <dd><p>Sample number. </p>
 </dd></dl>
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">ANGLE_INTERVAL</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">math</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">long_double_constants</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">two_pi</span></span><span class="w"> </span><span class="o"><span class="pre">/</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N5SBody13SAMPLE_NUMBERE" title="SBody::SAMPLE_NUMBER"><span class="n"><span class="pre">SAMPLE_NUMBER</span></span></a><br /></dt>
+<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">ANGLE_INTERVAL</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">math</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">long_double_constants</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">two_pi</span></span><span class="w"> </span><span class="o"><span class="pre">/</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N5sbody13SAMPLE_NUMBERE" title="sbody::SAMPLE_NUMBER"><span class="n"><span class="pre">SAMPLE_NUMBER</span></span></a><br /></dt>
 <dd><p>The angle corresponding to the sample number. </p>
 </dd></dl>
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EPSILON_POLYGON_AREA</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0.06279051952931337</span></span><span class="w"> </span><span class="o"><span class="pre">/</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N5SBody14ANGLE_INTERVALE" title="SBody::ANGLE_INTERVAL"><span class="n"><span class="pre">ANGLE_INTERVAL</span></span></a><span class="w"> </span><span class="o"><span class="pre">*</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N5SBody19EPSILON_CIRCLE_AREAE" title="SBody::EPSILON_CIRCLE_AREA"><span class="n"><span class="pre">EPSILON_CIRCLE_AREA</span></span></a><br /></dt>
+<span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">long</span></span><span class="w"> </span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EPSILON_POLYGON_AREA</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0.06279051952931337</span></span><span class="w"> </span><span class="o"><span class="pre">/</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N5sbody14ANGLE_INTERVALE" title="sbody::ANGLE_INTERVAL"><span class="n"><span class="pre">ANGLE_INTERVAL</span></span></a><span class="w"> </span><span class="o"><span class="pre">*</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N5sbody19EPSILON_CIRCLE_AREAE" title="sbody::EPSILON_CIRCLE_AREA"><span class="n"><span class="pre">EPSILON_CIRCLE_AREA</span></span></a><br /></dt>
 <dd><p>Area of the regular polygon with SAMPLE_NUMBER edges. </p>
 </dd></dl>
 
@@ -167,20 +167,20 @@
 <h2>Integrator<a class="headerlink" href="#integrator" title="Link to this heading"></a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenclass: Cannot find class “SBody::Integrator” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenclass: Cannot find class “sbody::Integrator” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 </section>
 <section id="solver">
 <h2>Solver<a class="headerlink" href="#solver" title="Link to this heading"></a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenclass: Cannot find class “SBody::Solver” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenclass: Cannot find class “sbody::Solver” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <section id="derivativesolver">
 <h3>DerivativeSolver<a class="headerlink" href="#derivativesolver" title="Link to this heading"></a></h3>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenclass: Cannot find class “SBody::DerivativeSolver” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenclass: Cannot find class “sbody::DerivativeSolver” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 </section>
 </section>
@@ -188,22 +188,20 @@
 <h2>MultiSolver<a class="headerlink" href="#multisolver" title="Link to this heading"></a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenclass: Cannot find class “SBody::MultiSolver” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenclass: Cannot find class “sbody::MultiSolver” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <section id="multifunctionsolver">
 <h3>MultiFunctionSolver<a class="headerlink" href="#multifunctionsolver" title="Link to this heading"></a></h3>
-<dl class="cpp class">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">N</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Parameter</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MultiFunctionSolver</span></span></span><br /></dt>
-<dd><p>Subclassed by SBody::ConjugateGradientMultiFunctionSolver&lt; Type, N, Parameter &gt;, SBody::D2NewtonMultiFunctionSolver&lt; Type, N, Parameter &gt;, SBody::DNewtonMultiFunctionSolver&lt; Type, N, Parameter &gt;, SBody::DNewtonRotationMultiFunctionSolver&lt; Type, N, Parameter &gt;, SBody::DNewtonTranslationMultiFunctionSolver&lt; Type, N, Parameter &gt;, SBody::DirectionMultiFunctionSolver&lt; Type, N, Parameter &gt;, SBody::HybridAdditionMultiFunctionSolver&lt; Type, N, Parameter &gt;, SBody::HybridMultiFunctionSolver&lt; Type, N, Parameter &gt;, SBody::TriangleMultiFunctionSolver&lt; Type, N, Parameter &gt;</p>
-</dd></dl>
-
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenclass: Cannot find class “sbody::MultiFunctionSolver” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
 </section>
 <section id="multiderivativesolver">
 <h3>MultiDerivativeSolver<a class="headerlink" href="#multiderivativesolver" title="Link to this heading"></a></h3>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenclass: Cannot find class “SBody::MultiDerivativeSolver” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenclass: Cannot find class “sbody::MultiDerivativeSolver” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 </section>
 </section>
@@ -211,306 +209,117 @@
 <h2>GslBlock<a class="headerlink" href="#gslblock" title="Link to this heading"></a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenclass: Cannot find class “SBody::GslBlock” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenclass: Cannot find class “sbody::GslBlock” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 </section>
 <section id="math">
 <h2>Math<a class="headerlink" href="#math" title="Link to this heading"></a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenfunction: Cannot find function “SBody::Dot” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenfunction: Cannot find function “sbody::Dot” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenfunction: Cannot find function “SBody::Dot” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenfunction: Cannot find function “sbody::Dot” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenfunction: Cannot find function “SBody::Norm” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenfunction: Cannot find function “sbody::Norm” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenfunction: Cannot find function “SBody::Cross” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
-</div>
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5SBody8DotCrossE4TypeRKN5boost7numeric5ublas14bounded_vectorI4TypeXL3EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL3EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL3EEEE" title="SBody::DotCross::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">DotCross</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody8DotCrossE4TypeRKN5boost7numeric5ublas14bounded_vectorI4TypeXL3EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL3EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL3EEEE" title="SBody::DotCross::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">x</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody8DotCrossE4TypeRKN5boost7numeric5ublas14bounded_vectorI4TypeXL3EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL3EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL3EEEE" title="SBody::DotCross::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">y</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody8DotCrossE4TypeRKN5boost7numeric5ublas14bounded_vectorI4TypeXL3EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL3EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL3EEEE" title="SBody::DotCross::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">z</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p>Dot product of vector <code class="docutils literal notranslate"><span class="pre">x</span></code> and the cross product of vector <code class="docutils literal notranslate"><span class="pre">y</span></code> and vector <code class="docutils literal notranslate"><span class="pre">z</span></code>. <span class="math notranslate nohighlight">\(\vec{x}\cdot(\vec{y}\times\vec{z})\)</span>. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> – 3 dimensional vector </p></li>
-<li><p><strong>y</strong> – 3 dimensional vector </p></li>
-<li><p><strong>z</strong> – 3 dimensional vector </p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>result </p>
-</dd>
-</dl>
-</dd></dl>
-
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>doxygenfunction: Unable to resolve function “SBody::TriangleArea” with arguments (double, double, double) in doxygen xml output for project “SBody” from directory: ../doxygen.
-Potential matches:
-</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="o">&gt;</span> <span class="n">Type</span> <span class="n">TriangleArea</span><span class="p">(</span><span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">3</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">,</span> <span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">3</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">y</span><span class="p">,</span> <span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">3</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">z</span><span class="p">)</span>
-</pre></div>
-</div>
+<p>doxygenfunction: Cannot find function “sbody::Cross” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenfunction: Unable to resolve function “SBody::TriangleArea” with arguments (const double[], const double[], const double[]) in doxygen xml output for project “SBody” from directory: ../doxygen.
-Potential matches:
-</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="o">&gt;</span> <span class="n">Type</span> <span class="n">TriangleArea</span><span class="p">(</span><span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">3</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">,</span> <span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">3</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">y</span><span class="p">,</span> <span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">3</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">z</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">RotateAroundAxis</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody16RotateAroundAxisEiN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEEb4Axis4Type" title="SBody::RotateAroundAxis::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">rotate_velocity</span></span>, <span class="n"><span class="pre">Axis</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">axis</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16RotateAroundAxisEiN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEEb4Axis4Type" title="SBody::RotateAroundAxis::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">angle</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p>Rotate vector <code class="docutils literal notranslate"><span class="pre">x</span></code> around the <code class="docutils literal notranslate"><span class="pre">axis</span></code> by <code class="docutils literal notranslate"><span class="pre">angle</span></code>. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> – 8 dimensional vector </p></li>
-<li><p><strong>rotate_velocity</strong> – if true, rotate velocity part, else rotate position part </p></li>
-<li><p><strong>axis</strong> – the rotation axis </p></li>
-<li><p><strong>angle</strong> – in rad </p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>status </p>
-</dd>
-</dl>
-</dd></dl>
-
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>doxygenfunction: Unable to resolve function “SBody::CartesianToSpherical” with arguments (const double[], double[], size_t) in doxygen xml output for project “SBody” from directory: ../doxygen.
-Potential matches:
-</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="p">,</span> <span class="n">std</span><span class="p">::</span><span class="n">size_t</span> <span class="n">N</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">CartesianToSpherical</span><span class="p">(</span><span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">)</span>
-<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">CartesianToSpherical</span><span class="p">(</span><span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">4</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">cartesian</span><span class="p">,</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">4</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">spherical</span><span class="p">)</span>
-<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">CartesianToSpherical</span><span class="p">(</span><span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">8</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">cartesian</span><span class="p">,</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">8</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">spherical</span><span class="p">)</span>
-</pre></div>
-</div>
+<p>doxygenfunction: Cannot find function “sbody::DotCross” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenfunction: Unable to resolve function “SBody::CartesianToSpherical” with arguments (double[], size_t) in doxygen xml output for project “SBody” from directory: ../doxygen.
-Potential matches:
-</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="p">,</span> <span class="n">std</span><span class="p">::</span><span class="n">size_t</span> <span class="n">N</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">CartesianToSpherical</span><span class="p">(</span><span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">)</span>
-<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">CartesianToSpherical</span><span class="p">(</span><span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">4</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">cartesian</span><span class="p">,</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">4</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">spherical</span><span class="p">)</span>
-<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">CartesianToSpherical</span><span class="p">(</span><span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">8</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">cartesian</span><span class="p">,</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">8</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">spherical</span><span class="p">)</span>
-</pre></div>
-</div>
+<p>doxygenfunction: Cannot find function “sbody::TriangleArea” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenfunction: Unable to resolve function “SBody::SphericalToCartesian” with arguments (const double[], double[], size_t) in doxygen xml output for project “SBody” from directory: ../doxygen.
-Potential matches:
-</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="p">,</span> <span class="n">std</span><span class="p">::</span><span class="n">size_t</span> <span class="n">N</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">SphericalToCartesian</span><span class="p">(</span><span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">)</span>
-<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">SphericalToCartesian</span><span class="p">(</span><span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">4</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">spherical</span><span class="p">,</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">4</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">cartesian</span><span class="p">)</span>
-<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">SphericalToCartesian</span><span class="p">(</span><span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">8</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">spherical</span><span class="p">,</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">8</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">cartesian</span><span class="p">)</span>
-</pre></div>
-</div>
+<p>doxygenfunction: Cannot find function “sbody::TriangleArea” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenfunction: Unable to resolve function “SBody::SphericalToCartesian” with arguments (double[], size_t) in doxygen xml output for project “SBody” from directory: ../doxygen.
-Potential matches:
-</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="p">,</span> <span class="n">std</span><span class="p">::</span><span class="n">size_t</span> <span class="n">N</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">SphericalToCartesian</span><span class="p">(</span><span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">x</span><span class="p">)</span>
-<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">SphericalToCartesian</span><span class="p">(</span><span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">4</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">spherical</span><span class="p">,</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">4</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">cartesian</span><span class="p">)</span>
-<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">SphericalToCartesian</span><span class="p">(</span><span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">8</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">spherical</span><span class="p">,</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="mi">8</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">cartesian</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">OppositeSign</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5SBody12OppositeSignEi4Type4Type" title="SBody::OppositeSign::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody12OppositeSignEi4Type4Type" title="SBody::OppositeSign::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">y</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p>Return <code class="docutils literal notranslate"><span class="pre">1</span></code> if <code class="docutils literal notranslate"><span class="pre">x</span></code>, <code class="docutils literal notranslate"><span class="pre">y</span></code> have opposite signs, else <code class="docutils literal notranslate"><span class="pre">0</span></code>. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> – number </p></li>
-<li><p><strong>y</strong> – number </p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>result </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">MapTheta</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody8MapThetaEiRN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEER4Type" title="SBody::MapTheta::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">y</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody8MapThetaEiRN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEER4Type" title="SBody::MapTheta::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">last_theta</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p>The modified spherical coordiante maps the polar angle from <span class="math notranslate nohighlight">\(\theta\in[0,\pi]\)</span> to. </p>
-<p><div class="math notranslate nohighlight">
-\[\begin{split}
-\theta'\equiv\begin{cases}\theta &amp; (\theta\leq\pi/2)\\
-\theta-\pi &amp; (\theta&gt;\pi/2)\end{cases}.
-\end{split}\]</div>
- </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>theta_0</strong> – theta in the last integration step </p></li>
-<li><p><strong>y</strong> – 8 dimensional vector </p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>status </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5SBody8ModBy2PiE4Type4Type" title="SBody::ModBy2Pi::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">ModBy2Pi</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5SBody8ModBy2PiE4Type4Type" title="SBody::ModBy2Pi::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">phi</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p>Return <code class="docutils literal notranslate"><span class="pre">phi</span></code> in <span class="math notranslate nohighlight">\([0, 2\pi)\)</span>. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>phi</strong> – <span class="math notranslate nohighlight">\(\phi\)</span></p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>result </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5SBody13PhiDifferenceE4Type4Type" title="SBody::PhiDifference::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">PhiDifference</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5SBody13PhiDifferenceE4Type4Type" title="SBody::PhiDifference::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">phi</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p>Similar to <code class="docutils literal notranslate"><span class="pre">ModBy2Pi</span></code>, but return <code class="docutils literal notranslate"><span class="pre">phi</span></code> in <span class="math notranslate nohighlight">\([-\pi, \pi)\)</span>. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>phi</strong> – <span class="math notranslate nohighlight">\(\phi\)</span></p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>result </p>
-</dd>
-</dl>
-</dd></dl>
-
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>doxygenfunction: Unable to resolve function “SBody::LinearInterpolation” with arguments (double, double, double, double, double) in doxygen xml output for project “SBody” from directory: ../doxygen.
-Potential matches:
-</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="p">,</span> <span class="n">std</span><span class="p">::</span><span class="n">size_t</span> <span class="n">N</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">LinearInterpolation</span><span class="p">(</span><span class="n">Type</span> <span class="n">x</span><span class="p">,</span> <span class="n">Type</span> <span class="n">x0</span><span class="p">,</span> <span class="n">Type</span> <span class="n">x1</span><span class="p">,</span> <span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">y0</span><span class="p">,</span> <span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">y1</span><span class="p">,</span> <span class="n">Type</span> <span class="n">y</span><span class="p">[])</span>
-<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="p">,</span> <span class="n">std</span><span class="p">::</span><span class="n">size_t</span> <span class="n">N</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">LinearInterpolation</span><span class="p">(</span><span class="n">Type</span> <span class="n">x</span><span class="p">,</span> <span class="n">Type</span> <span class="n">x0</span><span class="p">,</span> <span class="n">Type</span> <span class="n">x1</span><span class="p">,</span> <span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">y0</span><span class="p">,</span> <span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">y1</span><span class="p">,</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">y</span><span class="p">)</span>
-<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="o">&gt;</span> <span class="n">Type</span> <span class="n">LinearInterpolation</span><span class="p">(</span><span class="n">Type</span> <span class="n">x</span><span class="p">,</span> <span class="n">Type</span> <span class="n">x0</span><span class="p">,</span> <span class="n">Type</span> <span class="n">x1</span><span class="p">,</span> <span class="n">Type</span> <span class="n">y0</span><span class="p">,</span> <span class="n">Type</span> <span class="n">y1</span><span class="p">)</span>
-</pre></div>
-</div>
+<p>doxygenfunction: Cannot find function “sbody::RotateAroundAxis” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenfunction: Unable to resolve function “SBody::LinearInterpolation” with arguments (double, double, double, const double[], const double[], double[], size_t) in doxygen xml output for project “SBody” from directory: ../doxygen.
-Potential matches:
-</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="p">,</span> <span class="n">std</span><span class="p">::</span><span class="n">size_t</span> <span class="n">N</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">LinearInterpolation</span><span class="p">(</span><span class="n">Type</span> <span class="n">x</span><span class="p">,</span> <span class="n">Type</span> <span class="n">x0</span><span class="p">,</span> <span class="n">Type</span> <span class="n">x1</span><span class="p">,</span> <span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">y0</span><span class="p">,</span> <span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">y1</span><span class="p">,</span> <span class="n">Type</span> <span class="n">y</span><span class="p">[])</span>
-<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="p">,</span> <span class="n">std</span><span class="p">::</span><span class="n">size_t</span> <span class="n">N</span><span class="o">&gt;</span> <span class="nb">int</span> <span class="n">LinearInterpolation</span><span class="p">(</span><span class="n">Type</span> <span class="n">x</span><span class="p">,</span> <span class="n">Type</span> <span class="n">x0</span><span class="p">,</span> <span class="n">Type</span> <span class="n">x1</span><span class="p">,</span> <span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">y0</span><span class="p">,</span> <span class="n">const</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">y1</span><span class="p">,</span> <span class="n">boost</span><span class="p">::</span><span class="n">numeric</span><span class="p">::</span><span class="n">ublas</span><span class="p">::</span><span class="n">bounded_vector</span><span class="o">&lt;</span><span class="n">Type</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">y</span><span class="p">)</span>
-<span class="o">-</span> <span class="n">template</span><span class="o">&lt;</span><span class="n">typename</span> <span class="n">Type</span><span class="o">&gt;</span> <span class="n">Type</span> <span class="n">LinearInterpolation</span><span class="p">(</span><span class="n">Type</span> <span class="n">x</span><span class="p">,</span> <span class="n">Type</span> <span class="n">x0</span><span class="p">,</span> <span class="n">Type</span> <span class="n">x1</span><span class="p">,</span> <span class="n">Type</span> <span class="n">y0</span><span class="p">,</span> <span class="n">Type</span> <span class="n">y1</span><span class="p">)</span>
-</pre></div>
+<p>doxygenfunction: Cannot find function “sbody::CartesianToSpherical” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::CartesianToSpherical” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">InterpolateSphericalPositionToCartesian</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5SBody39InterpolateSphericalPositionToCartesianEi4Type4Type4TypeRKN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEERN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEE" title="SBody::InterpolateSphericalPositionToCartesian::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">t</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody39InterpolateSphericalPositionToCartesianEi4Type4Type4TypeRKN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEERN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEE" title="SBody::InterpolateSphericalPositionToCartesian::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">t0</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody39InterpolateSphericalPositionToCartesianEi4Type4Type4TypeRKN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEERN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEE" title="SBody::InterpolateSphericalPositionToCartesian::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">t1</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody39InterpolateSphericalPositionToCartesianEi4Type4Type4TypeRKN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEERN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEE" title="SBody::InterpolateSphericalPositionToCartesian::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">y0</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody39InterpolateSphericalPositionToCartesianEi4Type4Type4TypeRKN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEERN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEE" title="SBody::InterpolateSphericalPositionToCartesian::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">y1</span></span>, <span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody39InterpolateSphericalPositionToCartesianEi4Type4Type4TypeRKN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEERKN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEERN5boost7numeric5ublas14bounded_vectorI4TypeXL8EEEE" title="SBody::InterpolateSphericalPositionToCartesian::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">y</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p>Linear interpolation of two spherical positions <code class="docutils literal notranslate"><span class="pre">y0</span></code> and <code class="docutils literal notranslate"><span class="pre">y1</span></code> at <code class="docutils literal notranslate"><span class="pre">t</span></code>, stored in <code class="docutils literal notranslate"><span class="pre">y</span></code>. </p>
-<p><div class="math notranslate nohighlight">
-\[y=\frac{\text{SphericalToCartesian}(y_0)(t_1-t)+\text{SphericalToCartesian}(y_1)(t-t_0)}{t_1-t_0}\]</div>
-</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>t</strong> – time to evaluate <span class="math notranslate nohighlight">\(y\)</span></p></li>
-<li><p><strong>t0</strong> – <span class="math notranslate nohighlight">\(t_0\)</span></p></li>
-<li><p><strong>t1</strong> – <span class="math notranslate nohighlight">\(t_1\)</span></p></li>
-<li><p><strong>y0</strong> – 8 dimensional vector, spherical, <span class="math notranslate nohighlight">\(y_0\)</span></p></li>
-<li><p><strong>y1</strong> – 8 dimensional vector, spherical, <span class="math notranslate nohighlight">\(y_1\)</span></p></li>
-<li><p><strong>y</strong> – 8 dimensional vector, cartesian, <span class="math notranslate nohighlight">\(y\)</span></p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>status </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5SBody4FluxE4Type4Type4Type4Type" title="SBody::Flux::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">Flux</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5SBody4FluxE4Type4Type4Type4Type" title="SBody::Flux::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">luminosity</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody4FluxE4Type4Type4Type4Type" title="SBody::Flux::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">magnification</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody4FluxE4Type4Type4Type4Type" title="SBody::Flux::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">redshift</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p>Calculate the bolometric flux. The result is. </p>
-<p><div class="math notranslate nohighlight">
-\[F_\text{obs}=\frac{L_\text{src}}{(1+z)^2}\frac{\Omega_\text{src}}{\Omega_\text{obs}}.\]</div>
- The additional <span class="math notranslate nohighlight">\((1+z)^{-1}\)</span> comes from the expansion of the frequency that <span class="math notranslate nohighlight">\((1+z)^{-1}=\frac{\nu_\text{obs}}{\nu_\text{src}}\)</span>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>luminosity</strong> – intrinsic luminosity of the source, <span class="math notranslate nohighlight">\(L_\text{src}\)</span></p></li>
-<li><p><strong>magnification</strong> – magnification of the source, including the relativistic redshift and beaming, and gravitational lensing. <span class="math notranslate nohighlight">\(\frac{\Omega_\text{src}}{(1+z)\Omega_\text{obs}}\)</span></p></li>
-<li><p><strong>redshift</strong> – relativistic redshift of the source, <span class="math notranslate nohighlight">\(1+z\)</span></p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>result </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5SBody11FluxDensityE4Type4Type4Type" title="SBody::FluxDensity::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">FluxDensity</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN5SBody11FluxDensityE4Type4Type4Type" title="SBody::FluxDensity::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">spectral_density</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody11FluxDensityE4Type4Type4Type" title="SBody::FluxDensity::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">magnification</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><p>Calculate the flux density. The result is. </p>
-<p><div class="math notranslate nohighlight">
-\[F_{\nu,\text{obs}}=\frac{L_{\nu,\text{src}}}{1+z}\frac{\Omega_\text{src}}{\Omega_\text{obs}}.\]</div>
-</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>spectral_density</strong> – intrinsic spectral density of the source, <span class="math notranslate nohighlight">\(L_{\nu,\text{src}}\)</span></p></li>
-<li><p><strong>magnification</strong> – magnification of the source, including the relativistic redshift and beaming, and gravitational lensing. <span class="math notranslate nohighlight">\(\frac{\Omega_\text{src}}{(1+z)\Omega_\text{obs}}\)</span></p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>result </p>
-</dd>
-</dl>
-</dd></dl>
-
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::SphericalToCartesian” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::SphericalToCartesian” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::OppositeSign” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::MapTheta” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::ModBy2Pi” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::PhiDifference” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::LinearInterpolation” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::LinearInterpolation” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::InterpolateSphericalPositionToCartesian” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::Flux” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::FluxDensity” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
 <section id="elliptic-integrals">
 <h3>Elliptic Integrals<a class="headerlink" href="#elliptic-integrals" title="Link to this heading"></a></h3>
 <p>Calculate the elliptic integrals using the Legendre forms. Further information can be found in <a class="reference external" href="https://www.gnu.org/software/gsl/doc/html/specfunc.html#elliptic-integrals">GSL Manual</a>, <a class="reference external" href="https://www.ams.org/mcom/1988-51-183/S0025-5718-1988-0942154-7/">Carlson (1988)</a>, <a class="reference external" href="https://www.ams.org/mcom/1989-53-187/S0025-5718-1989-0969482-4/">Carlson (1989)</a>, <a class="reference external" href="https://www.ams.org/mcom/1991-56-193/S0025-5718-1991-1052087-6/">Carlson (1991)</a>, and <a class="reference external" href="https://www.ams.org/mcom/1992-59-199/S0025-5718-1992-1134720-4/">Carlson (1992)</a>.</p>
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EllipticIntegral</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">p5</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">y</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">a5</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">b5</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">a1</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">b1</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">a2</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">b2</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">a3</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">b3</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">a4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1.</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody16EllipticIntegralE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">b4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0.</span></span><span class="sig-paren">)</span><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral2ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral2Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EllipticIntegral2Complex</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">p5</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral2ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral2Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">y</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral2ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral2Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral2ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral2Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">a5</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral2ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral2Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">b5</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral2ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral2Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">f</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral2ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral2Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">g</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral2ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral2Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">h</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral2ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral2Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">a1</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral2ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral2Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">b1</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral2ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral2Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">a4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">1.</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral2ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral2Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">b4</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0.</span></span><span class="sig-paren">)</span><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral4ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral4Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">EllipticIntegral4Complex</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">p5</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral4ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral4Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">y</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral4ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral4Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">x</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral4ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral4Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">a5</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral4ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral4Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">b5</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral4ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral4Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">f1</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral4ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral4Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">g1</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral4ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral4Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">h1</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral4ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral4Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">f2</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral4ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral4Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">g2</span></span>, <a class="reference internal" href="#_CPPv4I0EN5SBody24EllipticIntegral4ComplexE4Typei4Type4Type4Type4Type4Type4Type4Type4Type4Type4Type" title="SBody::EllipticIntegral4Complex::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">h2</span></span><span class="sig-paren">)</span><br /></dt>
-<dd></dd></dl>
-
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenfunction: Cannot find function “SBody::Carlson_RC” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenfunction: Cannot find function “sbody::EllipticIntegral” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenfunction: Cannot find function “SBody::Carlson_RJ” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+<p>doxygenfunction: Cannot find function “sbody::EllipticIntegral2Complex” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::EllipticIntegral4Complex” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::Carlson_RC” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “sbody::Carlson_RJ” in doxygen xml output for project “SBody” from directory: ../doxygen</p>
 </div>
 </section>
 </section>
@@ -527,7 +336,7 @@ Potential matches:
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Tai Zhou.</p>
+    <p>&#169; Copyright 2021-2026, Tai Zhou.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

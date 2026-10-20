@@ -8,15 +8,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Object &mdash; SBody  documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=5929fcd5"></script>
-      <script src="_static/doctools.js?v=9bcbadda"></script>
-      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -45,11 +45,20 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="intro.html">SBody</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="infra.html">Infrastructure Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="file.html">File Module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="math.html">Math Module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="io.html">Input &amp; Output</a></li>
 <li class="toctree-l1"><a class="reference internal" href="metric.html">Metric</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Object</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#base-object">Base Object</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#particle">Particle</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#star">Star</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#disk">Disk</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#disk">Disk</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#novikov-thorne-disk">Novikov-Thorne Disk</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="unit.html">Unit</a></li>
@@ -82,15 +91,17 @@
              
   <section id="object">
 <span id="index-0"></span><h1>Object<a class="headerlink" href="#object" title="Link to this heading"></a></h1>
+<section id="base-object">
+<h2>Base Object<a class="headerlink" href="#base-object" title="Link to this heading"></a></h2>
 <dl class="cpp class">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Object</span></span></span><br /></dt>
-<dd><p>Subclassed by SBody::Disk&lt; Type &gt;, SBody::Particle&lt; Type &gt;</p>
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Object</span></span></span><br /></dt>
+<dd><p>Subclassed by sbody::Disk&lt; T &gt;, sbody::Particle&lt; T &gt;</p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Object</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="metric.html#_CPPv4I0EN5SBody6MetricE" title="SBody::Metric"><span class="n"><span class="pre">Metric</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody6ObjectE" title="SBody::Object::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">metric</span></span><span class="sig-paren">)</span><br /></dt>
+<span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Object</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="metric.html#_CPPv4I0EN5sbody6MetricE" title="sbody::Metric"><span class="n"><span class="pre">Metric</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody6ObjectE" title="sbody::Object::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">metric</span></span><span class="sig-paren">)</span><br /></dt>
 <dd><p>Construct a new Object object. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -101,7 +112,7 @@
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Hit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody6ObjectE" title="SBody::Object::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">current</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody6ObjectE" title="SBody::Object::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">last</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><br /></dt>
+<span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">hit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody6ObjectE" title="sbody::Object::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">current</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody6ObjectE" title="sbody::Object::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">last</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><br /></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -110,14 +121,14 @@
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>int </p>
+<dd class="field-even"><p>bool </p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">virtual</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN5SBody6ObjectE" title="SBody::Object::Type"><span class="n"><span class="pre">Type</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Redshift</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody6ObjectE" title="SBody::Object::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">photon</span></span>, <span class="n"><span class="pre">TimeSystem</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">photon_time</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><br /></dt>
+<span class="k"><span class="pre">virtual</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN5sbody6ObjectE" title="sbody::Object::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">dopplerFactor</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody6ObjectE" title="sbody::Object::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">photon</span></span>, <span class="n"><span class="pre">TimeSystem</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">photon_time</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><br /></dt>
 <dd><p><div class="math notranslate nohighlight">
 \[z=\frac{E_\mathrm{obj}}{E_\mathrm{obs}}-1\]</div>
  where <div class="math notranslate nohighlight">
@@ -145,7 +156,7 @@
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Type </p>
+<dd class="field-even"><p>T </p>
 </dd>
 </dl>
 </dd></dl>
@@ -153,16 +164,33 @@
 </div>
 </dd></dl>
 
-<section id="star">
-<h2>Star<a class="headerlink" href="#star" title="Link to this heading"></a></h2>
-<dl class="cpp class" id="index-1">
+</section>
+<section id="particle">
+<h2>Particle<a class="headerlink" href="#particle" title="Link to this heading"></a></h2>
+<dl class="cpp class">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Star</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Particle</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody4StarE" title="SBody::Star::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">&gt;</span></span><br /></dt>
-<dd><div class="breathe-sectiondef docutils container">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Particle</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody6ObjectE" title="sbody::Object"><span class="n"><span class="pre">Object</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody8ParticleE" title="sbody::Particle::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><br /></dt>
+<dd><p>Subclassed by sbody::Hotspot&lt; T &gt;, sbody::Star&lt; T &gt;</p>
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Hit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody4StarE" title="SBody::Star::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">current</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody4StarE" title="SBody::Star::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">last</span></span><span class="sig-paren">)</span><br /></dt>
+<span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Particle</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="metric.html#_CPPv4I0EN5sbody6MetricE" title="sbody::Metric"><span class="n"><span class="pre">Metric</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody8ParticleE" title="sbody::Particle::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">metric</span></span>, <span class="n"><span class="pre">TimeSystem</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">time</span></span>, <span class="n"><span class="pre">DynamicalSystem</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">coordinate</span></span>, <a class="reference internal" href="#_CPPv4I0EN5sbody8ParticleE" title="sbody::Particle::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">absolute_accuracy</span></span>, <a class="reference internal" href="#_CPPv4I0EN5sbody8ParticleE" title="sbody::Particle::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">relative_accuracy</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">fixed</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">false</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><p>Construct a new star object. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>metric</strong> – </p></li>
+<li><p><strong>radius</strong> – radius </p></li>
+<li><p><strong>fixed</strong> – whether the position of the star is fixed </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">hit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody8ParticleE" title="sbody::Particle::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">current</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody8ParticleE" title="sbody::Particle::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">last</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><br /></dt>
 <dd><p>Check if the star hit by the photon. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -172,7 +200,24 @@
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>int </p>
+<dd class="field-even"><p>bool </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN5sbody8ParticleE" title="sbody::Particle::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">dopplerFactor</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody8ParticleE" title="sbody::Particle::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">photon</span></span>, <span class="n"><span class="pre">TimeSystem</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">photon_time</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><br /></dt>
+<dd><p>Return the Doppler factor <span class="math notranslate nohighlight">\(g=1/(1+z)=E_\text{obs}/E_\text{emit}\)</span>. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>photon</strong> – </p></li>
+<li><p><strong>photon_time</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>T </p>
 </dd>
 </dl>
 </dd></dl>
@@ -181,32 +226,30 @@
 </dd></dl>
 
 </section>
+<section id="star">
+<h2>Star<a class="headerlink" href="#star" title="Link to this heading"></a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Star</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody8ParticleE" title="sbody::Particle"><span class="n"><span class="pre">Particle</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody4StarE" title="sbody::Star::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><br /></dt>
+<dd></dd></dl>
+
+</section>
 <section id="disk">
 <h2>Disk<a class="headerlink" href="#disk" title="Link to this heading"></a></h2>
-<dl class="cpp class" id="index-2">
+<dl class="cpp class">
 <dt class="sig sig-object cpp">
-<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Type</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Disk</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">SBody</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody6ObjectE" title="SBody::Object"><span class="n"><span class="pre">Object</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody4DiskE" title="SBody::Disk::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">&gt;</span></span><br /></dt>
-<dd><div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Hit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody4DiskE" title="SBody::Disk::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">current</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">boost</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">numeric</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ublas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bounded_vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5SBody4DiskE" title="SBody::Disk::Type"><span class="n"><span class="pre">Type</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">last</span></span><span class="sig-paren">)</span><br /></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>current</strong> – </p></li>
-<li><p><strong>last</strong> – </p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>int </p>
-</dd>
-</dl>
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Disk</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody6ObjectE" title="sbody::Object"><span class="n"><span class="pre">Object</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody4DiskE" title="sbody::Disk::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><br /></dt>
+<dd><p>Subclassed by sbody::NovikovThorneDisk&lt; T &gt;</p>
 </dd></dl>
 
-</div>
-</dd></dl>
+<section id="novikov-thorne-disk">
+<h3>Novikov-Thorne Disk<a class="headerlink" href="#novikov-thorne-disk" title="Link to this heading"></a></h3>
+<dl class="cpp class">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NovikovThorneDisk</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">sbody</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody4DiskE" title="sbody::Disk"><span class="n"><span class="pre">Disk</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN5sbody17NovikovThorneDiskE" title="sbody::NovikovThorneDisk::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><br /></dt>
+<dd></dd></dl>
 
+</section>
 </section>
 </section>
 
@@ -221,7 +264,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Tai Zhou.</p>
+    <p>&#169; Copyright 2021-2026, Tai Zhou.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

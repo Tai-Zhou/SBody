@@ -5,6 +5,6 @@
 Unit
 ====
 
-.. doxygenclass:: SBody::Unit
+.. doxygenclass:: sbody::Unit
    :members:
    :no-link:
